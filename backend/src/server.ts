@@ -1,0 +1,210 @@
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import dotenv from "dotenv";
+import helmet from "helmet";
+import cookieParser from "cookie-parser";
+import http from "http";
+import { Server as SocketServer } from "socket.io";
+import { logger } from "./utils/logger";
+import routes from "./routes/index";
+import authRoutes from "./routes/auth.routes";
+import errorMiddleware from "./middleware/error.middleware";
+
+dotenv.config();
+
+const app = express();
+const server = http.createServer(app);
+
+// Trust proxy for secure cookies and proxies
+app.set("trust proxy", 1);
+
+// Use exact environment variables from .env
+const allowedOrigins = [
+  ...(process.env.CORS_ORIGIN?.split(',') || []),
+  ...(process.env.FRONTEND_URL?.split(',') || [])
+].filter(Boolean); // Remove undefined/null values
+
+// CORS configuration
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      logger.warn(`❌ CORS blocked origin: ${origin}`);
+      callback(null, true); // Allow all origins in development
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  exposedHeaders: ["Set-Cookie"],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
+// Security middleware
+app.use(
+  helmet({
+    contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,
+  })
+);
+
+// Body parsing middleware
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// API Routes
+app.use("/api", routes);
+
+// Test API endpoint
+app.get("/api/test", (req, res) => {
+  res.json({ message: "API is working" });
+});
+
+// Error handling middleware
+app.use(errorMiddleware);
+
+// Socket.IO setup
+const io = new SocketServer(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+  transports: ["polling"],
+  allowEIO3: true,
+  path: "/socket.io/"
+});
+
+// Handle socket connections
+io.on("connection", (socket) => {
+  logger.info(`User connected: ${socket.id}`);
+  
+  // Handle user authentication and room joining
+  socket.on("authenticate", (token) => {
+    try {
+      const jwt = require("jsonwebtoken");
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.join(`user-${decoded.id}`);
+      logger.info(`User ${decoded.id} authenticated and joined room`);
+    } catch (error) {
+      logger.error("Socket authentication failed:", error);
+      socket.emit("auth_error", "Authentication failed");
+    }
+  });
+
+  socket.on("ping", (data, callback) => {
+    if (typeof callback === "function") {
+      callback("pong");
+    } else {
+      socket.emit("pong", "pong");
+    }
+  });
+
+  socket.on("disconnect", () => {
+    logger.info(`User disconnected: ${socket.id}`);
+  });
+});
+
+// Export for use in other files
+export { io };
+export default app;
+
+// MongoDB connection and server startup
+const PORT = process.env.PORT || 5000;
+const MONGODB_URI = process.env.MONGO_URI;
+
+if (!MONGODB_URI) {
+  logger.error("❌ MongoDB URI is missing! Check your environment variables.");
+  process.exit(1);
+}
+
+mongoose
+  .connect(MONGODB_URI)
+  .then(async () => {
+    logger.info("✅ Connected to MongoDB");
+    
+    // Initialize default permissions and roles
+    try {
+      const { initializePermissions } = await import('./controllers/rbacController');
+      await initializePermissions();
+      
+      // Create default roles if they don't exist
+      const { Role } = await import('./models/Role');
+      
+      const defaultRoles = [
+        {
+          name: 'super_admin',
+          description: 'Super Administrator with complete system access',
+          permissions: [
+            'manage_roles', 'view_users', 'create_user', 'update_user', 'delete_user',
+            'view_products', 'create_product', 'update_product', 'delete_product',
+            'view_orders', 'create_order', 'update_order', 'delete_order',
+            'view_inventory', 'manage_inventory', 'view_customers', 'create_customer',
+            'update_customer', 'delete_customer', 'view_reports', 'export_data',
+            'system_settings', 'view_logs'
+          ]
+        },
+        {
+          name: 'admin',
+          description: 'Administrator with management access',
+          permissions: [
+            'view_users', 'create_user', 'update_user',
+            'view_products', 'create_product', 'update_product',
+            'view_orders', 'create_order', 'update_order',
+            'view_inventory', 'manage_inventory', 'view_customers',
+            'create_customer', 'update_customer', 'view_reports'
+          ]
+        },
+        {
+          name: 'manager',
+          description: 'Manager with operational access',
+          permissions: [
+            'view_users', 'view_products', 'create_product', 'update_product',
+            'view_orders', 'create_order', 'update_order',
+            'view_inventory', 'view_customers', 'create_customer', 'update_customer'
+          ]
+        },
+        {
+          name: 'employee',
+          description: 'Employee with basic access',
+          permissions: [
+            'view_products', 'view_orders', 'create_order',
+            'view_inventory', 'view_customers'
+          ]
+        }
+      ];
+      
+      for (const roleData of defaultRoles) {
+        const existingRole = await Role.findOne({ name: roleData.name });
+        if (!existingRole) {
+          await Role.create(roleData);
+          logger.info(`✅ Default ${roleData.name} role created`);
+        }
+      }
+    } catch (error) {
+      logger.error('❌ Error initializing RBAC:', error);
+    }
+    
+    server.listen(PORT, () => {
+      logger.info(`🚀 Server running on port ${PORT}`);
+      logger.info(`👉 Allowed origins: ${JSON.stringify(allowedOrigins)}`);
+    });
+  })
+  .catch((error) => {
+    logger.error("❌ MongoDB connection error:", error);
+    process.exit(1);
+  });
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (err: Error) => {
+  logger.error("Unhandled Promise Rejection:", err);
+  if (process.env.NODE_ENV !== "production") {
+    process.exit(1);
+  }
+});

@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.local
+src/
+*.ts
+!dist/
+.git/
+app/
+components/
+hooks/
+lib/
+public/
+styles/
