@@ -60,27 +60,7 @@ export default function Layout({ children }: LayoutProps) {
         { path: "/dashboard/contacts", name: "Contacts", icon: "users" } as MenuItem,
       ]
     },
-    {
-      title: "Finance",
-      items: [
-        {
-          path: "/dashboard/finance",
-          name: "Finance",
-          icon: "currency-dollar",
-          subItems: [
-            { path: "/dashboard/finance", name: "Dashboard" },
-            { path: "/dashboard/finance/general-ledger", name: "General Ledger" },
-            { path: "/dashboard/finance/budgeting", name: "Budgeting" },
-            { path: "/dashboard/finance/accounts", name: "Accounts" },
-            { path: "/dashboard/finance/expenses", name: "Expenses" },
-            { path: "/dashboard/finance/cost-accounting", name: "Cost Accounting" },
-            { path: "/dashboard/finance/wip-accounting", name: "WIP Accounting" },
-            { path: "/dashboard/finance/reports", name: "Reports" },
-            { path: "/dashboard/finance/analytics", name: "Analytics" }
-          ]
-        } as MenuItem
-      ]
-    },
+  
     {
       title: "Human Resources",
       items: [
