@@ -34,7 +34,6 @@ router.use('/admin', adminRoutes); // Add admin routes
 router.use('/leaves', leaveRoutes); // Add leave routes
 router.use('/employee-reports', employeeReportRoutes); // Add employee report routes
 router.use('/activity', activityRoutes); // Add activity routes
-
 router.use('/rbac', rbacRoutes); // Add RBAC routes
 
 
