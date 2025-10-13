@@ -20,7 +20,11 @@ import {
   TrendingUp,
   Search,
   MessageSquare,
-  Clock
+  Clock,
+  DollarSign,
+  FileText,
+  Download,
+  Filter
 } from "lucide-react";
 import { getProjectStats, getAllProjects, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
@@ -31,7 +35,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-
 interface ProjectStats {
   totalProjects: number;
   activeProjects: number;
@@ -41,7 +44,17 @@ interface ProjectStats {
   completedTasks: number;
 }
 
-const ProjectManagementDashboard = () => {
+interface NewTaskForm {
+  title: string;
+  description: string;
+  project: string;
+  assignedTo: string;
+  priority: string;
+  dueDate: string;
+  estimatedHours: string;
+}
+
+const ProjectManagementDashboard: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<ProjectStats>({
@@ -69,7 +82,7 @@ const ProjectManagementDashboard = () => {
       setProjects(prev => [project, ...prev]);
       toast({
         title: "New Project Created",
-        description: `${project.title} has been created`,
+        description: `${project.name} has been created`,
       });
     });
 
@@ -77,7 +90,7 @@ const ProjectManagementDashboard = () => {
       setProjects(prev => prev.map(p => p._id === updatedProject._id ? updatedProject : p));
       toast({
         title: "Project Updated",
-        description: `${updatedProject.title} has been updated`,
+        description: `${updatedProject.name} has been updated`,
       });
     });
 
@@ -101,7 +114,7 @@ const ProjectManagementDashboard = () => {
     };
   }, [socket]);
 
-  const fetchData = async () => {
+  const fetchData = async (): Promise<void> => {
     try {
       const [statsData, projectsData] = await Promise.all([
         getProjectStats().catch(() => ({
@@ -115,36 +128,48 @@ const ProjectManagementDashboard = () => {
         getAllProjects().catch(() => [
           {
             _id: "demo1",
-            title: "Website Redesign",
+            name: "Website Redesign",
             description: "Complete overhaul of company website with modern design",
             status: "active",
             priority: "high",
             progress: 65,
             startDate: "2024-01-15",
             endDate: "2024-03-15",
-            assignedUsers: ["user1", "user2"]
+            budget: 50000,
+            manager: "user1",
+            team: ["user1", "user2"],
+            createdAt: "2024-01-15T00:00:00Z",
+            updatedAt: "2024-01-15T00:00:00Z"
           },
           {
             _id: "demo2",
-            title: "Mobile App Development",
+            name: "Mobile App Development",
             description: "Native mobile application for iOS and Android",
             status: "planning",
             priority: "medium",
             progress: 25,
             startDate: "2024-02-01",
             endDate: "2024-06-01",
-            assignedUsers: ["user1"]
+            budget: 75000,
+            manager: "user1",
+            team: ["user1"],
+            createdAt: "2024-02-01T00:00:00Z",
+            updatedAt: "2024-02-01T00:00:00Z"
           },
           {
             _id: "demo3",
-            title: "Database Migration",
+            name: "Database Migration",
             description: "Migrate legacy database to new cloud infrastructure",
             status: "completed",
             priority: "critical",
             progress: 100,
             startDate: "2023-12-01",
             endDate: "2024-01-31",
-            assignedUsers: ["user3"]
+            budget: 30000,
+            manager: "user3",
+            team: ["user3"],
+            createdAt: "2023-12-01T00:00:00Z",
+            updatedAt: "2024-01-31T00:00:00Z"
           }
         ])
       ]);
@@ -163,7 +188,7 @@ const ProjectManagementDashboard = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'completed': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
@@ -173,7 +198,7 @@ const ProjectManagementDashboard = () => {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string): string => {
     switch (priority) {
       case 'critical': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       case 'high': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
@@ -272,6 +297,7 @@ const ProjectManagementDashboard = () => {
             <TabsTrigger value="projects">All Projects</TabsTrigger>
             <TabsTrigger value="tasks">My Tasks</TabsTrigger>
             <TabsTrigger value="task-management">Task Management</TabsTrigger>
+            <TabsTrigger value="project-ledger">Finance</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
@@ -286,7 +312,7 @@ const ProjectManagementDashboard = () => {
                   {projects.slice(0, 5).map((project) => (
                     <div key={project._id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer" onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
                       <div className="flex-1">
-                        <h3 className="font-medium">{project.title}</h3>
+                        <h3 className="font-medium">{project.name}</h3>
                         <p className="text-sm text-muted-foreground">{project.description}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge className={getStatusColor(project.status)}>
@@ -328,12 +354,14 @@ const ProjectManagementDashboard = () => {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {projects.map((project) => (
-                    <Card key={project._id} className="cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+                    <Card key={project._id} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-6">
                         <div className="space-y-4">
                           <div>
-                            <h3 className="font-semibold">{project.title}</h3>
+                            <h3 className="font-semibold cursor-pointer hover:text-blue-600" 
+                                onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+                              {project.name}
+                            </h3>
                             <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
                           </div>
                           
@@ -366,8 +394,19 @@ const ProjectManagementDashboard = () => {
                             </div>
                             <div className="flex items-center gap-1">
                               <Users className="h-4 w-4" />
-                              {project.assignedUsers?.length || 0}
+                              {project.team?.length || 0}
                             </div>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" className="flex-1"
+                                    onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+                              View Project
+                            </Button>
+                            <Button size="sm" variant="outline"
+                                    onClick={() => router.push(`/dashboard/projects/${project._id}?tab=finance`)}>
+                              <DollarSign className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -379,13 +418,47 @@ const ProjectManagementDashboard = () => {
           </TabsContent>
 
           <TabsContent value="tasks">
-
             <MyTasksContent />
-
           </TabsContent>
 
           <TabsContent value="task-management">
             <TaskManagementContent />
+          </TabsContent>
+
+          <TabsContent value="project-ledger">
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Finance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-6">
+                  Access comprehensive financial reports and analysis for your projects. Each project has its own dedicated finance section with all reports.
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  {projects.slice(0, 6).map((project) => (
+                    <Card key={project._id} className="cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => router.push(`/dashboard/projects/${project._id}?tab=finance`)}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">{project.name}</h4>
+                            <p className="text-sm text-muted-foreground">Budget: ${project.budget?.toLocaleString() || 0}</p>
+                          </div>
+                          <DollarSign className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                
+                <div className="text-center">
+                  <Button onClick={() => router.push("/dashboard/projects/ledger")}>
+                    View All Project Finance
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="reports">
@@ -414,18 +487,18 @@ const ProjectManagementDashboard = () => {
 };
 
 // My Tasks Component
-const MyTasksContent = () => {
+const MyTasksContent: React.FC = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchMyTasks();
   }, [user]);
 
-  const fetchMyTasks = async () => {
+  const fetchMyTasks = async (): Promise<void> => {
     try {
       const allTasks = await tasksAPI.getAll();
       const myTasks = allTasks.filter(task => 
@@ -441,7 +514,7 @@ const MyTasksContent = () => {
     }
   };
 
-  const updateTaskStatus = async (taskId: string, newStatus: string) => {
+  const updateTaskStatus = async (taskId: string, newStatus: string): Promise<void> => {
     try {
       await tasksAPI.updateStatus(taskId, newStatus, user?._id);
       await fetchMyTasks();
@@ -458,7 +531,7 @@ const MyTasksContent = () => {
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = tasks.filter((task: Task) => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
@@ -472,7 +545,7 @@ const MyTasksContent = () => {
     completed: filteredTasks.filter(t => t.status === 'completed')
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case 'todo': return 'bg-gray-100 text-gray-800';
       case 'in-progress': return 'bg-blue-100 text-blue-800';
@@ -482,7 +555,7 @@ const MyTasksContent = () => {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string): string => {
     switch (priority) {
       case 'critical': return 'bg-red-100 text-red-800';
       case 'high': return 'bg-orange-100 text-orange-800';
@@ -601,19 +674,19 @@ const MyTasksContent = () => {
 };
 
 // Task Management Component
-const TaskManagementContent = () => {
+const TaskManagementContent: React.FC = () => {
   const { user } = useAuth();
   const socket = useSocket();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newTask, setNewTask] = useState({
+  const [loading, setLoading] = useState<boolean>(true);
+  const [creating, setCreating] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState<boolean>(false);
+  const [newTask, setNewTask] = useState<NewTaskForm>({
     title: '',
     description: '',
     project: '',
@@ -651,7 +724,7 @@ const TaskManagementContent = () => {
     };
   }, [socket]);
 
-  const fetchData = async () => {
+  const fetchData = async (): Promise<void> => {
     try {
       const [tasksData, projectsData, employeesData] = await Promise.all([
         tasksAPI.getAll(),
@@ -672,7 +745,7 @@ const TaskManagementContent = () => {
     }
   };
 
-  const handleCreateTask = async (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     if (!newTask.project || !newTask.assignedTo || !newTask.title) {
@@ -722,7 +795,7 @@ const TaskManagementContent = () => {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (): void => {
     setNewTask({
       title: '',
       description: '',
@@ -734,7 +807,7 @@ const TaskManagementContent = () => {
     });
   };
 
-  const updateTaskStatus = async (taskId: string, newStatus: string) => {
+  const updateTaskStatus = async (taskId: string, newStatus: string): Promise<void> => {
     try {
       const updatedTask = await tasksAPI.updateStatus(taskId, newStatus, user?._id);
       
@@ -756,7 +829,7 @@ const TaskManagementContent = () => {
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = tasks.filter((task: Task) => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
@@ -765,7 +838,7 @@ const TaskManagementContent = () => {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string): string => {
     switch (priority) {
       case 'critical': return 'bg-red-100 text-red-800';
       case 'high': return 'bg-orange-100 text-orange-800';
@@ -840,7 +913,7 @@ const TaskManagementContent = () => {
                       <SelectContent>
                         {projects.map((project) => (
                           <SelectItem key={project._id} value={project._id}>
-                            {project.title}
+                            {project.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -961,7 +1034,7 @@ const TaskManagementContent = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {statusTasks.map((task) => (
+                  {statusTasks.map((task: Task) => (
                     <Card key={task._id} className="p-3 hover:shadow-md transition-shadow cursor-pointer">
                       <div className="space-y-2">
                         <div className="flex justify-between items-start">
