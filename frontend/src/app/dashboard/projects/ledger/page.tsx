@@ -124,8 +124,25 @@ const ProjectFinancePage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {financeReports.map((report, index) => {
                 const IconComponent = report.icon;
+                const getReportPath = (title: string) => {
+                  switch (title) {
+                    case "Profit & Loss":
+                      return "/dashboard/finance/profit-loss";
+                    case "Trial Balance":
+                      return "/dashboard/finance/trial-balance";
+                    case "Balance Sheet":
+                      return "/dashboard/finance/balance-sheet";
+                    case "Cash Flow":
+                      return "/dashboard/finance/cash-flow";
+                    case "Project Ledger":
+                      return "/dashboard/finance/project-ledger";
+                    default:
+                      return "/dashboard/projects/ledger";
+                  }
+                };
                 return (
-                  <Card key={index} className="p-4">
+                  <Card key={index} className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => router.push(getReportPath(report.title))}>
                     <div className="flex items-start gap-3">
                       <IconComponent className={`h-6 w-6 ${report.color} mt-1`} />
                       <div>
