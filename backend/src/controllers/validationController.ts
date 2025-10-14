@@ -1,12 +1,19 @@
 // project\backend\src\controllers\validationController.ts
 
 import { Request, Response } from 'express';
-import Inventory from '../models/Inventory';
-import Product from '../models/Product';
-import Customer from '../models/Customer';
-import { logger } from '../utils/logger';
+// import Inventory from '../models/Inventory';
+// import Product from '../models/Product';
+// import Customer from '../models/Customer';
+// import { logger } from '../utils/logger';
+
+// Placeholder logger
+const logger = {
+  error: (message: string) => console.error(message)
+};
 
 // Validate inventory stock levels for a list of products
+// Commented out until Inventory model is created
+/*
 export const validateInventoryStock = async (req: Request, res: Response) => {
   try {
     const { products } = req.body;
@@ -92,8 +99,11 @@ export const validateInventoryStock = async (req: Request, res: Response) => {
     });
   }
 };
+*/
 
 // Validate customer credit status
+// Commented out until Customer model is created
+/*
 export const validateCustomerCredit = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -152,8 +162,11 @@ export const validateCustomerCredit = async (req: Request, res: Response) => {
     });
   }
 };
+*/
 
 // Pre-validate an entire order before submission
+// Commented out until required models are created
+/*
 export const validateOrder = async (req: Request, res: Response) => {
   try {
     const { customer, products, totalAmount } = req.body;
@@ -263,3 +276,4 @@ export const validateOrder = async (req: Request, res: Response) => {
     });
   }
 };
+*/

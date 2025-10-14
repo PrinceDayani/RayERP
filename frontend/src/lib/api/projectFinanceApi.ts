@@ -127,56 +127,98 @@ export const projectFinanceApi = {
 
   // Ledger Entries
   getLedgerEntries: async (projectId: string, filters?: ProjectFinanceFilters): Promise<ProjectLedgerEntry[]> => {
-    // Mock data
-    return [
-      {
-        id: '1',
-        projectId,
-        date: '2024-01-15',
-        accountCode: '1001',
-        accountName: 'Cash',
-        description: 'Initial project funding',
-        voucherType: 'Receipt',
-        voucherNumber: 'RV001',
-        debit: 50000,
-        credit: 0,
-        balance: 50000
-      },
-      {
-        id: '2',
-        projectId,
-        date: '2024-01-20',
-        accountCode: '5001',
-        accountName: 'Direct Costs',
-        description: 'Material purchase',
-        voucherType: 'Payment',
-        voucherNumber: 'PV001',
-        debit: 25000,
-        credit: 0,
-        balance: 25000
+    const params = new URLSearchParams();
+    if (filters?.dateRange) {
+      params.append('startDate', filters.dateRange.startDate);
+      params.append('endDate', filters.dateRange.endDate);
+    }
+    if (filters?.accountCode) {
+      params.append('accountCode', filters.accountCode);
+    }
+    
+    const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/ledger-entries?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
       }
-    ];
+    });
+    
+    return handleResponse(response);
   },
 
   // Journal Entries
   getJournalEntries: async (projectId: string, filters?: ProjectFinanceFilters): Promise<ProjectJournalEntry[]> => {
-    // Mock data
-    return [
-      {
-        id: '1',
-        projectId,
-        date: '2024-01-15',
-        voucherNumber: 'JV001',
-        description: 'Project setup entry',
-        entries: [
-          { accountCode: '1001', accountName: 'Cash', debit: 50000, credit: 0 },
-          { accountCode: '3001', accountName: 'Project Capital', debit: 0, credit: 50000 }
-        ],
-        totalDebit: 50000,
-        totalCredit: 50000,
-        status: 'posted'
+    const params = new URLSearchParams();
+    if (filters?.dateRange) {
+      params.append('startDate', filters.dateRange.startDate);
+      params.append('endDate', filters.dateRange.endDate);
+    }
+    if (filters?.status) {
+      params.append('status', filters.status);
+    }
+    
+    const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/journal-entries?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
       }
-    ];
+    });
+    
+    return handleResponse(response);
+  },
+
+  // Create Journal Entry
+  createJournalEntry: async (projectId: string, entryData: any): Promise<ProjectJournalEntry> => {
+    const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/journal-entries`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(entryData)
+    });
+    
+    return handleResponse(response);
+  },
+
+  // Update Journal Entry
+  updateJournalEntry: async (projectId: string, entryId: string, entryData: any): Promise<ProjectJournalEntry> => {
+    const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/journal-entries/${entryId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(entryData)
+    });
+    
+    return handleResponse(response);
+  },
+
+  // Post Journal Entry
+  postJournalEntry: async (projectId: string, entryId: string): Promise<ProjectJournalEntry> => {
+    const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/journal-entries/${entryId}/post`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return handleResponse(response);
+  },
+
+  // Delete Journal Entry
+  deleteJournalEntry: async (projectId: string, entryId: string): Promise<void> => {
+    const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/journal-entries/${entryId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    await handleResponse(response);
   },
 
   // Export functions

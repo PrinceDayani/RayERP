@@ -1,10 +1,11 @@
 export interface ProjectFinanceFilters {
-  dateRange: {
+  dateRange?: {
     startDate: string;
     endDate: string;
   };
-  accountId?: string;
+  accountCode?: string;
   voucherType?: string;
+  status?: string;
 }
 
 export interface ProjectProfitLoss {
@@ -94,16 +95,32 @@ export interface ProjectLedgerEntry {
 export interface ProjectJournalEntry {
   id: string;
   projectId: string;
+  entryNumber: string;
   date: string;
-  voucherNumber: string;
+  reference: string;
   description: string;
-  entries: Array<{
+  narration?: string;
+  lines: Array<{
+    accountCode: string;
+    accountName: string;
+    debit: number;
+    credit: number;
+    description: string;
+  }>;
+  totalDebit: number;
+  totalCredit: number;
+  status: 'draft' | 'posted' | 'approved';
+  createdBy?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  // Legacy field for backward compatibility
+  voucherNumber?: string;
+  entries?: Array<{
     accountCode: string;
     accountName: string;
     debit: number;
     credit: number;
   }>;
-  totalDebit: number;
-  totalCredit: number;
-  status: 'draft' | 'posted' | 'approved';
 }

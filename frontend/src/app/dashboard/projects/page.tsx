@@ -294,25 +294,65 @@ const ProjectManagementDashboard: React.FC = () => {
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="projects">All Projects</TabsTrigger>
+            <TabsTrigger value="projects" data-tab="projects">All Projects</TabsTrigger>
             <TabsTrigger value="tasks">My Tasks</TabsTrigger>
-            <TabsTrigger value="task-management">Task Management</TabsTrigger>
+            <TabsTrigger value="task-management" data-tab="task-management">Task Management</TabsTrigger>
             <TabsTrigger value="project-ledger">Finance</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/dashboard/projects/create")}>
+                <CardContent className="p-4 text-center">
+                  <Plus className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                  <h3 className="font-medium">New Project</h3>
+                  <p className="text-sm text-muted-foreground">Create a new project</p>
+                </CardContent>
+              </Card>
+              
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/dashboard/projects/reports")}>
+                <CardContent className="p-4 text-center">
+                  <BarChart3 className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                  <h3 className="font-medium">View Reports</h3>
+                  <p className="text-sm text-muted-foreground">Project analytics</p>
+                </CardContent>
+              </Card>
+              
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/dashboard/projects/ledger")}>
+                <CardContent className="p-4 text-center">
+                  <DollarSign className="h-8 w-8 mx-auto mb-2 text-yellow-600" />
+                  <h3 className="font-medium">Finance</h3>
+                  <p className="text-sm text-muted-foreground">Project budgets</p>
+                </CardContent>
+              </Card>
+              
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => (document.querySelector('[data-tab="task-management"]') as HTMLElement)?.click()}>
+                <CardContent className="p-4 text-center">
+                  <CheckCircle className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                  <h3 className="font-medium">Manage Tasks</h3>
+                  <p className="text-sm text-muted-foreground">Create & track tasks</p>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Recent Projects */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent Projects</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Recent Projects</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => (document.querySelector('[data-tab="projects"]') as HTMLElement)?.click()}>
+                    View All
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {projects.slice(0, 5).map((project) => (
                     <div key={project._id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer" onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
                       <div className="flex-1">
-                        <h3 className="font-medium">{project.name}</h3>
+                        <h3 className="font-medium hover:text-blue-600 transition-colors">{project.name}</h3>
                         <p className="text-sm text-muted-foreground">{project.description}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge className={getStatusColor(project.status)}>
@@ -332,10 +372,29 @@ const ProjectManagementDashboard: React.FC = () => {
                             style={{ width: `${project.progress}%` }}
                           ></div>
                         </div>
+                        <div className="flex gap-1 mt-2">
+                          <Button size="sm" variant="ghost" className="h-6 px-2" 
+                                  onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
+                            <DollarSign className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-6 px-2"
+                                  onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=tasks`); }}>
+                            <CheckCircle className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
+                {projects.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">No projects found</p>
+                    <Button onClick={() => router.push("/dashboard/projects/create")}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Your First Project
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -428,24 +487,88 @@ const ProjectManagementDashboard: React.FC = () => {
           <TabsContent value="project-ledger">
             <Card>
               <CardHeader>
-                <CardTitle>Project Finance</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Project Finance</CardTitle>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/projects/ledger")}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      All Reports
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/projects/ledger?export=true")}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-6">
                   Access comprehensive financial reports and analysis for your projects. Each project has its own dedicated finance section with all reports.
                 </p>
                 
+                {/* Finance Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total Budget</p>
+                          <p className="text-2xl font-bold">${projects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}</p>
+                        </div>
+                        <DollarSign className="h-8 w-8 text-green-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Active Projects</p>
+                          <p className="text-2xl font-bold">{projects.filter(p => p.status === 'active').length}</p>
+                        </div>
+                        <TrendingUp className="h-8 w-8 text-blue-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Avg. Budget</p>
+                          <p className="text-2xl font-bold">${projects.length > 0 ? Math.round(projects.reduce((sum, p) => sum + (p.budget || 0), 0) / projects.length).toLocaleString() : 0}</p>
+                        </div>
+                        <BarChart3 className="h-8 w-8 text-purple-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                   {projects.slice(0, 6).map((project) => (
                     <Card key={project._id} className="cursor-pointer hover:shadow-md transition-shadow"
                           onClick={() => router.push(`/dashboard/projects/${project._id}?tab=finance`)}>
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
                             <h4 className="font-medium">{project.name}</h4>
-                            <p className="text-sm text-muted-foreground">Budget: ${project.budget?.toLocaleString() || 0}</p>
+                            <Badge className={getStatusColor(project.status)}>
+                              {project.status}
+                            </Badge>
                           </div>
-                          <DollarSign className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Budget: ${project.budget?.toLocaleString() || 0}</p>
+                            <p className="text-sm text-muted-foreground">Progress: {project.progress}%</p>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <Button size="sm" variant="outline" className="flex-1 mr-2"
+                                    onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
+                              View Finance
+                            </Button>
+                            <Button size="sm" variant="ghost"
+                                    onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance&export=true`); }}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -454,6 +577,7 @@ const ProjectManagementDashboard: React.FC = () => {
                 
                 <div className="text-center">
                   <Button onClick={() => router.push("/dashboard/projects/ledger")}>
+                    <FileText className="h-4 w-4 mr-2" />
                     View All Project Finance
                   </Button>
                 </div>
@@ -464,18 +588,93 @@ const ProjectManagementDashboard: React.FC = () => {
           <TabsContent value="reports">
             <Card>
               <CardHeader>
-                <CardTitle>Project Reports</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Project Reports</CardTitle>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/projects/reports?type=summary")}>
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Summary
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/projects/reports?export=pdf")}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export PDF
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <BarChart3 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Project Analytics</h3>
+                {/* Quick Report Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => router.push("/dashboard/projects/reports?type=performance")}>
+                    <CardContent className="p-4 text-center">
+                      <TrendingUp className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                      <h3 className="font-medium">Performance Report</h3>
+                      <p className="text-sm text-muted-foreground">Project completion rates</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => router.push("/dashboard/projects/reports?type=budget")}>
+                    <CardContent className="p-4 text-center">
+                      <DollarSign className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                      <h3 className="font-medium">Budget Analysis</h3>
+                      <p className="text-sm text-muted-foreground">Financial performance</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => router.push("/dashboard/projects/reports?type=timeline")}>
+                    <CardContent className="p-4 text-center">
+                      <Calendar className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                      <h3 className="font-medium">Timeline Report</h3>
+                      <p className="text-sm text-muted-foreground">Project schedules</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => router.push("/dashboard/projects/reports?type=team")}>
+                    <CardContent className="p-4 text-center">
+                      <Users className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+                      <h3 className="font-medium">Team Performance</h3>
+                      <p className="text-sm text-muted-foreground">Resource utilization</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => router.push("/dashboard/projects/reports?type=tasks")}>
+                    <CardContent className="p-4 text-center">
+                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-red-600" />
+                      <h3 className="font-medium">Task Analytics</h3>
+                      <p className="text-sm text-muted-foreground">Task completion stats</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => router.push("/dashboard/projects/reports?type=custom")}>
+                    <CardContent className="p-4 text-center">
+                      <Filter className="h-8 w-8 mx-auto mb-2 text-gray-600" />
+                      <h3 className="font-medium">Custom Report</h3>
+                      <p className="text-sm text-muted-foreground">Build your own report</p>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <div className="text-center py-4">
+                  <h3 className="text-lg font-medium mb-2">Comprehensive Project Analytics</h3>
                   <p className="text-muted-foreground mb-4">
-                    View detailed reports and analytics for your projects
+                    Access detailed reports and analytics for all your projects with real-time data
                   </p>
-                  <Button onClick={() => router.push("/dashboard/projects/reports")}>
-                    View Reports
-                  </Button>
+                  <div className="flex justify-center gap-2">
+                    <Button onClick={() => router.push("/dashboard/projects/reports")}>
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      View All Reports
+                    </Button>
+                    <Button variant="outline" onClick={() => router.push("/dashboard/projects/reports?setup=true")}>
+                      <Filter className="h-4 w-4 mr-2" />
+                      Setup Custom Report
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -489,6 +688,7 @@ const ProjectManagementDashboard: React.FC = () => {
 // My Tasks Component
 const MyTasksContent: React.FC = () => {
   const { user } = useAuth();
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -501,7 +701,7 @@ const MyTasksContent: React.FC = () => {
   const fetchMyTasks = async (): Promise<void> => {
     try {
       const allTasks = await tasksAPI.getAll();
-      const myTasks = allTasks.filter(task => 
+      const myTasks = allTasks.filter((task: Task) => 
         task.assignedTo && 
         (typeof task.assignedTo === 'object' ? task.assignedTo._id === user?._id : task.assignedTo === user?._id)
       );
@@ -584,6 +784,10 @@ const MyTasksContent: React.FC = () => {
             <div className="flex gap-2">
               <Badge variant="outline">Total: {filteredTasks.length}</Badge>
               <Badge variant="secondary">Completed: {tasksByStatus.completed.length}</Badge>
+              <Button size="sm" variant="outline" onClick={() => (document.querySelector('[data-tab="task-management"]') as HTMLElement)?.click()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Task
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -621,10 +825,11 @@ const MyTasksContent: React.FC = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {statusTasks.map((task) => (
-                    <Card key={task._id} className="p-3 hover:shadow-md transition-shadow">
+                    <Card key={task._id} className="p-3 hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => router.push(`/dashboard/projects/${typeof task.project === 'object' ? task.project._id : task.project}?tab=tasks&task=${task._id}`)}>
                       <div className="space-y-2">
                         <div className="flex justify-between items-start">
-                          <h4 className="font-medium text-sm">{task.title}</h4>
+                          <h4 className="font-medium text-sm hover:text-blue-600 transition-colors">{task.title}</h4>
                           <Badge className={getPriorityColor(task.priority)} variant="secondary">
                             {task.priority}
                           </Badge>
@@ -641,20 +846,29 @@ const MyTasksContent: React.FC = () => {
                         
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span className="font-medium">Project:</span>
-                          {typeof task.project === 'object' ? task.project.name : 'Unknown Project'}
+                          <span className="hover:text-blue-600 cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${typeof task.project === 'object' ? task.project._id : task.project}`); }}>
+                            {typeof task.project === 'object' ? task.project.name : 'Unknown Project'}
+                          </span>
                         </div>
                         
-                        <Select onValueChange={(value) => updateTaskStatus(task._id, value)} defaultValue={task.status}>
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="todo">To Do</SelectItem>
-                            <SelectItem value="in-progress">In Progress</SelectItem>
-                            <SelectItem value="review">Review</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex gap-2">
+                          <Select onValueChange={(value) => updateTaskStatus(task._id, value)} defaultValue={task.status}>
+                            <SelectTrigger className="h-8 text-xs flex-1" onClick={(e) => e.stopPropagation()}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="todo">To Do</SelectItem>
+                              <SelectItem value="in-progress">In Progress</SelectItem>
+                              <SelectItem value="review">Review</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="ghost" className="h-8 px-2"
+                                  onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${typeof task.project === 'object' ? task.project._id : task.project}?tab=tasks&task=${task._id}&edit=true`); }}>
+                            <FileText className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   ))}
@@ -676,6 +890,7 @@ const MyTasksContent: React.FC = () => {
 // Task Management Component
 const TaskManagementContent: React.FC = () => {
   const { user } = useAuth();
+  const router = useRouter();
   const socket = useSocket();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -1035,10 +1250,11 @@ const TaskManagementContent: React.FC = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {statusTasks.map((task: Task) => (
-                    <Card key={task._id} className="p-3 hover:shadow-md transition-shadow cursor-pointer">
+                    <Card key={task._id} className="p-3 hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => router.push(`/dashboard/projects/${typeof task.project === 'object' ? task.project?._id : task.project}?tab=tasks&task=${task._id}`)}>
                       <div className="space-y-2">
                         <div className="flex justify-between items-start">
-                          <h4 className="font-medium text-sm">{task.title}</h4>
+                          <h4 className="font-medium text-sm hover:text-blue-600 transition-colors">{task.title}</h4>
                           <Badge className={getPriorityColor(task.priority)} variant="secondary">
                             {task.priority}
                           </Badge>
@@ -1055,15 +1271,21 @@ const TaskManagementContent: React.FC = () => {
                         
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <Users className="w-3 h-3" />
-                          {typeof task.assignedTo === 'object' 
-                            ? `${task.assignedTo?.firstName || 'Unknown'} ${task.assignedTo?.lastName || 'User'}`
-                            : 'Unknown User'
-                          }
+                          <span className="hover:text-blue-600 cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); /* Navigate to user profile */ }}>
+                            {typeof task.assignedTo === 'object' 
+                              ? `${task.assignedTo?.firstName || 'Unknown'} ${task.assignedTo?.lastName || 'User'}`
+                              : 'Unknown User'
+                            }
+                          </span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span className="font-medium">Project:</span>
-                          {typeof task.project === 'object' ? task.project?.name || 'Unknown Project' : 'Unknown Project'}
+                          <span className="hover:text-blue-600 cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${typeof task.project === 'object' ? task.project?._id : task.project}`); }}>
+                            {typeof task.project === 'object' ? task.project?.name || 'Unknown Project' : 'Unknown Project'}
+                          </span>
                         </div>
                         
                         <div className="flex items-center justify-between text-xs text-gray-500">
@@ -1071,23 +1293,30 @@ const TaskManagementContent: React.FC = () => {
                             <Clock className="w-3 h-3" />
                             {task.estimatedHours || 0}h
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 cursor-pointer hover:text-blue-600"
+                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${typeof task.project === 'object' ? task.project?._id : task.project}?tab=tasks&task=${task._id}&view=comments`); }}>
                             <MessageSquare className="w-3 h-3" />
                             {task.comments?.length || 0}
                           </div>
                         </div>
                         
-                        <Select onValueChange={(value) => updateTaskStatus(task._id, value)} defaultValue={task.status}>
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="todo">To Do</SelectItem>
-                            <SelectItem value="in-progress">In Progress</SelectItem>
-                            <SelectItem value="review">Review</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex gap-2">
+                          <Select onValueChange={(value) => updateTaskStatus(task._id, value)} defaultValue={task.status}>
+                            <SelectTrigger className="h-8 text-xs flex-1" onClick={(e) => e.stopPropagation()}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="todo">To Do</SelectItem>
+                              <SelectItem value="in-progress">In Progress</SelectItem>
+                              <SelectItem value="review">Review</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="ghost" className="h-8 px-2"
+                                  onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${typeof task.project === 'object' ? task.project?._id : task.project}?tab=tasks&task=${task._id}&edit=true`); }}>
+                            <FileText className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   ))}
