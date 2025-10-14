@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Menu, Search, Settings, LogOut, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -15,6 +16,7 @@ interface NavbarProps {
 
 export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -48,6 +50,11 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
     e.preventDefault();
     // Implement search functionality
     console.log("Searching for:", searchQuery);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    router.push('/login');
   };
 
   return (
@@ -92,6 +99,11 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
           <ThemeSwitcher />
 
 
+
+          {/* Logout button */}
+          <Button variant="ghost" size="icon" title="Logout" onClick={handleLogout}>
+            <LogOut className="h-4 w-4" />
+          </Button>
 
           {/* User avatar */}
           <Avatar className="h-8 w-8">
