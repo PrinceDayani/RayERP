@@ -11,7 +11,8 @@
     "clean": "rm -rf dist",
     "build:clean": "npm run clean && npm run build",
     "dev:debug": "nodemon --inspect --exec ts-node src/server.ts",
-    "seed": "node scripts/seedTestData.js"
+    "seed": "node scripts/seedTestData.js",
+    "seed:accounts": "node scripts/seedChartOfAccounts.js"
   },
   "dependencies": {
     "@types/socket.io": "^3.0.1",

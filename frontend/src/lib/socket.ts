@@ -34,14 +34,14 @@ export const initializeSocket = (token?: string): Socket | null => {
 
   socket = io(API_URL, {
     auth: token ? { token } : undefined,
-    transports: ["polling", "websocket"],
+    transports: ["polling"],
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     timeout: 20000,
     forceNew: false,
-    upgrade: true,
+    upgrade: false,
     autoConnect: true,
   });
 

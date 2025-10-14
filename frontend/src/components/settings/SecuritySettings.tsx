@@ -247,7 +247,7 @@ export default function SecuritySettings() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify({
           code: twoFactorCode
@@ -299,7 +299,7 @@ export default function SecuritySettings() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify({
           currentPassword,
