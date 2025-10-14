@@ -765,7 +765,6 @@ export default function ContactsPage() {
             )}
           </>
         )}
-      </div>
       
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!contactToDelete} onOpenChange={() => setContactToDelete(null)}>

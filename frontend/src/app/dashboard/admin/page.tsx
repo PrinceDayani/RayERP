@@ -10,7 +10,6 @@ import { AdminStats } from "@/components/admin/AdminStats";
 import { UnifiedRoleManagement } from "@/components/admin/UnifiedRoleManagement";
 import RoleGuard from "@/components/RoleGuard";
 import { UserRole } from "@/contexts/AuthContext";
-import Layout from "@/components/Layout";
 
 export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +24,6 @@ export default function AdminPage() {
   }, []);
 
   return (
-    <Layout >
     <RoleGuard minimumRole={UserRole.ADMIN}>
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
@@ -94,6 +92,4 @@ export default function AdminPage() {
         </Tabs>
       </div>
     </RoleGuard>
-
-  </Layout>
   ); }

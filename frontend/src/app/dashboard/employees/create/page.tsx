@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Layout from '@/components/Layout';
 import api from '@/lib/api';
 import { apiRequest } from '@/lib/api';
 import { toast } from '@/components/ui/use-toast';
@@ -101,7 +100,6 @@ export default function CreateEmployeePage() {
   };
 
   return (
-    <Layout>
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/dashboard/employees">
@@ -333,6 +331,6 @@ export default function CreateEmployeePage() {
           </Button>
         </div>
       </form>
-    </div></Layout>
+    </div>
   );
 }
