@@ -95,8 +95,38 @@ export const tasksAPI = {
 
   // Update task status
   updateStatus: async (id: string, status: string, user?: string) => {
-    const response = await api.patch(`/tasks/${id}/status`, { status, user });
-    return response.data;
+    // Validate status before sending
+    const validStatuses = ['todo', 'in-progress', 'review', 'completed'];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+    }
+    
+    // Get user from localStorage if not provided
+    let userId = user;
+    if (!userId) {
+      try {
+        const token = localStorage.getItem('auth-token');
+        if (token) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          userId = payload.id || payload._id;
+        }
+      } catch (error) {
+        console.warn('Could not extract user from token:', error);
+      }
+    }
+    
+    const payload: { status: string; user?: string } = { status };
+    if (userId) {
+      payload.user = userId;
+    }
+    
+    try {
+      const response = await api.patch(`/tasks/${id}/status`, payload);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error updating task status:', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   // Add comment to task
