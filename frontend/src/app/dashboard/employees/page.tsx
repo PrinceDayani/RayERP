@@ -752,7 +752,7 @@ const EmployeeReports = () => {
                     <p className="font-medium">{dept._id}</p>
                     <p className="text-sm text-muted-foreground">{dept.count} employees</p>
                   </div>
-                  <p className="font-medium">${Math.round(dept.avgSalary).toLocaleString()}</p>
+                  <p className="font-medium">₹{Math.round(dept.avgSalary).toLocaleString()}</p>
                 </div>
               ))}
             </div>
@@ -815,7 +815,7 @@ const EmployeeReports = () => {
                     </td>
                     <td className="p-2">{Math.round(emp.attendance.totalHours)}h</td>
                     <td className="p-2">{emp.leaves.totalLeaves} days</td>
-                    <td className="p-2">${emp.employee.salary.toLocaleString()}</td>
+                    <td className="p-2">₹{emp.employee.salary.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

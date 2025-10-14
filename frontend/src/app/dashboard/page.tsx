@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import { 
   Users, 
   BarChart4, 
@@ -26,10 +27,19 @@ import {
   WifiOff,
   AlertCircle,
   Briefcase,
-  CheckSquare
+  CheckSquare,
+  Activity,
+  Clock,
+  Target,
+  DollarSign,
+  Calendar,
+  ArrowUpRight,
+  ArrowDownRight,
+  TrendingDown
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { initializeSocket, getSocket } from "@/lib/socket";
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from "recharts";
 
 // Enhanced interfaces
 interface DashboardStats {
@@ -39,6 +49,17 @@ interface DashboardStats {
   completedProjects: number;
   totalTasks: number;
   completedTasks: number;
+  revenue?: number;
+  expenses?: number;
+  profit?: number;
+}
+
+interface AnalyticsData {
+  projectProgress: Array<{ name: string; progress: number; status: string }>;
+  taskDistribution: Array<{ name: string; value: number }>;
+  monthlyRevenue: Array<{ month: string; revenue: number; expenses: number }>;
+  teamProductivity: Array<{ name: string; completed: number; pending: number }>;
+  recentActivity: Array<{ id: string; type: string; description: string; time: string }>;
 }
 
 const Dashboard = () => {
@@ -54,6 +75,16 @@ const Dashboard = () => {
     completedProjects: 0,
     totalTasks: 0,
     completedTasks: 0,
+    revenue: 0,
+    expenses: 0,
+    profit: 0,
+  });
+  const [analytics, setAnalytics] = useState<AnalyticsData>({
+    projectProgress: [],
+    taskDistribution: [],
+    monthlyRevenue: [],
+    teamProductivity: [],
+    recentActivity: [],
   });
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
@@ -79,6 +110,46 @@ const Dashboard = () => {
         completedProjects: 8,
         totalTasks: 156,
         completedTasks: 98,
+        revenue: 485000,
+        expenses: 325000,
+        profit: 160000,
+      });
+
+      // Add random variation for demo real-time effect
+      const randomVariation = () => Math.floor(Math.random() * 5) + 1;
+      
+      setAnalytics({
+        projectProgress: [
+          { name: "Website Redesign", progress: Math.min(85 + randomVariation(), 100), status: "active" },
+          { name: "Mobile App", progress: Math.min(60 + randomVariation(), 100), status: "active" },
+          { name: "API Integration", progress: Math.min(40 + randomVariation(), 100), status: "planning" },
+          { name: "Database Migration", progress: 100, status: "completed" },
+        ],
+        taskDistribution: [
+          { name: "Completed", value: 98 + randomVariation() },
+          { name: "In Progress", value: 42 },
+          { name: "Pending", value: Math.max(16 - randomVariation(), 0) },
+        ],
+        monthlyRevenue: [
+          { month: "Jan", revenue: 65000, expenses: 45000 },
+          { month: "Feb", revenue: 72000, expenses: 48000 },
+          { month: "Mar", revenue: 68000, expenses: 46000 },
+          { month: "Apr", revenue: 85000, expenses: 52000 },
+          { month: "May", revenue: 92000, expenses: 58000 },
+          { month: "Jun", revenue: 103000 + (randomVariation() * 1000), expenses: 76000 },
+        ],
+        teamProductivity: [
+          { name: "Development", completed: 45 + randomVariation(), pending: Math.max(12 - randomVariation(), 0) },
+          { name: "Design", completed: 28 + randomVariation(), pending: Math.max(8 - randomVariation(), 0) },
+          { name: "Marketing", completed: 15 + randomVariation(), pending: 5 },
+          { name: "Sales", completed: 10 + randomVariation(), pending: 3 },
+        ],
+        recentActivity: [
+          { id: "1", type: "project", description: "New project 'Website Redesign' created", time: "2 hours ago" },
+          { id: "2", type: "task", description: "Task 'API Documentation' completed", time: "4 hours ago" },
+          { id: "3", type: "employee", description: "New employee 'John Doe' added", time: "5 hours ago" },
+          { id: "4", type: "project", description: "Project 'Mobile App' milestone reached", time: "1 day ago" },
+        ],
       });
 
     } catch (error: any) {
@@ -111,7 +182,18 @@ const Dashboard = () => {
     };
   }, [isAuthenticated, fetchDashboardData]);
 
-  // Socket management
+  // Auto-refresh for real-time updates
+  useEffect(() => {
+    if (!isAuthenticated || !socketConnected) return;
+    
+    const refreshInterval = setInterval(() => {
+      fetchDashboardData();
+    }, 10000);
+    
+    return () => clearInterval(refreshInterval);
+  }, [isAuthenticated, socketConnected, fetchDashboardData]);
+
+  // Socket management with real-time updates
   useEffect(() => {
     if (!isAuthenticated) return;
     
@@ -146,17 +228,54 @@ const Dashboard = () => {
       }
     };
 
+    // Real-time event handlers
+    const handleStatsUpdate = (newStats: DashboardStats) => {
+      setStats(newStats);
+    };
+
+    const handleEmployeeUpdate = () => {
+      fetchDashboardData();
+    };
+
+    const handleProjectUpdate = () => {
+      fetchDashboardData();
+    };
+
+    const handleTaskUpdate = () => {
+      fetchDashboardData();
+    };
+
     if (socket) {
       socket.on("connect", handleSocketConnect);
       socket.on("disconnect", handleSocketDisconnect);
       socket.on("connect_error", handleSocketError);
       socket.on("dashboard:refresh", fetchDashboardData);
+      socket.on("dashboard:stats", handleStatsUpdate);
+      socket.on("employee:created", handleEmployeeUpdate);
+      socket.on("employee:updated", handleEmployeeUpdate);
+      socket.on("employee:deleted", handleEmployeeUpdate);
+      socket.on("project:created", handleProjectUpdate);
+      socket.on("project:updated", handleProjectUpdate);
+      socket.on("project:deleted", handleProjectUpdate);
+      socket.on("task:created", handleTaskUpdate);
+      socket.on("task:updated", handleTaskUpdate);
+      socket.on("task:deleted", handleTaskUpdate);
 
       return () => {
         socket.off("connect", handleSocketConnect);
         socket.off("disconnect", handleSocketDisconnect);
         socket.off("connect_error", handleSocketError);
         socket.off("dashboard:refresh", fetchDashboardData);
+        socket.off("dashboard:stats", handleStatsUpdate);
+        socket.off("employee:created", handleEmployeeUpdate);
+        socket.off("employee:updated", handleEmployeeUpdate);
+        socket.off("employee:deleted", handleEmployeeUpdate);
+        socket.off("project:created", handleProjectUpdate);
+        socket.off("project:updated", handleProjectUpdate);
+        socket.off("project:deleted", handleProjectUpdate);
+        socket.off("task:created", handleTaskUpdate);
+        socket.off("task:updated", handleTaskUpdate);
+        socket.off("task:deleted", handleTaskUpdate);
         socket.disconnect();
         
         if (pollingIntervalRef.current) {
@@ -293,41 +412,113 @@ const Dashboard = () => {
           socketConnected={socketConnected}
         />
 
-        {/* Role-specific welcome messages */}
+        {/* Role-specific welcome messages with live status */}
         {isAuthenticated && user && (
           <>
             {user.role === UserRole.ROOT && (
-              <RoleWelcomeCard 
-                role={UserRole.ROOT}
-                icon={ShieldCheck}
-                title="Root Access Granted"
-                description="You have full system access with root privileges. Use with caution."
-                colorScheme="red"
-              />
+              <Card className="mb-6 border-red-200 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/40 dark:border-red-800 theme-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-full bg-red-600 dark:bg-red-500 flex items-center justify-center">
+                        <ShieldCheck className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-xl text-red-800 dark:text-red-300">
+                          Root Access Granted
+                        </h3>
+                        <p className="text-red-700 dark:text-red-400 mt-1">
+                          You have full system access with root privileges. Use with caution.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {socketConnected ? (
+                        <Badge className="bg-green-600 text-white flex items-center gap-1">
+                          <Wifi className="h-3 w-3" />
+                          Live
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-amber-600 text-white flex items-center gap-1">
+                          <WifiOff className="h-3 w-3" />
+                          Polling
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
             {user.role === UserRole.SUPER_ADMIN && (
-              <RoleWelcomeCard 
-                role={UserRole.SUPER_ADMIN}
-                icon={ShieldCheck}
-                title="Super Admin Access"
-                description="Welcome to your administrative dashboard with elevated permissions."
-                colorScheme="purple"
-              />
+              <Card className="mb-6 border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950/40 dark:to-purple-900/40 dark:border-purple-800 theme-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-full bg-purple-600 dark:bg-purple-500 flex items-center justify-center">
+                        <ShieldCheck className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-xl text-purple-800 dark:text-purple-300">
+                          Super Admin Access
+                        </h3>
+                        <p className="text-purple-700 dark:text-purple-400 mt-1">
+                          Welcome to your administrative dashboard with elevated permissions.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {socketConnected ? (
+                        <Badge className="bg-green-600 text-white flex items-center gap-1">
+                          <Wifi className="h-3 w-3" />
+                          Live
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-amber-600 text-white flex items-center gap-1">
+                          <WifiOff className="h-3 w-3" />
+                          Polling
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
             {user.role === UserRole.ADMIN && (
-              <RoleWelcomeCard 
-                role={UserRole.ADMIN}
-                icon={UserCog}
-                title="Admin Dashboard"
-                description="You have administrative access to manage business operations."
-                colorScheme="blue"
-              />
+              <Card className="mb-6 border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/40 dark:border-blue-800 theme-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
+                        <UserCog className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-xl text-blue-800 dark:text-blue-300">
+                          Admin Dashboard
+                        </h3>
+                        <p className="text-blue-700 dark:text-blue-400 mt-1">
+                          You have administrative access to manage business operations.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {socketConnected ? (
+                        <Badge className="bg-green-600 text-white flex items-center gap-1">
+                          <Wifi className="h-3 w-3" />
+                          Live
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-amber-600 text-white flex items-center gap-1">
+                          <WifiOff className="h-3 w-3" />
+                          Polling
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </>
         )}
-
-        {/* Connection Status */}
-        {isAuthenticated && <ConnectionStatus />}
 
         {/* Data Error Alert */}
         {dataError && (
@@ -418,11 +609,172 @@ const Dashboard = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            {/* Enhanced Analytics Section - Moved to Top */}
+            {isAuthenticated && (
+              <>
+                {/* Financial Overview - Compact */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="border-l-4 border-l-green-500">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Revenue</p>
+                          <h3 className="text-xl font-bold">₹{(stats.revenue || 0).toLocaleString()}</h3>
+                          <span className="text-xs text-green-600 flex items-center"><ArrowUpRight className="h-3 w-3" />12.5%</span>
+                        </div>
+                        <DollarSign className="h-8 w-8 text-green-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-l-orange-500">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Expenses</p>
+                          <h3 className="text-xl font-bold">₹{(stats.expenses || 0).toLocaleString()}</h3>
+                          <span className="text-xs text-orange-600 flex items-center"><ArrowUpRight className="h-3 w-3" />8.2%</span>
+                        </div>
+                        <TrendingDown className="h-8 w-8 text-orange-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-l-blue-500">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Profit</p>
+                          <h3 className="text-xl font-bold">₹{(stats.profit || 0).toLocaleString()}</h3>
+                          <span className="text-xs text-blue-600 flex items-center"><ArrowUpRight className="h-3 w-3" />18.3%</span>
+                        </div>
+                        <Target className="h-8 w-8 text-blue-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Charts Section - Compact */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center"><BarChart4 className="h-4 w-4 mr-2" />Revenue vs Expenses</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <ResponsiveContainer width="100%" height={200}>
+                        <AreaChart data={analytics.monthlyRevenue}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" style={{ fontSize: '12px' }} />
+                          <YAxis style={{ fontSize: '12px' }} />
+                          <Tooltip />
+                          <Area type="monotone" dataKey="revenue" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                          <Area type="monotone" dataKey="expenses" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center"><Activity className="h-4 w-4 mr-2" />Task Distribution</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={analytics.taskDistribution}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            dataKey="value"
+                          >
+                            {analytics.taskDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={['#10b981', '#3b82f6', '#f59e0b'][index % 3]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Project Progress & Team Productivity - Compact */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center"><Briefcase className="h-4 w-4 mr-2" />Active Projects</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 pt-0">
+                      {analytics.projectProgress.map((project, index) => (
+                        <div key={index} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium">{project.name}</span>
+                            <Badge variant="secondary" className="text-xs">{project.progress}%</Badge>
+                          </div>
+                          <Progress value={project.progress} className="h-1.5" />
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center"><Users className="h-4 w-4 mr-2" />Team Productivity</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <ResponsiveContainer width="100%" height={180}>
+                        <BarChart data={analytics.teamProductivity}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" style={{ fontSize: '11px' }} />
+                          <YAxis style={{ fontSize: '11px' }} />
+                          <Tooltip />
+                          <Bar dataKey="completed" fill="#10b981" />
+                          <Bar dataKey="pending" fill="#f59e0b" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Recent Activity - Compact */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center"><Clock className="h-4 w-4 mr-2" />Recent Activity</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-2">
+                      {analytics.recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-center space-x-3 py-2 border-b last:border-0">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            {activity.type === 'project' && <Briefcase className="h-4 w-4 text-primary" />}
+                            {activity.type === 'task' && <CheckSquare className="h-4 w-4 text-primary" />}
+                            {activity.type === 'employee' && <Users className="h-4 w-4 text-primary" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{activity.description}</p>
+                            <p className="text-xs text-muted-foreground">{activity.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
             <StatsCards 
               stats={stats} 
               isAuthenticated={isAuthenticated} 
               loading={dataLoading} 
             />
+
+            {isAuthenticated && (
+              <>
+              </>
+            )}
 
             <QuickActions 
               isAuthenticated={isAuthenticated} 

@@ -62,7 +62,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalBudget.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{totalBudget.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">Across all projects</p>
           </CardContent>
         </Card>
@@ -73,7 +73,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalSpent.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{totalSpent.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">{spentPercentage.toFixed(1)}% of total budget</p>
           </CardContent>
         </Card>
@@ -112,7 +112,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="type" />
                 <YAxis />
-                <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, '']} />
+                <Tooltip formatter={(value) => [`₹${Number(value).toLocaleString()}`, '']} />
                 <Bar dataKey="allocated" fill="#3B82F6" name="Allocated" />
                 <Bar dataKey="spent" fill="#EF4444" name="Spent" />
               </BarChart>
@@ -169,7 +169,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
                       <div>
                         <p className="font-medium">{budget.projectName}</p>
                         <p className="text-sm text-gray-600">
-                          Over by ${overAmount.toLocaleString()} ({overPercentage.toFixed(1)}%)
+                          Over by ₹{overAmount.toLocaleString()} ({overPercentage.toFixed(1)}%)
                         </p>
                       </div>
                       <Badge variant="destructive">Over Budget</Badge>
@@ -233,7 +233,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
                     <span className="font-medium">{budget.projectName}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">
-                        ${spent.toLocaleString()} / ${budget.totalBudget.toLocaleString()}
+                        ₹{spent.toLocaleString()} / ₹{budget.totalBudget.toLocaleString()}
                       </span>
                       <Badge 
                         variant={utilization > 100 ? "destructive" : utilization > 80 ? "default" : "secondary"}

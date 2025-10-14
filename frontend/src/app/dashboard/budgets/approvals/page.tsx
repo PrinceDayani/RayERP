@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle, XCircle, Clock, Eye, MessageSquare } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Eye, MessageSquare, ArrowLeft } from "lucide-react";
 import { Budget } from "@/types/budget";
+import { getPendingApprovals, approveBudget, rejectBudget, getAllBudgets } from "@/lib/api/budgetAPI";
 import Layout from "@/components/Layout";
+import { useRouter } from "next/navigation";
 
 export default function BudgetApprovalsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -21,6 +23,7 @@ export default function BudgetApprovalsPage() {
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve');
   const [comments, setComments] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     fetchBudgets();
@@ -32,31 +35,13 @@ export default function BudgetApprovalsPage() {
 
   const fetchBudgets = async () => {
     try {
-      const mockBudgets = [
-        {
-          _id: '1',
-          projectId: 'proj1',
-          projectName: 'Mobile App Development',
-          totalBudget: 75000,
-          currency: 'USD',
-          status: 'pending' as const,
-          categories: [
-            {
-              _id: 'cat1',
-              name: 'Development',
-              type: 'labor' as const,
-              allocatedAmount: 50000,
-              spentAmount: 0,
-              items: []
-            }
-          ],
-          approvals: [],
-          createdBy: 'Jane Smith',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-      setBudgets(mockBudgets);
+      let data;
+      if (statusFilter === 'pending') {
+        data = await getPendingApprovals();
+      } else {
+        data = await getAllBudgets();
+      }
+      setBudgets(data);
     } catch (error) {
       console.error("Error fetching budgets:", error);
     } finally {
@@ -102,18 +87,16 @@ export default function BudgetApprovalsPage() {
     if (!selectedBudget) return;
 
     try {
-      const response = await fetch(`/api/budgets/${selectedBudget._id}/${approvalAction}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comments })
-      });
-
-      if (response.ok) {
-        fetchBudgets();
-        setShowApprovalDialog(false);
-        setComments("");
-        setSelectedBudget(null);
+      if (approvalAction === 'approve') {
+        await approveBudget(selectedBudget._id, { status: 'approved', comments });
+      } else {
+        await rejectBudget(selectedBudget._id, { status: 'rejected', comments });
       }
+      
+      fetchBudgets();
+      setShowApprovalDialog(false);
+      setComments("");
+      setSelectedBudget(null);
     } catch (error) {
       console.error("Error submitting approval:", error);
     }
@@ -131,7 +114,13 @@ export default function BudgetApprovalsPage() {
     <Layout>
       <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Budget Approvals</h1>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/dashboard/budgets')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Budgets
+          </Button>
+          <h1 className="text-3xl font-bold">Budget Approvals</h1>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -187,7 +176,7 @@ export default function BudgetApprovalsPage() {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-semibold">{budget.projectName}</h3>
-                  <p className="text-sm text-gray-600">Created by: {budget.createdBy}</p>
+                  <p className="text-sm text-gray-600">Created by: {typeof budget.createdBy === 'string' ? budget.createdBy : budget.createdBy?.name || 'Unknown'}</p>
                   <p className="text-sm text-gray-600">
                     Created: {new Date(budget.createdAt).toLocaleDateString()}
                   </p>

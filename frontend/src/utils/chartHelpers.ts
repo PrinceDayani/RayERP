@@ -18,7 +18,7 @@ export const generateChartConfig = (data: any[], xKey: string, yKey: string) => 
 
 export const formatChartTooltip = (value: number, name: string) => {
   if (name.includes('amount') || name.includes('cost') || name.includes('revenue')) {
-    return [`$${value.toLocaleString()}`, name];
+    return [`₹${value.toLocaleString()}`, name];
   }
   if (name.includes('percentage') || name.includes('rate')) {
     return [`${value}%`, name];

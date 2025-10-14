@@ -47,19 +47,35 @@ export default function ProjectBudgetPage() {
   const fetchProjectBudget = async () => {
     try {
       const token = localStorage.getItem('auth-token');
-      if (!token) return;
+      if (!token) {
+        console.log('No auth token found');
+        setLoading(false);
+        return;
+      }
 
+      console.log('Fetching budget for project:', projectId);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/budget`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
+      console.log('Budget fetch response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Budget data received:', data);
         // Get the first budget if it's an array, or the budget object
-        setBudget(Array.isArray(data) ? data[0] : data);
+        const budgetData = Array.isArray(data) ? data[0] : data;
+        console.log('Setting budget:', budgetData);
+        setBudget(budgetData || null);
       } else if (response.status === 404) {
+        console.log('No budget found (404)');
+        setBudget(null);
+      } else {
+        console.error('Budget fetch failed with status:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
         setBudget(null);
       }
     } catch (error) {

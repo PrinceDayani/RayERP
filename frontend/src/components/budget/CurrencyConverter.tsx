@@ -15,21 +15,21 @@ interface CurrencyConverterProps {
 
 export default function CurrencyConverter({ onConvert }: CurrencyConverterProps) {
   const [amount, setAmount] = useState<number>(0);
-  const [fromCurrency, setFromCurrency] = useState("USD");
-  const [toCurrency, setToCurrency] = useState("EUR");
+  const [fromCurrency, setFromCurrency] = useState("INR");
+  const [toCurrency, setToCurrency] = useState("USD");
   const [convertedAmount, setConvertedAmount] = useState<number>(0);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
 
   const currencies: Currency[] = [
-    { code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 1 },
-    { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 0.85 },
-    { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 0.73 },
-    { code: "INR", name: "Indian Rupee", symbol: "₹", exchangeRate: 83.12 },
-    { code: "JPY", name: "Japanese Yen", symbol: "¥", exchangeRate: 149.50 },
-    { code: "CAD", name: "Canadian Dollar", symbol: "C$", exchangeRate: 1.36 },
-    { code: "AUD", name: "Australian Dollar", symbol: "A$", exchangeRate: 1.52 },
-    { code: "CHF", name: "Swiss Franc", symbol: "CHF", exchangeRate: 0.88 }
+    { code: "INR", name: "Indian Rupee", symbol: "₹", exchangeRate: 1 },
+    { code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 0.012 },
+    { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 0.010 },
+    { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 0.009 },
+    { code: "JPY", name: "Japanese Yen", symbol: "¥", exchangeRate: 1.80 },
+    { code: "CAD", name: "Canadian Dollar", symbol: "C$", exchangeRate: 0.016 },
+    { code: "AUD", name: "Australian Dollar", symbol: "A$", exchangeRate: 0.018 },
+    { code: "CHF", name: "Swiss Franc", symbol: "CHF", exchangeRate: 0.011 }
   ];
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export default function CurrencyConverter({ onConvert }: CurrencyConverterProps)
       // For demo purposes, we'll simulate a refresh with slight variations
       const updatedRates = { ...exchangeRates };
       Object.keys(updatedRates).forEach(currency => {
-        if (currency !== 'USD') {
+        if (currency !== 'INR') {
           const variation = (Math.random() - 0.5) * 0.02; // ±1% variation
           updatedRates[currency] = updatedRates[currency] * (1 + variation);
         }

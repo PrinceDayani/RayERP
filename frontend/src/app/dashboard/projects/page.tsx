@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { 
   Plus, 
   Calendar, 
@@ -237,58 +238,82 @@ const ProjectManagementDashboard = () => {
             <h1 className="text-3xl font-bold">Project Management</h1>
             <p className="text-muted-foreground">Manage projects, tasks, and team collaboration</p>
           </div>
-          <Button onClick={() => router.push("/dashboard/projects/create")}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Project
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => router.push("/dashboard/projects/analytics")}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </Button>
+            <Button onClick={() => router.push("/dashboard/projects/create")}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Project
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push("/dashboard/projects/analytics")}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Projects</p>
-                  <p className="text-2xl font-bold">{stats.totalProjects}</p>
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Projects</p>
+                  <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{stats.totalProjects}</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">View analytics →</p>
                 </div>
-                <BarChart3 className="h-8 w-8 text-blue-600" />
+                <div className="h-12 w-12 bg-blue-200 dark:bg-blue-800 rounded-full flex items-center justify-center">
+                  <BarChart3 className="h-6 w-6 text-blue-700 dark:text-blue-300" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Projects</p>
-                  <p className="text-2xl font-bold">{stats.activeProjects}</p>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-300">Active Projects</p>
+                  <p className="text-3xl font-bold text-green-900 dark:text-green-100">{stats.activeProjects}</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    {stats.totalProjects > 0 ? ((stats.activeProjects / stats.totalProjects) * 100).toFixed(0) : 0}% of total
+                  </p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-600" />
+                <div className="h-12 w-12 bg-green-200 dark:bg-green-800 rounded-full flex items-center justify-center">
+                  <TrendingUp className="h-6 w-6 text-green-700 dark:text-green-300" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Completed</p>
-                  <p className="text-2xl font-bold">{stats.completedProjects}</p>
+                  <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Completed</p>
+                  <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">{stats.completedProjects}</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                    {stats.totalProjects > 0 ? ((stats.completedProjects / stats.totalProjects) * 100).toFixed(0) : 0}% success rate
+                  </p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-blue-600" />
+                <div className="h-12 w-12 bg-purple-200 dark:bg-purple-800 rounded-full flex items-center justify-center">
+                  <CheckCircle className="h-6 w-6 text-purple-700 dark:text-purple-300" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 border-red-200 hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Overdue Tasks</p>
-                  <p className="text-2xl font-bold">{stats.overdueTasks}</p>
+                  <p className="text-sm font-medium text-red-700 dark:text-red-300">Overdue Tasks</p>
+                  <p className="text-3xl font-bold text-red-900 dark:text-red-100">{stats.overdueTasks}</p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    {stats.overdueTasks > 0 ? 'Needs attention' : 'All on track'}
+                  </p>
                 </div>
-                <AlertCircle className="h-8 w-8 text-red-600" />
+                <div className="h-12 w-12 bg-red-200 dark:bg-red-800 rounded-full flex items-center justify-center">
+                  <AlertCircle className="h-6 w-6 text-red-700 dark:text-red-300" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -306,14 +331,132 @@ const ProjectManagementDashboard = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {/* Quick Analytics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Project Health</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Active</span>
+                        <span className="font-medium">{stats.activeProjects}</span>
+                      </div>
+                      <Progress value={(stats.activeProjects / stats.totalProjects) * 100} className="h-2" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>Completed</span>
+                        <span className="font-medium">{stats.completedProjects}</span>
+                      </div>
+                      <Progress value={(stats.completedProjects / stats.totalProjects) * 100} className="h-2" />
+                    </div>
+                    <div className="pt-2 border-t">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Success Rate</span>
+                        <span className="text-lg font-bold text-green-600">
+                          {stats.totalProjects > 0 ? ((stats.completedProjects / stats.totalProjects) * 100).toFixed(0) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Task Performance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Completed</p>
+                        <p className="text-xl font-bold">{stats.completedTasks}</p>
+                      </div>
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950 rounded-lg">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Overdue</p>
+                        <p className="text-xl font-bold">{stats.overdueTasks}</p>
+                      </div>
+                      <AlertCircle className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="pt-2 border-t">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Completion Rate</span>
+                        <span className="text-lg font-bold text-blue-600">
+                          {stats.totalTasks > 0 ? ((stats.completedTasks / stats.totalTasks) * 100).toFixed(0) : 0}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Average Progress</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-4">
+                    <div className="relative inline-flex items-center justify-center">
+                      <svg className="w-32 h-32">
+                        <circle
+                          className="text-gray-200 dark:text-gray-700"
+                          strokeWidth="8"
+                          stroke="currentColor"
+                          fill="transparent"
+                          r="56"
+                          cx="64"
+                          cy="64"
+                        />
+                        <circle
+                          className="text-blue-600"
+                          strokeWidth="8"
+                          strokeDasharray={2 * Math.PI * 56}
+                          strokeDashoffset={2 * Math.PI * 56 * (1 - (projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length / 100))}
+                          strokeLinecap="round"
+                          stroke="currentColor"
+                          fill="transparent"
+                          r="56"
+                          cx="64"
+                          cy="64"
+                          style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
+                        />
+                      </svg>
+                      <span className="absolute text-3xl font-bold">
+                        {projects.length > 0 ? (projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length).toFixed(0) : 0}%
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">Across all projects</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Recent Projects */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent Projects</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Recent Projects</CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/projects/analytics")}>
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    View Analytics
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {projects.slice(0, 5).map((project) => (
+                  {projects.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No projects yet. Create your first project to get started.
+                    </div>
+                  ) : (
+                    projects.slice(0, 5).map((project) => (
                     <div key={project._id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group" onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
@@ -365,10 +508,107 @@ const ProjectManagementDashboard = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  ))
+                  )}
                 </div>
               </CardContent>
             </Card>
+
+            {/* Budget & Timeline Analytics */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Budget Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {projects.filter(p => p.budget > 0).length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                            <p className="text-xs text-muted-foreground">Total Budget</p>
+                            <p className="text-xl font-bold">
+                              ₹{projects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                            <p className="text-xs text-muted-foreground">Total Spent</p>
+                            <p className="text-xl font-bold">
+                              ₹{projects.reduce((sum, p) => sum + (p.spentBudget || 0), 0).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-sm mb-2">
+                            <span>Overall Utilization</span>
+                            <span className="font-medium">
+                              {projects.reduce((sum, p) => sum + (p.budget || 0), 0) > 0
+                                ? ((projects.reduce((sum, p) => sum + (p.spentBudget || 0), 0) / projects.reduce((sum, p) => sum + (p.budget || 0), 0)) * 100).toFixed(1)
+                                : 0}%
+                            </span>
+                          </div>
+                          <Progress 
+                            value={
+                              projects.reduce((sum, p) => sum + (p.budget || 0), 0) > 0
+                                ? (projects.reduce((sum, p) => sum + (p.spentBudget || 0), 0) / projects.reduce((sum, p) => sum + (p.budget || 0), 0)) * 100
+                                : 0
+                            } 
+                            className="h-3" 
+                          />
+                        </div>
+                        <div className="pt-2 border-t">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Remaining</span>
+                            <span className="text-lg font-bold text-green-600">
+                              ₹{(projects.reduce((sum, p) => sum + (p.budget || 0), 0) - projects.reduce((sum, p) => sum + (p.spentBudget || 0), 0)).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-8">
+                        <DollarSign className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                        <p className="text-sm text-muted-foreground">No budget data available</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Projects by Priority</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {['critical', 'high', 'medium', 'low'].map((priority) => {
+                      const count = projects.filter(p => p.priority === priority).length;
+                      const percentage = projects.length > 0 ? (count / projects.length) * 100 : 0;
+                      const colors = {
+                        critical: 'bg-red-500',
+                        high: 'bg-orange-500',
+                        medium: 'bg-yellow-500',
+                        low: 'bg-green-500'
+                      };
+                      return (
+                        <div key={priority}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="capitalize">{priority}</span>
+                            <span className="font-medium">{count} projects</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div 
+                              className={`${colors[priority as keyof typeof colors]} h-2 rounded-full transition-all`}
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="projects">

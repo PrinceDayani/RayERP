@@ -26,7 +26,7 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
     projectId: projectId || "",
     projectName: projectName || "",
     totalBudget: 0,
-    currency: "USD",
+    currency: "INR",
     templateId: ""
   });
   const [projectLoading, setProjectLoading] = useState(!!projectId && !projectName);
@@ -77,10 +77,10 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
   const [categories, setCategories] = useState<BudgetCategory[]>([]);
   const [templates, setTemplates] = useState<BudgetTemplate[]>([]);
   const [currencies] = useState<Currency[]>([
-    { code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 1 },
-    { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 0.85 },
-    { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 0.73 },
-    { code: "INR", name: "Indian Rupee", symbol: "₹", exchangeRate: 83.12 }
+    { code: "INR", name: "Indian Rupee", symbol: "₹", exchangeRate: 1 },
+    { code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 0.012 },
+    { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 0.010 },
+    { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 0.009 }
   ]);
 
   const [loading, setLoading] = useState(false);
@@ -331,7 +331,7 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
         projectId: projectId || "",
         projectName: projectName || "",
         totalBudget: 0,
-        currency: "USD",
+        currency: "INR",
         templateId: ""
       });
       setCategories([]);

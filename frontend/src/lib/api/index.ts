@@ -14,6 +14,7 @@ import reportsAPIDefault from './reportsAPI';
 import settingsAPIDefault from './settingsAPI';
 import adminAPIDefault from './adminAPI'; // Added admin API import
 import projectsAPIDefault from './projectsAPI';
+import budgetAPIDefault from './budgetAPI';
 
 // Re-export the base API instance
 export { api };
@@ -27,7 +28,8 @@ export {
   reportsAPIDefault as reportsAPI,
   settingsAPIDefault as settingsAPI,
   adminAPIDefault as adminAPI, // Added admin API export
-  projectsAPIDefault as projectsAPI
+  projectsAPIDefault as projectsAPI,
+  budgetAPIDefault as budgetAPI
 };
 
 // Re-export individual functions and types
@@ -55,6 +57,9 @@ export * from './adminAPI';
 // Projects API exports
 export * from './projectsAPI';
 
+// Budget API exports
+export * from './budgetAPI';
+
 // Export a combined API object as default
 const combinedAPI = {
   api,
@@ -65,7 +70,8 @@ const combinedAPI = {
   reports: reportsAPIDefault,
   settings: settingsAPIDefault,
   admin: adminAPIDefault, // Added admin to combined API
-  projects: projectsAPIDefault
+  projects: projectsAPIDefault,
+  budgets: budgetAPIDefault
 };
 
 export default combinedAPI;

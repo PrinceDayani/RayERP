@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 
 import { 
   ArrowLeft, 
@@ -72,13 +73,20 @@ const ProjectDetailPage = () => {
       const token = localStorage.getItem('auth-token');
       if (!token) return;
 
+      console.log('Fetching budget for project:', projectId);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/budget`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
+      console.log('Budget response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        setBudget(Array.isArray(data) ? data[0] : data);
+        console.log('Budget data:', data);
+        const budgetData = Array.isArray(data) ? data[0] : data;
+        setBudget(budgetData || null);
+      } else {
+        console.error('Failed to fetch budget, status:', response.status);
       }
     } catch (error) {
       console.error('Error fetching budget:', error);
@@ -184,6 +192,13 @@ const ProjectDetailPage = () => {
           <div className="flex gap-2">
             <Button 
               variant="outline"
+              onClick={() => router.push(`/dashboard/projects/${projectId}/analytics`)}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </Button>
+            <Button 
+              variant="outline"
               onClick={() => router.push(`/dashboard/projects/${projectId}/edit`)}
             >
               <Edit className="h-4 w-4 mr-2" />
@@ -198,64 +213,177 @@ const ProjectDetailPage = () => {
 
         {/* Project Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Status</p>
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Status</p>
                   <Badge className={getStatusColor(project.status)}>
                     {project.status}
                   </Badge>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                    {project.status === 'active' ? 'In Progress' : project.status === 'completed' ? 'Finished' : 'Pending'}
+                  </p>
                 </div>
-                <BarChart3 className="h-8 w-8 text-blue-600" />
+                <div className="h-12 w-12 bg-blue-200 dark:bg-blue-800 rounded-full flex items-center justify-center">
+                  <BarChart3 className="h-6 w-6 text-blue-700 dark:text-blue-300" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Progress</p>
-                  <p className="text-2xl font-bold">{project.progress}%</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-300">Progress</p>
+                  <p className="text-3xl font-bold text-green-900 dark:text-green-100">{project.progress}%</p>
+                  <div className="w-full bg-green-200 dark:bg-green-800 rounded-full h-2 mt-2">
                     <div 
-                      className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                      className="bg-green-600 dark:bg-green-400 h-2 rounded-full transition-all duration-300" 
                       style={{ width: `${project.progress}%` }}
                     ></div>
                   </div>
                 </div>
-                <BarChart3 className="h-8 w-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 border-orange-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-700 dark:text-orange-300">Budget</p>
+                  <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
+                    {budget ? `${budget.currency} ${budget.totalBudget?.toLocaleString()}` : '₹0'}
+                  </p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                    {budget ? `${budget.currency} ${budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0).toLocaleString()} spent` : '₹0 spent'}
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-orange-200 dark:bg-orange-800 rounded-full flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-orange-700 dark:text-orange-300" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Team Size</p>
+                  <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">{project.team?.length || 0}</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">active members</p>
+                </div>
+                <div className="h-12 w-12 bg-purple-200 dark:bg-purple-800 rounded-full flex items-center justify-center">
+                  <Users className="h-6 w-6 text-purple-700 dark:text-purple-300" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Analytics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Timeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Days Elapsed</span>
+                  <span className="font-medium">
+                    {Math.ceil((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Days Remaining</span>
+                  <span className="font-medium">
+                    {Math.ceil((new Date(project.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
+                  </span>
+                </div>
+                <Progress 
+                  value={Math.min((Math.ceil((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)) / Math.ceil((new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24))) * 100, 100)} 
+                  className="h-2 mt-2" 
+                />
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Budget</p>
-                  <p className="text-2xl font-bold">
-                    {budget ? `${budget.currency} ${budget.totalBudget?.toLocaleString()}` : '$0'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {budget ? `${budget.currency} ${budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0).toLocaleString()} spent` : '$0 spent'}
-                  </p>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Budget Health</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {budget ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Utilization</span>
+                    <span className="font-medium">
+                      {budget.totalBudget > 0 ? ((budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) / budget.totalBudget) * 100).toFixed(0) : 0}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={budget.totalBudget > 0 ? (budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) / budget.totalBudget) * 100 : 0} 
+                    className="h-2" 
+                  />
+                  <div className="flex justify-between text-xs pt-1">
+                    <span className="text-muted-foreground">Remaining</span>
+                    <span className="font-medium text-green-600">
+                      {budget.currency} {(budget.totalBudget - budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-                <DollarSign className="h-8 w-8 text-orange-600" />
+              ) : (
+                <p className="text-xs text-muted-foreground">No budget set</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Efficiency</span>
+                  <span className="font-medium">
+                    {(() => {
+                      const timeProgress = Math.min((Math.ceil((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)) / Math.ceil((new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24))) * 100, 100);
+                      return timeProgress > 0 ? ((project.progress / timeProgress) * 100).toFixed(0) : 0;
+                    })()}%
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={project.progress >= Math.min((Math.ceil((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)) / Math.ceil((new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24))) * 100, 100) ? "default" : "destructive"}>
+                    {project.progress >= Math.min((Math.ceil((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)) / Math.ceil((new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24))) * 100, 100) ? "On Track" : "At Risk"}
+                  </Badge>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Team Size</p>
-                  <p className="text-2xl font-bold">{project.team?.length || 0}</p>
-                  <p className="text-sm text-muted-foreground">members</p>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Quick Stats</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Priority</span>
+                  <Badge variant="outline" className={getPriorityColor(project.priority)}>
+                    {project.priority}
+                  </Badge>
                 </div>
-                <Users className="h-8 w-8 text-purple-600" />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge className={getStatusColor(project.status)}>
+                    {project.status}
+                  </Badge>
+                </div>
               </div>
             </CardContent>
           </Card>

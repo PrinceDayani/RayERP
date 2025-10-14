@@ -346,6 +346,7 @@ For detailed documentation, see:
 - [API Fixes Summary](API_FIXES_SUMMARY.md)
 - [Employee & Project Management](EMPLOYEE_PROJECT_MANAGEMENT.md)
 - [Task Management System](TASK_MANAGEMENT.md)
+- [Budget & Project Connection](BUDGET_PROJECT_CONNECTION.md)
 - [Attendance System Fix](../ATTENDANCE_FIX_README.md)
 - [Employee Management Fix](../EMPLOYEE_MANAGEMENT_FIX_README.md)
 
