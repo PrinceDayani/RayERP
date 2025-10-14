@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -22,8 +23,9 @@ import {
   Edit,
   Settings
 } from "lucide-react";
-import { getProjectById, type Project } from "@/lib/api/projectsAPI";
+import { getProjectById, updateProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
+import ProjectForm from "@/components/projects/ProjectForm";
 
 const ProjectDetailPage = () => {
   const { isAuthenticated } = useAuth();
@@ -32,13 +34,57 @@ const ProjectDetailPage = () => {
   const projectId = params.id as string;
   
   const [project, setProject] = useState<Project | null>(null);
+  const [budget, setBudget] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && projectId) {
       fetchProject();
+      fetchBudget();
     }
   }, [isAuthenticated, projectId]);
+
+  useEffect(() => {
+    const socket = (window as any).socket;
+    if (!socket) return;
+
+    socket.on('project:updated', (updatedProject: Project) => {
+      if (updatedProject._id === projectId) {
+        setProject(updatedProject);
+      }
+    });
+
+    socket.on('budget:updated', (data: any) => {
+      if (data.projectId === projectId) {
+        fetchBudget();
+      }
+    });
+
+    return () => {
+      socket.off('project:updated');
+      socket.off('budget:updated');
+    };
+  }, [projectId]);
+
+  const fetchBudget = async () => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/budget`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setBudget(Array.isArray(data) ? data[0] : data);
+      }
+    } catch (error) {
+      console.error('Error fetching budget:', error);
+    }
+  };
 
   const fetchProject = async () => {
     try {
@@ -54,6 +100,39 @@ const ProjectDetailPage = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateProject = async (formData: any) => {
+    try {
+      setUpdating(true);
+      const updateData: any = {
+        name: formData.title,
+        description: formData.description,
+        status: formData.status,
+        priority: formData.priority,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+      };
+      if (formData.budget) {
+        updateData.budget = formData.budget;
+      }
+      const updatedProject = await updateProject(projectId, updateData);
+      setProject(updatedProject);
+      setEditDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Project updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating project:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update project",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -135,10 +214,34 @@ const ProjectDetailPage = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Project
-            </Button>
+            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Project
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Edit Project</DialogTitle>
+                </DialogHeader>
+                <ProjectForm
+                  project={{
+                    title: project?.name,
+                    description: project?.description,
+                    status: project?.status,
+                    priority: project?.priority,
+                    budget: project?.budget,
+                    startDate: project?.startDate,
+                    endDate: project?.endDate,
+                  }}
+                  onSubmit={handleUpdateProject}
+                  onCancel={() => setEditDialogOpen(false)}
+                  loading={updating}
+                  submitText="Update Project"
+                />
+              </DialogContent>
+            </Dialog>
             <Button variant="outline">
               <Settings className="h-4 w-4 mr-2" />
               Settings
@@ -185,9 +288,11 @@ const ProjectDetailPage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Budget</p>
-                  <p className="text-2xl font-bold">${project.budget?.toLocaleString() || 0}</p>
+                  <p className="text-2xl font-bold">
+                    {budget ? `${budget.currency} ${budget.totalBudget?.toLocaleString()}` : '$0'}
+                  </p>
                   <p className="text-sm text-muted-foreground">
-                    ${project.spentBudget?.toLocaleString() || 0} spent
+                    {budget ? `${budget.currency} ${budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0).toLocaleString()} spent` : '$0 spent'}
                   </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-orange-600" />
@@ -311,6 +416,7 @@ const ProjectDetailPage = () => {
         <Tabs defaultValue="tasks" className="space-y-6">
           <TabsList>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="budget">Budget</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
@@ -318,6 +424,107 @@ const ProjectDetailPage = () => {
 
           <TabsContent value="tasks">
             <TaskManagement projectId={projectId} showProjectTasks={true} />
+          </TabsContent>
+
+          <TabsContent value="budget">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Project Budget</CardTitle>
+                  <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    {budget ? 'Manage Budget' : 'Create Budget'}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {budget ? (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="text-center">
+                            <DollarSign className="h-8 w-8 mx-auto text-blue-600 mb-2" />
+                            <p className="text-sm text-muted-foreground">Total Budget</p>
+                            <p className="text-2xl font-bold">{budget.currency} {budget.totalBudget?.toLocaleString()}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="text-center">
+                            <BarChart3 className="h-8 w-8 mx-auto text-green-600 mb-2" />
+                            <p className="text-sm text-muted-foreground">Spent</p>
+                            <p className="text-2xl font-bold">{budget.currency} {budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0).toLocaleString()}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="text-center">
+                            <Users className="h-8 w-8 mx-auto text-orange-600 mb-2" />
+                            <p className="text-sm text-muted-foreground">Remaining</p>
+                            <p className="text-2xl font-bold">{budget.currency} {(budget.totalBudget - budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    <div className="mt-6">
+                      <div className="flex justify-between text-sm mb-2">
+                        <span>Budget Utilization</span>
+                        <span>{((budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) / budget.totalBudget) * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div 
+                          className="bg-blue-600 h-3 rounded-full transition-all duration-300" 
+                          style={{ width: `${Math.min((budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) / budget.totalBudget) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <div className="mt-6">
+                      <h4 className="font-medium mb-4">Budget Categories</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {budget.categories?.map((category: any, index: number) => (
+                          <Card key={index}>
+                            <CardContent className="p-4">
+                              <div className="flex justify-between items-center mb-2">
+                                <h5 className="font-medium capitalize">{category.name}</h5>
+                                <Badge variant="outline" className="capitalize">{category.type}</Badge>
+                              </div>
+                              <div className="space-y-1 text-sm">
+                                <div className="flex justify-between">
+                                  <span>Allocated:</span>
+                                  <span>{budget.currency} {category.allocatedAmount?.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Spent:</span>
+                                  <span>{budget.currency} {category.spentAmount?.toLocaleString()}</span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-12">
+                    <DollarSign className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No Budget Created</h3>
+                    <p className="text-muted-foreground mb-4">This project doesn't have a budget yet. Create one to start tracking expenses.</p>
+                    <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      Create Budget
+                    </Button>
+                  </div>
+                )}
+                <div className="mt-6 text-center">
+                  <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)} className="w-full" variant="outline">
+                    View Full Budget Details
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="timeline">

@@ -15,6 +15,7 @@ import {
   getProjectTimeline,
   updateProjectStatus
 } from '../controllers/projectController';
+import budgetRoutes from './budgetRoutes';
 import { authenticateToken } from '../middleware/auth.middleware';
 import {
   validateObjectId,
@@ -69,5 +70,8 @@ router.patch('/:id/status',
   validateProjectStatus,
   updateProjectStatus
 );
+
+// Nested budget routes
+router.use('/:id/budget', budgetRoutes);
 
 export default router;

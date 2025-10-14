@@ -15,6 +15,14 @@ import leaveRoutes from './leave.routes';
 import employeeReportRoutes from './employeeReport.routes';
 import activityRoutes from './activity.routes';
 import rbacRoutes from './rbac.routes';
+import budgetRoutes from './budgetRoutes';
+import budgetTemplateRoutes from './budgetTemplateRoutes';
+import accountRoutes from './account.routes';
+import transactionRoutes from './transaction.routes';
+import invoiceRoutes from './invoice.routes';
+import paymentRoutes from './payment.routes';
+import expenseRoutes from './expense.routes';
+import financialReportRoutes from './financialReport.routes';
 
 
 
@@ -35,6 +43,14 @@ router.use('/leaves', leaveRoutes); // Add leave routes
 router.use('/employee-reports', employeeReportRoutes); // Add employee report routes
 router.use('/activity', activityRoutes); // Add activity routes
 router.use('/rbac', rbacRoutes); // Add RBAC routes
+router.use('/budgets', budgetRoutes); // Add budget routes
+router.use('/budget-templates', budgetTemplateRoutes); // Add budget template routes
+router.use('/accounts', accountRoutes); // Add account routes
+router.use('/transactions', transactionRoutes); // Add transaction routes
+router.use('/invoices', invoiceRoutes); // Add invoice routes
+router.use('/payments', paymentRoutes); // Add payment routes
+router.use('/expenses', expenseRoutes); // Add expense routes
+router.use('/financial-reports', financialReportRoutes); // Add financial report routes
 
 
 
@@ -66,58 +82,7 @@ router.get('/socket-health', (req, res) => {
   });
 });
 
-// Debug: Create test user
-router.post('/create-test-user', async (req, res) => {
-  try {
-    const User = (await import('../models/User')).default;
-    
-    const existingUser = await User.findOne({ email: 'test@test.test' });
-    if (existingUser) {
-      return res.json({ 
-        message: 'Test user already exists',
-        email: 'test@test.test',
-        password: '101010'
-      });
-    }
-    
-    const testUser = await User.create({
-      name: 'Test User',
-      email: 'test@test.test',
-      password: '101010',
-      role: 'admin'
-    });
-    
-    res.json({
-      message: 'Test user created',
-      email: 'test@test.test',
-      password: '101010'
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
-// Debug: List users
-router.get('/list-users', async (req, res) => {
-  try {
-    const User = (await import('../models/User')).default;
-    const users = await User.find({}, 'name email role');
-    res.json({ users, count: users.length });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Debug: Clear all users (for testing initial setup)
-router.delete('/clear-users', async (req, res) => {
-  try {
-    const User = (await import('../models/User')).default;
-    await User.deleteMany({});
-    res.json({ message: 'All users cleared' });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 
 

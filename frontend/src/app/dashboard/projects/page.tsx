@@ -20,7 +20,8 @@ import {
   TrendingUp,
   Search,
   MessageSquare,
-  Clock
+  Clock,
+  DollarSign
 } from "lucide-react";
 import { getProjectStats, getAllProjects, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
@@ -67,6 +68,7 @@ const ProjectManagementDashboard = () => {
 
     socket.on('project:created', (project: Project) => {
       setProjects(prev => [project, ...prev]);
+      fetchData(); // Refresh stats
       toast({
         title: "New Project Created",
         description: `${project.title} has been created`,
@@ -75,6 +77,7 @@ const ProjectManagementDashboard = () => {
 
     socket.on('project:updated', (updatedProject: Project) => {
       setProjects(prev => prev.map(p => p._id === updatedProject._id ? updatedProject : p));
+      fetchData(); // Refresh stats
       toast({
         title: "Project Updated",
         description: `${updatedProject.title} has been updated`,
@@ -83,6 +86,7 @@ const ProjectManagementDashboard = () => {
 
     socket.on('project:deleted', (data: { id: string }) => {
       setProjects(prev => prev.filter(p => p._id !== data.id));
+      fetchData(); // Refresh stats
       toast({
         title: "Project Deleted",
         description: "Project has been removed",
@@ -93,11 +97,16 @@ const ProjectManagementDashboard = () => {
       setStats(newStats);
     });
 
+    socket.on('budget:updated', () => {
+      fetchData(); // Refresh when budgets change
+    });
+
     return () => {
       socket.off('project:created');
       socket.off('project:updated');
       socket.off('project:deleted');
       socket.off('project:stats');
+      socket.off('budget:updated');
     };
   }, [socket]);
 
@@ -270,6 +279,7 @@ const ProjectManagementDashboard = () => {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="projects">All Projects</TabsTrigger>
+            <TabsTrigger value="budgets">Budgets</TabsTrigger>
             <TabsTrigger value="tasks">My Tasks</TabsTrigger>
             <TabsTrigger value="task-management">Task Management</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -376,6 +386,10 @@ const ProjectManagementDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="budgets">
+            <BudgetOverview projects={projects} />
           </TabsContent>
 
           <TabsContent value="tasks">
@@ -1030,6 +1044,144 @@ const TaskManagementContent = () => {
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+// Budget Overview Component
+const BudgetOverview = ({ projects }: { projects: Project[] }) => {
+  const router = useRouter();
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBudgets();
+  }, [projects]);
+
+  useEffect(() => {
+    const socket = (window as any).socket;
+    if (!socket) return;
+
+    socket.on('budget:updated', fetchBudgets);
+    socket.on('project:updated', fetchBudgets);
+
+    return () => {
+      socket.off('budget:updated', fetchBudgets);
+      socket.off('project:updated', fetchBudgets);
+    };
+  }, []);
+
+  const fetchBudgets = async () => {
+    try {
+      const budgetPromises = projects.map(async (project) => {
+        try {
+          const token = localStorage.getItem('auth-token');
+          if (!token) return null;
+
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${project._id}/budget`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const budget = Array.isArray(data) ? data[0] : data;
+            return { project, budget };
+          }
+          return { project, budget: null };
+        } catch {
+          return { project, budget: null };
+        }
+      });
+
+      const results = await Promise.all(budgetPromises);
+      setBudgets(results.filter(r => r !== null));
+    } catch (error) {
+      console.error('Error fetching budgets:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-blue-100 text-blue-800';
+      case 'on-hold': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          Loading budgets...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Project Budgets</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {budgets.map(({ project, budget }) => {
+            const totalSpent = budget?.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) || 0;
+            const spentPercentage = budget ? (totalSpent / budget.totalBudget) * 100 : 0;
+            
+            return (
+              <Card key={project._id} className="cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => router.push(`/dashboard/projects/${project._id}/budget`)}>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold">{project.title}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(project.status)}>
+                        {project.status}
+                      </Badge>
+                      {budget && (
+                        <Badge variant="outline">
+                          {budget.currency} {budget.totalBudget?.toLocaleString()}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {budget ? (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Spent: {budget.currency} {totalSpent.toLocaleString()}</span>
+                          <span>{spentPercentage.toFixed(1)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${Math.min(spentPercentage, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <DollarSign className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                        <p className="text-sm text-muted-foreground">No budget created</p>
+                        <Button variant="outline" size="sm" className="mt-2">
+                          Create Budget
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
