@@ -21,9 +21,10 @@ import {
   Search,
   MessageSquare,
   Clock,
-  DollarSign
+  DollarSign,
+  Edit
 } from "lucide-react";
-import { getProjectStats, getAllProjects, type Project } from "@/lib/api/projectsAPI";
+import { getProjectStats, getAllProjects, updateProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { useSocket } from "@/hooks/useSocket";
 import tasksAPI, { type Task, type CreateTaskData } from "@/lib/api/tasksAPI";
@@ -172,6 +173,25 @@ const ProjectManagementDashboard = () => {
     }
   };
 
+  const handleQuickStatusUpdate = async (projectId: string, newStatus: string) => {
+    try {
+      const updatedProject = await updateProject(projectId, { status: newStatus });
+      setProjects(prev => prev.map(p => p._id === projectId ? updatedProject : p));
+      fetchData(); // Refresh stats
+      toast({
+        title: "Success",
+        description: "Project status updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating project status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update project status",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
@@ -294,14 +314,41 @@ const ProjectManagementDashboard = () => {
               <CardContent>
                 <div className="space-y-4">
                   {projects.slice(0, 5).map((project) => (
-                    <div key={project._id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer" onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+                    <div key={project._id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group" onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
                       <div className="flex-1">
-                        <h3 className="font-medium">{project.title}</h3>
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-medium">{project.name || project.title}</h3>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/dashboard/projects/${project._id}/edit`);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
                         <p className="text-sm text-muted-foreground">{project.description}</p>
                         <div className="flex items-center gap-2 mt-2">
-                          <Badge className={getStatusColor(project.status)}>
-                            {project.status}
-                          </Badge>
+                          <Select 
+                            value={project.status} 
+                            onValueChange={(value) => handleQuickStatusUpdate(project._id, value)}
+                          >
+                            <SelectTrigger className="w-auto h-6 text-xs border-0 bg-transparent p-0">
+                              <Badge className={getStatusColor(project.status)}>
+                                {project.status}
+                              </Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="planning">Planning</SelectItem>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="on-hold">On Hold</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <Badge variant="outline" className={getPriorityColor(project.priority)}>
                             {project.priority}
                           </Badge>
@@ -338,19 +385,45 @@ const ProjectManagementDashboard = () => {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {projects.map((project) => (
-                    <Card key={project._id} className="cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+                    <Card key={project._id} className="hover:shadow-md transition-shadow group">
                       <CardContent className="p-6">
                         <div className="space-y-4">
-                          <div>
-                            <h3 className="font-semibold">{project.title}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 cursor-pointer" onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+                              <h3 className="font-semibold">{project.name || project.title}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/projects/${project._id}/edit`);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
                           </div>
                           
                           <div className="flex items-center gap-2">
-                            <Badge className={getStatusColor(project.status)}>
-                              {project.status}
-                            </Badge>
+                            <Select 
+                              value={project.status} 
+                              onValueChange={(value) => handleQuickStatusUpdate(project._id, value)}
+                            >
+                              <SelectTrigger className="w-auto h-6 text-xs border-0 bg-transparent p-0">
+                                <Badge className={getStatusColor(project.status)}>
+                                  {project.status}
+                                </Badge>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="planning">Planning</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="on-hold">On Hold</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </SelectContent>
+                            </Select>
                             <Badge variant="outline" className={getPriorityColor(project.priority)}>
                               {project.priority}
                             </Badge>
@@ -376,7 +449,7 @@ const ProjectManagementDashboard = () => {
                             </div>
                             <div className="flex items-center gap-1">
                               <Users className="h-4 w-4" />
-                              {project.assignedUsers?.length || 0}
+                              {project.team?.length || project.assignedUsers?.length || 0}
                             </div>
                           </div>
                         </div>
@@ -582,7 +655,7 @@ const MyTasksContent = () => {
                         
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span className="font-medium">Project:</span>
-                          {typeof task.project === 'object' ? task.project.name : 'Unknown Project'}
+                          {typeof task.project === 'object' ? (task.project.name || task.project.title) : 'Unknown Project'}
                         </div>
                         
                         <Select onValueChange={(value) => updateTaskStatus(task._id, value)} defaultValue={task.status}>
@@ -1004,7 +1077,7 @@ const TaskManagementContent = () => {
                         
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span className="font-medium">Project:</span>
-                          {typeof task.project === 'object' ? task.project?.name || 'Unknown Project' : 'Unknown Project'}
+                          {typeof task.project === 'object' ? (task.project?.name || task.project?.title || 'Unknown Project') : 'Unknown Project'}
                         </div>
                         
                         <div className="flex items-center justify-between text-xs text-gray-500">

@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
 import { 
   ArrowLeft, 
   Calendar, 
@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { getProjectById, updateProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
-import ProjectForm from "@/components/projects/ProjectForm";
+
 
 const ProjectDetailPage = () => {
   const { isAuthenticated } = useAuth();
@@ -36,8 +36,7 @@ const ProjectDetailPage = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [budget, setBudget] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [updating, setUpdating] = useState(false);
+
 
   useEffect(() => {
     if (isAuthenticated && projectId) {
@@ -103,38 +102,7 @@ const ProjectDetailPage = () => {
     }
   };
 
-  const handleUpdateProject = async (formData: any) => {
-    try {
-      setUpdating(true);
-      const updateData: any = {
-        name: formData.title,
-        description: formData.description,
-        status: formData.status,
-        priority: formData.priority,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-      };
-      if (formData.budget) {
-        updateData.budget = formData.budget;
-      }
-      const updatedProject = await updateProject(projectId, updateData);
-      setProject(updatedProject);
-      setEditDialogOpen(false);
-      toast({
-        title: "Success",
-        description: "Project updated successfully",
-      });
-    } catch (error) {
-      console.error("Error updating project:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update project",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdating(false);
-    }
-  };
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -214,34 +182,13 @@ const ProjectDetailPage = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Project
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Edit Project</DialogTitle>
-                </DialogHeader>
-                <ProjectForm
-                  project={{
-                    title: project?.name,
-                    description: project?.description,
-                    status: project?.status,
-                    priority: project?.priority,
-                    budget: project?.budget,
-                    startDate: project?.startDate,
-                    endDate: project?.endDate,
-                  }}
-                  onSubmit={handleUpdateProject}
-                  onCancel={() => setEditDialogOpen(false)}
-                  loading={updating}
-                  submitText="Update Project"
-                />
-              </DialogContent>
-            </Dialog>
+            <Button 
+              variant="outline"
+              onClick={() => router.push(`/dashboard/projects/${projectId}/edit`)}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Project
+            </Button>
             <Button variant="outline">
               <Settings className="h-4 w-4 mr-2" />
               Settings

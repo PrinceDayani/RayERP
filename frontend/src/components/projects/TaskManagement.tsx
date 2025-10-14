@@ -345,6 +345,17 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
                         <div className="flex items-start justify-between">
                           <h4 className="font-medium text-sm leading-tight">{task.title}</h4>
                           <div className="flex gap-1">
+                            {task.status !== 'completed' && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 w-6 p-0 text-green-600 hover:text-green-800"
+                                onClick={() => onStatusChange(task._id, 'completed')}
+                                title="Mark as Complete"
+                              >
+                                <CheckCircle className="h-3 w-3" />
+                              </Button>
+                            )}
                             <Button 
                               variant="ghost" 
                               size="sm" 
@@ -475,6 +486,18 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
               </div>
               
               <div className="flex gap-2">
+                {task.status !== 'completed' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-green-600 hover:text-green-800 border-green-200 hover:border-green-300"
+                    onClick={() => onStatusChange(task._id, 'completed')}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Complete
+                  </Button>
+                )}
+                
                 <Select value={task.status} onValueChange={(value: Task["status"]) => onStatusChange(task._id, value)}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
