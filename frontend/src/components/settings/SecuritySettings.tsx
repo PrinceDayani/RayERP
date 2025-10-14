@@ -10,8 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSettings, bulkUpdateSettings } from '@/lib/api/index';
-import { SettingScope, SecuritySettings as SecuritySettingsType } from '@/types/settings';
+import { useRealTimeSetting } from '@/lib/realTimeSettings';
 import { Eye, EyeOff, ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 
 // Extended security settings type with additional properties
@@ -47,7 +46,7 @@ export default function SecuritySettings() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [settings, setSettings] = useState<ExtendedSecuritySettings>(defaultSecuritySettings);
+
   
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -86,34 +85,23 @@ export default function SecuritySettings() {
     setPasswordStrength(strength);
   }, [newPassword]);
   
-  // Load existing security settings
-  useEffect(() => {
-    async function loadSecuritySettings() {
-      try {
-        setIsLoading(true);
-        const fetchedSettings = await getSettings(SettingScope.USER, 'security', 'keyValue');
-        
-        if (fetchedSettings && fetchedSettings.security) {
-          // Merge with defaults to ensure all required fields exist
-          setSettings({
-            ...defaultSecuritySettings,
-            ...(fetchedSettings.security as Partial<ExtendedSecuritySettings>)
-          });
-        }
-      } catch (error) {
-        console.error('Failed to load security settings:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load security settings. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    
-    loadSecuritySettings();
-  }, [toast]);
+  // Real-time security settings
+  const [twoFactorEnabled, setTwoFactorEnabled] = useRealTimeSetting('twoFactorEnabled', false);
+  const [sessionTimeout, setSessionTimeout] = useRealTimeSetting('sessionTimeout', 30);
+  const [maxLoginAttempts, setMaxLoginAttempts] = useRealTimeSetting('maxLoginAttempts', 5);
+  const [lockoutDuration, setLockoutDuration] = useRealTimeSetting('lockoutDuration', 30);
+  const [requireStrongPassword, setRequireStrongPassword] = useRealTimeSetting('requireStrongPassword', true);
+  const [passwordHistory, setPasswordHistory] = useRealTimeSetting('passwordHistory', 3);
+  
+  // Combine into securitySettings object for compatibility
+  const securitySettings = {
+    twoFactorEnabled,
+    sessionTimeout,
+    maxLoginAttempts,
+    lockoutDuration,
+    requireStrongPassword,
+    passwordHistory
+  };
   
   // Handle any Date objects that might come from the API
   useEffect(() => {
@@ -141,50 +129,7 @@ export default function SecuritySettings() {
   }, [hasUnsavedChanges]);
   
   // Handle setting changes with unsaved changes tracking
-  const updateSettings = (updates: Partial<ExtendedSecuritySettings>) => {
-    setSettings(prev => {
-      const newSettings = { ...prev, ...updates };
-      // Check if anything actually changed
-      const hasChanged = Object.keys(updates).some(key => 
-        prev[key as keyof ExtendedSecuritySettings] !== updates[key as keyof ExtendedSecuritySettings]
-      );
-      
-      if (hasChanged) {
-        setHasUnsavedChanges(true);
-      }
-      
-      return newSettings;
-    });
-  };
-  
-  const handleToggleTwoFactor = () => {
-    if (!settings.twoFactorEnabled) {
-      // Enabling 2FA should show QR code setup
-      setShowQrCode(true);
-    }
-    
-    updateSettings({ twoFactorEnabled: !settings.twoFactorEnabled });
-  };
-  
-  const handleSessionTimeoutChange = (value: number[]) => {
-    updateSettings({ sessionTimeout: value[0] });
-  };
-  
-  const handleMaxLoginAttemptsChange = (value: number[]) => {
-    updateSettings({ maxLoginAttempts: value[0] });
-  };
-  
-  const handleLockoutDurationChange = (value: number[]) => {
-    updateSettings({ lockoutDuration: value[0] });
-  };
-  
-  const handlePasswordHistoryChange = (value: number[]) => {
-    updateSettings({ passwordHistory: value[0] });
-  };
-  
-  const handleToggleStrongPassword = () => {
-    updateSettings({ requireStrongPassword: !settings.requireStrongPassword });
-  };
+
   
   const validatePassword = () => {
     // Clear previous errors
@@ -203,7 +148,7 @@ export default function SecuritySettings() {
     }
     
     // If strong passwords are required, check against requirements
-    if (settings.requireStrongPassword && passwordStrength < 4) {
+    if (requireStrongPassword && passwordStrength < 4) {
       setPasswordError("Password doesn't meet strength requirements");
       return false;
     }
@@ -212,30 +157,11 @@ export default function SecuritySettings() {
   };
   
   const handleSaveSettings = async () => {
-    try {
-      setIsSaving(true);
-      
-      // Save security settings
-      await bulkUpdateSettings([
-        { key: 'security', value: settings }
-      ], SettingScope.USER);
-      
-      toast({
-        title: "Success",
-        description: "Security settings updated successfully",
-      });
-      
-      setHasUnsavedChanges(false);
-    } catch (error) {
-      console.error('Failed to update security settings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update security settings. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    toast({
+      title: "Success",
+      description: "Security settings are automatically saved",
+    });
+    setHasUnsavedChanges(false);
   };
   
   const handleVerifyTwoFactor = async () => {
@@ -322,18 +248,9 @@ export default function SecuritySettings() {
         description: "Password changed successfully",
       });
       
-      // Update last password change date
-      const updatedSettings = {
-        ...settings,
-        lastPasswordChange: new Date().toISOString()
-      };
+      // Password change successful
       
-      setSettings(updatedSettings);
-      
-      // Save the updated settings
-      await bulkUpdateSettings([
-        { key: 'security', value: updatedSettings }
-      ], SettingScope.USER);
+      // Settings are auto-saved
       
     } catch (error) {
       console.error('Failed to change password:', error);
@@ -459,7 +376,7 @@ export default function SecuritySettings() {
                     </div>
                     
                     {/* Password requirements */}
-                    {settings.requireStrongPassword && (
+                    {requireStrongPassword && (
                       <div className="mt-2 text-xs space-y-1">
                         {passwordRequirements.map(req => (
                           <div key={req.id} className="flex items-center">
@@ -512,11 +429,7 @@ export default function SecuritySettings() {
               </Button>
             </div>
             
-            {settings.lastPasswordChange && (
-              <div className="text-sm text-muted-foreground">
-                Last password change: {formatDate(settings.lastPasswordChange)}
-              </div>
-            )}
+
           </div>
         </CardContent>
       </Card>
@@ -535,7 +448,7 @@ export default function SecuritySettings() {
               </div>
               <Switch
                 id="twoFactorEnabled"
-                checked={settings.twoFactorEnabled}
+                checked={twoFactorEnabled}
                 onCheckedChange={handleToggleTwoFactor}
               />
             </div>
@@ -576,7 +489,7 @@ export default function SecuritySettings() {
               </div>
             )}
             
-            {settings.twoFactorEnabled && !showQrCode && (
+            {twoFactorEnabled && !showQrCode && (
               <div className="p-4 bg-muted rounded-md">
                 <p className="text-sm">
                   Two-factor authentication is enabled. You'll need to enter a verification code
@@ -609,18 +522,18 @@ export default function SecuritySettings() {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <Label htmlFor="sessionTimeout">Session Timeout</Label>
-                <span>{settings.sessionTimeout} minutes</span>
+                <span>{sessionTimeout} minutes</span>
               </div>
               <Slider
                 id="sessionTimeout"
                 min={5}
                 max={120}
                 step={5}
-                value={[settings.sessionTimeout]}
-                onValueChange={handleSessionTimeoutChange}
+                value={[sessionTimeout]}
+                onValueChange={(value) => setSessionTimeout(value[0])}
               />
               <p className="text-sm text-muted-foreground">
-                Your session will expire after {settings.sessionTimeout} minutes of inactivity
+                Your session will expire after {sessionTimeout} minutes of inactivity
               </p>
             </div>
           </div>
@@ -652,8 +565,8 @@ export default function SecuritySettings() {
                   </div>
                   <Switch
                     id="requireStrongPassword"
-                    checked={settings.requireStrongPassword}
-                    onCheckedChange={handleToggleStrongPassword}
+                    checked={requireStrongPassword}
+                    onCheckedChange={setRequireStrongPassword}
                   />
                 </div>
               </div>
@@ -662,18 +575,18 @@ export default function SecuritySettings() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <Label htmlFor="maxLoginAttempts">Maximum Login Attempts</Label>
-                  <span>{settings.maxLoginAttempts} attempts</span>
+                  <span>{maxLoginAttempts} attempts</span>
                 </div>
                 <Slider
                   id="maxLoginAttempts"
                   min={3}
                   max={10}
                   step={1}
-                  value={[settings.maxLoginAttempts]}
-                  onValueChange={handleMaxLoginAttemptsChange}
+                  value={[maxLoginAttempts]}
+                  onValueChange={(value) => setMaxLoginAttempts(value[0])}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Account will be locked after {settings.maxLoginAttempts} failed login attempts
+                  Account will be locked after {maxLoginAttempts} failed login attempts
                 </p>
               </div>
               
@@ -681,18 +594,18 @@ export default function SecuritySettings() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <Label htmlFor="lockoutDuration">Account Lockout Duration</Label>
-                  <span>{settings.lockoutDuration} minutes</span>
+                  <span>{lockoutDuration} minutes</span>
                 </div>
                 <Slider
                   id="lockoutDuration"
                   min={5}
                   max={60}
                   step={5}
-                  value={[settings.lockoutDuration]}
-                  onValueChange={handleLockoutDurationChange}
+                  value={[lockoutDuration]}
+                  onValueChange={(value) => setLockoutDuration(value[0])}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Locked accounts will be automatically unlocked after {settings.lockoutDuration} minutes
+                  Locked accounts will be automatically unlocked after {lockoutDuration} minutes
                 </p>
               </div>
               
@@ -700,20 +613,20 @@ export default function SecuritySettings() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <Label htmlFor="passwordHistory">Password History</Label>
-                  <span>{settings.passwordHistory} passwords</span>
+                  <span>{passwordHistory} passwords</span>
                 </div>
                 <Slider
                   id="passwordHistory"
                   min={0}
                   max={10}
                   step={1}
-                  value={[settings.passwordHistory]}
-                  onValueChange={handlePasswordHistoryChange}
+                  value={[passwordHistory]}
+                  onValueChange={(value) => setPasswordHistory(value[0])}
                 />
                 <p className="text-sm text-muted-foreground">
-                  {settings.passwordHistory === 0
+                  {passwordHistory === 0
                     ? "Password history tracking is disabled"
-                    : `Cannot reuse the last ${settings.passwordHistory} passwords`}
+                    : `Cannot reuse the last ${passwordHistory} passwords`}
                 </p>
               </div>
             </div>
