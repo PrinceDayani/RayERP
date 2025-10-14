@@ -14,7 +14,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import logo from "../../public/RAYlogo.webp";
+// import logo from "../../public/RAYlogo.webp";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -72,6 +72,12 @@ export default function Layout({ children }: LayoutProps) {
       title: "Project Management",
       items: [
         { path: "/dashboard/projects", name: "Projects", icon: "project" } as MenuItem
+      ]
+    },
+    {
+      title: "Finance",
+      items: [
+        { path: "/dashboard/finance", name: "General Ledger", icon: "currency-dollar" } as MenuItem,
       ]
     },
     {
@@ -242,9 +248,11 @@ export default function Layout({ children }: LayoutProps) {
             {!collapsed && (
               <div className="flex items-center space-x-2">
                 <div className="flex items-center justify-center">
-                  <img src={logo.src} alt="Company Logo" className="h-10" />
+                  <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center">
+                    <span className="text-primary-foreground font-bold text-lg">R</span>
+                  </div>
+                  <span className="ml-2 text-lg font-bold text-foreground">RayERP</span>
                 </div>
-            
               </div>
             )}
             <Button

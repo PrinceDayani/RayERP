@@ -16,7 +16,6 @@ import { getAllProjects } from '@/lib/api/projectsAPI';
 import tasksAPI, { type Task, type CreateTaskData } from '@/lib/api/tasksAPI';
 import employeesAPI, { type Employee } from '@/lib/api/employeesAPI';
 import { useSocket } from '@/hooks/useSocket';
-import Layout from '@/components/Layout';
 
 interface Project {
   _id: string;
@@ -219,9 +218,7 @@ export default function TaskManagementPage() {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="flex justify-center items-center h-64">Loading...</div>
-      </Layout>
+      <div className="flex justify-center items-center h-64">Loading...</div>
     );
   }
 
@@ -233,8 +230,7 @@ export default function TaskManagementPage() {
   };
 
   return (
-    <Layout>
-      <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Task Management</h1>
@@ -460,7 +456,6 @@ export default function TaskManagementPage() {
             </Card>
           ))}
         </div>
-      </div>
-    </Layout>
+    </div>
   );
 }

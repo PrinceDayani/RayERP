@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
-import Layout from "@/components/Layout";
+
 import DashboardHeader from "@/components/Dashboard/DashboardHeader";
 import StatsCards from "@/components/Dashboard/StatsCards";
 import QuickActions from "@/components/Dashboard/QuickActions";
@@ -272,20 +272,17 @@ const Dashboard = () => {
   // Loading state
   if (loading) {
     return (
-      <Layout>
-        <div className="flex h-screen items-center justify-center">
-          <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground theme-text">Loading dashboard...</p>
-          </div>
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground theme-text">Loading dashboard...</p>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="flex-1 space-y-6 p-6 theme-text theme-content mx-auto">
+    <div className="flex-1 space-y-6 p-6 theme-text theme-content mx-auto">
         {/* Header */}
         <DashboardHeader 
           user={user} 
@@ -739,8 +736,7 @@ const Dashboard = () => {
             </TabsContent>
           )}
         </Tabs>
-      </div>
-    </Layout>
+    </div>
   );
 };
 
