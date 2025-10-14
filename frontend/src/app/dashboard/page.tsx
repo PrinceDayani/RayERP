@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { initializeSocket, getSocket } from "@/lib/socket";
+import { dashboardAPI, DashboardStats as APIDashboardStats, RecentActivity } from "@/lib/api/dashboardAPI";
+import RealTimeIndicator from "@/components/Dashboard/RealTimeIndicator";
 
 // Enhanced interfaces
 interface DashboardStats {
@@ -39,6 +41,7 @@ interface DashboardStats {
   completedProjects: number;
   totalTasks: number;
   completedTasks: number;
+  attendanceToday?: number;
 }
 
 const Dashboard = () => {
@@ -54,7 +57,12 @@ const Dashboard = () => {
     completedProjects: 0,
     totalTasks: 0,
     completedTasks: 0,
+    attendanceToday: 0,
   });
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(30000); // 30 seconds
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
@@ -71,15 +79,30 @@ const Dashboard = () => {
       setDataLoading(true);
       setDataError(null);
       
-      // Mock data for now - replace with actual API calls
-      setStats({
-        totalEmployees: 25,
-        activeEmployees: 23,
-        totalProjects: 12,
-        completedProjects: 8,
-        totalTasks: 156,
-        completedTasks: 98,
-      });
+      // Fetch real-time dashboard data
+      const [dashboardResponse, activitiesResponse] = await Promise.all([
+        dashboardAPI.getDashboardStats(),
+        dashboardAPI.getRecentActivities().catch(() => ({ success: false, data: [] }))
+      ]);
+      
+      if (dashboardResponse.success) {
+        const apiData = dashboardResponse.data;
+        setStats({
+          totalEmployees: apiData.employeeMetrics.total,
+          activeEmployees: apiData.employeeMetrics.active,
+          totalProjects: apiData.projectMetrics.total,
+          completedProjects: apiData.projectMetrics.completed,
+          totalTasks: apiData.taskMetrics.total,
+          completedTasks: apiData.taskMetrics.completed,
+          attendanceToday: apiData.employeeMetrics.attendanceToday,
+        });
+      }
+      
+      if (activitiesResponse.success) {
+        setRecentActivities(activitiesResponse.data);
+      }
+      
+      setLastUpdated(new Date());
 
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error);
@@ -103,6 +126,11 @@ const Dashboard = () => {
     
     fetchDashboardData();
     
+    // Set up auto-refresh when not connected via socket
+    if (autoRefresh && !socketConnected) {
+      pollingIntervalRef.current = setInterval(fetchDashboardData, refreshInterval);
+    }
+    
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -124,6 +152,7 @@ const Dashboard = () => {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
+      fetchDashboardData(); // Refresh data on connect
       toast({
         title: "Connected",
         description: "Real-time updates are now active",
@@ -133,16 +162,16 @@ const Dashboard = () => {
 
     const handleSocketDisconnect = (reason: string) => {
       setSocketConnected(false);
-      if (!pollingIntervalRef.current) {
-        pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
+      if (autoRefresh && !pollingIntervalRef.current) {
+        pollingIntervalRef.current = setInterval(fetchDashboardData, refreshInterval);
       }
     };
 
     const handleSocketError = (err: Error) => {
       console.error("Socket connection error:", err.message);
       setSocketConnected(false);
-      if (!pollingIntervalRef.current) {
-        pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
+      if (autoRefresh && !pollingIntervalRef.current) {
+        pollingIntervalRef.current = setInterval(fetchDashboardData, refreshInterval);
       }
     };
 
@@ -151,12 +180,20 @@ const Dashboard = () => {
       socket.on("disconnect", handleSocketDisconnect);
       socket.on("connect_error", handleSocketError);
       socket.on("dashboard:refresh", fetchDashboardData);
+      socket.on("employee:updated", fetchDashboardData);
+      socket.on("project:updated", fetchDashboardData);
+      socket.on("task:updated", fetchDashboardData);
+      socket.on("attendance:updated", fetchDashboardData);
 
       return () => {
         socket.off("connect", handleSocketConnect);
         socket.off("disconnect", handleSocketDisconnect);
         socket.off("connect_error", handleSocketError);
         socket.off("dashboard:refresh", fetchDashboardData);
+        socket.off("employee:updated", fetchDashboardData);
+        socket.off("project:updated", fetchDashboardData);
+        socket.off("task:updated", fetchDashboardData);
+        socket.off("attendance:updated", fetchDashboardData);
         socket.disconnect();
         
         if (pollingIntervalRef.current) {
@@ -284,11 +321,20 @@ const Dashboard = () => {
   return (
     <div className="flex-1 space-y-6 p-6 theme-text theme-content mx-auto">
         {/* Header */}
-        <DashboardHeader 
-          user={user} 
-          isAuthenticated={isAuthenticated}
-          socketConnected={socketConnected}
-        />
+        <div className="flex justify-between items-start mb-6">
+          <DashboardHeader 
+            user={user} 
+            isAuthenticated={isAuthenticated}
+            socketConnected={socketConnected}
+          />
+          {isAuthenticated && (
+            <RealTimeIndicator 
+              isConnected={socketConnected}
+              lastUpdated={lastUpdated || undefined}
+              isLoading={dataLoading}
+            />
+          )}
+        </div>
 
         {/* Role-specific welcome messages */}
         {isAuthenticated && user && (
@@ -421,6 +467,110 @@ const Dashboard = () => {
               loading={dataLoading} 
             />
 
+            {/* Quick Data Overview */}
+            {isAuthenticated && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Card className="theme-card theme-shadow theme-transition">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center">
+                      <Users className="h-5 w-5 mr-2 text-blue-500" />
+                      Employee Overview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Active Today:</span>
+                        <span className="text-sm font-medium text-green-600">{stats.activeEmployees}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Total Staff:</span>
+                        <span className="text-sm font-medium">{stats.totalEmployees}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Attendance:</span>
+                        <span className="text-sm font-medium">{stats.attendanceToday || 0}</span>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => router.push("/dashboard/employees")}
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-4"
+                    >
+                      View Details
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="theme-card theme-shadow theme-transition">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center">
+                      <Briefcase className="h-5 w-5 mr-2 text-purple-500" />
+                      Project Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Completed:</span>
+                        <span className="text-sm font-medium text-green-600">{stats.completedProjects}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">In Progress:</span>
+                        <span className="text-sm font-medium text-orange-600">{stats.totalProjects - stats.completedProjects}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Success Rate:</span>
+                        <span className="text-sm font-medium">{stats.totalProjects > 0 ? Math.round((stats.completedProjects / stats.totalProjects) * 100) : 0}%</span>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => router.push("/dashboard/projects")}
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-4"
+                    >
+                      View Projects
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="theme-card theme-shadow theme-transition">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center">
+                      <CheckSquare className="h-5 w-5 mr-2 text-green-500" />
+                      Task Progress
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Completed:</span>
+                        <span className="text-sm font-medium text-green-600">{stats.completedTasks}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Pending:</span>
+                        <span className="text-sm font-medium text-orange-600">{stats.totalTasks - stats.completedTasks}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Completion:</span>
+                        <span className="text-sm font-medium">{stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}%</span>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => router.push("/dashboard/tasks")}
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-4"
+                    >
+                      View Tasks
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             <QuickActions 
               isAuthenticated={isAuthenticated} 
               router={router} 
@@ -428,111 +578,506 @@ const Dashboard = () => {
           </TabsContent>
 
           {/* Employees Tab */}
-          <TabsContent value="employees" className="space-y-4">
-            <Card className="theme-card theme-shadow theme-transition">
-              <CardContent className="p-8 text-center theme-compact-padding">
-                <Users className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                  Employee Management
-                </h3>
-                <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                  {isAuthenticated 
-                    ? "Manage employee records, attendance, and performance tracking."
-                    : "Please log in to access employee management features."
-                  }
-                </p>
-                {isAuthenticated ? (
+          <TabsContent value="employees" className="space-y-6">
+            {/* Employee Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Employees</p>
+                      <p className="text-2xl font-bold">{stats.totalEmployees}</p>
+                    </div>
+                    <Users className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Active Today</p>
+                      <p className="text-2xl font-bold text-green-600">{stats.activeEmployees}</p>
+                    </div>
+                    <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Attendance Rate</p>
+                      <p className="text-2xl font-bold">{Math.round((stats.activeEmployees / stats.totalEmployees) * 100)}%</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Employee Action Buttons */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <Users className="h-6 w-6 text-blue-500 mr-3" />
+                    <h3 className="text-lg font-semibold">All Employees</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    View and manage all employee records, personal information, and employment details.
+                  </p>
                   <Button 
                     onClick={() => router.push("/dashboard/employees")}
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
+                    className="w-full"
+                    disabled={!isAuthenticated}
                   >
-                    Go to Employees
+                    View Employees
                   </Button>
-                ) : (
+                </CardContent>
+              </Card>
+
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <CheckSquare className="h-6 w-6 text-green-500 mr-3" />
+                    <h3 className="text-lg font-semibold">Attendance</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Track daily attendance, check-ins, check-outs, and generate attendance reports.
+                  </p>
                   <Button 
-                    onClick={() => router.push("/login")}
-                    variant="outline"
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
+                    onClick={() => router.push("/dashboard/employees/attendance")}
+                    className="w-full"
+                    disabled={!isAuthenticated}
                   >
-                    Login Required
+                    View Attendance
                   </Button>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <UserCog className="h-6 w-6 text-purple-500 mr-3" />
+                    <h3 className="text-lg font-semibold">Add Employee</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Register new employees and set up their profiles and access permissions.
+                  </p>
+                  <Button 
+                    onClick={() => router.push("/dashboard/employees/create")}
+                    className="w-full"
+                    disabled={!isAuthenticated}
+                  >
+                    Add New Employee
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Employee Activity */}
+            {isAuthenticated && (
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardHeader>
+                  <CardTitle>Recent Employee Activity</CardTitle>
+                  <CardDescription>Latest updates and changes in employee records</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentActivities.length > 0 ? (
+                      recentActivities
+                        .filter(activity => activity.type === 'employee' || activity.type === 'attendance')
+                        .slice(0, 3)
+                        .map((activity) => {
+                          const getActivityIcon = (type: string) => {
+                            switch (type) {
+                              case 'employee': return <Users className="h-4 w-4 text-blue-600" />;
+                              case 'attendance': return <CheckSquare className="h-4 w-4 text-green-600" />;
+                              default: return <Users className="h-4 w-4 text-gray-600" />;
+                            }
+                          };
+                          
+                          const getBgColor = (type: string) => {
+                            switch (type) {
+                              case 'employee': return 'bg-blue-100';
+                              case 'attendance': return 'bg-green-100';
+                              default: return 'bg-gray-100';
+                            }
+                          };
+                          
+                          return (
+                            <div key={activity.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <div className={`h-8 w-8 ${getBgColor(activity.type)} rounded-full flex items-center justify-center`}>
+                                  {getActivityIcon(activity.type)}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium">{activity.title}</p>
+                                  <p className="text-xs text-muted-foreground">{activity.description}</p>
+                                </div>
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(activity.timestamp).toLocaleString()}
+                              </span>
+                            </div>
+                          );
+                        })
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-sm text-muted-foreground">No recent activities</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Projects Tab */}
-          <TabsContent value="projects" className="space-y-4">
-            <Card className="theme-card theme-shadow theme-transition">
-              <CardContent className="p-8 text-center theme-compact-padding">
-                <Briefcase className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                  Project Management
-                </h3>
-                <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                  {isAuthenticated 
-                    ? "Create, manage, and track project progress and deliverables."
-                    : "Please log in to access project management features."
-                  }
-                </p>
-                {isAuthenticated ? (
+          <TabsContent value="projects" className="space-y-6">
+            {/* Project Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Projects</p>
+                      <p className="text-2xl font-bold">{stats.totalProjects}</p>
+                    </div>
+                    <Briefcase className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Completed</p>
+                      <p className="text-2xl font-bold text-green-600">{stats.completedProjects}</p>
+                    </div>
+                    <CheckSquare className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">In Progress</p>
+                      <p className="text-2xl font-bold text-orange-600">{stats.totalProjects - stats.completedProjects}</p>
+                    </div>
+                    <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
+                      <div className="h-3 w-3 bg-orange-500 rounded-full animate-pulse"></div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Success Rate</p>
+                      <p className="text-2xl font-bold">{stats.totalProjects > 0 ? Math.round((stats.completedProjects / stats.totalProjects) * 100) : 0}%</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Project Action Buttons */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <Briefcase className="h-6 w-6 text-blue-500 mr-3" />
+                    <h3 className="text-lg font-semibold">All Projects</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    View all projects, track progress, manage timelines and deliverables.
+                  </p>
                   <Button 
                     onClick={() => router.push("/dashboard/projects")}
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
+                    className="w-full"
+                    disabled={!isAuthenticated}
                   >
-                    Go to Projects
+                    View Projects
                   </Button>
-                ) : (
+                </CardContent>
+              </Card>
+
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <CheckSquare className="h-6 w-6 text-green-500 mr-3" />
+                    <h3 className="text-lg font-semibold">My Tasks</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    View and manage tasks assigned to you across all projects.
+                  </p>
                   <Button 
-                    onClick={() => router.push("/login")}
-                    variant="outline"
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
+                    onClick={() => router.push("/dashboard/projects/my-tasks")}
+                    className="w-full"
+                    disabled={!isAuthenticated}
                   >
-                    Login Required
+                    My Tasks
                   </Button>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <BarChart4 className="h-6 w-6 text-purple-500 mr-3" />
+                    <h3 className="text-lg font-semibold">Reports</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Generate project reports, analytics, and performance metrics.
+                  </p>
+                  <Button 
+                    onClick={() => router.push("/dashboard/projects/reports")}
+                    className="w-full"
+                    disabled={!isAuthenticated}
+                  >
+                    View Reports
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <Users className="h-6 w-6 text-orange-500 mr-3" />
+                    <h3 className="text-lg font-semibold">Create Project</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Start a new project, set up teams, and define project scope.
+                  </p>
+                  <Button 
+                    onClick={() => router.push("/dashboard/projects/create")}
+                    className="w-full"
+                    disabled={!isAuthenticated}
+                  >
+                    New Project
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <CheckSquare className="h-6 w-6 text-red-500 mr-3" />
+                    <h3 className="text-lg font-semibold">Task Management</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create, assign, and track tasks across all projects.
+                  </p>
+                  <Button 
+                    onClick={() => router.push("/dashboard/projects/tasks")}
+                    className="w-full"
+                    disabled={!isAuthenticated}
+                  >
+                    Manage Tasks
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Tasks Tab */}
-          <TabsContent value="tasks" className="space-y-4">
-            <Card className="theme-card theme-shadow theme-transition">
-              <CardContent className="p-8 text-center theme-compact-padding">
-                <CheckSquare className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                  Task Management
-                </h3>
-                <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                  {isAuthenticated 
-                    ? "Assign, track, and manage tasks across all projects."
-                    : "Please log in to access task management features."
-                  }
-                </p>
-                {isAuthenticated ? (
+          <TabsContent value="tasks" className="space-y-6">
+            {/* Task Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Tasks</p>
+                      <p className="text-2xl font-bold">{stats.totalTasks}</p>
+                    </div>
+                    <CheckSquare className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Completed</p>
+                      <p className="text-2xl font-bold text-green-600">{stats.completedTasks}</p>
+                    </div>
+                    <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckSquare className="h-4 w-4 text-green-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">In Progress</p>
+                      <p className="text-2xl font-bold text-orange-600">{stats.totalTasks - stats.completedTasks}</p>
+                    </div>
+                    <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
+                      <div className="h-3 w-3 bg-orange-500 rounded-full animate-pulse"></div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Completion Rate</p>
+                      <p className="text-2xl font-bold">{stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}%</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Task Action Buttons */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <CheckSquare className="h-6 w-6 text-blue-500 mr-3" />
+                    <h3 className="text-lg font-semibold">All Tasks</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    View and manage all tasks across projects, track progress and deadlines.
+                  </p>
                   <Button 
                     onClick={() => router.push("/dashboard/tasks")}
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
+                    className="w-full"
+                    disabled={!isAuthenticated}
                   >
-                    Go to Tasks
+                    View All Tasks
                   </Button>
-                ) : (
+                </CardContent>
+              </Card>
+
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <Users className="h-6 w-6 text-green-500 mr-3" />
+                    <h3 className="text-lg font-semibold">My Tasks</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    View tasks assigned to you, update status, and manage your workload.
+                  </p>
                   <Button 
-                    onClick={() => router.push("/login")}
-                    variant="outline"
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
+                    onClick={() => router.push("/dashboard/projects/my-tasks")}
+                    className="w-full"
+                    disabled={!isAuthenticated}
                   >
-                    Login Required
+                    My Tasks
                   </Button>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <Card className="theme-card theme-shadow theme-transition hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-center mb-4">
+                    <BarChart4 className="h-6 w-6 text-purple-500 mr-3" />
+                    <h3 className="text-lg font-semibold">Task Analytics</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    View task performance metrics, completion rates, and productivity insights.
+                  </p>
+                  <Button 
+                    onClick={() => router.push("/dashboard/reports")}
+                    className="w-full"
+                    disabled={!isAuthenticated}
+                  >
+                    View Analytics
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Task Priority Overview */}
+            {isAuthenticated && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="theme-card theme-shadow theme-transition">
+                  <CardHeader>
+                    <CardTitle>Task Priority Distribution</CardTitle>
+                    <CardDescription>Overview of tasks by priority level</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="h-3 w-3 bg-red-500 rounded-full"></div>
+                          <span className="text-sm">High Priority</span>
+                        </div>
+                        <Badge variant="destructive">12</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="h-3 w-3 bg-orange-500 rounded-full"></div>
+                          <span className="text-sm">Medium Priority</span>
+                        </div>
+                        <Badge variant="outline" className="border-orange-500 text-orange-600">28</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="h-3 w-3 bg-green-500 rounded-full"></div>
+                          <span className="text-sm">Low Priority</span>
+                        </div>
+                        <Badge variant="outline" className="border-green-500 text-green-600">45</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="theme-card theme-shadow theme-transition">
+                  <CardHeader>
+                    <CardTitle>Recent Task Updates</CardTitle>
+                    <CardDescription>Latest task activities and changes</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                          <CheckSquare className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Task completed</p>
+                          <p className="text-xs text-muted-foreground">"Update user interface" marked as done</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">1h ago</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Users className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Task assigned</p>
+                          <p className="text-xs text-muted-foreground">"Database optimization" assigned to John</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">3h ago</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
+                          <AlertCircle className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">Priority updated</p>
+                          <p className="text-xs text-muted-foreground">"Bug fix" priority changed to high</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">5h ago</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
 
           {/* Analytics Tab */}
