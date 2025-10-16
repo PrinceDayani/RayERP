@@ -12,6 +12,7 @@ export interface IProject extends Document {
   budget: number;
   spentBudget: number;
   progress: number;
+
   manager: mongoose.Types.ObjectId;
   team: mongoose.Types.ObjectId[];
   client?: string;
@@ -37,6 +38,7 @@ const projectSchema = new Schema<IProject>({
   endDate: { type: Date, required: true },
   budget: { type: Number, required: true, default: 0 },
   spentBudget: { type: Number, default: 0 },
+
   progress: { type: Number, min: 0, max: 100, default: 0 },
   manager: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
   team: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],

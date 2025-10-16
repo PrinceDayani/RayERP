@@ -4,13 +4,15 @@ export interface IAccount extends Document {
   code: string;
   name: string;
   type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
-  subType?: string;
+  subType: string;
+  projectId?: mongoose.Types.ObjectId;
   balance: number;
+  isActive: boolean;
+  description?: string;
+  createdBy: mongoose.Types.ObjectId;
   openingBalance: number;
   currency: string;
   parentId?: mongoose.Types.ObjectId;
-  isActive: boolean;
-  description?: string;
   createdAt: Date;
   updatedAt: Date;
 }

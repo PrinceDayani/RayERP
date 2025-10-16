@@ -61,9 +61,13 @@ app.use(cookieParser());
 // API Routes
 app.use("/api", routes);
 
-// Test API endpoint
-app.get("/api/test", (req, res) => {
-  res.json({ message: "API is working" });
+// Catch-all for undefined routes
+app.all('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`,
+    error: 'Not Found'
+  });
 });
 
 // Error handling middleware
@@ -72,11 +76,11 @@ app.use(errorMiddleware);
 // Socket.IO setup
 const io = new SocketServer(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: allowedOrigins.length > 0 ? allowedOrigins : "*",
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["polling"],
+  transports: ["websocket", "polling"],
   allowEIO3: true,
   path: "/socket.io/"
 });

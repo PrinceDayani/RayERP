@@ -23,7 +23,7 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
     supportEmail: "",
     timezone: "UTC",
     dateFormat: "MM/DD/YYYY",
-    currency: "USD",
+    currency: "INR",
     language: "en",
   });
 
@@ -336,11 +336,11 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
                     <SelectValue placeholder="Select currency" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="INR">Indian Rupee (₹)</SelectItem>
                     <SelectItem value="USD">US Dollar ($)</SelectItem>
                     <SelectItem value="EUR">Euro (€)</SelectItem>
                     <SelectItem value="GBP">British Pound (£)</SelectItem>
                     <SelectItem value="JPY">Japanese Yen (¥)</SelectItem>
-                    <SelectItem value="INR">Indian Rupee (₹)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
