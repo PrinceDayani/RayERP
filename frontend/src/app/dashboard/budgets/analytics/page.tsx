@@ -28,7 +28,7 @@ export default function BudgetAnalyticsPage() {
           projectId: 'proj1',
           projectName: 'E-commerce Platform',
           totalBudget: 100000,
-          currency: 'USD',
+          currency: 'INR',
           status: 'approved' as const,
           categories: [
             {

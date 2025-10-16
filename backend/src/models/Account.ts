@@ -48,7 +48,7 @@ const AccountSchema = new Schema<IAccount>({
   },
   currency: {
     type: String,
-    default: 'USD',
+    default: 'INR',
     trim: true
   },
   parentId: {

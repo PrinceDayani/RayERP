@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
 import { UsersIcon, Settings2Icon, ActivityIcon, AlertTriangleIcon } from "lucide-react";
-import { adminAPI } from "@/lib/api"; // Updated import
+import adminAPI from "@/lib/api/adminAPI";
 
 interface AdminStatsProps {
   isLoading: boolean;

@@ -40,7 +40,7 @@ This implementation provides a comprehensive General Ledger system for the RayER
   subType: String,        // Current Asset, Fixed Asset, etc.
   balance: Number,        // Current balance
   openingBalance: Number, // Opening balance
-  currency: String,       // Currency code (default: USD)
+  currency: String,       // Currency code (default: INR)
   parentId: ObjectId,     // Parent account for hierarchy
   isActive: Boolean,      // Active status
   description: String     // Account description

@@ -21,7 +21,7 @@ export default function EditBudgetPage() {
   const [formData, setFormData] = useState({
     projectName: '',
     totalBudget: '',
-    currency: 'USD',
+    currency: 'INR',
     categories: [] as BudgetCategory[]
   });
 
@@ -192,7 +192,7 @@ export default function EditBudgetPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="INR">INR</SelectItem>
                     <SelectItem value="EUR">EUR</SelectItem>
                     <SelectItem value="GBP">GBP</SelectItem>
                     <SelectItem value="INR">INR</SelectItem>

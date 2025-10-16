@@ -8,7 +8,7 @@ const AccountSchema = new mongoose.Schema({
   subType: String,
   balance: { type: Number, default: 0 },
   openingBalance: { type: Number, default: 0 },
-  currency: { type: String, default: 'USD' },
+  currency: { type: String, default: 'INR' },
   isActive: { type: Boolean, default: true },
   description: String
 }, { timestamps: true });

@@ -337,7 +337,7 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="INR">Indian Rupee (₹)</SelectItem>
-                    <SelectItem value="USD">US Dollar ($)</SelectItem>
+                    <SelectItem value="INR">US Dollar ($)</SelectItem>
                     <SelectItem value="EUR">Euro (€)</SelectItem>
                     <SelectItem value="GBP">British Pound (£)</SelectItem>
                     <SelectItem value="JPY">Japanese Yen (¥)</SelectItem>

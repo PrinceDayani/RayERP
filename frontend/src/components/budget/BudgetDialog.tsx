@@ -78,9 +78,9 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
   const [templates, setTemplates] = useState<BudgetTemplate[]>([]);
   const [currencies] = useState<Currency[]>([
     { code: "INR", name: "Indian Rupee", symbol: "₹", exchangeRate: 1 },
-    { code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 0.012 },
-    { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 0.010 },
-    { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 0.009 }
+    { code: "INR", name: "US Dollar", symbol: "$", exchangeRate: 83.12 },
+    { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 90.45 },
+    { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 105.23 }
   ]);
 
   const [loading, setLoading] = useState(false);
@@ -114,7 +114,7 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
         setFormData(prev => ({
           ...prev,
           totalBudget: budget.totalBudget || 0,
-          currency: budget.currency || 'USD'
+          currency: budget.currency || 'INR'
         }));
         
         if (budget.categories) {

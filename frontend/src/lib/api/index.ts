@@ -28,11 +28,12 @@ export {
   analyticsAPIDefault as analyticsAPI,
   reportsAPIDefault as reportsAPI,
   settingsAPIDefault as settingsAPI,
-  adminAPIDefault as adminAPI, // Added admin API export
   projectsAPIDefault as projectsAPI,
   budgetAPIDefault as budgetAPI,
   activityAPIDefault as activityAPI
 };
+
+export { default as adminAPI } from './adminAPI';
 
 // Re-export individual functions and types
 // Auth API exports

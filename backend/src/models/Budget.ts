@@ -99,7 +99,7 @@ const budgetSchema = new Schema<IBudget>({
   actualSpent: { type: Number, default: 0, min: 0 },
   remainingBudget: { type: Number, default: 0 },
   utilizationPercentage: { type: Number, default: 0, min: 0, max: 100 },
-  currency: { type: String, default: 'USD' },
+  currency: { type: String, default: 'INR' },
   status: { 
     type: String, 
     enum: ['draft', 'pending', 'approved', 'rejected', 'active', 'closed'], 

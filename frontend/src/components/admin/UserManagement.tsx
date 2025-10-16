@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PlusIcon, SearchIcon, EditIcon, TrashIcon } from "lucide-react";
-import { adminAPI, AdminUser } from "@/lib/api"; // Updated import with renamed type
+import adminAPI, { AdminUser } from "@/lib/api/adminAPI";
 
 interface UserManagementProps {
   isLoading: boolean;

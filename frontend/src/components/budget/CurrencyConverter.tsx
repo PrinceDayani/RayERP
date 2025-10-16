@@ -16,20 +16,20 @@ interface CurrencyConverterProps {
 export default function CurrencyConverter({ onConvert }: CurrencyConverterProps) {
   const [amount, setAmount] = useState<number>(0);
   const [fromCurrency, setFromCurrency] = useState("INR");
-  const [toCurrency, setToCurrency] = useState("USD");
+  const [toCurrency, setToCurrency] = useState("INR");
   const [convertedAmount, setConvertedAmount] = useState<number>(0);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
 
   const currencies: Currency[] = [
     { code: "INR", name: "Indian Rupee", symbol: "₹", exchangeRate: 1 },
-    { code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 0.012 },
-    { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 0.010 },
-    { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 0.009 },
-    { code: "JPY", name: "Japanese Yen", symbol: "¥", exchangeRate: 1.80 },
-    { code: "CAD", name: "Canadian Dollar", symbol: "C$", exchangeRate: 0.016 },
-    { code: "AUD", name: "Australian Dollar", symbol: "A$", exchangeRate: 0.018 },
-    { code: "CHF", name: "Swiss Franc", symbol: "CHF", exchangeRate: 0.011 }
+    { code: "INR", name: "US Dollar", symbol: "$", exchangeRate: 83.12 },
+    { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 90.45 },
+    { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 105.23 },
+    { code: "JPY", name: "Japanese Yen", symbol: "¥", exchangeRate: 0.56 },
+    { code: "CAD", name: "Canadian Dollar", symbol: "C$", exchangeRate: 61.34 },
+    { code: "AUD", name: "Australian Dollar", symbol: "A$", exchangeRate: 54.78 },
+    { code: "CHF", name: "Swiss Franc", symbol: "CHF", exchangeRate: 95.67 }
   ];
 
   useEffect(() => {
@@ -42,8 +42,8 @@ export default function CurrencyConverter({ onConvert }: CurrencyConverterProps)
 
   useEffect(() => {
     if (amount && exchangeRates[fromCurrency] && exchangeRates[toCurrency]) {
-      const usdAmount = amount / exchangeRates[fromCurrency];
-      const converted = usdAmount * exchangeRates[toCurrency];
+      const inrAmount = amount / exchangeRates[fromCurrency];
+      const converted = inrAmount * exchangeRates[toCurrency];
       setConvertedAmount(converted);
     }
   }, [amount, fromCurrency, toCurrency, exchangeRates]);

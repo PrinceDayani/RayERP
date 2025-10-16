@@ -107,7 +107,7 @@ export const createBudget = async (req: Request, res: Response) => {
       projectId: projectId || new mongoose.Types.ObjectId(),
       projectName: projectName || 'Budget',
       totalBudget: Number(totalBudget) || 0,
-      currency: currency || 'USD',
+      currency: currency || 'INR',
       categories: processedCategories,
       createdBy: userId,
       status: 'draft',
