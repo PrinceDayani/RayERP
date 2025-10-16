@@ -30,7 +30,7 @@ export {
   settingsAPIDefault as settingsAPI,
   adminAPIDefault as adminAPI, // Added admin API export
   projectsAPIDefault as projectsAPI,
-  budgetAPIDefault as budgetAPI
+  budgetAPIDefault as budgetAPI,
   activityAPIDefault as activityAPI
 };
 
@@ -61,8 +61,9 @@ export * from './projectsAPI';
 
 // Budget API exports
 export * from './budgetAPI';
-// Activity API exports
-export * from './activityAPI';
+
+// Activity API exports (excluding ActivityLog to avoid conflict)
+export { default as activityAPIDefault } from './activityAPI';
 
 // Export a combined API object as default
 const combinedAPI = {
@@ -75,7 +76,7 @@ const combinedAPI = {
   settings: settingsAPIDefault,
   admin: adminAPIDefault, // Added admin to combined API
   projects: projectsAPIDefault,
-  budgets: budgetAPIDefault
+  budgets: budgetAPIDefault,
   activity: activityAPIDefault
 };
 

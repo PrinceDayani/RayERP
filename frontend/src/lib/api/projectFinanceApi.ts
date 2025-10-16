@@ -138,7 +138,7 @@ export const projectFinanceApi = {
     
     const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/ledger-entries?${params}`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
         'Content-Type': 'application/json'
       }
     });
@@ -159,7 +159,7 @@ export const projectFinanceApi = {
     
     const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/journal-entries?${params}`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
         'Content-Type': 'application/json'
       }
     });
@@ -172,7 +172,7 @@ export const projectFinanceApi = {
     const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/journal-entries`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(entryData)
@@ -186,7 +186,7 @@ export const projectFinanceApi = {
     const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/journal-entries/${entryId}`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(entryData)
@@ -200,7 +200,7 @@ export const projectFinanceApi = {
     const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/journal-entries/${entryId}/post`, {
       method: 'PATCH',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
         'Content-Type': 'application/json'
       }
     });
@@ -213,7 +213,7 @@ export const projectFinanceApi = {
     const response = await fetch(`${API_BASE}/api/project-ledger/${projectId}/journal-entries/${entryId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
         'Content-Type': 'application/json'
       }
     });

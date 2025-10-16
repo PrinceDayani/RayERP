@@ -20,7 +20,6 @@ import {
   BarChart3
 } from 'lucide-react';
 import Link from 'next/link';
-import Layout from '@/components/Layout';
 import { employeesAPI } from '@/lib/api';
 import attendanceAPI from '@/lib/api/attendanceAPI';
 import leaveAPI from '@/lib/api/leaveAPI';
@@ -186,7 +185,6 @@ export default function EmployeeDetailPage() {
 
   if (loading) {
     return (
-      <Layout>
         <div className="p-6 space-y-6">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/employees">
@@ -200,13 +198,11 @@ export default function EmployeeDetailPage() {
             </div>
           </div>
         </div>
-      </Layout>
     );
   }
 
   if (!employee) {
     return (
-      <Layout>
         <div className="p-6 space-y-6">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/employees">
@@ -220,12 +216,10 @@ export default function EmployeeDetailPage() {
             </div>
           </div>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -528,6 +522,5 @@ export default function EmployeeDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
   );
 }

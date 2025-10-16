@@ -177,3 +177,4 @@ transactionSchema.pre('save', function(next) {
 });
 
 export const Transaction = mongoose.model<ITransaction>('Transaction', transactionSchema);
+export default Transaction;

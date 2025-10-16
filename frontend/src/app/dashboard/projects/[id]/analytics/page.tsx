@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -109,17 +108,14 @@ const ProjectAnalytics = () => {
 
   if (!isAuthenticated || loading) {
     return (
-      <Layout>
         <div className="flex justify-center items-center h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-      </Layout>
     );
   }
 
   if (!project) {
     return (
-      <Layout>
         <div className="flex flex-col items-center justify-center p-8">
           <h2 className="text-xl font-semibold mb-2">Project Not Found</h2>
           <Button onClick={() => router.push("/dashboard/projects")}>
@@ -127,12 +123,10 @@ const ProjectAnalytics = () => {
             Back to Projects
           </Button>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="flex-1 space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -428,7 +422,6 @@ const ProjectAnalytics = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
   );
 };
 

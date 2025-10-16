@@ -81,12 +81,15 @@ export default function Layout({ children }: LayoutProps) {
         { path: "/dashboard/budgets", name: "Budgets", icon: "currency-dollar" } as MenuItem,
         { path: "/dashboard/budgets/templates", name: "Templates", icon: "clipboard-list" } as MenuItem,
         { path: "/dashboard/budgets/approvals", name: "Approvals", icon: "check-circle", access: isManager } as MenuItem,
-        { path: "/dashboard/budgets/analytics", name: "Analytics", icon: "chart-bar", access: isManager } as MenuItem
+        { path: "/dashboard/budgets/analytics", name: "Analytics", icon: "chart-bar", access: isManager } as MenuItem,
+      ]
+    },
+    {
       title: "Finance",
       items: [
         { path: "/dashboard/finance", name: "General Ledger", icon: "currency-dollar" } as MenuItem,
-      ]
-    },
+      ]},
+      
     {
       title: "Analytics",
       items: [

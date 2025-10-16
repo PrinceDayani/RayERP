@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Layout from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProjectProfitLoss from "@/components/projects/finance/ProjectProfitLoss";
 import ProjectTrialBalance from "@/components/projects/finance/ProjectTrialBalance";
@@ -11,7 +10,6 @@ import ProjectLedger from "@/components/projects/finance/ProjectLedger";
 
 const DemoFinancePage = () => {
   return (
-    <Layout>
       <div className="flex-1 space-y-6 p-6">
         <div>
           <h1 className="text-3xl font-bold">Demo Project Finance</h1>
@@ -48,7 +46,6 @@ const DemoFinancePage = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
   );
 };
 

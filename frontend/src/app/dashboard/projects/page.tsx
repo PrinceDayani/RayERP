@@ -22,7 +22,7 @@ import {
   MessageSquare,
   Clock,
   DollarSign,
-  Edit
+  Edit,
   FileText,
   Download,
   Filter
@@ -192,6 +192,23 @@ const ProjectManagementDashboard: React.FC = () => {
       toast({
         title: "Error",
         description: "Failed to load project data",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleQuickStatusUpdate = async (projectId: string, newStatus: string): Promise<void> => {
+    try {
+      await updateProject(projectId, { status: newStatus as 'planning' | 'active' | 'on-hold' | 'completed' | 'cancelled' });
+      setProjects(prev => prev.map(p => p._id === projectId ? { ...p, status: newStatus as 'planning' | 'active' | 'on-hold' | 'completed' | 'cancelled' } : p));
+      toast({
+        title: "Success",
+        description: "Project status updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update project status",
         variant: "destructive",
       });
     }
@@ -457,7 +474,7 @@ const ProjectManagementDashboard: React.FC = () => {
                             className="text-blue-600"
                             strokeWidth="8"
                             strokeDasharray={2 * Math.PI * 56}
-                            strokeDashoffset={2 * Math.PI * 56 * (1 - (projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length / 100))}
+                            strokeDashoffset={2 * Math.PI * 56 * (1 - (projects.reduce((sum: number, p) => sum + (p.progress || 0), 0) / projects.length / 100))}
                             strokeLinecap="round"
                             stroke="currentColor"
                             fill="transparent"
@@ -468,7 +485,7 @@ const ProjectManagementDashboard: React.FC = () => {
                           />
                         </svg>
                         <span className="absolute text-3xl font-bold">
-                          {projects.length > 0 ? (projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length).toFixed(0) : 0}%
+                          {projects.length > 0 ? (projects.reduce((sum: number, p) => sum + (p.progress || 0), 0) / projects.length).toFixed(0) : 0}%
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground mt-2">Across all projects</p>
@@ -476,9 +493,6 @@ const ProjectManagementDashboard: React.FC = () => {
                   </CardContent>
                 </Card>
               </div>
-            </div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* Recent Projects */}
@@ -590,13 +604,13 @@ const ProjectManagementDashboard: React.FC = () => {
                           <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
                             <p className="text-xs text-muted-foreground">Total Budget</p>
                             <p className="text-xl font-bold">
-                              ₹{projects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}
+                              ₹{projects.reduce((sum: number, p) => sum + (p.budget || 0), 0).toLocaleString()}
                             </p>
                           </div>
                           <div className="p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
                             <p className="text-xs text-muted-foreground">Total Spent</p>
                             <p className="text-xl font-bold">
-                              ₹{projects.reduce((sum, p) => sum + (p.spentBudget || 0), 0).toLocaleString()}
+                              ₹{projects.reduce((sum: number, p) => sum + (p.spentBudget || 0), 0).toLocaleString()}
                             </p>
                           </div>
                         </div>
@@ -604,15 +618,15 @@ const ProjectManagementDashboard: React.FC = () => {
                           <div className="flex justify-between text-sm mb-2">
                             <span>Overall Utilization</span>
                             <span className="font-medium">
-                              {projects.reduce((sum, p) => sum + (p.budget || 0), 0) > 0
-                                ? ((projects.reduce((sum, p) => sum + (p.spentBudget || 0), 0) / projects.reduce((sum, p) => sum + (p.budget || 0), 0)) * 100).toFixed(1)
+                              {projects.reduce((sum: number, p) => sum + (p.budget || 0), 0) > 0
+                                ? ((projects.reduce((sum: number, p) => sum + (p.spentBudget || 0), 0) / projects.reduce((sum: number, p) => sum + (p.budget || 0), 0)) * 100).toFixed(1)
                                 : 0}%
                             </span>
                           </div>
                           <Progress 
                             value={
-                              projects.reduce((sum, p) => sum + (p.budget || 0), 0) > 0
-                                ? (projects.reduce((sum, p) => sum + (p.spentBudget || 0), 0) / projects.reduce((sum, p) => sum + (p.budget || 0), 0)) * 100
+                              projects.reduce((sum: number, p) => sum + (p.budget || 0), 0) > 0
+                                ? (projects.reduce((sum: number, p) => sum + (p.spentBudget || 0), 0) / projects.reduce((sum: number, p) => sum + (p.budget || 0), 0)) * 100
                                 : 0
                             } 
                             className="h-3" 
@@ -622,7 +636,7 @@ const ProjectManagementDashboard: React.FC = () => {
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">Remaining</span>
                             <span className="text-lg font-bold text-green-600">
-                              ₹{(projects.reduce((sum, p) => sum + (p.budget || 0), 0) - projects.reduce((sum, p) => sum + (p.spentBudget || 0), 0)).toLocaleString()}
+                              ₹{(projects.reduce((sum: number, p) => sum + (p.budget || 0), 0) - projects.reduce((sum: number, p) => sum + (p.spentBudget || 0), 0)).toLocaleString()}
                             </span>
                           </div>
                         </div>
@@ -805,7 +819,7 @@ const ProjectManagementDashboard: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Total Budget</p>
-                          <p className="text-2xl font-bold">${projects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}</p>
+                          <p className="text-2xl font-bold">${projects.reduce((sum: number, p) => sum + (p.budget || 0), 0).toLocaleString()}</p>
                         </div>
                         <DollarSign className="h-8 w-8 text-green-600" />
                       </div>
@@ -827,7 +841,7 @@ const ProjectManagementDashboard: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm text-muted-foreground">Avg. Budget</p>
-                          <p className="text-2xl font-bold">${projects.length > 0 ? Math.round(projects.reduce((sum, p) => sum + (p.budget || 0), 0) / projects.length).toLocaleString() : 0}</p>
+                          <p className="text-2xl font-bold">${projects.length > 0 ? Math.round(projects.reduce((sum: number, p) => sum + (p.budget || 0), 0) / projects.length).toLocaleString() : 0}</p>
                         </div>
                         <BarChart3 className="h-8 w-8 text-purple-600" />
                       </div>
@@ -1716,7 +1730,7 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
                 <CardContent className="p-6">
                   <div className="space-y-4">
                     <div>
-                      <h3 className="font-semibold">{project.title}</h3>
+                      <h3 className="font-semibold">{project.name}</h3>
                       <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
                     </div>
                     

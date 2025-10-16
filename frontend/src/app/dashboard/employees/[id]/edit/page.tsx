@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
-import Layout from '@/components/Layout';
 import { employeesAPI } from '@/lib/api';
 import { toast } from '@/components/ui/use-toast';
 
@@ -139,7 +138,6 @@ export default function EditEmployeePage() {
 
   if (fetchLoading) {
     return (
-      <Layout>
         <div className="p-6 space-y-6">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/employees">
@@ -153,12 +151,10 @@ export default function EditEmployeePage() {
             </div>
           </div>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/employees">
@@ -392,6 +388,6 @@ export default function EditEmployeePage() {
           </div>
         </form>
       </div>
-    </Layout>
+    
   );
 }

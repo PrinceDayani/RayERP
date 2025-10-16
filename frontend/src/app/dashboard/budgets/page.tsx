@@ -11,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Eye, Edit, Trash2, DollarSign, TrendingUp, Clock, CheckCircle, XCircle, Send, RefreshCw } from 'lucide-react';
 import { getAllBudgets, createBudget, deleteBudget, submitForApproval, getBudgetAnalytics, getPendingApprovals, syncProjectBudgets } from '@/lib/api/budgetAPI';
 import { Budget } from '@/types/budget';
-import Layout from '@/components/Layout';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -157,7 +156,6 @@ export default function BudgetsPage() {
   }
 
   return (
-    <Layout>
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Budget Management</h1>
@@ -407,6 +405,5 @@ export default function BudgetsPage() {
           </div>
         )}
       </div>
-    </Layout>
   );
 }

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Account from '../models/Account';
+import { Account } from '../models/Account';
 
 export const createAccount = async (req: Request, res: Response) => {
   try {

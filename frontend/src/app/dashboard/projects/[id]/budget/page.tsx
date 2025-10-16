@@ -9,7 +9,6 @@ import { Progress } from "@/components/ui/progress";
 import { Plus, Edit, DollarSign, TrendingUp, AlertTriangle } from "lucide-react";
 import { Budget } from "@/types/budget";
 import BudgetDialog from "@/components/budget/BudgetDialog";
-import Layout from "@/components/Layout";
 
 export default function ProjectBudgetPage() {
   const params = useParams();
@@ -129,7 +128,6 @@ export default function ProjectBudgetPage() {
   }
 
   return (
-    <Layout>
       <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -306,6 +304,5 @@ export default function ProjectBudgetPage() {
         />
       )}
       </div>
-    </Layout>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, TrendingUp, TrendingDown } from "lucide-react";
@@ -51,7 +50,6 @@ const CashFlowPage = () => {
   };
 
   return (
-    <Layout>
       <div className="flex-1 space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -216,7 +214,6 @@ const CashFlowPage = () => {
           </Card>
         )}
       </div>
-    </Layout>
   );
 };
 

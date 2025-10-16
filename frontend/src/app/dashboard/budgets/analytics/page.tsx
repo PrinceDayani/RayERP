@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Budget } from "@/types/budget";
 import BudgetAnalytics from "@/components/budget/BudgetAnalytics";
-import Layout from "@/components/Layout";
 
 export default function BudgetAnalyticsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -78,7 +77,6 @@ export default function BudgetAnalyticsPage() {
   }
 
   return (
-    <Layout>
       <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Budget Analytics</h1>
@@ -101,6 +99,5 @@ export default function BudgetAnalyticsPage() {
 
       <BudgetAnalytics budgets={filteredBudgets} />
       </div>
-    </Layout>
   );
 }

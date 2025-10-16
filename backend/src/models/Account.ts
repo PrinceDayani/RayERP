@@ -62,6 +62,15 @@ const AccountSchema = new Schema<IAccount>({
   description: {
     type: String,
     trim: true
+  },
+  projectId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project'
+  },
+  createdBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   }
 }, {
   timestamps: true
@@ -72,4 +81,6 @@ AccountSchema.index({ type: 1 });
 AccountSchema.index({ isActive: 1 });
 AccountSchema.index({ type: 1, isActive: 1 });
 
-export const Account = mongoose.model<IAccount>('Account', AccountSchema);
+const Account = mongoose.model<IAccount>('Account', AccountSchema);
+export { Account };
+export default Account;
