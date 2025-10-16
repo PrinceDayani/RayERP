@@ -1,25 +1,103 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { generalLedgerApi } from '@/lib/api/finance/generalLedgerApi';
+import { Account, JournalEntry } from '@/types/finance/generalLedger.types';
 
 export const useGeneralLedger = () => {
-  const [accounts, setAccounts] = useState([]);
-  const [journalEntries, setJournalEntries] = useState([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [trialBalance, setTrialBalance] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
       const data = await generalLedgerApi.getAccounts();
       setAccounts(data || []);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error fetching accounts';
+      setError(errorMessage);
       console.error('Error fetching accounts:', error);
-      setAccounts([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  return { accounts, journalEntries, loading, fetchAccounts };
+  const createAccount = useCallback(async (accountData: Partial<Account>) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const newAccount = await generalLedgerApi.createAccount(accountData);
+      setAccounts(prev => [...prev, newAccount]);
+      return newAccount;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error creating account';
+      setError(errorMessage);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchJournalEntries = useCallback(async (params?: any) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await generalLedgerApi.getJournalEntries(params);
+      setJournalEntries(data.journalEntries || []);
+      return data;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error fetching journal entries';
+      setError(errorMessage);
+      console.error('Error fetching journal entries:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const createJournalEntry = useCallback(async (entryData: any) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const newEntry = await generalLedgerApi.createJournalEntry(entryData);
+      setJournalEntries(prev => [newEntry, ...prev]);
+      return newEntry;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error creating journal entry';
+      setError(errorMessage);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchTrialBalance = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await generalLedgerApi.getTrialBalance();
+      setTrialBalance(data);
+      return data;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error fetching trial balance';
+      setError(errorMessage);
+      console.error('Error fetching trial balance:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    accounts,
+    journalEntries,
+    trialBalance,
+    loading,
+    error,
+    fetchAccounts,
+    createAccount,
+    fetchJournalEntries,
+    createJournalEntry,
+    fetchTrialBalance
+  };
 };

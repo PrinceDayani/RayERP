@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -210,23 +209,20 @@ const ProjectManagementDashboard: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <Layout>
-        <div className="flex h-screen items-center justify-center">
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <h2 className="text-xl font-semibold mb-2">Access Required</h2>
-              <p className="text-muted-foreground mb-4">Please log in to access Project Management</p>
-              <Button onClick={() => router.push("/login")}>Login</Button>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
+      <div className="flex h-screen items-center justify-center">
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Access Required</h2>
+            <p className="text-muted-foreground mb-4">Please log in to access Project Management</p>
+            <Button onClick={() => router.push("/login")}>Login</Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <div className="flex-1 space-y-6 p-6">
+    <div className="flex-1 space-y-6 p-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
@@ -680,8 +676,7 @@ const ProjectManagementDashboard: React.FC = () => {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-    </Layout>
+    </div>
   );
 };
 

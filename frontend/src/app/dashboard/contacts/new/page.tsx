@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import ContactForm from '@/components/Forms/ContactForm';
 import { createContact, Contact } from '@/lib/api/index';
-import Layout from '@/components/Layout';
 
 export default function NewContactPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +22,7 @@ export default function NewContactPage() {
     }
   };
 
-  return (<Layout>
+  return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <h1 className="text-2xl font-bold mb-6">Add New Contact</h1>
       
@@ -36,6 +35,6 @@ export default function NewContactPage() {
       <div className="bg-white shadow-md rounded-lg p-6">
         <ContactForm onSubmit={handleSubmit} isLoading={isLoading} />
       </div>
-    </div></Layout>
+    </div>
   );
 }

@@ -22,7 +22,7 @@ import {
   FileText,
   AlertTriangle
 } from 'lucide-react';
-import Layout from '@/components/Layout';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -363,8 +363,7 @@ export default function ContactsPage() {
   };
 
   return (
-    <Layout>
-      <div className="p-6">
+    <div className="p-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
@@ -766,7 +765,6 @@ export default function ContactsPage() {
             )}
           </>
         )}
-      </div>
       
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!contactToDelete} onOpenChange={() => setContactToDelete(null)}>
@@ -788,6 +786,6 @@ export default function ContactsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Layout>
+    </div>
   );
 }

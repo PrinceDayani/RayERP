@@ -12,12 +12,13 @@ export const useSocket = (url: string = process.env.NEXT_PUBLIC_API_URL || 'http
   useEffect(() => {
     if (!socketRef.current) {
       socketRef.current = io(url, {
-        transports: ['websocket', 'polling'],
+        transports: ['polling'],
         withCredentials: true,
+        upgrade: false,
       });
 
       // Authenticate socket connection
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       if (token) {
         socketRef.current.emit('authenticate', token);
       }

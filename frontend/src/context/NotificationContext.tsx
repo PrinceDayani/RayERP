@@ -40,7 +40,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Setup socket connection
   useEffect(() => {
     // Check if user is authenticated by looking for token
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     if (!token) return;
 
     if (!process.env.NEXT_PUBLIC_API_URL) {

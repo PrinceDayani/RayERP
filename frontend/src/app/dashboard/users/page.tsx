@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import Layout from "@/components/Layout";
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import RoleGuard from '@/components/RoleGuard';
 import {
@@ -242,9 +241,8 @@ const UserManagement = () => {
   };
 
   return (
-    <Layout>
-      <RoleGuard minimumRole={UserRole.ADMIN}>
-        <div className="p-6">
+    <RoleGuard minimumRole={UserRole.ADMIN}>
+      <div className="p-6">
           <Card className="shadow-sm">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
               <div>
@@ -558,9 +556,8 @@ const UserManagement = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </RoleGuard>
-    </Layout>
+      </div>
+    </RoleGuard>
   );
 };
 

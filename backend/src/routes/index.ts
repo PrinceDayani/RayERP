@@ -16,6 +16,7 @@ import employeeReportRoutes from './employeeReport.routes';
 import activityRoutes from './activity.routes';
 import rbacRoutes from './rbac.routes';
 import projectLedgerRoutes from './projectLedger.routes';
+import generalLedgerRoutes from './generalLedger.routes';
 
 
 
@@ -37,6 +38,7 @@ router.use('/employee-reports', employeeReportRoutes); // Add employee report ro
 router.use('/activity', activityRoutes); // Add activity routes
 router.use('/rbac', rbacRoutes); // Add RBAC routes
 router.use('/project-ledger', projectLedgerRoutes); // Add project ledger routes
+router.use('/general-ledger', generalLedgerRoutes); // Add General Ledger routes
 
 
 

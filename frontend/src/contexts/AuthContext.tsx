@@ -64,11 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         socket = io(API_URL, {
           forceNew: true,
-          transports: ['websocket', 'polling'],
-          timeout: 5000,
+          transports: ['polling', 'websocket'],
+          timeout: 10000,
           reconnection: true,
-          reconnectionAttempts: 3,
-          reconnectionDelay: 1000
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          upgrade: true
         });
         
         socket.on('connect', () => {
@@ -82,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         
         socket.on('connect_error', (error) => {
-          console.warn('Socket connection failed:', error.message);
+          // Silently handle socket errors
         });
         
         socket.on('disconnect', (reason) => {

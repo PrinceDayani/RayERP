@@ -76,6 +76,12 @@ export default function Layout({ children }: LayoutProps) {
       ]
     },
     {
+      title: "Finance",
+      items: [
+        { path: "/dashboard/finance", name: "General Ledger", icon: "currency-dollar" } as MenuItem,
+      ]
+    },
+    {
       title: "Analytics",
       items: [
         { path: "/dashboard/reports", name: "Reports", icon: "chart-bar", access: isManager } as MenuItem,
@@ -243,9 +249,11 @@ export default function Layout({ children }: LayoutProps) {
             {!collapsed && (
               <div className="flex items-center space-x-2">
                 <div className="flex items-center justify-center">
-                  <img src={logo.src} alt="Company Logo" className="h-10" />
+                  <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center">
+                    <span className="text-primary-foreground font-bold text-lg">R</span>
+                  </div>
+                  <span className="ml-2 text-lg font-bold text-foreground">RayERP</span>
                 </div>
-            
               </div>
             )}
             <Button

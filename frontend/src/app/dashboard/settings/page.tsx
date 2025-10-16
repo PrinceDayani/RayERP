@@ -9,7 +9,6 @@ import ProfileSettings from '@/components/settings/ProfileSettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 import AppearanceSettings from '@/components/settings/AppearanceSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
-import Layout from '@/components/Layout';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
@@ -19,7 +18,7 @@ export default function SettingsPage() {
     setActiveTab(value);
   };
 
-  return (<Layout>
+  return (
     <div className="container mx-auto py-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Settings</h1>
@@ -83,6 +82,5 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
-    </Layout>
   );
 }
