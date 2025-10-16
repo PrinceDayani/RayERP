@@ -15,6 +15,13 @@ import {
   getProjectTimeline,
   updateProjectStatus
 } from '../controllers/projectController';
+import {
+  getProjectFiles,
+  uploadProjectFile,
+  downloadProjectFile,
+  deleteProjectFile,
+  upload
+} from '../controllers/projectFileController';
 import { authenticateToken } from '../middleware/auth.middleware';
 import {
   validateObjectId,
@@ -68,6 +75,20 @@ router.patch('/:id/status',
   validateRequiredFields(['status']),
   validateProjectStatus,
   updateProjectStatus
+);
+
+// File management routes
+router.get('/:id/files', validateObjectId(), getProjectFiles);
+router.post('/:id/files', validateObjectId(), upload.single('file'), uploadProjectFile);
+router.get('/:id/files/:fileId/download', 
+  validateObjectId('id'),
+  validateObjectId('fileId'),
+  downloadProjectFile
+);
+router.delete('/:id/files/:fileId', 
+  validateObjectId('id'),
+  validateObjectId('fileId'),
+  deleteProjectFile
 );
 
 export default router;

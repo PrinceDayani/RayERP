@@ -14,7 +14,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-// import logo from "../../public/RAYlogo.webp";
+import BackendStatus from "@/components/BackendStatus";
+import logo from "../../public/RAYlogo.webp";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -397,6 +398,9 @@ export default function Layout({ children }: LayoutProps) {
           <Navbar toggleSidebar={toggleSidebar} isMobile={isMobile} />
         </div>
         <main className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            <BackendStatus />
+          </div>
           {children}
         </main>
       </div>

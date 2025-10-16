@@ -9,6 +9,11 @@ import TaskManagement from "@/components/projects/TaskManagement";
 import ProjectTimeline from "@/components/projects/ProjectTimeline";
 import ProjectFiles from "@/components/projects/ProjectFiles";
 import ProjectActivity from "@/components/projects/ProjectActivity";
+import ProjectProfitLoss from "@/components/projects/finance/ProjectProfitLoss";
+import ProjectTrialBalance from "@/components/projects/finance/ProjectTrialBalance";
+import ProjectBalanceSheet from "@/components/projects/finance/ProjectBalanceSheet";
+import ProjectCashFlow from "@/components/projects/finance/ProjectCashFlow";
+import ProjectLedger from "@/components/projects/finance/ProjectLedger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,10 +34,20 @@ const ProjectDetailPage = () => {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const projectId = params.id as string;
+  const projectId = params?.id as string;
   
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('tasks');
+
+  useEffect(() => {
+    // Check for tab parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && projectId) {
@@ -308,11 +323,12 @@ const ProjectDetailPage = () => {
         </div>
 
         {/* Tabs for Tasks and Other Details */}
-        <Tabs defaultValue="tasks" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
+            <TabsTrigger value="finance">Finance</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
 
@@ -326,6 +342,38 @@ const ProjectDetailPage = () => {
 
           <TabsContent value="files">
             <ProjectFiles projectId={projectId} />
+          </TabsContent>
+
+          <TabsContent value="finance">
+            <Tabs defaultValue="profit-loss" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="profit-loss">Profit & Loss</TabsTrigger>
+                <TabsTrigger value="trial-balance">Trial Balance</TabsTrigger>
+                <TabsTrigger value="balance-sheet">Balance Sheet</TabsTrigger>
+                <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
+                <TabsTrigger value="ledger">Ledger & Journal</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="profit-loss">
+                <ProjectProfitLoss projectId={projectId} />
+              </TabsContent>
+
+              <TabsContent value="trial-balance">
+                <ProjectTrialBalance projectId={projectId} />
+              </TabsContent>
+
+              <TabsContent value="balance-sheet">
+                <ProjectBalanceSheet projectId={projectId} />
+              </TabsContent>
+
+              <TabsContent value="cash-flow">
+                <ProjectCashFlow projectId={projectId} />
+              </TabsContent>
+
+              <TabsContent value="ledger">
+                <ProjectLedger projectId={projectId} />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="activity">

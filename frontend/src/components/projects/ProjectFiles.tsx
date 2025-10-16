@@ -190,7 +190,7 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
           ) : (
             <div className="grid gap-4">
               {filteredFiles.map((file) => (
-              <Card key={file.id} className="hover:shadow-md transition-shadow">
+              <Card key={file._id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
                     {/* File Icon */}
