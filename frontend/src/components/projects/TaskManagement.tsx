@@ -204,17 +204,18 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
 
   const handleStatusChange = async (taskId: string, newStatus: Task["status"]) => {
     try {
-      await tasksAPI.updateStatus(taskId, newStatus);
+      const userId = user?._id || user?.id;
+      await tasksAPI.updateStatus(taskId, newStatus, userId);
       toast({
         title: "Success",
         description: "Task status updated",
       });
       fetchTasks();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating status:", error);
       toast({
         title: "Error",
-        description: "Failed to update task status",
+        description: error.response?.data?.message || "Failed to update task status",
         variant: "destructive",
       });
     }
@@ -240,7 +241,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
       description: task.description,
       status: task.status,
       priority: task.priority,
-      assignedTo: task.assignedTo,
+      assignedTo: typeof task.assignedTo === 'object' ? task.assignedTo._id : task.assignedTo,
       dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
       estimatedHours: task.estimatedHours || 0,
       tags: task.tags || []

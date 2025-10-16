@@ -1,132 +1,75 @@
 // frontend/src/components/settings/ProfileSettings.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
-import { getSettings, bulkUpdateSettings } from '@/lib/api/index';
-import { SettingScope, UserProfileSettings } from '@/types/settings';
+import { useRealTimeSetting } from '@/lib/realTimeSettings';
+import { CheckCircle } from 'lucide-react';
+
+interface UserProfileSettings {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  jobTitle?: string;
+  bio?: string;
+}
 
 export default function ProfileSettings() {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
   
-  // Create a simpler form handling approach without react-hook-form
-  const [formData, setFormData] = useState<UserProfileSettings>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    jobTitle: '',
-    bio: ''
-  });
+  // Real-time settings with auto-save
+  const [firstName, setFirstName, firstNameLoading] = useRealTimeSetting('firstName', '');
+  const [lastName, setLastName, lastNameLoading] = useRealTimeSetting('lastName', '');
+  const [email, setEmail, emailLoading] = useRealTimeSetting('email', '');
+  const [phone, setPhone, phoneLoading] = useRealTimeSetting('phone', '');
+  const [jobTitle, setJobTitle, jobTitleLoading] = useRealTimeSetting('jobTitle', '');
+  const [bio, setBio, bioLoading] = useRealTimeSetting('bio', '');
   
-  const [formErrors, setFormErrors] = useState<Partial<Record<keyof UserProfileSettings, string>>>({});
+  const isLoading = firstNameLoading || lastNameLoading || emailLoading || phoneLoading || jobTitleLoading || bioLoading;
+  const [saveIndicator, setSaveIndicator] = React.useState(false);
   
-  // Load existing profile settings
-  useEffect(() => {
-    async function loadProfileSettings() {
-      try {
-        setIsLoading(true);
-        const settings = await getSettings(SettingScope.USER, 'profile', 'keyValue');
-        
-        if (settings && settings.profile) {
-          setFormData(settings.profile as UserProfileSettings);
-        }
-      } catch (error) {
-        console.error('Failed to load profile settings:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load profile settings",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    
-    loadProfileSettings();
-  }, [toast]);
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user types
-    if (formErrors[name as keyof UserProfileSettings]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
-    }
+  // Show save indicator when data changes
+  const showSaveIndicator = () => {
+    setSaveIndicator(true);
+    setTimeout(() => setSaveIndicator(false), 2000);
   };
   
-  const validateForm = (): boolean => {
-    const errors: Partial<Record<keyof UserProfileSettings, string>> = {};
-    
-    if (!formData.firstName) {
-      errors.firstName = "First name is required";
-    }
-    
-    if (!formData.lastName) {
-      errors.lastName = "Last name is required";
-    }
-    
-    if (!formData.email) {
-      errors.email = "Email is required";
-    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
-      errors.email = "Invalid email address";
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+  const handleInputChange = (setter: (value: string) => void) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setter(e.target.value);
+    showSaveIndicator();
   };
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // Save all profile settings
-      await bulkUpdateSettings([
-        { key: 'profile', value: formData }
-      ], SettingScope.USER);
-      
-      toast({
-        title: "Success",
-        description: "Profile settings updated successfully",
-      });
-    } catch (error) {
-      console.error('Failed to update profile settings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile settings",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
+  if (isLoading) {
+    return <div className="animate-pulse space-y-6">
+      <div className="h-24 w-24 bg-gray-200 rounded-full"></div>
+      <div className="space-y-4">
+        <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        <div className="h-10 bg-gray-200 rounded"></div>
+      </div>
+    </div>;
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-6">
+      {/* Auto-save indicator */}
+      {saveIndicator && (
+        <div className="flex items-center gap-2 text-green-600 text-sm">
+          <CheckCircle className="h-4 w-4" />
+          Auto-saved
+        </div>
+      )}
+      
       {/* Profile Avatar */}
       <div className="flex items-center space-x-4">
         <Avatar className="h-24 w-24">
           <AvatarImage src="/placeholder-avatar.png" />
-          <AvatarFallback>CN</AvatarFallback>
+          <AvatarFallback>{firstName?.[0]}{lastName?.[0]}</AvatarFallback>
         </Avatar>
         <Button variant="outline" type="button">Change Avatar</Button>
       </div>
@@ -137,26 +80,20 @@ export default function ProfileSettings() {
           <Label htmlFor="firstName">First Name</Label>
           <Input
             id="firstName"
-            name="firstName"
-            value={formData.firstName}
-            onChange={handleInputChange}
+            value={firstName}
+            onChange={handleInputChange(setFirstName)}
+            placeholder="Enter first name"
           />
-          {formErrors.firstName && (
-            <p className="text-sm text-red-500">{formErrors.firstName}</p>
-          )}
         </div>
         
         <div className="space-y-2">
           <Label htmlFor="lastName">Last Name</Label>
           <Input
             id="lastName"
-            name="lastName"
-            value={formData.lastName}
-            onChange={handleInputChange}
+            value={lastName}
+            onChange={handleInputChange(setLastName)}
+            placeholder="Enter last name"
           />
-          {formErrors.lastName && (
-            <p className="text-sm text-red-500">{formErrors.lastName}</p>
-          )}
         </div>
       </div>
       
@@ -166,23 +103,20 @@ export default function ProfileSettings() {
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
-            name="email"
             type="email"
-            value={formData.email}
-            onChange={handleInputChange}
+            value={email}
+            onChange={handleInputChange(setEmail)}
+            placeholder="Enter email address"
           />
-          {formErrors.email && (
-            <p className="text-sm text-red-500">{formErrors.email}</p>
-          )}
         </div>
         
         <div className="space-y-2">
           <Label htmlFor="phone">Phone Number</Label>
           <Input
             id="phone"
-            name="phone"
-            value={formData.phone || ''}
-            onChange={handleInputChange}
+            value={phone}
+            onChange={handleInputChange(setPhone)}
+            placeholder="Enter phone number"
           />
         </div>
       </div>
@@ -192,9 +126,9 @@ export default function ProfileSettings() {
         <Label htmlFor="jobTitle">Job Title</Label>
         <Input
           id="jobTitle"
-          name="jobTitle"
-          value={formData.jobTitle || ''}
-          onChange={handleInputChange}
+          value={jobTitle}
+          onChange={handleInputChange(setJobTitle)}
+          placeholder="Enter job title"
         />
       </div>
       
@@ -203,17 +137,16 @@ export default function ProfileSettings() {
         <Label htmlFor="bio">Bio</Label>
         <Textarea
           id="bio"
-          name="bio"
           rows={4}
-          value={formData.bio || ''}
-          onChange={handleInputChange}
+          value={bio}
+          onChange={handleInputChange(setBio)}
+          placeholder="Tell us about yourself"
         />
       </div>
       
-      {/* Submit Button */}
-      <Button type="submit" disabled={isLoading}>
-        {isLoading ? "Saving..." : "Save Changes"}
-      </Button>
-    </form>
+      <div className="text-sm text-gray-500">
+        Changes are automatically saved as you type
+      </div>
+    </div>
   );
 }

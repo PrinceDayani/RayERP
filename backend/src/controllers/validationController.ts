@@ -1,159 +1,40 @@
 // project\backend\src\controllers\validationController.ts
 
 import { Request, Response } from 'express';
-import Inventory from '../models/Inventory';
-import Product from '../models/Product';
-import Customer from '../models/Customer';
-import { logger } from '../utils/logger';
+// import Inventory from '../models/Inventory';
+// import Product from '../models/Product';
+// import Customer from '../models/Customer';
+// import { logger } from '../utils/logger';
+
+// Placeholder logger
+const logger = {
+  error: (message: string) => console.error(message)
+};
 
 // Validate inventory stock levels for a list of products
+// Commented out until Inventory model is created
+/*
 export const validateInventoryStock = async (req: Request, res: Response) => {
-  try {
-    const { products } = req.body;
-    
-    if (!products || !Array.isArray(products)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Products array is required'
-      });
-    }
-    
-    // Array to collect validation results
-    const results = [];
-    let allValid = true;
-    
-    // Check each product in the request
-    for (const item of products) {
-      const { product: productId, quantity } = item;
-      
-      if (!productId || !quantity) {
-        results.push({
-          productId,
-          valid: false,
-          message: 'Product ID and quantity are required',
-          requested: quantity,
-          available: 0
-        });
-        allValid = false;
-        continue;
-      }
-      
-      // Find inventory for this product
-      const inventory = await Inventory.findOne({ productId })
-        .populate('productId', 'name sku price');
-      
-      if (!inventory) {
-        // No inventory record found
-        results.push({
-          productId,
-          valid: false,
-          message: 'No inventory record found',
-          requested: quantity,
-          available: 0,
-          product: await Product.findById(productId).select('name sku')
-        });
-        allValid = false;
-        continue;
-      }
-      
-      // Check if quantity is available
-      if (inventory.quantity < quantity) {
-        results.push({
-          productId,
-          valid: false,
-          message: 'Insufficient stock',
-          requested: quantity,
-          available: inventory.quantity,
-          product: inventory.productId
-        });
-        allValid = false;
-      } else {
-        results.push({
-          productId,
-          valid: true,
-          message: 'Stock available',
-          requested: quantity,
-          available: inventory.quantity,
-          product: inventory.productId
-        });
-      }
-    }
-    
-    return res.status(200).json({
-      success: true,
-      valid: allValid,
-      results
-    });
-  } catch (error) {
-    logger.error(`Error validating inventory: ${error}`);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error while validating inventory'
-    });
-  }
+  return res.status(501).json({
+    success: false,
+    message: 'Inventory validation not implemented - missing Inventory and Product models'
+  });
 };
+*/
 
-// Validate customer credit status
+// TODO: Validate customer credit status
+// Disabled until Customer model is created
 export const validateCustomerCredit = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { orderAmount } = req.query;
-    
-    const customer = await Customer.findById(id);
-    
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
-    }
-    
-    // Basic validation results
-    const results = {
-      customerId: id,
-      name: customer.name,
-      active: customer.active,
-      creditStatus: customer.creditStatus || 'good',
-      creditLimit: customer.creditLimit || 0,
-      totalSpent: customer.totalSpent || 0,
-      warnings: [] as string[]
-    };
-    
-    // Check for inactive account
-    if (!customer.active) {
-      results.warnings.push('Customer account is inactive');
-    }
-    
-    // Check credit status
-    if (customer.creditStatus === 'hold') {
-      results.warnings.push('Customer credit is on hold');
-    } else if (customer.creditStatus === 'review') {
-      results.warnings.push('Customer credit needs review');
-    }
-    
-    // Check credit limit if order amount provided
-    if (orderAmount && customer.creditLimit) {
-      const amount = parseFloat(orderAmount as string);
-      if (!isNaN(amount) && amount > customer.creditLimit) {
-        results.warnings.push('Order amount exceeds customer credit limit');
-      }
-    }
-    
-    return res.status(200).json({
-      success: true,
-      valid: results.warnings.length === 0,
-      data: results
-    });
-  } catch (error) {
-    logger.error(`Error validating customer credit: ${error}`);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error while validating customer credit'
-    });
-  }
+  return res.status(501).json({
+    success: false,
+    message: 'Customer credit validation not implemented - missing Customer model'
+  });
 };
+*/
 
 // Pre-validate an entire order before submission
+// Commented out until required models are created
+/*
 export const validateOrder = async (req: Request, res: Response) => {
   try {
     const { customer, products, totalAmount } = req.body;
@@ -263,3 +144,4 @@ export const validateOrder = async (req: Request, res: Response) => {
     });
   }
 };
+*/

@@ -29,6 +29,7 @@ interface AuthContextType {
   hasMinimumRole: (requiredRole: UserRole) => boolean;
   updateUserRole: (newRole: string) => void;
   checkAuth: () => Promise<boolean>;
+  backendAvailable: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [backendAvailable, setBackendAvailable] = useState(true);
 
   // Load token from localStorage on mount
   useEffect(() => {
@@ -62,11 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         socket = io(API_URL, {
           forceNew: true,
-          transports: ['websocket', 'polling'],
-          timeout: 5000,
+          transports: ['polling', 'websocket'],
+          timeout: 10000,
           reconnection: true,
-          reconnectionAttempts: 3,
-          reconnectionDelay: 1000
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          upgrade: true
         });
         
         socket.on('connect', () => {
@@ -80,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         
         socket.on('connect_error', (error) => {
-          console.warn('Socket connection failed:', error.message);
+          // Silently handle socket errors
         });
         
         socket.on('disconnect', (reason) => {
@@ -101,19 +104,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const getCurrentUser = async (authToken: string) => {
     try {
+      // Add timeout and better error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const response = await fetch(`${API_URL}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
         },
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
           setUser(data.user);
           setIsAuthenticated(true);
+        } else {
+          // Invalid response format
+          localStorage.removeItem('auth-token');
+          setToken(null);
+          setIsAuthenticated(false);
         }
       } else {
         // Token is invalid, clear it
@@ -121,8 +136,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(null);
         setIsAuthenticated(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error getting current user:', err);
+      
+      // Handle specific error types
+      if (err.name === 'AbortError') {
+        console.error('Request timed out - backend server may not be running');
+        setBackendAvailable(false);
+        setError('Connection timeout. Please check if the backend server is running.');
+      } else if (err.message === 'Failed to fetch') {
+        console.error('Network error - check if backend server is running on', API_URL);
+        setBackendAvailable(false);
+        setError(`Cannot connect to backend server at ${API_URL}. Please ensure the server is running.`);
+      } else {
+        setBackendAvailable(true);
+      }
+      
+      // Clear auth state on any error
       localStorage.removeItem('auth-token');
       setToken(null);
       setIsAuthenticated(false);
@@ -275,13 +305,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!savedToken) return false;
     
     try {
+      // Add timeout for checkAuth as well
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
       const response = await fetch(`${API_URL}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${savedToken}`,
           'Content-Type': 'application/json'
         },
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
@@ -297,7 +334,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(null);
       setIsAuthenticated(false);
       return false;
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Auth check failed:', err);
+      
+      // Handle specific error types
+      if (err.name === 'AbortError') {
+        console.error('Auth check timed out');
+      } else if (err.message === 'Failed to fetch') {
+        console.error('Network error during auth check');
+      }
+      
       localStorage.removeItem('auth-token');
       setToken(null);
       setIsAuthenticated(false);
@@ -318,7 +364,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated,
       hasMinimumRole,
       updateUserRole,
-      checkAuth
+      checkAuth,
+      backendAvailable
     }}>
       {children}
     </AuthContext.Provider>
