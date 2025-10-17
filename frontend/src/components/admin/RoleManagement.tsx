@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PlusIcon, EditIcon, TrashIcon, SearchIcon } from "lucide-react";
-import { adminAPI } from "@/lib/api";
+import adminAPI from "@/lib/api/adminAPI";
 import { toast } from "@/components/ui/use-toast";
 
 interface Role {

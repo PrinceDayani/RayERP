@@ -138,7 +138,8 @@ const adminAPI = {
   getLogs: async (params?: any): Promise<ActivityLog[]> => {
     try {
       const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-      return await apiRequest(`/api/admin/logs${queryString}`);
+      const response = await apiRequest(`/api/activities${queryString}`);
+      return response.data || response;
     } catch (error) {
       console.error('Error fetching logs:', error);
       throw error;

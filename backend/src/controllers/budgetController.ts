@@ -119,7 +119,6 @@ export const createBudget = async (req: Request, res: Response) => {
     const budget = new Budget(budgetData);
     const savedBudget = await budget.save();
     
-    // Update project budget fields
     if (projectId && mongoose.Types.ObjectId.isValid(projectId)) {
       const totalSpent = processedCategories.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0);
       await Project.findByIdAndUpdate(projectId, {
@@ -192,7 +191,6 @@ export const updateBudget = async (req: Request, res: Response) => {
       { new: true, runValidators: true }
     );
 
-    // Update project budget fields
     if (updatedBudget && mongoose.Types.ObjectId.isValid(updatedBudget.projectId.toString())) {
       const totalSpent = processedCategories.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0);
       await Project.findByIdAndUpdate(updatedBudget.projectId, {
@@ -238,7 +236,6 @@ export const deleteBudget = async (req: Request, res: Response) => {
     const projectId = budget.projectId;
     await Budget.findByIdAndDelete(budgetId);
 
-    // Reset project budget fields
     if (projectId && mongoose.Types.ObjectId.isValid(projectId.toString())) {
       await Project.findByIdAndUpdate(projectId, {
         budget: 0,
@@ -391,31 +388,37 @@ export const getBudgetAnalytics = async (req: Request, res: Response) => {
     const filter: any = {};
     if (fiscalYear) filter.fiscalYear = fiscalYear;
 
-    const totalBudgets = await Budget.countDocuments(filter);
-    const pendingApprovals = await Budget.countDocuments({ ...filter, status: 'pending' });
-    const approvedBudgets = await Budget.countDocuments({ ...filter, status: 'approved' });
-    const rejectedBudgets = await Budget.countDocuments({ ...filter, status: 'rejected' });
-    const draftBudgets = await Budget.countDocuments({ ...filter, status: 'draft' });
+    const budgets = await Budget.find(filter);
+    
+    const totalBudgets = budgets.length;
+    const pendingApprovals = budgets.filter(b => b.status === 'pending').length;
+    const approvedBudgets = budgets.filter(b => b.status === 'approved').length;
+    const rejectedBudgets = budgets.filter(b => b.status === 'rejected').length;
+    const draftBudgets = budgets.filter(b => b.status === 'draft').length;
 
-    const totalBudgetAmount = await Budget.aggregate([
-      { $match: filter },
-      { $group: { _id: null, total: { $sum: '$totalBudget' } } }
-    ]);
+    const totalBudgetAmount = budgets.reduce((sum, b) => sum + b.totalBudget, 0);
+    const totalSpent = budgets.reduce((sum, b) => 
+      sum + b.categories.reduce((catSum, cat) => catSum + cat.spentAmount, 0), 0
+    );
 
-    const totalSpent = await Budget.aggregate([
-      { $match: filter },
-      { $group: { _id: null, total: { $sum: '$actualSpent' } } }
-    ]);
+    const categoryAnalysis = budgets.reduce((acc: any, budget) => {
+      budget.categories.forEach(cat => {
+        if (!acc[cat.type]) {
+          acc[cat.type] = { allocated: 0, spent: 0, count: 0 };
+        }
+        acc[cat.type].allocated += cat.allocatedAmount;
+        acc[cat.type].spent += cat.spentAmount;
+        acc[cat.type].count += 1;
+      });
+      return acc;
+    }, {});
 
-    const budgetsByStatus = await Budget.aggregate([
-      { $match: filter },
-      { $group: { _id: '$status', count: { $sum: 1 }, totalAmount: { $sum: '$totalBudget' } } }
-    ]);
-
-    const budgetsByType = await Budget.aggregate([
-      { $match: filter },
-      { $group: { _id: '$budgetType', count: { $sum: 1 }, totalAmount: { $sum: '$totalBudget' } } }
-    ]);
+    const budgetsByStatus = [
+      { status: 'draft', count: draftBudgets, totalAmount: budgets.filter(b => b.status === 'draft').reduce((s, b) => s + b.totalBudget, 0) },
+      { status: 'pending', count: pendingApprovals, totalAmount: budgets.filter(b => b.status === 'pending').reduce((s, b) => s + b.totalBudget, 0) },
+      { status: 'approved', count: approvedBudgets, totalAmount: budgets.filter(b => b.status === 'approved').reduce((s, b) => s + b.totalBudget, 0) },
+      { status: 'rejected', count: rejectedBudgets, totalAmount: budgets.filter(b => b.status === 'rejected').reduce((s, b) => s + b.totalBudget, 0) }
+    ];
 
     res.json({
       summary: {
@@ -424,11 +427,12 @@ export const getBudgetAnalytics = async (req: Request, res: Response) => {
         approvedBudgets,
         rejectedBudgets,
         draftBudgets,
-        totalBudgetAmount: totalBudgetAmount[0]?.total || 0,
-        totalSpent: totalSpent[0]?.total || 0
+        totalBudgetAmount,
+        totalSpent,
+        utilizationRate: totalBudgetAmount > 0 ? (totalSpent / totalBudgetAmount * 100).toFixed(2) : 0
       },
-      budgetsByStatus,
-      budgetsByType
+      categoryAnalysis,
+      budgetsByStatus
     });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching budget analytics', error });

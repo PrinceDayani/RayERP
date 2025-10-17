@@ -5,14 +5,35 @@ export interface IAccount extends Document {
   name: string;
   type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
   subType: string;
+  category: string;
+  level: number;
   projectId?: mongoose.Types.ObjectId;
   balance: number;
   isActive: boolean;
+  isGroup: boolean;
   description?: string;
-  createdBy: mongoose.Types.ObjectId;
+  createdBy?: mongoose.Types.ObjectId;
   openingBalance: number;
   currency: string;
   parentId?: mongoose.Types.ObjectId;
+  taxInfo?: {
+    gstNo?: string;
+    panNo?: string;
+    taxRate?: number;
+  };
+  contactInfo?: {
+    address?: string;
+    phone?: string;
+    email?: string;
+  };
+  bankDetails?: {
+    accountNumber?: string;
+    ifscCode?: string;
+    bankName?: string;
+    branch?: string;
+  };
+  creditLimit?: number;
+  tags?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +59,14 @@ const AccountSchema = new Schema<IAccount>({
     type: String,
     trim: true
   },
+  category: {
+    type: String,
+    trim: true
+  },
+  level: {
+    type: Number,
+    default: 0
+  },
   balance: {
     type: Number,
     default: 0
@@ -59,6 +88,10 @@ const AccountSchema = new Schema<IAccount>({
     type: Boolean,
     default: true
   },
+  isGroup: {
+    type: Boolean,
+    default: false
+  },
   description: {
     type: String,
     trim: true
@@ -67,10 +100,31 @@ const AccountSchema = new Schema<IAccount>({
     type: Schema.Types.ObjectId,
     ref: 'Project'
   },
+  taxInfo: {
+    gstNo: String,
+    panNo: String,
+    taxRate: Number
+  },
+  contactInfo: {
+    address: String,
+    phone: String,
+    email: String
+  },
+  bankDetails: {
+    accountNumber: String,
+    ifscCode: String,
+    bankName: String,
+    branch: String
+  },
+  creditLimit: {
+    type: Number,
+    default: 0
+  },
+  tags: [String],
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   }
 }, {
   timestamps: true

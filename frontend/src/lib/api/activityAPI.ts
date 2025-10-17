@@ -12,14 +12,10 @@ export interface ActivityLog {
   action: string;
   resource: string;
   details: string;
-  user: {
-    _id: string;
-    name: string;
-    email: string;
-  };
+  user: string;
   timestamp: string;
   ipAddress?: string;
-  userAgent?: string;
+  status?: string;
 }
 
 export const getActivityLogs = async (filters?: {
@@ -42,8 +38,9 @@ export const getActivityLogs = async (filters?: {
       });
     }
     
-    const response = await fetch(`${API_URL}/api/activity?${params.toString()}`, {
-      headers: getAuthHeaders()
+    const response = await fetch(`${API_URL}/api/activities?${params.toString()}`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
     });
     
     if (!response.ok) {
@@ -62,9 +59,10 @@ export const createActivityLog = async (activityData: {
   resource: string;
   details: string;
 }) => {
-  const response = await fetch(`${API_URL}/api/activity`, {
+  const response = await fetch(`${API_URL}/api/activities`, {
     method: 'POST',
-    headers: getAuthHeaders(),
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(activityData)
   });
   
@@ -73,8 +71,9 @@ export const createActivityLog = async (activityData: {
 };
 
 export const getUserActivityLogs = async (userId: string, limit = 50) => {
-  const response = await fetch(`${API_URL}/api/activity/user/${userId}?limit=${limit}`, {
-    headers: getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/activities/user/${userId}?limit=${limit}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' }
   });
   
   if (!response.ok) throw new Error('Failed to fetch user activity logs');
@@ -82,8 +81,9 @@ export const getUserActivityLogs = async (userId: string, limit = 50) => {
 };
 
 export const getActivitySummary = async (period: 'day' | 'week' | 'month' = 'week') => {
-  const response = await fetch(`${API_URL}/api/activity/summary?period=${period}`, {
-    headers: getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/activities/summary?period=${period}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' }
   });
   
   if (!response.ok) throw new Error('Failed to fetch activity summary');

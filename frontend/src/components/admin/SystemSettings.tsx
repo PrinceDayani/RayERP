@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { AlertCircleIcon, CheckCircleIcon, RefreshCwIcon } from "lucide-react";
-import { adminAPI, AdminGeneralSettings, AdminSecuritySettings, AdminNotificationSettings, AdminBackupSettings } from "@/lib/api"; // Updated import with renamed types
+import adminAPI, { AdminGeneralSettings, AdminSecuritySettings, AdminNotificationSettings, AdminBackupSettings } from "@/lib/api/adminAPI";
 
 interface SystemSettingsProps {
   isLoading: boolean;

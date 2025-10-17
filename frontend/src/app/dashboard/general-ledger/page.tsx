@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -77,6 +78,7 @@ interface CostCenter {
 }
 
 export default function GeneralLedgerPage() {
+  const router = useRouter();
   const [accountGroups] = useState<AccountGroup[]>([
     { id: '1', name: 'Capital Account', nature: 'liability', affects: 'balance-sheet' },
     { id: '2', name: 'Current Assets', nature: 'asset', affects: 'balance-sheet' },
@@ -483,7 +485,10 @@ export default function GeneralLedgerPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Advanced General Ledger</h1>
+        <div>
+          <h1 className="text-3xl font-bold">General Ledger</h1>
+          <p className="text-gray-600 mt-1">Complete accounting and financial management</p>
+        </div>
         <div className="flex space-x-2">
           <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
             <DialogTrigger asChild>
@@ -523,51 +528,63 @@ export default function GeneralLedgerPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Account Groups</p>
-                <p className="text-2xl font-bold">{accountGroups.length}</p>
-              </div>
-              <FolderOpen className="w-8 h-8 text-blue-600" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/dashboard/general-ledger/chart-of-accounts')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <FolderOpen className="w-12 h-12 text-blue-600" />
+              <ChevronRight className="w-6 h-6 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Chart of Accounts</h3>
+            <p className="text-sm text-gray-600">Manage account structure and hierarchy</p>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-2xl font-bold">{accountGroups.length}</span>
+              <span className="text-xs text-gray-500">Groups</span>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Ledgers</p>
-                <p className="text-2xl font-bold">{ledgers.length}</p>
-              </div>
-              <Building2 className="w-8 h-8 text-green-600" />
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setActiveTab('ledgers')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Building2 className="w-12 h-12 text-green-600" />
+              <ChevronRight className="w-6 h-6 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Ledger Accounts</h3>
+            <p className="text-sm text-gray-600">View and manage all ledger accounts</p>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-2xl font-bold">{ledgers.length}</span>
+              <span className="text-xs text-gray-500">Ledgers</span>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Vouchers</p>
-                <p className="text-2xl font-bold">{vouchers.length}</p>
-              </div>
-              <Receipt className="w-8 h-8 text-purple-600" />
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/dashboard/general-ledger/journal-entries')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Receipt className="w-12 h-12 text-purple-600" />
+              <ChevronRight className="w-6 h-6 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Journal Entries</h3>
+            <p className="text-sm text-gray-600">Create and manage journal vouchers</p>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-2xl font-bold">{vouchers.length}</span>
+              <span className="text-xs text-gray-500">Entries</span>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Templates</p>
-                <p className="text-2xl font-bold">{journalTemplates.length}</p>
-              </div>
-              <FileSpreadsheet className="w-8 h-8 text-orange-600" />
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/dashboard/general-ledger/reports')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <Calculator className="w-12 h-12 text-orange-600" />
+              <ChevronRight className="w-6 h-6 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Reports</h3>
+            <p className="text-sm text-gray-600">Trial balance and financial reports</p>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-2xl font-bold">5</span>
+              <span className="text-xs text-gray-500">Reports</span>
             </div>
           </CardContent>
         </Card>

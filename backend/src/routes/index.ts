@@ -43,7 +43,7 @@ router.use('/settings', settingsRoutes);
 router.use('/admin', adminRoutes);
 router.use('/leaves', leaveRoutes);
 router.use('/employee-reports', employeeReportRoutes);
-router.use('/activity', activityRoutes);
+router.use('/activities', activityRoutes);
 router.use('/rbac', rbacRoutes);
 
 // --- Financial & Ledger Routes ---

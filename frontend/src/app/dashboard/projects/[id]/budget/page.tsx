@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Edit, DollarSign, TrendingUp, AlertTriangle } from "lucide-react";
+import { Plus, Edit, DollarSign, TrendingUp, AlertTriangle, BarChart3 } from "lucide-react";
 import { Budget } from "@/types/budget";
 import BudgetDialog from "@/components/budget/BudgetDialog";
+import ProjectBudgetAnalytics from "@/components/budget/ProjectBudgetAnalytics";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ProjectBudgetPage() {
   const params = useParams();
@@ -17,6 +19,7 @@ export default function ProjectBudgetPage() {
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     fetchProjectBudget();
@@ -160,7 +163,14 @@ export default function ProjectBudgetPage() {
       </div>
 
       {budget ? (
-        <>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="categories">Categories</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -275,7 +285,66 @@ export default function ProjectBudgetPage() {
               );
             })}
           </div>
-        </>
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <ProjectBudgetAnalytics budget={budget} project={project} />
+          </TabsContent>
+
+          <TabsContent value="categories" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {budget.categories.map((category) => {
+                const categorySpentPercentage = category.allocatedAmount > 0 
+                  ? (category.spentAmount / category.allocatedAmount) * 100 
+                  : 0;
+
+                return (
+                  <Card key={category._id}>
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-lg capitalize">{category.name}</CardTitle>
+                        <Badge variant="outline" className="capitalize">{category.type}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between text-sm">
+                        <span>Allocated</span>
+                        <span className="font-semibold">{budget.currency} {category.allocatedAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Spent</span>
+                        <span className="font-semibold">{budget.currency} {category.spentAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Progress</span>
+                          <span>{categorySpentPercentage.toFixed(1)}%</span>
+                        </div>
+                        <Progress value={categorySpentPercentage} className="h-2" />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Budget Items</h4>
+                        {category.items.map((item) => (
+                          <div key={item._id} className="flex justify-between text-xs p-2 bg-gray-50 rounded">
+                            <div>
+                              <p className="font-medium">{item.name}</p>
+                              <p className="text-gray-600">{item.description}</p>
+                              <p className="text-gray-500">{item.quantity} × {budget.currency}{item.unitCost}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium">{budget.currency} {item.totalCost.toLocaleString()}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+        </Tabs>
       ) : (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
