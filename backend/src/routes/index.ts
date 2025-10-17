@@ -19,6 +19,7 @@ import generalLedgerRoutes from './generalLedger.routes';
 
 
 
+
 const router = express.Router();
 
 router.use("/auth", authRoutes)
@@ -36,7 +37,8 @@ router.use('/leaves', leaveRoutes); // Add leave routes
 router.use('/employee-reports', employeeReportRoutes); // Add employee report routes
 router.use('/activity', activityRoutes); // Add activity routes
 router.use('/rbac', rbacRoutes); // Add RBAC routes
-router.use('/general-ledger', generalLedgerRoutes); // Add General Ledger routes
+router.use('/gl', generalLedgerRoutes); // Add General Ledger routes
+
 
 
 

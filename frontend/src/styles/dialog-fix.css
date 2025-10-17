@@ -1,0 +1,16 @@
+/* Temporary fix for dialog accessibility warnings in development */
+[data-radix-dialog-content] {
+  /* Ensure all dialog content has proper ARIA attributes */
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

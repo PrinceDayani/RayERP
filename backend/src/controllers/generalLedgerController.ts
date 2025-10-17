@@ -1,438 +1,559 @@
 import { Request, Response } from 'express';
-import { Account } from '../models/Account';
+import { ChartOfAccounts } from '../models/ChartOfAccounts';
 import { JournalEntry } from '../models/JournalEntry';
 import { Ledger } from '../models/Ledger';
-import { Transaction } from '../models/Transaction';
-import { logger } from '../utils/logger';
+import { SubsidiaryLedger } from '../models/SubsidiaryLedger';
+import { WIPLedger } from '../models/WIPLedger';
+import { CostCenter } from '../models/CostCenter';
+import { FiscalYear } from '../models/FiscalYear';
 import mongoose from 'mongoose';
 
-// Get all accounts
-export const getAccounts = async (req: Request, res: Response) => {
-  try {
-    const accounts = await Account.find({ isActive: true })
-      .populate('parentId', 'name code')
-      .sort({ code: 1 });
-    
-    res.json(accounts);
-  } catch (error) {
-    logger.error('Error fetching accounts:', error);
-    res.status(500).json({ message: 'Error fetching accounts' });
-  }
-};
-
-// Create new account
-export const createAccount = async (req: Request, res: Response) => {
-  try {
-    const { code, name, type, subType, parentId, description } = req.body;
-
-    // Check if account code already exists
-    const existingAccount = await Account.findOne({ code });
-    if (existingAccount) {
-      return res.status(400).json({ message: 'Account code already exists' });
-    }
-
-    const account = new Account({
-      code,
-      name,
-      type,
-      subType,
-      parentId: parentId || undefined,
-      description
-    });
-
-    await account.save();
-    await account.populate('parentId', 'name code');
-    
-    res.status(201).json(account);
-  } catch (error) {
-    logger.error('Error creating account:', error);
-    res.status(500).json({ message: 'Error creating account' });
-  }
-};
-
-// Update account
-export const updateAccount = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    const account = await Account.findByIdAndUpdate(
-      id,
-      updates,
-      { new: true, runValidators: true }
-    ).populate('parentId', 'name code');
-
-    if (!account) {
-      return res.status(404).json({ message: 'Account not found' });
-    }
-
-    res.json(account);
-  } catch (error) {
-    logger.error('Error updating account:', error);
-    res.status(500).json({ message: 'Error updating account' });
-  }
-};
-
-// Get journal entries
-export const getJournalEntries = async (req: Request, res: Response) => {
-  try {
-    const { page = 1, limit = 20, startDate, endDate } = req.query;
-    
-    const query: any = {};
-    if (startDate && endDate) {
-      query.date = {
-        $gte: new Date(startDate as string),
-        $lte: new Date(endDate as string)
-      };
-    }
-
-    const journalEntries = await JournalEntry.find(query)
-      .populate('lines.accountId', 'code name')
-      .populate('createdBy', 'name email')
-      .sort({ date: -1, entryNumber: -1 })
-      .limit(Number(limit) * Number(page))
-      .skip((Number(page) - 1) * Number(limit));
-
-    const total = await JournalEntry.countDocuments(query);
-
-    res.json({
-      journalEntries,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        pages: Math.ceil(total / Number(limit))
-      }
-    });
-  } catch (error) {
-    logger.error('Error fetching journal entries:', error);
-    res.status(500).json({ message: 'Error fetching journal entries' });
-  }
-};
-
-// Create journal entry
-export const createJournalEntry = async (req: Request, res: Response) => {
-  try {
-    const { date, reference, description, lines } = req.body;
-    const userId = (req as any).user?.id || '507f1f77bcf86cd799439011';
-
-    // Generate entry number
-    const lastEntry = await JournalEntry.findOne().sort({ entryNumber: -1 });
-    const nextNumber = lastEntry 
-      ? parseInt(lastEntry.entryNumber.replace('JE', '')) + 1 
-      : 1;
-    const entryNumber = `JE${nextNumber.toString().padStart(6, '0')}`;
-
-    const journalEntry = new JournalEntry({
-      entryNumber,
-      date: new Date(date),
-      reference,
-      description,
-      lines,
-      createdBy: userId
-    });
-
-    await journalEntry.save();
-    await journalEntry.populate([
-      { path: 'lines.accountId', select: 'code name' },
-      { path: 'createdBy', select: 'name email' }
-    ]);
-
-    res.status(201).json(journalEntry);
-  } catch (error) {
-    logger.error('Error creating journal entry:', error);
-    res.status(500).json({ 
-      message: error instanceof Error ? error.message : 'Error creating journal entry' 
-    });
-  }
-};
-
-// Post journal entry (update account balances and create ledger entries)
-export const postJournalEntry = async (req: Request, res: Response) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
-  try {
-    const { id } = req.params;
-
-    const journalEntry = await JournalEntry.findById(id).session(session);
-    if (!journalEntry) {
-      await session.abortTransaction();
-      return res.status(404).json({ message: 'Journal entry not found' });
-    }
-
-    if (journalEntry.isPosted) {
-      await session.abortTransaction();
-      return res.status(400).json({ message: 'Journal entry already posted' });
-    }
-
-    // Process each journal line
-    for (const line of journalEntry.lines) {
-      const account = await Account.findById(line.accountId).session(session);
-      if (!account) continue;
-
-      // Calculate new balance
-      let newBalance = account.balance;
-      if (['asset', 'expense'].includes(account.type)) {
-        newBalance += line.debit - line.credit;
-      } else {
-        newBalance += line.credit - line.debit;
-      }
-
-      // Update account balance
-      await Account.findByIdAndUpdate(
-        line.accountId,
-        { balance: newBalance },
-        { session }
-      );
-
-      // Create ledger entry
-      await Ledger.create([{
-        accountId: line.accountId,
-        date: journalEntry.date,
-        description: line.description,
-        debit: line.debit,
-        credit: line.credit,
-        balance: newBalance,
-        journalEntryId: journalEntry._id,
-        reference: journalEntry.reference
-      }], { session });
-    }
-
-    // Mark journal entry as posted
-    journalEntry.isPosted = true;
-    await journalEntry.save({ session });
-
-    await session.commitTransaction();
-    res.json({ message: 'Journal entry posted successfully' });
-  } catch (error) {
-    await session.abortTransaction();
-    logger.error('Error posting journal entry:', error);
-    res.status(500).json({ message: 'Error posting journal entry' });
-  } finally {
-    session.endSession();
-  }
-};
-
-// Get trial balance
-export const getTrialBalance = async (req: Request, res: Response) => {
-  try {
-    const { asOfDate } = req.query;
-    const dateFilter = asOfDate ? new Date(asOfDate as string) : new Date();
-    
-    const accounts = await Account.find({ isActive: true }).sort({ code: 1 });
-    
-    const trialBalance = accounts.map(account => {
-      // For normal balance calculation based on account type
-      let debit = 0, credit = 0;
+export const generalLedgerController = {
+  // Get Trial Balance
+  async getTrialBalance(req: Request, res: Response) {
+    try {
+      const { projectId, fromDate, toDate, consolidated = false } = req.query;
       
-      if (['asset', 'expense'].includes(account.type)) {
-        if (account.balance >= 0) {
-          debit = account.balance;
-        } else {
-          credit = Math.abs(account.balance);
-        }
-      } else {
-        if (account.balance >= 0) {
-          credit = account.balance;
-        } else {
-          debit = Math.abs(account.balance);
-        }
+      const matchStage: any = {};
+      if (fromDate || toDate) {
+        matchStage.date = {};
+        if (fromDate) matchStage.date.$gte = new Date(fromDate as string);
+        if (toDate) matchStage.date.$lte = new Date(toDate as string);
       }
       
-      return {
-        id: account._id,
-        code: account.code,
-        name: account.name,
-        type: account.type,
-        debit,
-        credit
-      };
-    });
-
-    const totalDebits = trialBalance.reduce((sum, item) => sum + item.debit, 0);
-    const totalCredits = trialBalance.reduce((sum, item) => sum + item.credit, 0);
-
-    res.json({
-      accounts: trialBalance,
-      totals: {
-        debits: totalDebits,
-        credits: totalCredits,
-        balanced: Math.abs(totalDebits - totalCredits) < 0.01
-      },
-      asOfDate: dateFilter
-    });
-  } catch (error) {
-    logger.error('Error generating trial balance:', error);
-    res.status(500).json({ message: 'Error generating trial balance' });
-  }
-};
-
-// Get account ledger
-export const getAccountLedger = async (req: Request, res: Response) => {
-  try {
-    const { accountId } = req.params;
-    const { startDate, endDate, page = 1, limit = 50 } = req.query;
-    
-    const account = await Account.findById(accountId);
-    if (!account) {
-      return res.status(404).json({ message: 'Account not found' });
-    }
-
-    const query: any = { accountId };
-    if (startDate && endDate) {
-      query.date = {
-        $gte: new Date(startDate as string),
-        $lte: new Date(endDate as string)
-      };
-    }
-
-    const ledgerEntries = await Ledger.find(query)
-      .populate('journalEntryId', 'entryNumber reference')
-      .sort({ date: 1, createdAt: 1 })
-      .limit(Number(limit) * Number(page))
-      .skip((Number(page) - 1) * Number(limit));
-
-    const total = await Ledger.countDocuments(query);
-
-    res.json({
-      account: {
-        id: account._id,
-        code: account.code,
-        name: account.name,
-        type: account.type,
-        currentBalance: account.balance
-      },
-      entries: ledgerEntries,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        pages: Math.ceil(total / Number(limit))
+      if (projectId && !consolidated) {
+        matchStage.projectId = new mongoose.Types.ObjectId(projectId as string);
       }
-    });
-  } catch (error) {
-    logger.error('Error fetching account ledger:', error);
-    res.status(500).json({ message: 'Error fetching account ledger' });
-  }
-};
 
-// Generate financial reports
-export const getFinancialReports = async (req: Request, res: Response) => {
-  try {
-    const { reportType, startDate, endDate } = req.query;
-    
-    const dateFilter = {
-      $gte: new Date(startDate as string || new Date().getFullYear() + '-01-01'),
-      $lte: new Date(endDate as string || new Date())
-    };
+      const trialBalance = await Ledger.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: '$accountId',
+            totalDebit: { $sum: '$debit' },
+            totalCredit: { $sum: '$credit' },
+            closingBalance: { $last: '$balance' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'chartofaccounts',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'account'
+          }
+        },
+        { $unwind: '$account' },
+        {
+          $project: {
+            accountCode: '$account.code',
+            accountName: '$account.name',
+            accountType: '$account.type',
+            openingBalance: '$account.openingBalance',
+            totalDebit: 1,
+            totalCredit: 1,
+            closingBalance: 1
+          }
+        },
+        { $sort: { accountCode: 1 } }
+      ]);
 
-    switch (reportType) {
-      case 'profit-loss':
-        const revenueAccounts = await Account.find({ type: 'revenue', isActive: true });
-        const expenseAccounts = await Account.find({ type: 'expense', isActive: true });
-        
-        const totalRevenue = revenueAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-        const totalExpenses = expenseAccounts.reduce((sum, acc) => sum + acc.balance, 0);
-        
-        res.json({
-          reportType: 'Profit & Loss Statement',
-          period: { startDate, endDate },
-          revenue: {
-            accounts: revenueAccounts,
-            total: totalRevenue
-          },
-          expenses: {
-            accounts: expenseAccounts,
-            total: totalExpenses
-          },
-          netIncome: totalRevenue - totalExpenses
-        });
-        break;
-        
-      case 'balance-sheet':
-        const assets = await Account.find({ type: 'asset', isActive: true });
-        const liabilities = await Account.find({ type: 'liability', isActive: true });
-        const equity = await Account.find({ type: 'equity', isActive: true });
-        
-        const totalAssets = assets.reduce((sum, acc) => sum + acc.balance, 0);
-        const totalLiabilities = liabilities.reduce((sum, acc) => sum + acc.balance, 0);
-        const totalEquity = equity.reduce((sum, acc) => sum + acc.balance, 0);
-        
-        res.json({
-          reportType: 'Balance Sheet',
-          asOfDate: endDate,
-          assets: {
-            accounts: assets,
-            total: totalAssets
-          },
-          liabilities: {
-            accounts: liabilities,
-            total: totalLiabilities
-          },
-          equity: {
-            accounts: equity,
-            total: totalEquity
-          },
-          totalLiabilitiesAndEquity: totalLiabilities + totalEquity
-        });
-        break;
-        
-      default:
-        res.status(400).json({ message: 'Invalid report type' });
+      const summary = {
+        totalDebits: trialBalance.reduce((sum, acc) => sum + acc.totalDebit, 0),
+        totalCredits: trialBalance.reduce((sum, acc) => sum + acc.totalCredit, 0),
+        accountCount: trialBalance.length
+      };
+
+      res.json({ trialBalance, summary });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate trial balance' });
     }
-  } catch (error) {
-    logger.error('Error generating financial report:', error);
-    res.status(500).json({ message: 'Error generating financial report' });
-  }
-};
+  },
 
-// Auto-create journal entry from transaction
-export const createTransactionJournal = async (req: Request, res: Response) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
-  try {
-    const { transactionType, transactionId, amount, lines, metadata } = req.body;
-    const userId = (req as any).user?.id || '507f1f77bcf86cd799439011';
+  // Get Ledger Statement
+  async getLedgerStatement(req: Request, res: Response) {
+    try {
+      const { accountId } = req.params;
+      const { fromDate, toDate, projectId } = req.query;
+      
+      const matchStage: any = { accountId: new mongoose.Types.ObjectId(accountId) };
+      if (fromDate || toDate) {
+        matchStage.date = {};
+        if (fromDate) matchStage.date.$gte = new Date(fromDate as string);
+        if (toDate) matchStage.date.$lte = new Date(toDate as string);
+      }
 
-    // Generate entry number
-    const lastEntry = await JournalEntry.findOne().sort({ entryNumber: -1 }).session(session);
-    const nextNumber = lastEntry 
-      ? parseInt(lastEntry.entryNumber.replace('JE', '')) + 1 
-      : 1;
-    const entryNumber = `JE${nextNumber.toString().padStart(6, '0')}`;
+      const ledgerEntries = await Ledger.find(matchStage)
+        .populate('journalEntryId', 'entryNumber reference sourceModule')
+        .populate('accountId', 'code name type')
+        .sort({ date: 1, createdAt: 1 });
 
-    // Create journal entry
-    const journalEntry = await JournalEntry.create([{
-      entryNumber,
-      date: new Date(),
-      reference: transactionId,
-      description: `Auto-generated from ${transactionType} ${transactionId}`,
-      lines,
-      createdBy: userId
-    }], { session });
+      const account = await ChartOfAccounts.findById(accountId);
+      
+      res.json({
+        account: {
+          code: account?.code,
+          name: account?.name,
+          type: account?.type,
+          openingBalance: account?.openingBalance
+        },
+        entries: ledgerEntries,
+        summary: {
+          totalDebits: ledgerEntries.reduce((sum, entry) => sum + entry.debit, 0),
+          totalCredits: ledgerEntries.reduce((sum, entry) => sum + entry.credit, 0),
+          closingBalance: ledgerEntries.length > 0 ? ledgerEntries[ledgerEntries.length - 1].balance : account?.openingBalance || 0
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate ledger statement' });
+    }
+  },
 
-    // Create transaction link
-    await Transaction.create([{
-      transactionType,
-      transactionId,
-      journalEntryId: journalEntry[0]._id,
-      amount,
-      status: 'posted',
-      metadata
-    }], { session });
+  // Get Balance Sheet
+  async getBalanceSheet(req: Request, res: Response) {
+    try {
+      const { asOfDate, projectId } = req.query;
+      const date = asOfDate ? new Date(asOfDate as string) : new Date();
+      
+      const matchStage: any = { date: { $lte: date } };
+      if (projectId) {
+        matchStage.projectId = new mongoose.Types.ObjectId(projectId as string);
+      }
 
-    await session.commitTransaction();
-    res.status(201).json({
-      journalEntry: journalEntry[0],
-      message: 'Transaction journal entry created successfully'
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    logger.error('Error creating transaction journal:', error);
-    res.status(500).json({ message: 'Error creating transaction journal' });
-  } finally {
-    session.endSession();
+      const balances = await Ledger.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: '$accountId',
+            balance: { $last: '$balance' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'chartofaccounts',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'account'
+          }
+        },
+        { $unwind: '$account' },
+        {
+          $group: {
+            _id: '$account.type',
+            accounts: {
+              $push: {
+                code: '$account.code',
+                name: '$account.name',
+                balance: '$balance'
+              }
+            },
+            totalBalance: { $sum: '$balance' }
+          }
+        }
+      ]);
+
+      const balanceSheet = {
+        assets: balances.find(b => b._id === 'asset') || { accounts: [], totalBalance: 0 },
+        liabilities: balances.find(b => b._id === 'liability') || { accounts: [], totalBalance: 0 },
+        equity: balances.find(b => b._id === 'equity') || { accounts: [], totalBalance: 0 }
+      };
+
+      res.json({
+        balanceSheet,
+        asOfDate: date,
+        totals: {
+          totalAssets: balanceSheet.assets.totalBalance,
+          totalLiabilities: balanceSheet.liabilities.totalBalance,
+          totalEquity: balanceSheet.equity.totalBalance
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate balance sheet' });
+    }
+  },
+
+  // Get Profit & Loss Statement
+  async getProfitLoss(req: Request, res: Response) {
+    try {
+      const { fromDate, toDate, projectId } = req.query;
+      
+      const matchStage: any = {};
+      if (fromDate || toDate) {
+        matchStage.date = {};
+        if (fromDate) matchStage.date.$gte = new Date(fromDate as string);
+        if (toDate) matchStage.date.$lte = new Date(toDate as string);
+      }
+      if (projectId) {
+        matchStage.projectId = new mongoose.Types.ObjectId(projectId as string);
+      }
+
+      const plData = await Ledger.aggregate([
+        { $match: matchStage },
+        {
+          $lookup: {
+            from: 'chartofaccounts',
+            localField: 'accountId',
+            foreignField: '_id',
+            as: 'account'
+          }
+        },
+        { $unwind: '$account' },
+        {
+          $match: {
+            'account.type': { $in: ['income', 'expense'] }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              type: '$account.type',
+              accountId: '$accountId',
+              accountCode: '$account.code',
+              accountName: '$account.name'
+            },
+            totalDebit: { $sum: '$debit' },
+            totalCredit: { $sum: '$credit' },
+            netAmount: {
+              $sum: {
+                $cond: [
+                  { $eq: ['$account.type', 'income'] },
+                  { $subtract: ['$credit', '$debit'] },
+                  { $subtract: ['$debit', '$credit'] }
+                ]
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: '$_id.type',
+            accounts: {
+              $push: {
+                code: '$_id.accountCode',
+                name: '$_id.accountName',
+                amount: '$netAmount'
+              }
+            },
+            total: { $sum: '$netAmount' }
+          }
+        }
+      ]);
+
+      const income = plData.find(p => p._id === 'income') || { accounts: [], total: 0 };
+      const expenses = plData.find(p => p._id === 'expense') || { accounts: [], total: 0 };
+      const netProfit = income.total - expenses.total;
+
+      res.json({
+        income,
+        expenses,
+        netProfit,
+        period: { fromDate, toDate }
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate P&L statement' });
+    }
+  },
+
+  // Get Project Cost Report
+  async getProjectCostReport(req: Request, res: Response) {
+    try {
+      const { projectId } = req.params;
+      const { fromDate, toDate } = req.query;
+      
+      const matchStage: any = { projectId: new mongoose.Types.ObjectId(projectId) };
+      if (fromDate || toDate) {
+        matchStage.date = {};
+        if (fromDate) matchStage.date.$gte = new Date(fromDate as string);
+        if (toDate) matchStage.date.$lte = new Date(toDate as string);
+      }
+
+      // Get WIP costs by cost head
+      const wipCosts = await WIPLedger.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: '$costHead',
+            actualCost: { $sum: '$amount' },
+            capitalizedCost: { $sum: { $cond: ['$isCapitalized', '$capitalizedAmount', 0] } }
+          }
+        }
+      ]);
+
+      // Get budget vs actual from cost centers
+      const costCenters = await CostCenter.find({ projectId }).select('name budget actualCost committedCost');
+      
+      // Get project ledger entries
+      const ledgerEntries = await Ledger.find(matchStage)
+        .populate('accountId', 'code name type')
+        .populate('journalEntryId', 'entryNumber reference')
+        .sort({ date: -1 });
+
+      const costSummary = {
+        material: wipCosts.find(w => w._id === 'material')?.actualCost || 0,
+        labour: wipCosts.find(w => w._id === 'labour')?.actualCost || 0,
+        equipment: wipCosts.find(w => w._id === 'equipment')?.actualCost || 0,
+        subcontractor: wipCosts.find(w => w._id === 'subcontractor')?.actualCost || 0,
+        overhead: wipCosts.find(w => w._id === 'overhead')?.actualCost || 0
+      };
+
+      const totalActualCost = Object.values(costSummary).reduce((sum, cost) => sum + cost, 0);
+      const totalBudget = costCenters.reduce((sum, cc) => sum + cc.budget, 0);
+      const totalCommitted = costCenters.reduce((sum, cc) => sum + cc.committedCost, 0);
+
+      res.json({
+        projectId,
+        costSummary,
+        budgetAnalysis: {
+          totalBudget,
+          totalActualCost,
+          totalCommitted,
+          variance: totalBudget - totalActualCost,
+          utilizationPercent: totalBudget > 0 ? (totalActualCost / totalBudget) * 100 : 0
+        },
+        costCenters,
+        recentTransactions: ledgerEntries.slice(0, 20)
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate project cost report' });
+    }
+  },
+
+  // Get Aging Report
+  async getAgingReport(req: Request, res: Response) {
+    try {
+      const { type, asOfDate } = req.query;
+      const date = asOfDate ? new Date(asOfDate as string) : new Date();
+      
+      if (!type || !['vendor', 'customer'].includes(type as string)) {
+        return res.status(400).json({ error: 'Valid type (vendor/customer) is required' });
+      }
+
+      const agingData = await SubsidiaryLedger.aggregate([
+        {
+          $match: {
+            type: type as string,
+            date: { $lte: date },
+            balance: { $ne: 0 }
+          }
+        },
+        {
+          $lookup: {
+            from: type === 'vendor' ? 'contacts' : 'contacts',
+            localField: 'entityId',
+            foreignField: '_id',
+            as: 'entity'
+          }
+        },
+        { $unwind: '$entity' },
+        {
+          $addFields: {
+            agingDays: {
+              $divide: [
+                { $subtract: [date, '$dueDate'] },
+                1000 * 60 * 60 * 24
+              ]
+            }
+          }
+        },
+        {
+          $addFields: {
+            agingBucket: {
+              $switch: {
+                branches: [
+                  { case: { $lte: ['$agingDays', 30] }, then: '0-30' },
+                  { case: { $lte: ['$agingDays', 60] }, then: '31-60' },
+                  { case: { $lte: ['$agingDays', 90] }, then: '61-90' },
+                  { case: { $lte: ['$agingDays', 120] }, then: '91-120' }
+                ],
+                default: '120+'
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              entityId: '$entityId',
+              entityName: '$entity.name',
+              agingBucket: '$agingBucket'
+            },
+            amount: { $sum: '$balance' }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              entityId: '$_id.entityId',
+              entityName: '$_id.entityName'
+            },
+            aging: {
+              $push: {
+                bucket: '$_id.agingBucket',
+                amount: '$amount'
+              }
+            },
+            totalAmount: { $sum: '$amount' }
+          }
+        }
+      ]);
+
+      res.json({
+        type,
+        asOfDate: date,
+        agingData,
+        summary: {
+          totalOutstanding: agingData.reduce((sum, item) => sum + item.totalAmount, 0),
+          entityCount: agingData.length
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate aging report' });
+    }
+  },
+
+  // Get Cash Flow Statement
+  async getCashFlowStatement(req: Request, res: Response) {
+    try {
+      const { fromDate, toDate, projectId } = req.query;
+      
+      const matchStage: any = {};
+      if (fromDate || toDate) {
+        matchStage.date = {};
+        if (fromDate) matchStage.date.$gte = new Date(fromDate as string);
+        if (toDate) matchStage.date.$lte = new Date(toDate as string);
+      }
+      if (projectId) {
+        matchStage.projectId = new mongoose.Types.ObjectId(projectId as string);
+      }
+
+      // This is a simplified cash flow - in practice, you'd need more sophisticated logic
+      const cashFlowData = await Ledger.aggregate([
+        { $match: matchStage },
+        {
+          $lookup: {
+            from: 'chartofaccounts',
+            localField: 'accountId',
+            foreignField: '_id',
+            as: 'account'
+          }
+        },
+        { $unwind: '$account' },
+        {
+          $addFields: {
+            cashFlowCategory: {
+              $switch: {
+                branches: [
+                  { case: { $in: ['$account.subType', ['Cash', 'Bank']] }, then: 'operating' },
+                  { case: { $eq: ['$account.type', 'asset'] }, then: 'investing' },
+                  { case: { $in: ['$account.type', ['liability', 'equity']] }, then: 'financing' }
+                ],
+                default: 'operating'
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: '$cashFlowCategory',
+            inflow: { $sum: '$credit' },
+            outflow: { $sum: '$debit' },
+            netFlow: { $sum: { $subtract: ['$credit', '$debit'] } }
+          }
+        }
+      ]);
+
+      const operating = cashFlowData.find(cf => cf._id === 'operating') || { inflow: 0, outflow: 0, netFlow: 0 };
+      const investing = cashFlowData.find(cf => cf._id === 'investing') || { inflow: 0, outflow: 0, netFlow: 0 };
+      const financing = cashFlowData.find(cf => cf._id === 'financing') || { inflow: 0, outflow: 0, netFlow: 0 };
+
+      const netCashFlow = operating.netFlow + investing.netFlow + financing.netFlow;
+
+      res.json({
+        operating,
+        investing,
+        financing,
+        netCashFlow,
+        period: { fromDate, toDate }
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate cash flow statement' });
+    }
+  },
+
+  // Get GL Dashboard Data
+  async getDashboard(req: Request, res: Response) {
+    try {
+      const { projectId } = req.query;
+      const currentDate = new Date();
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      
+      const matchStage: any = { date: { $gte: startOfMonth } };
+      if (projectId) {
+        matchStage.projectId = new mongoose.Types.ObjectId(projectId as string);
+      }
+
+      // Get current month summary
+      const monthlyData = await Ledger.aggregate([
+        { $match: matchStage },
+        {
+          $lookup: {
+            from: 'chartofaccounts',
+            localField: 'accountId',
+            foreignField: '_id',
+            as: 'account'
+          }
+        },
+        { $unwind: '$account' },
+        {
+          $group: {
+            _id: '$account.type',
+            totalDebit: { $sum: '$debit' },
+            totalCredit: { $sum: '$credit' }
+          }
+        }
+      ]);
+
+      const totalExpenses = monthlyData.find(m => m._id === 'expense')?.totalDebit || 0;
+      const totalRevenue = monthlyData.find(m => m._id === 'income')?.totalCredit || 0;
+      const totalAssets = monthlyData.find(m => m._id === 'asset')?.totalDebit || 0;
+
+      // Get WIP summary
+      const wipSummary = await WIPLedger.aggregate([
+        { $match: projectId ? { projectId: new mongoose.Types.ObjectId(projectId as string) } : {} },
+        {
+          $group: {
+            _id: null,
+            totalWIP: { $sum: '$amount' },
+            capitalizedAmount: { $sum: { $cond: ['$isCapitalized', '$capitalizedAmount', 0] } }
+          }
+        }
+      ]);
+
+      const wip = wipSummary[0] || { totalWIP: 0, capitalizedAmount: 0 };
+
+      // Get recent journal entries
+      const recentEntries = await JournalEntry.find(matchStage)
+        .populate('createdBy', 'name')
+        .sort({ date: -1 })
+        .limit(5);
+
+      res.json({
+        kpis: {
+          totalExpenses,
+          totalRevenue,
+          totalAssets,
+          netProfit: totalRevenue - totalExpenses,
+          totalWIP: wip.totalWIP,
+          capitalizedAmount: wip.capitalizedAmount
+        },
+        recentEntries,
+        period: {
+          from: startOfMonth,
+          to: currentDate
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    }
   }
 };

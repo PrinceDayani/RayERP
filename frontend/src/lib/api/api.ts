@@ -1,13 +1,8 @@
 // path: frontend/src/lib/api.ts
 import axios from "axios";
 
-// Use environment variable for API URL - no defaults
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-// Validate API_URL is set
-if (!API_URL) {
-  throw new Error("NEXT_PUBLIC_API_URL environment variable is not set");
-}
+// Use environment variable for API URL with fallback
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 // Create an Axios instance with proper baseURL
 const api = axios.create({
@@ -23,12 +18,8 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("auth-token");
     
-    // Debug output to verify token is found
     if (token) {
-      console.log("Adding auth token to request:", config.url);
       config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.log("No auth token found for request:", config.url);
     }
     
     // Fix for URL path handling
@@ -37,7 +28,6 @@ api.interceptors.request.use(
       config.url = config.url.replace(/([^:])\/\//g, '$1/');
     }
     
-    console.log(`API URL being used: ${config.baseURL}`);
     return config;
   },
   (error) => Promise.reject(error)
@@ -47,8 +37,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // If the error is a network error (like CORS), log it clearly
-    if (error.message === 'Network Error') {
+    // Handle network errors silently in production
+    if (error.message === 'Network Error' && process.env.NODE_ENV === 'development') {
       console.error('Network Error: This might be a CORS issue. Check server configuration.');
     }
     

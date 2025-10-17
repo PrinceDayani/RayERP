@@ -58,7 +58,13 @@ const AccountLedger = () => {
       queryParams.append('page', filters.page.toString());
       queryParams.append('limit', filters.limit.toString());
 
-      const response = await fetch(`/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`);
+      const token = localStorage.getItem('auth-token');
+      const response = await fetch(`/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` })
+        }
+      });
 
       if (!response.ok) throw new Error('Failed to fetch account ledger');
 
@@ -73,7 +79,7 @@ const AccountLedger = () => {
   };
 
   useEffect(() => {
-    if (accountId) {
+    if (accountId && accountId !== 'undefined') {
       fetchAccountLedger();
     }
   }, [accountId, filters]);
@@ -89,7 +95,13 @@ const AccountLedger = () => {
       if (filters.endDate) queryParams.append('endDate', filters.endDate);
       queryParams.append('export', 'true');
 
-      const response = await fetch(`/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`);
+      const token = localStorage.getItem('auth-token');
+      const response = await fetch(`/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` })
+        }
+      });
 
       if (!response.ok) throw new Error('Failed to export ledger');
 

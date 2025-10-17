@@ -2,6 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Contact } from '@/lib/api/index';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { X, Plus, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ContactFormProps {
   initialData?: Contact;
@@ -86,180 +93,177 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
     
     try {
       await onSubmit(formData);
-      router.push('/dashboard/contacts');
-    } catch (error) {
+      // Success - navigation will be handled by parent component
+    } catch (error: any) {
       console.error('Form submission error:', error);
+      // Error handling is done in parent component
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-          Name *
-        </label>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="name">Name *</Label>
+        <Input
           type="text"
           id="name"
           name="name"
           value={formData.name}
           onChange={handleChange}
-          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-            errors.name ? 'border-red-500' : ''
-          }`}
+          className={errors.name ? 'border-destructive' : ''}
+          placeholder="Enter contact name"
         />
-        {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+        {errors.name && (
+          <Alert variant="destructive">
+            <AlertDescription>{errors.name}</AlertDescription>
+          </Alert>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-            Phone Number *
-          </label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="phone">Phone Number *</Label>
+          <Input
             type="tel"
             id="phone"
             name="phone"
             value={formData.phone}
             onChange={handleChange}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.phone ? 'border-red-500' : ''
-            }`}
+            className={errors.phone ? 'border-destructive' : ''}
+            placeholder="Enter phone number"
           />
-          {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+          {errors.phone && (
+            <Alert variant="destructive">
+              <AlertDescription>{errors.phone}</AlertDescription>
+            </Alert>
+          )}
         </div>
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Email
-          </label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
             type="email"
             id="email"
             name="email"
             value={formData.email || ''}
             onChange={handleChange}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.email ? 'border-red-500' : ''
-            }`}
+            className={errors.email ? 'border-destructive' : ''}
+            placeholder="Enter email address"
           />
-          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+          {errors.email && (
+            <Alert variant="destructive">
+              <AlertDescription>{errors.email}</AlertDescription>
+            </Alert>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-            Company
-          </label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="company">Company</Label>
+          <Input
             type="text"
             id="company"
             name="company"
             value={formData.company || ''}
             onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="Enter company name"
           />
         </div>
 
-        <div>
-          <label htmlFor="position" className="block text-sm font-medium text-gray-700">
-            Position
-          </label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="position">Position</Label>
+          <Input
             type="text"
             id="position"
             name="position"
             value={formData.position || ''}
             onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="Enter job position"
           />
         </div>
       </div>
 
-      <div>
-        <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-          Address
-        </label>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="address">Address</Label>
+        <Input
           type="text"
           id="address"
           name="address"
           value={formData.address || ''}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          placeholder="Enter address"
         />
       </div>
 
-      <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-          Notes
-        </label>
-        <textarea
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
           id="notes"
           name="notes"
           rows={3}
           value={formData.notes || ''}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        ></textarea>
+          placeholder="Enter any additional notes"
+        />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Tags</label>
-        <div className="flex items-center">
-          <input
+      <div className="space-y-2">
+        <Label>Tags</Label>
+        <div className="flex gap-2">
+          <Input
             type="text"
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="Add a tag and press Enter"
+            className="flex-1"
           />
-          <button
+          <Button
             type="button"
             onClick={addTag}
-            className="ml-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            variant="outline"
+            size="sm"
           >
-            Add
-          </button>
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
         {formData.tags && formData.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {formData.tags.map((tag, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-              >
+              <Badge key={index} variant="secondary" className="flex items-center gap-1">
                 {tag}
-                <button
+                <Button
                   type="button"
                   onClick={() => removeTag(tag)}
-                  className="ml-1 inline-flex text-blue-400 hover:text-blue-600 focus:outline-none"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0 ml-1"
                 >
-                  &times;
-                </button>
-              </span>
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
             ))}
           </div>
         )}
       </div>
 
-      <div className="flex justify-end space-x-3">
-        <button
+      <div className="flex justify-end gap-3 pt-6">
+        <Button
           type="button"
+          variant="outline"
           onClick={() => router.push('/dashboard/contacts')}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          disabled={isLoading}
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={isLoading}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Saving...' : 'Save Contact'}
-        </button>
+          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isLoading ? 'Saving...' : initialData ? 'Update Contact' : 'Create Contact'}
+        </Button>
       </div>
     </form>
   );

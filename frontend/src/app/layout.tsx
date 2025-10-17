@@ -3,6 +3,8 @@
 import React from 'react';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import '@/styles/dialog-fix.css';
+import '@/utils/suppressWarnings';
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { RealTimeProvider } from '@/context/RealTimeContext';

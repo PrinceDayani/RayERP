@@ -52,3 +52,25 @@ export const getActivities = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getRecentActivities = async (req: Request, res: Response) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const activities = await ActivityLog.find()
+      .sort({ timestamp: -1 })
+      .limit(Number(limit))
+      .populate('userId', 'name email');
+
+    res.status(200).json({
+      success: true,
+      data: activities
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching recent activities',
+      error
+    });
+  }
+};
