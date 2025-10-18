@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import DateRangePicker from "@/components/analytics/DateRangePicker";
-import Layout from "../Layout";
+
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { analyticsApi, ApiError } from "@/lib/api";
 
@@ -176,44 +176,41 @@ export default function AnalyticsPage() {
 
   if (error && !isAuthenticated) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Card className="max-w-md">
-            <CardHeader>
-              <CardTitle className="text-red-500">Authentication Required</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p>{error}</p>
-              <Button onClick={handleRetry} className="w-full">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Retry
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-500">Authentication Required</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p>{error}</p>
+            <Button onClick={handleRetry} className="w-full">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <ErrorBoundary>
-        <div className="container mx-auto px-4 py-6">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
-            <div className="flex items-center gap-2">
-              <DateRangePicker value={dateRange} onChange={handleDateChange} />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleRetry}
-                disabled={loading}
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
+    <ErrorBoundary>
+      <div className="container mx-auto px-4 py-6">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <DateRangePicker value={dateRange} onChange={handleDateChange} />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRetry}
+              disabled={loading}
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
           </div>
+        </div>
 
           {error && (
             <Alert variant="destructive">
@@ -385,9 +382,8 @@ export default function AnalyticsPage() {
             </div>
           </TabsContent>
         </Tabs>
-        </div>
-        </div>
-      </ErrorBoundary>
-    </Layout>
+      </div>
+      </div>
+    </ErrorBoundary>
   );
 }

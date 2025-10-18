@@ -27,6 +27,12 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
 };
 
 export const analyticsApi = {
+  async checkAuth() {
+    return apiRequest('/api/auth/check');
+  },
+  async getDashboardAnalytics() {
+    return apiRequest('/api/analytics/dashboard');
+  },
   async getEmployeeMetrics() {
     return {
       total: 150,

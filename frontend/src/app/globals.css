@@ -104,7 +104,33 @@
   }
   
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Focus styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+  
+  /* Selection styles */
+  ::selection {
+    @apply bg-primary/20 text-primary;
+  }
+  
+  /* Improved form elements */
+  input, textarea, select {
+    @apply transition-colors duration-200;
+  }
+  
+  /* Better button transitions */
+  button {
+    @apply transition-all duration-200;
   }
 }
 
@@ -131,27 +157,92 @@
   .shadow-theme-light { box-shadow: 0 1px 3px 0 hsl(var(--shadow-light)), 0 1px 2px 0 hsl(var(--shadow-light)); }
   .shadow-theme-medium { box-shadow: 0 4px 6px -1px hsl(var(--shadow-medium)), 0 2px 4px -1px hsl(var(--shadow-medium)); }
   
+  /* Modern UI Enhancements */
+  .glass-effect {
+    @apply bg-background/80 backdrop-blur-md border border-border/50;
+  }
+  
+  .gradient-primary {
+    @apply bg-gradient-to-r from-primary to-primary/80;
+  }
+  
+  .gradient-card {
+    @apply bg-gradient-to-br from-card to-card/50;
+  }
+  
+  .hover-lift {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+  
+  .smooth-transition {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+  }
+  
+  .interactive-scale {
+    @apply transition-transform duration-200 hover:scale-105 active:scale-95;
+  }
+  
+  /* Enhanced Button Styles */
+  .btn-primary-gradient {
+    @apply bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+  
+  .btn-glass {
+    @apply bg-background/20 backdrop-blur-md border border-border/50 hover:bg-background/30 transition-all duration-300;
+  }
+  
+  /* Card Enhancements */
+  .card-modern {
+    @apply bg-card/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl;
+  }
+  
+  .card-interactive {
+    @apply hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer;
+  }
+  
   /* Table theming */
   .table-theme tr:nth-child(even) { background-color: hsl(var(--bg-table-even)); }
   .table-theme tr:nth-child(odd) { background-color: hsl(var(--bg-table-odd)); }
   
+  /* Enhanced Table Styles */
+  .table-modern {
+    @apply bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden border-0 shadow-sm;
+  }
+  
+  .table-row-hover {
+    @apply hover:bg-accent/50 transition-colors duration-200;
+  }
+  
   /* Button hover states */
   .btn-theme-hover:hover { filter: brightness(1.1); }
   
-  /* Kanban Board Styles */
+  /* Enhanced Kanban Board Styles */
   .kanban-column {
-    @apply min-h-[500px] bg-gray-50 dark:bg-gray-900 rounded-lg p-4;
+    @apply min-h-[500px] bg-card/50 backdrop-blur-sm rounded-xl p-4 border border-border/50;
   }
   
   .kanban-card {
-    @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-3 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer;
+    @apply bg-card border border-border/50 rounded-xl p-4 mb-3 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-1;
   }
   
-  .kanban-card:hover {
-    @apply transform -translate-y-1;
+  /* Loading Animations */
+  .pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
   
-  /* Text truncation utility */
+  .fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  .slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  /* Text utilities */
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -159,9 +250,87 @@
     overflow: hidden;
   }
   
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  /* Status indicators */
+  .status-dot {
+    @apply w-2 h-2 rounded-full inline-block;
+  }
+  
+  .status-online { @apply bg-green-500; }
+  .status-offline { @apply bg-gray-400; }
+  .status-busy { @apply bg-red-500; }
+  .status-away { @apply bg-yellow-500; }
+  
   /* Status border colors */
   .border-t-todo { @apply border-t-gray-500; }
   .border-t-progress { @apply border-t-blue-500; }
   .border-t-review { @apply border-t-yellow-500; }
   .border-t-completed { @apply border-t-green-500; }
+  
+  /* Scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground));
+  }
+}
+
+/* Keyframe animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
 }

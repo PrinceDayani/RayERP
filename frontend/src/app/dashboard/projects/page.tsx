@@ -236,12 +236,17 @@ const ProjectManagementDashboard: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Card>
+      <div className="flex h-screen items-center justify-center p-4">
+        <Card className="card-modern max-w-md w-full">
           <CardContent className="pt-6 text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="h-8 w-8 text-primary" />
+            </div>
             <h2 className="text-xl font-semibold mb-2">Access Required</h2>
-            <p className="text-muted-foreground mb-4">Please log in to access Project Management</p>
-            <Button onClick={() => router.push("/login")}>Login</Button>
+            <p className="text-muted-foreground mb-6">Please log in to access Project Management</p>
+            <Button onClick={() => router.push("/login")} className="btn-primary-gradient w-full">
+              Login to Continue
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -249,19 +254,21 @@ const ProjectManagementDashboard: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Project Management</h1>
-            <p className="text-muted-foreground">Manage projects, tasks, and team collaboration</p>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              Project Management
+            </h1>
+            <p className="text-muted-foreground mt-1">Manage projects, tasks, and team collaboration with real-time insights</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => router.push("/dashboard/projects/analytics")}>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => router.push("/dashboard/projects/analytics")} className="hover:bg-primary/5">
               <BarChart3 className="h-4 w-4 mr-2" />
               Analytics
             </Button>
-            <Button onClick={() => router.push("/dashboard/projects/create")}>
+            <Button onClick={() => router.push("/dashboard/projects/create")} className="btn-primary-gradient">
               <Plus className="h-4 w-4 mr-2" />
               New Project
             </Button>
@@ -269,68 +276,70 @@ const ProjectManagementDashboard: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push("/dashboard/projects/analytics")}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="card-modern hover-lift border-l-4 border-l-blue-500 cursor-pointer" onClick={() => router.push("/dashboard/projects/analytics")}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Projects</p>
-                  <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{stats.totalProjects}</p>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">View analytics →</p>
+                  <p className="text-sm font-medium text-muted-foreground">Total Projects</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.totalProjects}</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                    View analytics <ArrowRight className="h-3 w-3" />
+                  </p>
                 </div>
-                <div className="h-12 w-12 bg-blue-200 dark:bg-blue-800 rounded-full flex items-center justify-center">
-                  <BarChart3 className="h-6 w-6 text-blue-700 dark:text-blue-300" />
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
+                  <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 hover:shadow-lg transition-shadow">
+          <Card className="card-modern hover-lift border-l-4 border-l-green-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-green-700 dark:text-green-300">Active Projects</p>
-                  <p className="text-3xl font-bold text-green-900 dark:text-green-100">{stats.activeProjects}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Active Projects</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.activeProjects}</p>
                   <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                     {stats.totalProjects > 0 ? ((stats.activeProjects / stats.totalProjects) * 100).toFixed(0) : 0}% of total
                   </p>
                 </div>
-                <div className="h-12 w-12 bg-green-200 dark:bg-green-800 rounded-full flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-green-700 dark:text-green-300" />
+                <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
+                  <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 hover:shadow-lg transition-shadow">
+          <Card className="card-modern hover-lift border-l-4 border-l-purple-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Completed</p>
-                  <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">{stats.completedProjects}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.completedProjects}</p>
                   <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
                     {stats.totalProjects > 0 ? ((stats.completedProjects / stats.totalProjects) * 100).toFixed(0) : 0}% success rate
                   </p>
                 </div>
-                <div className="h-12 w-12 bg-purple-200 dark:bg-purple-800 rounded-full flex items-center justify-center">
-                  <CheckCircle className="h-6 w-6 text-purple-700 dark:text-purple-300" />
+                <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
+                  <CheckCircle className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 border-red-200 hover:shadow-lg transition-shadow">
+          <Card className="card-modern hover-lift border-l-4 border-l-red-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-red-700 dark:text-red-300">Overdue Tasks</p>
-                  <p className="text-3xl font-bold text-red-900 dark:text-red-100">{stats.overdueTasks}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Overdue Tasks</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.overdueTasks}</p>
                   <p className="text-xs text-red-600 dark:text-red-400 mt-1">
                     {stats.overdueTasks > 0 ? 'Needs attention' : 'All on track'}
                   </p>
                 </div>
-                <div className="h-12 w-12 bg-red-200 dark:bg-red-800 rounded-full flex items-center justify-center">
-                  <AlertCircle className="h-6 w-6 text-red-700 dark:text-red-300" />
+                <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-xl">
+                  <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
               </div>
             </CardContent>
@@ -339,14 +348,14 @@ const ProjectManagementDashboard: React.FC = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="projects">All Projects</TabsTrigger>
-            <TabsTrigger value="budgets">Budgets</TabsTrigger>
-            <TabsTrigger value="tasks">My Tasks</TabsTrigger>
-            <TabsTrigger value="task-management" data-tab="task-management">Task Management</TabsTrigger>
-            <TabsTrigger value="project-ledger">Finance</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-7 bg-muted/50 p-1 rounded-xl">
+            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
+            <TabsTrigger value="projects" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Projects</TabsTrigger>
+            <TabsTrigger value="budgets" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Budgets</TabsTrigger>
+            <TabsTrigger value="tasks" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">My Tasks</TabsTrigger>
+            <TabsTrigger value="task-management" data-tab="task-management" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Tasks</TabsTrigger>
+            <TabsTrigger value="project-ledger" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Finance</TabsTrigger>
+            <TabsTrigger value="reports" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -502,11 +511,14 @@ const ProjectManagementDashboard: React.FC = () => {
             </div>
 
             {/* Recent Projects */}
-            <Card>
-              <CardHeader>
+            <Card className="card-modern">
+              <CardHeader className="pb-4">
                 <div className="flex justify-between items-center">
-                  <CardTitle>Recent Projects</CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/projects/analytics")}>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                    Recent Projects
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/projects/analytics")} className="hover:bg-primary/5">
                     <BarChart3 className="h-4 w-4 mr-2" />
                     View Analytics
                   </Button>
