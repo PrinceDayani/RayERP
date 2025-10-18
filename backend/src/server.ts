@@ -195,9 +195,25 @@ mongoose
       logger.error('❌ Error initializing RBAC:', error);
     }
     
+    // Initialize budget monitoring system
+    try {
+      const { initializeBudgetMonitoring, syncAllBudgetsOnStartup } = await import('./utils/initializeBudgetMonitoring');
+      
+      // Sync all budgets on startup
+      await syncAllBudgetsOnStartup();
+      
+      // Start real-time monitoring
+      initializeBudgetMonitoring();
+      
+      logger.info('✅ Budget monitoring system initialized');
+    } catch (error) {
+      logger.error('❌ Error initializing budget monitoring:', error);
+    }
+    
     server.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
       logger.info(`👉 Allowed origins: ${JSON.stringify(allowedOrigins)}`);
+      logger.info('💰 Integrated Finance System: Budget-Ledger real-time sync active');
     });
   })
   .catch((error) => {

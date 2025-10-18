@@ -26,6 +26,7 @@ import expenseRoutes from './expense.routes';
 import financialReportRoutes from './financialReport.routes';
 import projectLedgerRoutes from './projectLedger.routes';
 import generalLedgerRoutes from './generalLedger.routes';
+import integratedFinanceRoutes from './integratedFinance.routes';
 
 const router = express.Router();
 
@@ -57,6 +58,7 @@ router.use('/expenses', expenseRoutes);
 router.use('/financial-reports', financialReportRoutes);
 router.use('/project-ledger', projectLedgerRoutes);
 router.use('/general-ledger', generalLedgerRoutes);
+router.use('/integrated-finance', integratedFinanceRoutes);
 
 // --- Health Check Endpoints ---
 router.get('/health', (req, res) => {

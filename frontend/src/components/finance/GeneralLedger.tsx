@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, FileText, TrendingUp, DollarSign, Building, Users, Plus, Filter, Download, Eye, BarChart3, PieChart, Printer, Settings, ArrowLeft } from 'lucide-react';
+import { Calendar, FileText, TrendingUp, DollarSign, Building, Users, Plus, Filter, Download, Eye, BarChart3, PieChart, Printer, Settings, ArrowLeft, Activity } from 'lucide-react';
 import ChartOfAccounts from './ChartOfAccounts';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { toast } from '@/hooks/use-toast';
@@ -1694,6 +1694,32 @@ const GeneralLedger = () => {
                         {formatCurrency(journalEntries.reduce((sum, entry) => sum + entry.totalDebit, 0) / journalEntries.length || 0)}
                       </p>
                       <p className="text-sm text-muted-foreground">Avg Transaction</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Integrated Finance Dashboard Link */}
+              <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Integrated Finance System</h3>
+                      <p className="text-blue-100 text-sm mb-4">
+                        Real-time Budget-Ledger synchronization with live monitoring
+                      </p>
+                      <div className="flex gap-2">
+                        <Badge variant="secondary" className="bg-white/20 text-white">
+                          Real-time Sync
+                        </Badge>
+                        <Badge variant="secondary" className="bg-white/20 text-white">
+                          Auto Updates
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Activity className="h-8 w-8 mb-2 opacity-80" />
+                      <p className="text-xs text-blue-100">Live Monitoring</p>
                     </div>
                   </div>
                 </CardContent>
