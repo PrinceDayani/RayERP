@@ -82,6 +82,8 @@ export async function apiRequest<T>(
 export const analyticsApi = {
   checkAuth: () => apiRequest('/api/auth/check'),
   
+  getDashboardAnalytics: () => apiRequest('/api/analytics/dashboard'),
+  
   getProductCategories: (from: string, to: string) =>
     apiRequest(`/api/reports/product-categories?from=${from}&to=${to}`),
     
