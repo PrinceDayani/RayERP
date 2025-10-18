@@ -1,11 +1,16 @@
 //path: backend/src/controllers/projectFileController.ts
 
 import { Request, Response } from 'express';
+import multer from 'multer';
+import * as path from 'path';
+import * as fs from 'fs';
 import ProjectFile from '../models/ProjectFile';
 import Project from '../models/Project';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+
+// Extend Request interface to include file property
+interface MulterRequest extends Request {
+  file?: Express.Multer.File;
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -64,7 +69,7 @@ export const getProjectFiles = async (req: Request, res: Response) => {
 };
 
 // Upload file to project
-export const uploadProjectFile = async (req: Request, res: Response) => {
+export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
   try {
     const { projectId } = req.params;
     const userId = (req as any).user.id;
