@@ -1743,4 +1743,4 @@ const GeneralLedger = () => {
   );
 };
 
-export default GeneralLedger;
+export default  GeneralLedger;
