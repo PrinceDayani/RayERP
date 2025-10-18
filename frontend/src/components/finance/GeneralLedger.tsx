@@ -237,7 +237,7 @@ const GeneralLedger = () => {
                     <SelectValue placeholder="Select account" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts.map((account) => (
+                    {Array.isArray(accounts) && accounts.map((account) => (
                       <SelectItem key={account._id} value={account._id}>
                         {account.code} - {account.name}
                       </SelectItem>
@@ -399,7 +399,7 @@ const GeneralLedger = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {accounts.map((account) => (
+                    {Array.isArray(accounts) && accounts.map((account) => (
                       <TableRow key={account._id} className="hover:bg-gray-50 cursor-pointer">
                         <TableCell className="font-mono">{account.code}</TableCell>
                         <TableCell 
@@ -450,7 +450,7 @@ const GeneralLedger = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {journalEntries.map((entry) => (
+                    {Array.isArray(journalEntries) && journalEntries.map((entry) => (
                       <TableRow key={entry._id}>
                         <TableCell className="font-mono">{entry.entryNumber}</TableCell>
                         <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>

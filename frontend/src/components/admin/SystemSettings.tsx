@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { AlertCircleIcon, CheckCircleIcon, RefreshCwIcon } from "lucide-react";
-import { adminAPI, AdminGeneralSettings, AdminSecuritySettings, AdminNotificationSettings, AdminBackupSettings } from "@/lib/api"; // Updated import with renamed types
+import adminAPI, { AdminGeneralSettings, AdminSecuritySettings, AdminNotificationSettings, AdminBackupSettings } from "@/lib/api/adminAPI";
 
 interface SystemSettingsProps {
   isLoading: boolean;
@@ -23,7 +23,7 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
     supportEmail: "",
     timezone: "UTC",
     dateFormat: "MM/DD/YYYY",
-    currency: "USD",
+    currency: "INR",
     language: "en",
   });
 
@@ -336,11 +336,11 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
                     <SelectValue placeholder="Select currency" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="USD">US Dollar ($)</SelectItem>
+                    <SelectItem value="INR">Indian Rupee (₹)</SelectItem>
+                    <SelectItem value="INR">US Dollar ($)</SelectItem>
                     <SelectItem value="EUR">Euro (€)</SelectItem>
                     <SelectItem value="GBP">British Pound (£)</SelectItem>
                     <SelectItem value="JPY">Japanese Yen (¥)</SelectItem>
-                    <SelectItem value="INR">Indian Rupee (₹)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -297,7 +296,6 @@ const ProjectLedgerPage = () => {
   };
 
   return (
-    <Layout>
       <div className="flex-1 space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -970,7 +968,6 @@ const ProjectLedgerPage = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </Layout>
   );
 };
 

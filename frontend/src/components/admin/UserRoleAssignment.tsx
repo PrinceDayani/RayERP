@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SearchIcon, UserIcon, ShieldIcon } from "lucide-react";
-import { adminAPI } from "@/lib/api";
+import adminAPI from "@/lib/api/adminAPI";
 import { toast } from "@/components/ui/use-toast";
 
 interface User {

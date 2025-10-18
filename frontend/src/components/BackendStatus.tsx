@@ -13,7 +13,6 @@ const BackendStatus: React.FC = () => {
   return (
     <Alert variant="destructive" className="mb-4">
       <AlertTriangle className="h-4 w-4" />
-      <AlertDescription className="flex items-center gap-2">
         <Server className="h-4 w-4" />
         <div>
           <strong>Backend Server Not Available</strong>
@@ -24,7 +23,6 @@ const BackendStatus: React.FC = () => {
             To start the backend server, run: <code className="bg-gray-100 px-1 rounded">npm run dev</code> in the backend directory
           </p>
         </div>
-      </AlertDescription>
     </Alert>
   );
 };

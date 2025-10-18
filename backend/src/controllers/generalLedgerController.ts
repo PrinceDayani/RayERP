@@ -6,14 +6,45 @@ import { Transaction } from '../models/Transaction';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 
-// Get all accounts
+// Get all accounts with hierarchy
 export const getAccounts = async (req: Request, res: Response) => {
   try {
-    const accounts = await Account.find({ isActive: true })
-      .populate('parentId', 'name code')
+    const { type, isGroup, includeInactive, hierarchy } = req.query;
+    
+    const query: any = {};
+    if (type) query.type = type;
+    if (isGroup !== undefined) query.isGroup = isGroup === 'true';
+    if (includeInactive !== 'true') query.isActive = true;
+    
+    const accounts = await Account.find(query)
+      .populate('parentId', 'name code type')
       .sort({ code: 1 });
     
-    res.json(accounts);
+    // Build hierarchy if requested
+    if (hierarchy === 'true') {
+      const accountMap = new Map();
+      const rootAccounts: any[] = [];
+      
+      accounts.forEach(acc => {
+        accountMap.set(acc._id.toString(), { ...acc.toObject(), children: [] });
+      });
+      
+      accounts.forEach(acc => {
+        const account = accountMap.get(acc._id.toString());
+        if (acc.parentId) {
+          const parent = accountMap.get(acc.parentId.toString());
+          if (parent) {
+            parent.children.push(account);
+          }
+        } else {
+          rootAccounts.push(account);
+        }
+      });
+      
+      return res.json({ accounts: rootAccounts, total: accounts.length });
+    }
+    
+    res.json({ accounts, total: accounts.length });
   } catch (error) {
     logger.error('Error fetching accounts:', error);
     res.status(500).json({ message: 'Error fetching accounts' });
@@ -23,21 +54,33 @@ export const getAccounts = async (req: Request, res: Response) => {
 // Create new account
 export const createAccount = async (req: Request, res: Response) => {
   try {
-    const { code, name, type, subType, parentId, description } = req.body;
+    const accountData = req.body;
+    const userId = (req as any).user?.id || (req as any).user?._id;
 
     // Check if account code already exists
-    const existingAccount = await Account.findOne({ code });
+    const existingAccount = await Account.findOne({ code: accountData.code });
     if (existingAccount) {
       return res.status(400).json({ message: 'Account code already exists' });
     }
 
+    // Calculate level based on parent
+    let level = 0;
+    if (accountData.parentId) {
+      const parent = await Account.findById(accountData.parentId);
+      if (parent) {
+        level = parent.level + 1;
+        // Inherit type from parent if not specified
+        if (!accountData.type) {
+          accountData.type = parent.type;
+        }
+      }
+    }
+
     const account = new Account({
-      code,
-      name,
-      type,
-      subType,
-      parentId: parentId || undefined,
-      description
+      ...accountData,
+      level,
+      balance: accountData.openingBalance || 0,
+      createdBy: userId
     });
 
     await account.save();
@@ -46,7 +89,7 @@ export const createAccount = async (req: Request, res: Response) => {
     res.status(201).json(account);
   } catch (error) {
     logger.error('Error creating account:', error);
-    res.status(500).json({ message: 'Error creating account' });
+    res.status(500).json({ message: 'Error creating account', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 

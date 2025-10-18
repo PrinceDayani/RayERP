@@ -41,25 +41,18 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
         limit: logsPerPage
       };
       
-      const logsData = await getActivityLogs(filters);
+      const response = await getActivityLogs(filters);
+      const logsData = response.data || [];
+      const pagination = response.pagination || {};
       
-      if (logsData.logs && logsData.logs.length > 0) {
-        setLogs(logsData.logs);
-        setFilteredLogs(logsData.logs);
-        setTotalPages(logsData.totalPages || 1);
-      } else {
-        // Use mock data if no real data available
-        const mockLogs = generateMockLogs(20);
-        setLogs(mockLogs);
-        setFilteredLogs(mockLogs);
-        setTotalPages(Math.ceil(mockLogs.length / logsPerPage));
-      }
+      setLogs(logsData);
+      setFilteredLogs(logsData);
+      setTotalPages(pagination.pages || 1);
     } catch (error) {
       console.error("Failed to fetch data:", error);
-      const mockLogs = generateMockLogs(20);
-      setLogs(mockLogs);
-      setFilteredLogs(mockLogs);
-      setTotalPages(Math.ceil(mockLogs.length / logsPerPage));
+      setLogs([]);
+      setFilteredLogs([]);
+      setTotalPages(1);
     }
   };
 
@@ -120,8 +113,7 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
     if (searchTerm) {
       filtered = filtered.filter(
         (log) =>
-          log.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          log.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.resource.toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -202,10 +194,10 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
       headers.join(","),
       ...filteredLogs.map((log) => [
         formatDate(log.timestamp),
-        log.user.name,
+        log.user,
         log.action,
         log.resource,
-        'Success',
+        log.status || 'success',
         `"${log.details.replace(/"/g, '""')}"`, // Escape quotes
         log.ipAddress || 'N/A',
       ].join(",")),
@@ -353,14 +345,11 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
                     {formatDate(log.timestamp)}
                   </TableCell>
                   <TableCell>
-                    <div>
-                      <div className="font-medium">{log.user.name}</div>
-                      <div className="text-sm text-muted-foreground">{log.user.email}</div>
-                    </div>
+                    <div className="font-medium">{log.user}</div>
                   </TableCell>
                   <TableCell>{getActionBadge(log.action)}</TableCell>
                   <TableCell className="capitalize">{log.resource}</TableCell>
-                  <TableCell><Badge className="bg-green-500">Success</Badge></TableCell>
+                  <TableCell>{getStatusBadge(log.status || 'success')}</TableCell>
                   <TableCell className="max-w-xs truncate" title={log.details}>
                     {log.details}
                   </TableCell>

@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusIcon, EditIcon, TrashIcon, SearchIcon, UserIcon, ShieldIcon, ToggleLeftIcon, ToggleRightIcon } from "lucide-react";
-import { adminAPI } from "@/lib/api";
+import adminAPI from "@/lib/api/adminAPI";
 import { toast } from "@/components/ui/use-toast";
 import { logActivity } from "@/lib/activityLogger";
 
