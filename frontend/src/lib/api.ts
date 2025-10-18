@@ -8,10 +8,12 @@ export class ApiError extends Error {
 }
 
 export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+  const token = localStorage.getItem('auth-token');
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     },
     ...options,

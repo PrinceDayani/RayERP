@@ -15,6 +15,8 @@ export interface IProject extends Document {
 
   manager: mongoose.Types.ObjectId;
   team: mongoose.Types.ObjectId[];
+  owner: mongoose.Types.ObjectId;
+  members: mongoose.Types.ObjectId[];
   client?: string;
   tags: string[];
   createdAt: Date;
@@ -42,6 +44,8 @@ const projectSchema = new Schema<IProject>({
   progress: { type: Number, min: 0, max: 100, default: 0 },
   manager: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
   team: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
+  owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   client: String,
   tags: [String]
 }, { timestamps: true });

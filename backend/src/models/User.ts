@@ -4,8 +4,9 @@ import jwt from 'jsonwebtoken';
 
 export enum UserRole {
   ROOT = 'root',
-  SUPER_ADMIN = 'superadmin',
+  SUPER_ADMIN = 'super_admin',
   ADMIN = 'admin',
+  MEMBER = 'member',
   NORMAL = 'normal'
 }
 

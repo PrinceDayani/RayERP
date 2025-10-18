@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import User from '../models/User';
+import User, { UserRole } from '../models/User';
 import { Role } from '../models/Role';
 
 interface AuthenticatedRequest extends Request {
@@ -21,7 +21,7 @@ export const requirePermission = (permission: string) => {
       }
 
       // Check if user has root, superadmin, or admin role (backward compatibility)
-      if (user.role === 'root' || user.role === 'superadmin' || user.role === 'admin') {
+      if (user.role === UserRole.ROOT || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) {
         return next();
       }
 
@@ -67,7 +67,7 @@ export const requireAnyPermission = (permissions: string[]) => {
       }
 
       // Check if user has root, superadmin, or admin role (backward compatibility)
-      if (user.role === 'root' || user.role === 'superadmin' || user.role === 'admin') {
+      if (user.role === UserRole.ROOT || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN) {
         return next();
       }
 

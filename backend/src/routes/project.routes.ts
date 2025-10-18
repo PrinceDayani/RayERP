@@ -13,7 +13,10 @@ import {
   deleteProjectTask,
   getProjectStats,
   getProjectTimeline,
-  updateProjectStatus
+  updateProjectStatus,
+  addProjectMember,
+  removeProjectMember,
+  getProjectMembers
 } from '../controllers/projectController';
 import {
   getProjectFiles,
@@ -24,6 +27,7 @@ import {
 } from '../controllers/projectFileController';
 import budgetRoutes from './budgetRoutes';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { checkProjectAccess, checkProjectManagementAccess } from '../middleware/projectAccess.middleware';
 import {
   validateObjectId,
   validateRequiredFields,
@@ -40,8 +44,9 @@ router.use(authenticateToken);
 // --- Core Project Routes ---
 router.get('/stats', getProjectStats);
 router.get('/', getAllProjects);
-router.get('/:id', validateObjectId(), getProjectById);
+router.get('/:id', validateObjectId(), checkProjectAccess, getProjectById);
 router.post('/',
+  checkProjectManagementAccess,
   validateRequiredFields(['name', 'description', 'startDate', 'endDate', 'manager']),
   validateProjectStatus,
   validatePriority,
@@ -50,54 +55,76 @@ router.post('/',
 );
 router.put('/:id',
   validateObjectId(),
+  checkProjectAccess,
   validateProjectStatus,
   validatePriority,
   validateDateRange,
   updateProject
 );
-router.delete('/:id', validateObjectId(), deleteProject);
+router.delete('/:id', validateObjectId(), checkProjectManagementAccess, deleteProject);
 router.patch('/:id/status',
   validateObjectId(),
+  checkProjectAccess,
   validateRequiredFields(['status']),
   validateProjectStatus,
   updateProjectStatus
 );
 
 // --- Project Task Routes ---
-router.get('/:id/tasks', validateObjectId(), getProjectTasks);
+router.get('/:id/tasks', validateObjectId(), checkProjectAccess, getProjectTasks);
 router.post('/:id/tasks',
   validateObjectId(),
+  checkProjectAccess,
   validateRequiredFields(['title', 'assignedTo', 'assignedBy']),
   createProjectTask
 );
 router.put('/:id/tasks/:taskId',
   validateObjectId('id'),
   validateObjectId('taskId'),
+  checkProjectAccess,
   updateProjectTask
 );
 router.delete('/:id/tasks/:taskId',
   validateObjectId('id'),
   validateObjectId('taskId'),
+  checkProjectAccess,
   deleteProjectTask
 );
 
+// --- Member Management Routes ---
+router.get('/:id/members', validateObjectId(), checkProjectAccess, getProjectMembers);
+router.post('/:id/members',
+  validateObjectId(),
+  checkProjectManagementAccess,
+  validateRequiredFields(['memberId']),
+  addProjectMember
+);
+router.delete('/:id/members/:memberId',
+  validateObjectId('id'),
+  validateObjectId('memberId'),
+  checkProjectManagementAccess,
+  removeProjectMember
+);
+
 // --- Other Project-specific Routes ---
-router.get('/:id/timeline', validateObjectId(), getProjectTimeline);
+router.get('/:id/timeline', validateObjectId(), checkProjectAccess, getProjectTimeline);
 
 // --- Nested Budget Routes ---
 router.use('/:id/budget', budgetRoutes);
 
 // --- File Management Routes ---
-router.get('/:id/files', validateObjectId(), getProjectFiles);
-router.post('/:id/files', validateObjectId(), upload.single('file'), uploadProjectFile);
+router.get('/:id/files', validateObjectId(), checkProjectAccess, getProjectFiles);
+router.post('/:id/files', validateObjectId(), checkProjectAccess, upload.single('file'), uploadProjectFile);
 router.get('/:id/files/:fileId/download',
   validateObjectId('id'),
   validateObjectId('fileId'),
+  checkProjectAccess,
   downloadProjectFile
 );
 router.delete('/:id/files/:fileId',
   validateObjectId('id'),
   validateObjectId('fileId'),
+  checkProjectAccess,
   deleteProjectFile
 );
 

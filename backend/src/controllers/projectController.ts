@@ -34,9 +34,32 @@ const emitProjectStats = async () => {
 
 export const getAllProjects = async (req: Request, res: Response) => {
   try {
-    const projects = await Project.find()
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    let query = {};
+    
+    // Root user can see all projects
+    if (user.role === 'root') {
+      query = {};
+    }
+    // Super admin can see projects they own
+    else if (user.role === 'super_admin') {
+      query = { owner: user._id };
+    }
+    // Members can only see projects they're assigned to
+    else {
+      query = { members: user._id };
+    }
+
+    const projects = await Project.find(query)
       .populate('manager', 'firstName lastName')
-      .populate('team', 'firstName lastName');
+      .populate('team', 'firstName lastName')
+      .populate('owner', 'name email')
+      .populate('members', 'name email');
+    
     res.json(projects);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching projects', error });
@@ -47,7 +70,9 @@ export const getProjectById = async (req: Request, res: Response) => {
   try {
     const project = await Project.findById(req.params.id)
       .populate('manager', 'firstName lastName')
-      .populate('team', 'firstName lastName');
+      .populate('team', 'firstName lastName')
+      .populate('owner', 'name email')
+      .populate('members', 'name email');
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
@@ -59,10 +84,23 @@ export const getProjectById = async (req: Request, res: Response) => {
 
 export const createProject = async (req: Request, res: Response) => {
   try {
-    const project = new Project(req.body);
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const projectData = {
+      ...req.body,
+      owner: user._id,
+      members: req.body.members || []
+    };
+    
+    const project = new Project(projectData);
     await project.save();
     await project.populate('manager', 'firstName lastName');
     await project.populate('team', 'firstName lastName');
+    await project.populate('owner', 'name email');
+    await project.populate('members', 'name email');
     
     // Safely get manager ID
     const managerId = project.manager ? 
@@ -106,7 +144,9 @@ export const updateProject = async (req: Request, res: Response) => {
       req.body,
       { new: true, runValidators: true }
     ).populate('manager', 'firstName lastName')
-     .populate('team', 'firstName lastName');
+     .populate('team', 'firstName lastName')
+     .populate('owner', 'name email')
+     .populate('members', 'name email');
     
     if (!project) {
       return res.status(404).json({ message: 'Project not found after update' });
@@ -178,6 +218,8 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     await project.save();
     await project.populate('manager', 'firstName lastName');
     await project.populate('team', 'firstName lastName');
+    await project.populate('owner', 'name email');
+    await project.populate('members', 'name email');
     
     // Safely get user ID
     const userId = user || (project.manager ? 
@@ -448,5 +490,72 @@ export const getProjectTimeline = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching project timeline:', error);
     res.status(500).json({ message: 'Error fetching project timeline', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const addProjectMember = async (req: Request, res: Response) => {
+  try {
+    const { memberId } = req.body;
+    const projectId = req.params.id;
+    
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    if (project.members.includes(memberId)) {
+      return res.status(400).json({ success: false, message: 'User is already a member' });
+    }
+
+    project.members.push(memberId);
+    await project.save();
+    await project.populate('members', 'name email');
+    
+    res.json({ success: true, message: 'Member added successfully', members: project.members });
+  } catch (error) {
+    console.error('Error adding project member:', error);
+    res.status(500).json({ success: false, message: 'Error adding member', error });
+  }
+};
+
+export const removeProjectMember = async (req: Request, res: Response) => {
+  try {
+    const { memberId } = req.params;
+    const projectId = req.params.id;
+    
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    project.members = project.members.filter(id => id.toString() !== memberId);
+    await project.save();
+    await project.populate('members', 'name email');
+    
+    res.json({ success: true, message: 'Member removed successfully', members: project.members });
+  } catch (error) {
+    console.error('Error removing project member:', error);
+    res.status(500).json({ success: false, message: 'Error removing member', error });
+  }
+};
+
+export const getProjectMembers = async (req: Request, res: Response) => {
+  try {
+    const project = await Project.findById(req.params.id)
+      .populate('owner', 'name email')
+      .populate('members', 'name email');
+    
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      owner: project.owner,
+      members: project.members 
+    });
+  } catch (error) {
+    console.error('Error fetching project members:', error);
+    res.status(500).json({ success: false, message: 'Error fetching members', error });
   }
 };

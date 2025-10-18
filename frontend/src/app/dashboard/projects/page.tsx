@@ -474,7 +474,13 @@ const ProjectManagementDashboard: React.FC = () => {
                             className="text-blue-600"
                             strokeWidth="8"
                             strokeDasharray={2 * Math.PI * 56}
-                            strokeDashoffset={2 * Math.PI * 56 * (1 - (projects.reduce((sum: number, p) => sum + (p.progress || 0), 0) / projects.length / 100))}
+                            strokeDashoffset={(() => {
+                              if (projects.length === 0) return 2 * Math.PI * 56;
+                              const totalProgress = projects.reduce((sum: number, p) => sum + (p.progress || 0), 0);
+                              const avgProgress = totalProgress / projects.length;
+                              const progressRatio = avgProgress / 100;
+                              return 2 * Math.PI * 56 * (1 - progressRatio);
+                            })()}
                             strokeLinecap="round"
                             stroke="currentColor"
                             fill="transparent"
