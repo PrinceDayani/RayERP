@@ -116,6 +116,16 @@ const ProjectManagementDashboard: React.FC = () => {
     return colors[priority as keyof typeof colors] || 'bg-gray-500 text-white';
   };
 
+  const handleQuickStatusUpdate = async (projectId: string, newStatus: string) => {
+    try {
+      await updateProject(projectId, { status: newStatus });
+      setProjects(prev => prev.map(p => p._id === projectId ? { ...p, status: newStatus } : p));
+      toast({ title: "Status updated successfully" });
+    } catch (error) {
+      toast({ title: "Failed to update status", variant: "destructive" });
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="flex h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -285,85 +295,6 @@ const ProjectManagementDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-        {/* Main Content */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 bg-muted/50 p-1 rounded-xl">
-            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
-            <TabsTrigger value="projects" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Projects</TabsTrigger>
-            <TabsTrigger value="budgets" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Budgets</TabsTrigger>
-            <TabsTrigger value="tasks" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">My Tasks</TabsTrigger>
-            <TabsTrigger value="task-management" data-tab="task-management" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Tasks</TabsTrigger>
-            <TabsTrigger value="project-ledger" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Finance</TabsTrigger>
-            <TabsTrigger value="reports" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Reports</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-{/* Quick Actions + Analytics */}
-            <div className="space-y-6">
-              {/* Quick Actions */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/dashboard/projects/create")}>
-                  <CardContent className="p-4 text-center">
-                    <Plus className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                    <h3 className="font-medium">New Project</h3>
-                    <p className="text-sm text-muted-foreground">Create a new project</p>
-                  </CardContent>
-                </Card>
-                
-                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/dashboard/projects/reports")}>
-                  <CardContent className="p-4 text-center">
-                    <BarChart3 className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                    <h3 className="font-medium">View Reports</h3>
-                    <p className="text-sm text-muted-foreground">Project analytics</p>
-                  </CardContent>
-                </Card>
-                
-                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push("/dashboard/projects/ledger")}>
-                  <CardContent className="p-4 text-center">
-                    <DollarSign className="h-8 w-8 mx-auto mb-2 text-yellow-600" />
-                    <h3 className="font-medium">Finance</h3>
-                    <p className="text-sm text-muted-foreground">Project budgets</p>
-                  </CardContent>
-                </Card>
-                
-                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => (document.querySelector('[data-tab="task-management"]') as HTMLElement)?.click()}>
-                  <CardContent className="p-4 text-center">
-                    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                    <h3 className="font-medium">Manage Tasks</h3>
-                    <p className="text-sm text-muted-foreground">Create & track tasks</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Analytics */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Project Health</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Active</span>
-                          <span className="font-medium">{stats.activeProjects}</span>
-                        </div>
-                        <Progress value={(stats.activeProjects / stats.totalProjects) * 100} className="h-2" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Completed</span>
-                          <span className="font-medium">{stats.completedProjects}</span>
-                        </div>
-                        <Progress value={(stats.completedProjects / stats.totalProjects) * 100} className="h-2" />
-                      </div>
-                      <div className="pt-2 border-t">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Success Rate</span>
-                          <span className="text-lg font-bold text-green-600">
-                            {stats.totalProjects > 0 ? ((stats.completedProjects / stats.totalProjects) * 100).toFixed(0) : 0}%
-                          </span>
-                        </div>
           {/* Projects Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.length === 0 ? (
@@ -408,46 +339,6 @@ const ProjectManagementDashboard: React.FC = () => {
                       </Badge>
                     </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Average Progress</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-4">
-                      <div className="relative inline-flex items-center justify-center">
-                        <svg className="w-32 h-32">
-                          <circle
-                            className="text-gray-200 dark:text-gray-700"
-                            strokeWidth="8"
-                            stroke="currentColor"
-                            fill="transparent"
-                            r="56"
-                            cx="64"
-                            cy="64"
-                          />
-                          <circle
-                            className="text-blue-600"
-                            strokeWidth="8"
-                            strokeDasharray={2 * Math.PI * 56}
-                            strokeDashoffset={(() => {
-                              if (projects.length === 0) return 2 * Math.PI * 56;
-                              const totalProgress = projects.reduce((sum: number, p) => sum + (p.progress || 0), 0);
-                              const avgProgress = totalProgress / projects.length;
-                              const progressRatio = avgProgress / 100;
-                              return 2 * Math.PI * 56 * (1 - progressRatio);
-                            })()}
-                            strokeLinecap="round"
-                            stroke="currentColor"
-                            fill="transparent"
-                            r="56"
-                            cx="64"
-                            cy="64"
-                            style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
-                          />
-                        </svg>
-                        <span className="absolute text-3xl font-bold">
-                          {projects.length > 0 ? (projects.reduce((sum: number, p) => sum + (p.progress || 0), 0) / projects.length).toFixed(0) : 0}%
-                        </span>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-muted-foreground">Progress</span>
@@ -456,67 +347,86 @@ const ProjectManagementDashboard: React.FC = () => {
                       <Progress value={project.progress} className="h-2" />
                     </div>
 
-            {/* Recent Projects */}
-            <Card className="card-modern">
-              <CardHeader className="pb-4">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                    Recent Projects
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/projects/analytics")} className="hover:bg-primary/5">
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    View Analytics
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {projects.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No projects yet. Create your first project to get started.
+                    <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        <span>{new Date(project.endDate).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        <span>{project.team?.length || 0}</span>
+                      </div>
                     </div>
-                  ) : (
-                    projects.slice(0, 5).map((project) => (
-                    <div key={project._id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer group" onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button size="sm" variant="outline" className="flex-1"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=tasks`); }}>
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Tasks
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
+                        <DollarSign className="h-3 w-3 mr-1" />
+                        Budget
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+          {/* Projects Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjects.length === 0 ? (
+              <Card className="col-span-full border-0 shadow-lg">
+                <CardContent className="p-12 text-center">
+                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Briefcase className="w-10 h-10 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">No projects found</h3>
+                  <p className="text-muted-foreground mb-6">Create your first project to get started</p>
+                  <Button onClick={() => router.push("/dashboard/projects/create")} className="shadow-lg">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Project
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredProjects.map((project) => (
+                <Card key={project._id} className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
+                      onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+                  <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-medium">{project.name || project.title}</h3>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/dashboard/projects/${project._id}/edit`);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{project.description}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Select 
-                            value={project.status} 
-                            onValueChange={(value) => handleQuickStatusUpdate(project._id, value)}
-                          >
-                            <SelectTrigger className="w-auto h-6 text-xs border-0 bg-transparent p-0">
-                              <Badge className={getStatusColor(project.status)}>
-                                {project.status}
-                              </Badge>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="planning">Planning</SelectItem>
-                              <SelectItem value="active">Active</SelectItem>
-                              <SelectItem value="on-hold">On Hold</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Badge variant="outline" className={getPriorityColor(project.priority)}>
-                            {project.priority}
-                          </Badge>
-                        </div>
+                        <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors line-clamp-1">
+                          {project.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{project.description}</p>
+                      </div>
+                      <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/edit`); }}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className={`${getStatusColor(project.status)} border`}>
+                        {project.status}
+                      </Badge>
+                      <Badge className={getPriorityColor(project.priority)}>
+                        {project.priority}
+                      </Badge>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-semibold">{project.progress}%</span>
+                      </div>
+                      <Progress value={project.progress} className="h-2" />
+                    </div>
+
                     <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
