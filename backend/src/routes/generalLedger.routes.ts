@@ -15,8 +15,8 @@ import { authenticateToken } from '../middleware/auth.middleware';
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes except for development
-// router.use(authenticateToken);
+// Apply authentication middleware to all routes
+router.use(authenticateToken);
 
 // Account routes
 router.get('/accounts', getAccounts);

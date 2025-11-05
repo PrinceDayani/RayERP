@@ -12,7 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, FileText, Calculator, DollarSign, Trash2, AlertCircle, FolderOpen, Building2, Users, Package, CreditCard, Banknote, Receipt, FileSpreadsheet } from 'lucide-react';
+import { Plus, FileText, Calculator, DollarSign, Trash2, AlertCircle, FolderOpen, Building2, Users, Package, CreditCard, Banknote, Receipt, FileSpreadsheet, ChevronRight } from 'lucide-react';
+import { generalLedgerAPI, type Account, type JournalEntry, type TrialBalance } from '@/lib/api/generalLedgerAPI';
+import { toast } from '@/components/ui/use-toast';
 
 interface AccountGroup {
   id: string;
@@ -79,44 +81,13 @@ interface CostCenter {
 
 export default function GeneralLedgerPage() {
   const router = useRouter();
-  const [accountGroups] = useState<AccountGroup[]>([
-    { id: '1', name: 'Capital Account', nature: 'liability', affects: 'balance-sheet' },
-    { id: '2', name: 'Current Assets', nature: 'asset', affects: 'balance-sheet' },
-    { id: '3', name: 'Current Liabilities', nature: 'liability', affects: 'balance-sheet' },
-    { id: '4', name: 'Fixed Assets', nature: 'asset', affects: 'balance-sheet' },
-    { id: '8', name: 'Sales Accounts', nature: 'income', affects: 'profit-loss' },
-    { id: '9', name: 'Purchase Accounts', nature: 'expense', affects: 'profit-loss' },
-    { id: '12', name: 'Indirect Expenses', nature: 'expense', affects: 'profit-loss' },
-    { id: '14', name: 'Bank Accounts', parentId: '2', nature: 'asset', affects: 'balance-sheet' },
-    { id: '15', name: 'Cash-in-Hand', parentId: '2', nature: 'asset', affects: 'balance-sheet' },
-    { id: '16', name: 'Sundry Debtors', parentId: '2', nature: 'asset', affects: 'balance-sheet' },
-    { id: '17', name: 'Sundry Creditors', parentId: '3', nature: 'liability', affects: 'balance-sheet' }
-  ]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [ledgers, setLedgers] = useState<Ledger[]>([
-    { id: '1', name: 'Cash', groupId: '15', openingBalance: 50000, currentBalance: 50000, isActive: true },
-    { id: '2', name: 'HDFC Bank', groupId: '14', openingBalance: 100000, currentBalance: 100000, isActive: true, isBankAccount: true },
-    { id: '3', name: 'ICICI Bank', groupId: '14', openingBalance: 75000, currentBalance: 75000, isActive: true, isBankAccount: true },
-    { id: '4', name: 'ABC Customer', groupId: '16', openingBalance: 25000, currentBalance: 25000, isActive: true, phone: '9876543210', email: 'abc@example.com' },
-    { id: '5', name: 'XYZ Supplier', groupId: '17', openingBalance: -15000, currentBalance: -15000, isActive: true, gstNo: '27ABCDE1234F1Z5' },
-    { id: '6', name: 'Sales Account', groupId: '8', openingBalance: 0, currentBalance: 0, isActive: true },
-    { id: '7', name: 'Purchase Account', groupId: '9', openingBalance: 0, currentBalance: 0, isActive: true },
-    { id: '8', name: 'Salary Expenses', groupId: '12', openingBalance: 0, currentBalance: 0, isActive: true },
-    { id: '9', name: 'Rent Expenses', groupId: '12', openingBalance: 0, currentBalance: 0, isActive: true },
-    { id: '10', name: 'Office Equipment', groupId: '4', openingBalance: 200000, currentBalance: 200000, isActive: true }
-  ]);
+
   
-  const [vouchers, setVouchers] = useState<Voucher[]>([
-    {
-      id: '1', voucherType: 'receipt', voucherNo: 'RCP001', date: '2024-01-15', reference: 'INV-001',
-      narration: 'Cash received from ABC Customer',
-      lines: [
-        { ledgerId: '1', ledgerName: 'Cash', amount: 25000, isDebit: true },
-        { ledgerId: '4', ledgerName: 'ABC Customer', amount: 25000, isDebit: false }
-      ],
-      totalAmount: 25000, isPosted: true, createdAt: '2024-01-15T10:30:00Z'
-    }
-  ]);
+
   
   const [journalTemplates] = useState<JournalTemplate[]>([
     {
@@ -133,68 +104,50 @@ export default function GeneralLedgerPage() {
     { id: '2', name: 'Sales Department', code: 'SALES' }
   ]);
   
-  const [trialBalance, setTrialBalance] = useState<any>(null);
+  const [trialBalance, setTrialBalance] = useState<TrialBalance | null>(null);
 
-  const generateTrialBalance = () => {
-    const ledgerBalances = new Map();
-    
-    ledgers.forEach(ledger => {
-      ledgerBalances.set(ledger.id, ledger.currentBalance);
-    });
-    
-    vouchers.filter(v => v.isPosted).forEach(voucher => {
-      voucher.lines.forEach(line => {
-        const currentBalance = ledgerBalances.get(line.ledgerId) || 0;
-        const ledger = ledgers.find(l => l.id === line.ledgerId);
-        const group = accountGroups.find(g => g.id === ledger?.groupId);
-        
-        if (ledger && group) {
-          if (['asset', 'expense'].includes(group.nature)) {
-            ledgerBalances.set(line.ledgerId, currentBalance + (line.isDebit ? line.amount : -line.amount));
-          } else {
-            ledgerBalances.set(line.ledgerId, currentBalance + (line.isDebit ? -line.amount : line.amount));
-          }
-        }
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [accountsData, journalData] = await Promise.all([
+        generalLedgerAPI.getAccounts({ hierarchy: true }),
+        generalLedgerAPI.getJournalEntries({ limit: 50 })
+      ]);
+      
+      setAccounts(accountsData.accounts || []);
+      setJournalEntries(journalData.journalEntries || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load data',
+        variant: 'destructive'
       });
-    });
-    
-    const trialBalanceData = ledgers.map(ledger => {
-      const balance = ledgerBalances.get(ledger.id) || 0;
-      const group = accountGroups.find(g => g.id === ledger.groupId);
-      let debitBalance = 0;
-      let creditBalance = 0;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      if (group && ['asset', 'expense'].includes(group.nature)) {
-        if (balance >= 0) {
-          debitBalance = balance;
-        } else {
-          creditBalance = Math.abs(balance);
-        }
-      } else {
-        if (balance >= 0) {
-          creditBalance = balance;
-        } else {
-          debitBalance = Math.abs(balance);
-        }
-      }
-
-      return {
-        id: ledger.id,
-        name: ledger.name,
-        groupName: group?.name || '',
-        debit: debitBalance,
-        credit: creditBalance
-      };
-    });
-
-    const totalDebits = trialBalanceData.reduce((sum, item) => sum + item.debit, 0);
-    const totalCredits = trialBalanceData.reduce((sum, item) => sum + item.credit, 0);
-
-    setTrialBalance({
-      ledgers: trialBalanceData.filter(ledger => ledger.debit > 0 || ledger.credit > 0),
-      totals: { debits: totalDebits, credits: totalCredits, balanced: Math.abs(totalDebits - totalCredits) < 0.01 },
-      generatedAt: new Date().toLocaleString()
-    });
+  const generateTrialBalance = async () => {
+    try {
+      const trialBalanceData = await generalLedgerAPI.getTrialBalance();
+      setTrialBalance(trialBalanceData);
+      toast({
+        title: 'Success',
+        description: 'Trial balance generated successfully'
+      });
+    } catch (error) {
+      console.error('Error generating trial balance:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate trial balance',
+        variant: 'destructive'
+      });
+    }
   };
   const [activeTab, setActiveTab] = useState('groups');
   const [showGroupDialog, setShowGroupDialog] = useState(false);
@@ -208,10 +161,34 @@ export default function GeneralLedgerPage() {
       name: '', parentId: '', nature: 'asset', affects: 'balance-sheet'
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      console.log('New Group:', formData);
-      setShowGroupDialog(false);
+      try {
+        await generalLedgerAPI.createAccount({
+          name: formData.name,
+          type: formData.nature as any,
+          parentId: formData.parentId || undefined,
+          isGroup: true,
+          isActive: true,
+          balance: 0,
+          code: `${formData.name.substring(0, 3).toUpperCase()}${Date.now()}`,
+          level: 0
+        });
+        
+        toast({
+          title: 'Success',
+          description: 'Account group created successfully'
+        });
+        
+        setShowGroupDialog(false);
+        fetchData();
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to create account group',
+          variant: 'destructive'
+        });
+      }
     };
 
     return (
@@ -257,13 +234,34 @@ export default function GeneralLedgerPage() {
       name: '', alias: '', groupId: '', openingBalance: 0, address: '', phone: '', email: '', gstNo: '', panNo: '', creditLimit: 0, isBankAccount: false
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      const newLedger: Ledger = {
-        id: Date.now().toString(), ...formData, currentBalance: formData.openingBalance, isActive: true
-      };
-      setLedgers(prev => [...prev, newLedger]);
-      setShowLedgerDialog(false);
+      try {
+        await generalLedgerAPI.createAccount({
+          name: formData.name,
+          code: `${formData.name.substring(0, 3).toUpperCase()}${Date.now()}`,
+          parentId: formData.groupId,
+          balance: formData.openingBalance,
+          isGroup: false,
+          isActive: true,
+          level: 1,
+          type: 'asset' // This should be determined by parent group
+        });
+        
+        toast({
+          title: 'Success',
+          description: 'Ledger account created successfully'
+        });
+        
+        setShowLedgerDialog(false);
+        fetchData();
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to create ledger account',
+          variant: 'destructive'
+        });
+      }
     };
 
     return (
@@ -278,8 +276,8 @@ export default function GeneralLedgerPage() {
             <Select value={formData.groupId} onValueChange={(value) => setFormData({ ...formData, groupId: value })}>
               <SelectTrigger><SelectValue placeholder="Select group" /></SelectTrigger>
               <SelectContent>
-                {accountGroups.map(group => (
-                  <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                {accounts.filter(a => a.isGroup).map(group => (
+                  <SelectItem key={group._id} value={group._id}>{group.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -320,7 +318,7 @@ export default function GeneralLedgerPage() {
       if (template) {
         setFormData(prev => ({
           ...prev, narration: template.description,
-          lines: template.lines.map(line => ({ ...line, ledgerName: ledgers.find(l => l.id === line.ledgerId)?.name || '', amount: 0, costCenter: '', billRef: '' }))
+          lines: template.lines.map(line => ({ ...line, amount: 0, costCenter: '', billRef: '' }))
         }));
       }
     };
@@ -339,21 +337,46 @@ export default function GeneralLedgerPage() {
     const totalCredits = formData.lines.filter(l => !l.isDebit).reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
     const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!isBalanced) return alert('Debits must equal credits');
+      if (!isBalanced) {
+        toast({
+          title: 'Error',
+          description: 'Debits must equal credits',
+          variant: 'destructive'
+        });
+        return;
+      }
 
-      const newVoucher: Voucher = {
-        id: Date.now().toString(), voucherType: 'journal',
-        voucherNo: `JV${String(vouchers.filter(v => v.voucherType === 'journal').length + 1).padStart(4, '0')}`,
-        date: formData.date, reference: formData.reference, narration: formData.narration,
-        lines: formData.lines.map(line => ({ ...line, ledgerName: ledgers.find(l => l.id === line.ledgerId)?.name || '' })),
-        totalAmount: Math.max(totalDebits, totalCredits), isPosted: false, createdAt: new Date().toISOString(),
-        project: formData.project, department: formData.department
-      };
+      try {
+        const journalLines = formData.lines.map(line => ({
+          accountId: line.ledgerId,
+          description: line.narration || formData.narration,
+          debit: line.isDebit ? line.amount : 0,
+          credit: !line.isDebit ? line.amount : 0
+        }));
 
-      setVouchers(prev => [newVoucher, ...prev]);
-      setShowAdvancedJournal(false);
+        await generalLedgerAPI.createJournalEntry({
+          date: formData.date,
+          reference: formData.reference,
+          description: formData.narration,
+          lines: journalLines
+        });
+
+        toast({
+          title: 'Success',
+          description: 'Journal entry created successfully'
+        });
+
+        setShowAdvancedJournal(false);
+        fetchData();
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to create journal entry',
+          variant: 'destructive'
+        });
+      }
     };
 
     return (
@@ -425,10 +448,10 @@ export default function GeneralLedgerPage() {
           {formData.lines.map((line, index) => (
             <div key={index} className="grid grid-cols-6 gap-2">
               <Select value={line.ledgerId} onValueChange={(value) => updateLine(index, 'ledgerId', value)}>
-                <SelectTrigger><SelectValue placeholder="Select ledger" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
                 <SelectContent>
-                  {ledgers.map(ledger => (
-                    <SelectItem key={ledger.id} value={ledger.id}>{ledger.name}</SelectItem>
+                  {accounts.filter(a => !a.isGroup).map(account => (
+                    <SelectItem key={account._id} value={account._id}>{account.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -538,7 +561,7 @@ export default function GeneralLedgerPage() {
             <h3 className="text-lg font-semibold mb-2">Chart of Accounts</h3>
             <p className="text-sm text-gray-600">Manage account structure and hierarchy</p>
             <div className="mt-4 flex items-center justify-between">
-              <span className="text-2xl font-bold">{accountGroups.length}</span>
+              <span className="text-2xl font-bold">{accounts.filter(a => a.isGroup).length}</span>
               <span className="text-xs text-gray-500">Groups</span>
             </div>
           </CardContent>
@@ -553,7 +576,7 @@ export default function GeneralLedgerPage() {
             <h3 className="text-lg font-semibold mb-2">Ledger Accounts</h3>
             <p className="text-sm text-gray-600">View and manage all ledger accounts</p>
             <div className="mt-4 flex items-center justify-between">
-              <span className="text-2xl font-bold">{ledgers.length}</span>
+              <span className="text-2xl font-bold">{accounts.filter(a => !a.isGroup).length}</span>
               <span className="text-xs text-gray-500">Ledgers</span>
             </div>
           </CardContent>
@@ -568,7 +591,7 @@ export default function GeneralLedgerPage() {
             <h3 className="text-lg font-semibold mb-2">Journal Entries</h3>
             <p className="text-sm text-gray-600">Create and manage journal vouchers</p>
             <div className="mt-4 flex items-center justify-between">
-              <span className="text-2xl font-bold">{vouchers.length}</span>
+              <span className="text-2xl font-bold">{journalEntries.length}</span>
               <span className="text-xs text-gray-500">Entries</span>
             </div>
           </CardContent>
@@ -602,7 +625,7 @@ export default function GeneralLedgerPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <FolderOpen className="w-5 h-5 mr-2" />Account Groups ({accountGroups.length} groups)
+                <FolderOpen className="w-5 h-5 mr-2" />Account Groups ({accounts.filter(a => a.isGroup).length} groups)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -616,18 +639,18 @@ export default function GeneralLedgerPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {accountGroups.map((group) => (
-                    <TableRow key={group.id}>
+                  {accounts.filter(a => a.isGroup).map((group) => (
+                    <TableRow key={group._id}>
                       <TableCell className="font-medium">{group.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">{group.nature}</Badge>
+                        <Badge variant="outline" className="capitalize">{group.type}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={group.affects === 'balance-sheet' ? 'default' : 'secondary'}>
-                          {group.affects === 'balance-sheet' ? 'Balance Sheet' : 'P&L Account'}
+                        <Badge variant={['asset', 'liability', 'equity'].includes(group.type) ? 'default' : 'secondary'}>
+                          {['asset', 'liability', 'equity'].includes(group.type) ? 'Balance Sheet' : 'P&L Account'}
                         </Badge>
                       </TableCell>
-                      <TableCell>{ledgers.filter(l => l.groupId === group.id).length}</TableCell>
+                      <TableCell>{accounts.filter(l => l.parentId === group._id).length}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -640,7 +663,7 @@ export default function GeneralLedgerPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Building2 className="w-5 h-5 mr-2" />Ledgers ({ledgers.length} ledgers)
+                <Building2 className="w-5 h-5 mr-2" />Ledgers ({accounts.filter(a => !a.isGroup).length} ledgers)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -656,30 +679,33 @@ export default function GeneralLedgerPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ledgers.map((ledger) => (
-                    <TableRow key={ledger.id}>
-                      <TableCell className="font-medium">
-                        {ledger.name}
-                        {ledger.isBankAccount && <Badge variant="outline" className="ml-2">Bank</Badge>}
-                      </TableCell>
-                      <TableCell>{accountGroups.find(g => g.id === ledger.groupId)?.name}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        ₹{ledger.openingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        ₹{ledger.currentBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell>
-                        {ledger.phone && <div className="text-sm">{ledger.phone}</div>}
-                        {ledger.email && <div className="text-xs text-muted-foreground">{ledger.email}</div>}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={ledger.isActive ? "default" : "secondary"}>
-                          {ledger.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {accounts.filter(a => !a.isGroup).map((ledger) => {
+                    const parentGroup = accounts.find(g => g._id === ledger.parentId);
+                    return (
+                      <TableRow key={ledger._id}>
+                        <TableCell className="font-medium">
+                          {ledger.name}
+                          {ledger.type === 'asset' && ledger.name.toLowerCase().includes('bank') && <Badge variant="outline" className="ml-2">Bank</Badge>}
+                        </TableCell>
+                        <TableCell>{parentGroup?.name || 'No Group'}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          ₹{ledger.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          ₹{ledger.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">{ledger.code}</div>
+                          {ledger.description && <div className="text-xs text-muted-foreground">{ledger.description}</div>}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={ledger.isActive ? "default" : "secondary"}>
+                            {ledger.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -690,7 +716,7 @@ export default function GeneralLedgerPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Receipt className="w-5 h-5 mr-2" />Vouchers ({vouchers.length} entries)
+                <Receipt className="w-5 h-5 mr-2" />Journal Entries ({journalEntries.length} entries)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -707,25 +733,28 @@ export default function GeneralLedgerPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {vouchers.map((voucher) => (
-                    <TableRow key={voucher.id}>
-                      <TableCell className="font-mono">{voucher.voucherNo}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">{voucher.voucherType}</Badge>
-                      </TableCell>
-                      <TableCell>{new Date(voucher.date).toLocaleDateString('en-IN')}</TableCell>
-                      <TableCell className="max-w-xs truncate">{voucher.narration}</TableCell>
-                      <TableCell>{voucher.project || '-'}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        ₹{voucher.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={voucher.isPosted ? "default" : "secondary"}>
-                          {voucher.isPosted ? "Posted" : "Draft"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {journalEntries.map((entry) => {
+                    const totalAmount = entry.lines.reduce((sum, line) => sum + Math.max(line.debit, line.credit), 0);
+                    return (
+                      <TableRow key={entry._id}>
+                        <TableCell className="font-mono">{entry.entryNumber}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">Journal</Badge>
+                        </TableCell>
+                        <TableCell>{new Date(entry.date).toLocaleDateString('en-IN')}</TableCell>
+                        <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
+                        <TableCell>{entry.reference || '-'}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={entry.isPosted ? "default" : "secondary"}>
+                            {entry.isPosted ? "Posted" : "Draft"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -750,35 +779,37 @@ export default function GeneralLedgerPage() {
                   <div>
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                       <p className="text-sm text-gray-600">
-                        <strong>Generated:</strong> {trialBalance.generatedAt} | 
-                        <strong>Ledgers with Balances:</strong> {trialBalance.ledgers.length}
+                        <strong>As of Date:</strong> {new Date(trialBalance.asOfDate).toLocaleDateString('en-IN')} | 
+                        <strong>Accounts with Balances:</strong> {trialBalance.accounts.length}
                       </p>
                     </div>
                     
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Ledger Name</TableHead>
-                          <TableHead>Group</TableHead>
+                          <TableHead>Account Code</TableHead>
+                          <TableHead>Account Name</TableHead>
+                          <TableHead>Type</TableHead>
                           <TableHead className="text-right">Debit</TableHead>
                           <TableHead className="text-right">Credit</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {trialBalance.ledgers?.map((ledger: any) => (
-                          <TableRow key={ledger.id}>
-                            <TableCell className="font-medium">{ledger.name}</TableCell>
-                            <TableCell>{ledger.groupName}</TableCell>
+                        {trialBalance.accounts?.map((account: any) => (
+                          <TableRow key={account.id}>
+                            <TableCell className="font-mono">{account.code}</TableCell>
+                            <TableCell className="font-medium">{account.name}</TableCell>
+                            <TableCell className="capitalize">{account.type}</TableCell>
                             <TableCell className="text-right font-mono">
-                              {ledger.debit > 0 ? `₹${ledger.debit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                              {account.debit > 0 ? `₹${account.debit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
                             </TableCell>
                             <TableCell className="text-right font-mono">
-                              {ledger.credit > 0 ? `₹${ledger.credit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                              {account.credit > 0 ? `₹${account.credit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
                             </TableCell>
                           </TableRow>
                         ))}
                         <TableRow className="border-t-2 font-bold bg-gray-50">
-                          <TableCell colSpan={2}>Total</TableCell>
+                          <TableCell colSpan={3}>Total</TableCell>
                           <TableCell className="text-right">
                             ₹{trialBalance.totals?.debits.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </TableCell>

@@ -25,7 +25,8 @@ import {
   Edit,
   FileText,
   Download,
-  Filter
+  Filter,
+  ArrowRight
 } from "lucide-react";
 import { getProjectStats, getAllProjects, updateProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
