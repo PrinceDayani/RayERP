@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, TrendingUp, BarChart3, Users, AlertTriangle, Activity } from "lucide-react";
+import { ArrowLeft, TrendingUp, BarChart3, Users, AlertTriangle, Activity, FolderKanban, DollarSign } from "lucide-react";
 import ProjectAnalyticsFiltered from "@/components/ProjectAnalyticsFiltered";
 
 export default function ProjectAnalyticsPage() {
@@ -97,31 +97,34 @@ export default function ProjectAnalyticsPage() {
 
       {/* Tabbed Analytics Views */}
       <Tabs defaultValue="all" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
           <TabsTrigger value="all" className="gap-2">
             <Activity className="h-4 w-4" />
-            <span className="hidden sm:inline">All Analytics</span>
-            <span className="sm:hidden">All</span>
+            <span className="hidden sm:inline">All</span>
           </TabsTrigger>
           <TabsTrigger value="performance" className="gap-2">
             <TrendingUp className="h-4 w-4" />
             <span className="hidden sm:inline">Performance</span>
-            <span className="sm:hidden">Perf</span>
           </TabsTrigger>
           <TabsTrigger value="charts" className="gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Charts</span>
-            <span className="sm:hidden">Charts</span>
           </TabsTrigger>
           <TabsTrigger value="resources" className="gap-2">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Resources</span>
-            <span className="sm:hidden">Team</span>
           </TabsTrigger>
           <TabsTrigger value="risks" className="gap-2">
             <AlertTriangle className="h-4 w-4" />
             <span className="hidden sm:inline">Risks</span>
-            <span className="sm:hidden">Risk</span>
+          </TabsTrigger>
+          <TabsTrigger value="project" className="gap-2">
+            <FolderKanban className="h-4 w-4" />
+            <span className="hidden sm:inline">Project</span>
+          </TabsTrigger>
+          <TabsTrigger value="financial" className="gap-2">
+            <DollarSign className="h-4 w-4" />
+            <span className="hidden sm:inline">Financial</span>
           </TabsTrigger>
         </TabsList>
 
@@ -143,6 +146,14 @@ export default function ProjectAnalyticsPage() {
 
         <TabsContent value="risks" className="space-y-6">
           <ProjectAnalyticsFiltered view="risks" burndown={burndown} velocity={velocity} utilization={utilization} performance={performance} risk={risk} />
+        </TabsContent>
+
+        <TabsContent value="project" className="space-y-6">
+          <ProjectAnalyticsFiltered view="project" burndown={burndown} velocity={velocity} utilization={utilization} performance={performance} risk={risk} />
+        </TabsContent>
+
+        <TabsContent value="financial" className="space-y-6">
+          <ProjectAnalyticsFiltered view="financial" burndown={burndown} velocity={velocity} utilization={utilization} performance={performance} risk={risk} />
         </TabsContent>
       </Tabs>
     </div>

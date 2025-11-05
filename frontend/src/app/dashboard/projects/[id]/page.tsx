@@ -510,7 +510,7 @@ const ProjectDetailPage = () => {
 
         {/* Tabs for Tasks and Other Details */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="budget">Budget</TabsTrigger>
