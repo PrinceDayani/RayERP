@@ -383,16 +383,6 @@ const EmployeeManagementDashboard = () => {
                     </div>
                   ))}
                 </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>All Employees</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <EmployeeList 
-                  employees={employees}
-                  onEdit={(id) => router.push(`/dashboard/employees/${id}/edit`)}
-                  onDelete={handleDeleteEmployee}
-                />
               </CardContent>
             </Card>
           </TabsContent>
