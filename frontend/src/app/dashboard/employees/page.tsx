@@ -33,6 +33,7 @@ import { employeesAPI } from "@/lib/api/employeesAPI";
 import attendanceAPI from "@/lib/api/attendanceAPI";
 import leaveAPI, { Leave } from "@/lib/api/leaveAPI";
 import employeeReportAPI from "@/lib/api/employeeReportAPI";
+import { EmployeeList } from "@/components/employee";
 
 interface LeaveCreateRequest {
   employee: string;
@@ -382,6 +383,16 @@ const EmployeeManagementDashboard = () => {
                     </div>
                   ))}
                 </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>All Employees</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EmployeeList 
+                  employees={employees}
+                  onEdit={(id) => router.push(`/dashboard/employees/${id}/edit`)}
+                  onDelete={handleDeleteEmployee}
+                />
               </CardContent>
             </Card>
           </TabsContent>

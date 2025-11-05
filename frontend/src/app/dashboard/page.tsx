@@ -40,6 +40,12 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { initializeSocket, getSocket } from "@/lib/socket";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { EmployeeList } from "@/components/employee";
+import { employeesAPI } from "@/lib/api/employeesAPI";
+import { ProjectList } from "@/components/projects";
+import { projectsAPI } from "@/lib/api/projectsAPI";
+import { TaskList } from "@/components/tasks";
+import { tasksAPI } from "@/lib/api/tasksAPI";
 
 // Enhanced interfaces
 interface DashboardStats {
@@ -781,27 +787,18 @@ const Dashboard = () => {
 
           {/* Employees Tab */}
           <TabsContent value="employees" className="space-y-4">
-            <Card className="theme-card theme-shadow theme-transition">
-              <CardContent className="p-8 text-center theme-compact-padding">
-                <Users className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                  Employee Management
-                </h3>
-                <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                  {isAuthenticated 
-                    ? "Manage employee records, attendance, and performance tracking."
-                    : "Please log in to access employee management features."
-                  }
-                </p>
-                {isAuthenticated ? (
-                  <Button 
-                    onClick={() => router.push("/dashboard/employees")}
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
-                  >
-                    Go to Employees
-                  </Button>
-                ) : (
+            {isAuthenticated ? (
+              <EmployeeSection router={router} />
+            ) : (
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-8 text-center theme-compact-padding">
+                  <Users className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
+                    Employee Management
+                  </h3>
+                  <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
+                    Please log in to access employee management features.
+                  </p>
                   <Button 
                     onClick={() => router.push("/login")}
                     variant="outline"
@@ -810,34 +807,25 @@ const Dashboard = () => {
                   >
                     Login Required
                   </Button>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Projects Tab */}
           <TabsContent value="projects" className="space-y-4">
-            <Card className="theme-card theme-shadow theme-transition">
-              <CardContent className="p-8 text-center theme-compact-padding">
-                <Briefcase className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                  Project Management
-                </h3>
-                <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                  {isAuthenticated 
-                    ? "Create, manage, and track project progress and deliverables."
-                    : "Please log in to access project management features."
-                  }
-                </p>
-                {isAuthenticated ? (
-                  <Button 
-                    onClick={() => router.push("/dashboard/projects")}
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
-                  >
-                    Go to Projects
-                  </Button>
-                ) : (
+            {isAuthenticated ? (
+              <ProjectSection router={router} />
+            ) : (
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-8 text-center theme-compact-padding">
+                  <Briefcase className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
+                    Project Management
+                  </h3>
+                  <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
+                    Please log in to access project management features.
+                  </p>
                   <Button 
                     onClick={() => router.push("/login")}
                     variant="outline"
@@ -846,34 +834,25 @@ const Dashboard = () => {
                   >
                     Login Required
                   </Button>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Tasks Tab */}
           <TabsContent value="tasks" className="space-y-4">
-            <Card className="theme-card theme-shadow theme-transition">
-              <CardContent className="p-8 text-center theme-compact-padding">
-                <CheckSquare className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                  Task Management
-                </h3>
-                <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                  {isAuthenticated 
-                    ? "Assign, track, and manage tasks across all projects."
-                    : "Please log in to access task management features."
-                  }
-                </p>
-                {isAuthenticated ? (
-                  <Button 
-                    onClick={() => router.push("/dashboard/tasks")}
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
-                  >
-                    Go to Tasks
-                  </Button>
-                ) : (
+            {isAuthenticated ? (
+              <TaskSection router={router} />
+            ) : (
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-8 text-center theme-compact-padding">
+                  <CheckSquare className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
+                    Task Management
+                  </h3>
+                  <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
+                    Please log in to access task management features.
+                  </p>
                   <Button 
                     onClick={() => router.push("/login")}
                     variant="outline"
@@ -882,9 +861,9 @@ const Dashboard = () => {
                   >
                     Login Required
                   </Button>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Analytics Tab */}
@@ -1088,6 +1067,293 @@ const Dashboard = () => {
             </TabsContent>
           )}
         </Tabs>
+    </div>
+  );
+};
+
+// Task Section Component
+const TaskSection = ({ router }: { router: any }) => {
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const data = await tasksAPI.getAll();
+        setTasks((data.data || data).slice(0, 6));
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, []);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+          <p className="text-muted-foreground">Loading tasks...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const completedTasks = tasks.filter(t => t.status === 'completed').length;
+  const inProgressTasks = tasks.filter(t => t.status === 'in-progress').length;
+  const pendingTasks = tasks.filter(t => t.status === 'pending').length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Task Overview</h2>
+        <Button onClick={() => router.push("/dashboard/tasks")}>
+          View All Tasks
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Tasks</p>
+                <h3 className="text-2xl font-bold">{tasks.length}</h3>
+              </div>
+              <CheckSquare className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Completed</p>
+                <h3 className="text-2xl font-bold">{completedTasks}</h3>
+              </div>
+              <Activity className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">In Progress</p>
+                <h3 className="text-2xl font-bold">{inProgressTasks}</h3>
+              </div>
+              <Clock className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Tasks</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TaskList 
+            tasks={tasks}
+            onView={(id) => router.push(`/dashboard/tasks/${id}`)}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Project Section Component
+const ProjectSection = ({ router }: { router: any }) => {
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const data = await projectsAPI.getAll();
+        setProjects((data.data || data).slice(0, 6));
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProjects();
+  }, []);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+          <p className="text-muted-foreground">Loading projects...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const activeProjects = projects.filter(p => p.status === 'active').length;
+  const completedProjects = projects.filter(p => p.status === 'completed').length;
+  const avgProgress = projects.length > 0 
+    ? Math.round(projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length)
+    : 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Project Overview</h2>
+        <Button onClick={() => router.push("/dashboard/projects")}>
+          View All Projects
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Projects</p>
+                <h3 className="text-2xl font-bold">{projects.length}</h3>
+              </div>
+              <Briefcase className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Active</p>
+                <h3 className="text-2xl font-bold">{activeProjects}</h3>
+              </div>
+              <Activity className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Avg Progress</p>
+                <h3 className="text-2xl font-bold">{avgProgress}%</h3>
+              </div>
+              <Target className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Projects</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProjectList 
+            projects={projects}
+            onView={(id) => router.push(`/dashboard/projects/${id}`)}
+            onEdit={(id) => router.push(`/dashboard/projects/${id}/edit`)}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Employee Section Component
+const EmployeeSection = ({ router }: { router: any }) => {
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const data = await employeesAPI.getAll();
+        setEmployees(data.slice(0, 6));
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEmployees();
+  }, []);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+          <p className="text-muted-foreground">Loading employees...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Employee Overview</h2>
+        <Button onClick={() => router.push("/dashboard/employees")}>
+          View All Employees
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Employees</p>
+                <h3 className="text-2xl font-bold">{employees.length}</h3>
+              </div>
+              <Users className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Active</p>
+                <h3 className="text-2xl font-bold">{employees.filter(e => e.status === 'active').length}</h3>
+              </div>
+              <Activity className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Departments</p>
+                <h3 className="text-2xl font-bold">{new Set(employees.map(e => e.department)).size}</h3>
+              </div>
+              <Briefcase className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Employees</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EmployeeList 
+            employees={employees}
+            onEdit={(id) => router.push(`/dashboard/employees/${id}/edit`)}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };
