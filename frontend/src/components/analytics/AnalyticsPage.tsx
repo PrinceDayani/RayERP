@@ -1,19 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Users, FolderKanban, CheckSquare, TrendingUp, Activity, Target } from "lucide-react";
 import DateRangePicker from "@/components/analytics/DateRangePicker";
-
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { analyticsApi, ApiError } from "@/lib/api";
 
@@ -174,15 +166,32 @@ export default function AnalyticsPage() {
     };
   }, [analyticsData]);
 
+  const StatCard = ({ icon: Icon, label, value, trend, color = "blue" }: any) => (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-sm text-muted-foreground mb-1">{label}</p>
+            <p className="text-2xl font-bold">{loading ? "..." : value}</p>
+            {trend !== undefined && (
+              <p className="text-xs text-muted-foreground mt-1">{trend}</p>
+            )}
+          </div>
+          <div className={`p-3 rounded-lg bg-${color}-50`}>
+            <Icon className={`w-5 h-5 text-${color}-600`} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   if (error && !isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle className="text-red-500">Authentication Required</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p>{error}</p>
+          <CardContent className="p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-red-500">Authentication Required</h3>
+            <p className="text-sm">{error}</p>
             <Button onClick={handleRetry} className="w-full">
               <RefreshCw className="w-4 h-4 mr-2" />
               Retry
@@ -195,194 +204,128 @@ export default function AnalyticsPage() {
 
   return (
     <ErrorBoundary>
-      <div className="container mx-auto px-4 py-6">
-      <div className="flex flex-col gap-6">
+      <div className="space-y-6 p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Comprehensive project insights and performance metrics</p>
+          </div>
           <div className="flex items-center gap-2">
             <DateRangePicker value={dateRange} onChange={handleDateChange} />
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRetry}
-              disabled={loading}
-            >
+            <Button variant="outline" size="icon" onClick={handleRetry} disabled={loading}>
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription className="flex items-center justify-between">
-                <span>{error}</span>
-                <Button variant="outline" size="sm" onClick={handleRetry}>
-                  Retry
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription className="flex items-center justify-between">
+              <span>{error}</span>
+              <Button variant="outline" size="sm" onClick={handleRetry}>Retry</Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full md:w-auto grid-cols-3 md:grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="employees">Employees</TabsTrigger>
-            <TabsTrigger value="projects">Projects</TabsTrigger>
-            <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="overview" className="mt-6">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Employee Productivity</CardTitle>
-                  <CardDescription>Attendance rate today</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : `${summaryStats.employeeProductivity.toFixed(1)}%`}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Project Completion</CardTitle>
-                  <CardDescription>Overall completion rate</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : `${summaryStats.projectCompletionRate.toFixed(1)}%`}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Task Completion</CardTitle>
-                  <CardDescription>Overall task completion rate</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : `${summaryStats.taskCompletionRate.toFixed(1)}%`}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="employees" className="mt-6">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Employees</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : analyticsData.employeeMetrics.total}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Employees</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : analyticsData.employeeMetrics.active}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Today's Attendance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : analyticsData.employeeMetrics.attendanceToday}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="projects" className="mt-6">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Projects</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : analyticsData.projectMetrics.total}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Projects</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : analyticsData.projectMetrics.active}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Completed Projects</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : analyticsData.projectMetrics.completed}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="tasks" className="mt-6">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Tasks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : analyticsData.taskMetrics.total}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Completed Tasks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : analyticsData.taskMetrics.completed}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pending Tasks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {loading ? "Loading..." : analyticsData.taskMetrics.pending}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+        {/* Key Metrics */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <StatCard 
+            icon={TrendingUp} 
+            label="Employee Productivity" 
+            value={`${summaryStats.employeeProductivity.toFixed(1)}%`}
+            trend="Attendance rate today"
+            color="blue"
+          />
+          <StatCard 
+            icon={Target} 
+            label="Project Completion" 
+            value={`${summaryStats.projectCompletionRate.toFixed(1)}%`}
+            trend="Overall completion rate"
+            color="green"
+          />
+          <StatCard 
+            icon={Activity} 
+            label="Task Completion" 
+            value={`${summaryStats.taskCompletionRate.toFixed(1)}%`}
+            trend="Overall task rate"
+            color="purple"
+          />
+        </div>
+
+        {/* Detailed Metrics */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Employees */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Users className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold">Employees</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total</span>
+                  <span className="font-semibold">{loading ? "..." : analyticsData.employeeMetrics.total}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Active</span>
+                  <span className="font-semibold">{loading ? "..." : analyticsData.employeeMetrics.active}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Present Today</span>
+                  <span className="font-semibold">{loading ? "..." : analyticsData.employeeMetrics.attendanceToday}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Projects */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <FolderKanban className="w-5 h-5 text-green-600" />
+                <h3 className="font-semibold">Projects</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total</span>
+                  <span className="font-semibold">{loading ? "..." : analyticsData.projectMetrics.total}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Active</span>
+                  <span className="font-semibold">{loading ? "..." : analyticsData.projectMetrics.active}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Completed</span>
+                  <span className="font-semibold">{loading ? "..." : analyticsData.projectMetrics.completed}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tasks */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckSquare className="w-5 h-5 text-purple-600" />
+                <h3 className="font-semibold">Tasks</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total</span>
+                  <span className="font-semibold">{loading ? "..." : analyticsData.taskMetrics.total}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Completed</span>
+                  <span className="font-semibold">{loading ? "..." : analyticsData.taskMetrics.completed}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Pending</span>
+                  <span className="font-semibold">{loading ? "..." : analyticsData.taskMetrics.pending}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </ErrorBoundary>
   );

@@ -34,6 +34,7 @@ import {
   getPerformanceIndices,
   getRiskAssessment
 } from '../controllers/projectAnalyticsController';
+import { cloneProject, exportProjectAsTemplate } from '../controllers/projectTemplateController';
 import budgetRoutes from './budgetRoutes';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { checkProjectAccess, checkProjectManagementAccess } from '../middleware/projectAccess.middleware';
@@ -119,6 +120,10 @@ router.delete('/:id/members/:memberId',
 // --- Other Project-specific Routes ---
 router.get('/:id/timeline', validateObjectId(), checkProjectAccess, getProjectTimeline);
 router.get('/:id/timeline-data', validateObjectId(), checkProjectAccess, getProjectTimelineData);
+
+// --- Template & Cloning Routes ---
+router.post('/:id/clone', validateObjectId(), checkProjectManagementAccess, cloneProject);
+router.get('/:id/export-template', validateObjectId(), checkProjectAccess, exportProjectAsTemplate);
 
 // --- Analytics Routes ---
 router.get('/:id/analytics/burndown', validateObjectId(), checkProjectAccess, getBurndownChart);

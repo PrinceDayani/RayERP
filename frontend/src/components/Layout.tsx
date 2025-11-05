@@ -12,23 +12,20 @@ import {
   LayoutDashboard,
   Users,
   Briefcase,
-  DollarSign,
   BarChart3,
   Settings,
   Shield,
-  FileText,
   CheckCircle,
-  TrendingUp,
   Building2,
   UserCheck,
   Calculator,
   PieChart,
   Wallet,
-  CreditCard,
   Receipt,
   Target,
   ClipboardList,
-  UserCog
+  UserCog,
+  Boxes
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -91,7 +88,8 @@ export default function Layout({ children }: LayoutProps) {
       title: "Project Management",
       items: [
         { path: "/dashboard/projects", name: "Projects", icon: Briefcase, description: "Project tracking & management" } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/tasks", name: "Tasks", icon: CheckCircle, description: "Task management" } as MenuItem & { icon: any; description: string }
+        { path: "/dashboard/tasks", name: "Tasks", icon: CheckCircle, description: "Task management" } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/resources", name: "Resources", icon: Boxes, description: "Resource planning" } as MenuItem & { icon: any; description: string }
       ]
     },
     {

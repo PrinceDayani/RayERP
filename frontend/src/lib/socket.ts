@@ -1,5 +1,6 @@
 // path: frontend/src/lib/socket.ts
-import { io, Socket } from "socket.io-client";
+import { io } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import { useEffect, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -34,14 +35,13 @@ export const initializeSocket = (token?: string): Socket | null => {
 
   socket = io(API_URL, {
     auth: token ? { token } : undefined,
-    transports: ["polling"],
+    transports: ["websocket", "polling"],
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     timeout: 20000,
-    forceNew: false,
-    upgrade: false,
+    path: "/socket.io/",
     autoConnect: true,
   });
 
