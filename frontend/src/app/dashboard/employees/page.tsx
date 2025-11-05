@@ -33,6 +33,7 @@ import { employeesAPI } from "@/lib/api/employeesAPI";
 import attendanceAPI from "@/lib/api/attendanceAPI";
 import leaveAPI, { Leave } from "@/lib/api/leaveAPI";
 import employeeReportAPI from "@/lib/api/employeeReportAPI";
+import { EmployeeList } from "@/components/employee";
 
 interface LeaveCreateRequest {
   employee: string;
@@ -327,32 +328,16 @@ const EmployeeManagementDashboard = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Recent Employees */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent Employees</CardTitle>
+                <CardTitle>All Employees</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {employees.slice(0, 5).map((employee) => (
-                    <div key={employee._id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h3 className="font-medium">{employee.firstName} {employee.lastName}</h3>
-                        <p className="text-sm text-muted-foreground">{employee.position} - {employee.department}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge className={getStatusColor(employee.status)}>
-                            {employee.status}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">{employee.employeeId}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Hire Date</p>
-                        <p className="font-medium">{new Date(employee.hireDate).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <EmployeeList 
+                  employees={employees}
+                  onEdit={(id) => router.push(`/dashboard/employees/${id}/edit`)}
+                  onDelete={handleDeleteEmployee}
+                />
               </CardContent>
             </Card>
           </TabsContent>
