@@ -383,6 +383,94 @@ export const getProjectStats = async (req: Request, res: Response) => {
   }
 };
 
+export const getProjectTimelineData = async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.id;
+    const project = await Project.findById(projectId);
+    
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    const tasks = await Task.find({ project: projectId })
+      .populate('assignedTo', 'firstName lastName')
+      .select('title status priority dueDate createdAt');
+    
+    const timelineData = {
+      project: {
+        id: project._id,
+        name: project.name,
+        startDate: project.startDate,
+        endDate: project.endDate,
+        status: project.status
+      },
+      tasks: tasks.map(task => ({
+        id: task._id,
+        name: task.title,
+        startDate: task.createdAt,
+        endDate: task.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        progress: task.status === 'completed' ? 100 : task.status === 'in-progress' ? 50 : 0,
+        status: task.status,
+        priority: task.priority,
+        assignees: task.assignedTo
+      }))
+    };
+    
+    res.json(timelineData);
+  } catch (error) {
+    console.error('Error fetching project timeline data:', error);
+    res.status(500).json({ message: 'Error fetching project timeline data', error });
+  }
+};
+
+export const getAllProjectsTimelineData = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    let query = {};
+    if (user.role === 'root') {
+      query = {};
+    } else if (user.role === 'super_admin') {
+      query = { owner: user._id };
+    } else {
+      query = { members: user._id };
+    }
+
+    const projects = await Project.find(query).select('name startDate endDate status');
+    const allTasks = await Task.find()
+      .populate('assignedTo', 'firstName lastName')
+      .select('title status priority dueDate createdAt project');
+    
+    const timelineData = {
+      projects: projects.map(p => ({
+        id: p._id,
+        name: p.name,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        status: p.status
+      })),
+      tasks: allTasks.map(task => ({
+        id: task._id,
+        name: task.title,
+        startDate: task.createdAt,
+        endDate: task.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        progress: task.status === 'completed' ? 100 : task.status === 'in-progress' ? 50 : 0,
+        status: task.status,
+        priority: task.priority,
+        projectId: task.project
+      }))
+    };
+    
+    res.json(timelineData);
+  } catch (error) {
+    console.error('Error fetching all projects timeline data:', error);
+    res.status(500).json({ message: 'Error fetching timeline data', error });
+  }
+};
+
 export const updateProjectTask = async (req: Request, res: Response) => {
   try {
     const { id: projectId, taskId } = req.params;

@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Plus, Calendar, Users, BarChart3, CheckCircle, AlertCircle, TrendingUp, Search,
   MessageSquare, Clock, DollarSign, Edit, FileText, Download, Filter, ArrowRight,
-  Briefcase, Target, Activity, Zap
+  Briefcase, Target, Activity, Zap, GanttChartSquare
 } from "lucide-react";
 import { getProjectStats, getAllProjects, updateProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
@@ -23,6 +23,7 @@ import employeesAPI, { type Employee } from "@/lib/api/employeesAPI";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { GanttChart } from "@/components/GanttChart";
 
 interface ProjectStats {
   totalProjects: number;
@@ -41,6 +42,7 @@ const ProjectManagementDashboard: React.FC = () => {
     overdueTasks: 0, totalTasks: 0, completedTasks: 0,
   });
   const [projects, setProjects] = useState<Project[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -73,15 +75,17 @@ const ProjectManagementDashboard: React.FC = () => {
 
   const fetchData = async (): Promise<void> => {
     try {
-      const [statsData, projectsData] = await Promise.all([
+      const [statsData, projectsData, tasksData] = await Promise.all([
         getProjectStats().catch(() => ({
           totalProjects: 8, activeProjects: 5, completedProjects: 3,
           overdueTasks: 2, totalTasks: 24, completedTasks: 18
         })),
-        getAllProjects().catch(() => [])
+        getAllProjects().catch(() => []),
+        tasksAPI.getAll().catch(() => [])
       ]);
       if (statsData) setStats(statsData);
       setProjects(projectsData || []);
+      setAllTasks(tasksData || []);
     } catch (error) {
       console.error("Error fetching project data:", error);
     }
@@ -97,11 +101,11 @@ const ProjectManagementDashboard: React.FC = () => {
 
   const getStatusColor = (status: string): string => {
     const colors = {
-      'active': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      'completed': 'bg-blue-100 text-blue-700 border-blue-200',
-      'on-hold': 'bg-amber-100 text-amber-700 border-amber-200',
-      'cancelled': 'bg-red-100 text-red-700 border-red-200',
-      'planning': 'bg-purple-100 text-purple-700 border-purple-200'
+      'active': 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400',
+      'completed': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400',
+      'on-hold': 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400',
+      'cancelled': 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400',
+      'planning': 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400'
     };
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-700 border-gray-200';
   };
@@ -128,15 +132,15 @@ const ProjectManagementDashboard: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <Card className="w-96 shadow-xl">
+      <div className="flex h-screen items-center justify-center p-4">
+        <Card className="card-modern max-w-md w-full">
           <CardContent className="pt-6 text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Briefcase className="w-8 h-8 text-blue-600" />
+            <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Briefcase className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Access Required</h2>
+            <h2 className="text-xl font-semibold mb-2">Access Required</h2>
             <p className="text-muted-foreground mb-6">Please log in to access Project Management</p>
-            <Button onClick={() => router.push("/login")} className="w-full">Login</Button>
+            <Button onClick={() => router.push("/login")} className="btn-primary-gradient w-full">Login to Continue</Button>
           </CardContent>
         </Card>
       </div>
@@ -144,21 +148,25 @@ const ProjectManagementDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Project Management
           </h1>
           <p className="text-muted-foreground mt-1">Manage projects, tasks, and team collaboration</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push("/dashboard/projects/analytics")} className="shadow-sm">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => router.push("/dashboard/projects/timeline-overview")}>
+            <GanttChartSquare className="h-4 w-4 mr-2" />
+            Timeline
+          </Button>
+          <Button variant="outline" onClick={() => router.push("/dashboard/projects/analytics")}>
             <BarChart3 className="h-4 w-4 mr-2" />
             Analytics
           </Button>
-          <Button onClick={() => router.push("/dashboard/projects/create")} className="shadow-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+          <Button onClick={() => router.push("/dashboard/projects/create")} className="btn-primary-gradient">
             <Plus className="h-4 w-4 mr-2" />
             New Project
           </Button>
@@ -166,76 +174,68 @@ const ProjectManagementDashboard: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group" 
-              onClick={() => router.push("/dashboard/projects/analytics")}>
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-90"></div>
-          <CardContent className="relative p-6 text-white">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium mb-1">Total Projects</p>
-                <p className="text-4xl font-bold">{stats.totalProjects}</p>
-                <div className="flex items-center gap-1 mt-2 text-blue-100 text-xs">
-                  <ArrowRight className="h-3 w-3" />
-                  <span>View analytics</span>
-                </div>
+                <p className="text-sm font-medium text-muted-foreground">Total Projects</p>
+                <p className="text-3xl font-bold text-foreground">{stats.totalProjects}</p>
+                <p className="text-xs text-muted-foreground mt-1">All projects</p>
               </div>
-              <div className="h-16 w-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
-                <Briefcase className="h-8 w-8" />
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
+                <Briefcase className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-600 opacity-90"></div>
-          <CardContent className="relative p-6 text-white">
+        <Card className="card-modern hover-lift border-l-4 border-l-green-500">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-emerald-100 text-sm font-medium mb-1">Active Projects</p>
-                <p className="text-4xl font-bold">{stats.activeProjects}</p>
-                <p className="text-emerald-100 text-xs mt-2">
+                <p className="text-sm font-medium text-muted-foreground">Active Projects</p>
+                <p className="text-3xl font-bold text-foreground">{stats.activeProjects}</p>
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                   {stats.totalProjects > 0 ? ((stats.activeProjects / stats.totalProjects) * 100).toFixed(0) : 0}% of total
                 </p>
               </div>
-              <div className="h-16 w-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <Activity className="h-8 w-8" />
+              <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
+                <Activity className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-purple-600 opacity-90"></div>
-          <CardContent className="relative p-6 text-white">
+        <Card className="card-modern hover-lift border-l-4 border-l-purple-500">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium mb-1">Completed</p>
-                <p className="text-4xl font-bold">{stats.completedProjects}</p>
-                <p className="text-purple-100 text-xs mt-2">
+                <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                <p className="text-3xl font-bold text-foreground">{stats.completedProjects}</p>
+                <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
                   {stats.totalProjects > 0 ? ((stats.completedProjects / stats.totalProjects) * 100).toFixed(0) : 0}% success rate
                 </p>
               </div>
-              <div className="h-16 w-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <Target className="h-8 w-8" />
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
+                <Target className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-500 opacity-90"></div>
-          <CardContent className="relative p-6 text-white">
+        <Card className="card-modern hover-lift border-l-4 border-l-orange-500">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-100 text-sm font-medium mb-1">Overdue Tasks</p>
-                <p className="text-4xl font-bold">{stats.overdueTasks}</p>
-                <p className="text-orange-100 text-xs mt-2">
+                <p className="text-sm font-medium text-muted-foreground">Overdue Tasks</p>
+                <p className="text-3xl font-bold text-foreground">{stats.overdueTasks}</p>
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
                   {stats.overdueTasks > 0 ? 'Needs attention' : 'All on track'}
                 </p>
               </div>
-              <div className="h-16 w-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <Zap className="h-8 w-8" />
+              <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-xl">
+                <Zap className="h-6 w-6 text-orange-600 dark:text-orange-400" />
               </div>
             </div>
           </CardContent>
@@ -244,18 +244,34 @@ const ProjectManagementDashboard: React.FC = () => {
 
       {/* Main Content */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-white shadow-sm border">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="projects">All Projects</TabsTrigger>
-          <TabsTrigger value="budgets">Budgets</TabsTrigger>
-          <TabsTrigger value="tasks">My Tasks</TabsTrigger>
-          <TabsTrigger value="task-management">Task Management</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-6 bg-muted/50 p-1 rounded-xl">
+          <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
+          <TabsTrigger value="projects" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">All Projects</TabsTrigger>
+          <TabsTrigger value="budgets" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Budgets</TabsTrigger>
+          <TabsTrigger value="tasks" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">My Tasks</TabsTrigger>
+          <TabsTrigger value="task-management" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Task Management</TabsTrigger>
+          <TabsTrigger value="reports" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Reports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          {/* Gantt Chart */}
+          {allTasks.length > 0 && (
+            <GanttChart 
+              tasks={allTasks.map(task => ({
+                id: task._id,
+                name: task.title,
+                startDate: new Date(task.createdAt),
+                endDate: task.dueDate ? new Date(task.dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                progress: task.status === 'completed' ? 100 : task.status === 'in-progress' ? 50 : 0,
+                status: task.status,
+                priority: task.priority
+              }))}
+              title="Projects Timeline Overview"
+            />
+          )}
+
           {/* Search and Filters */}
-          <Card className="border-0 shadow-lg">
+          <Card className="card-modern">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
@@ -298,14 +314,14 @@ const ProjectManagementDashboard: React.FC = () => {
           {/* Projects Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.length === 0 ? (
-              <Card className="col-span-full border-0 shadow-lg">
+              <Card className="col-span-full card-modern">
                 <CardContent className="p-12 text-center">
-                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Briefcase className="w-10 h-10 text-blue-600" />
+                  <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Briefcase className="w-10 h-10 text-primary" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">No projects found</h3>
                   <p className="text-muted-foreground mb-6">Create your first project to get started</p>
-                  <Button onClick={() => router.push("/dashboard/projects/create")} className="shadow-lg">
+                  <Button onClick={() => router.push("/dashboard/projects/create")} className="btn-primary-gradient">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Project
                   </Button>
@@ -313,16 +329,20 @@ const ProjectManagementDashboard: React.FC = () => {
               </Card>
             ) : (
               filteredProjects.map((project) => (
-                <Card key={project._id} className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
+                <Card key={project._id} className="card-modern hover-lift cursor-pointer group"
                       onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
-                  <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                   <CardContent className="p-6 space-y-4">
                     <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors line-clamp-1">
-                          {project.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{project.description}</p>
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Briefcase className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground line-clamp-1">
+                            {project.name}
+                          </h3>
+                          <p className="text-sm text-muted-foreground line-clamp-1">{project.description}</p>
+                        </div>
                       </div>
                       <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/edit`); }}>
@@ -331,7 +351,7 @@ const ProjectManagementDashboard: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className={`${getStatusColor(project.status)} border`}>
+                      <Badge className={getStatusColor(project.status)} variant="secondary">
                         {project.status}
                       </Badge>
                       <Badge className={getPriorityColor(project.priority)}>
@@ -347,104 +367,29 @@ const ProjectManagementDashboard: React.FC = () => {
                       <Progress value={project.progress} className="h-2" />
                     </div>
 
-                    <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t border-border/50">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
                         <span>{new Date(project.endDate).toLocaleDateString()}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
-                        <span>{project.team?.length || 0}</span>
+                        <span>{project.team?.length || 0} members</span>
                       </div>
                     </div>
 
-                    <div className="flex gap-2 pt-2">
-                      <Button size="sm" variant="outline" className="flex-1"
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=tasks`); }}>
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Tasks
                       </Button>
-                      <Button size="sm" variant="outline" className="flex-1"
-                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
-                        <DollarSign className="h-3 w-3 mr-1" />
-                        Budget
+                      <Button size="sm" variant="outline" className="flex-1 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/timeline`); }}>
+                        <GanttChartSquare className="h-3 w-3 mr-1" />
+                        Timeline
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-          {/* Projects Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.length === 0 ? (
-              <Card className="col-span-full border-0 shadow-lg">
-                <CardContent className="p-12 text-center">
-                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Briefcase className="w-10 h-10 text-blue-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">No projects found</h3>
-                  <p className="text-muted-foreground mb-6">Create your first project to get started</p>
-                  <Button onClick={() => router.push("/dashboard/projects/create")} className="shadow-lg">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Project
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredProjects.map((project) => (
-                <Card key={project._id} className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
-                      onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
-                  <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
-                  <CardContent className="p-6 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors line-clamp-1">
-                          {project.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{project.description}</p>
-                      </div>
-                      <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/edit`); }}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className={`${getStatusColor(project.status)} border`}>
-                        {project.status}
-                      </Badge>
-                      <Badge className={getPriorityColor(project.priority)}>
-                        {project.priority}
-                      </Badge>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-semibold">{project.progress}%</span>
-                      </div>
-                      <Progress value={project.progress} className="h-2" />
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{new Date(project.endDate).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>{project.team?.length || 0}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
-                      <Button size="sm" variant="outline" className="flex-1"
-                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=tasks`); }}>
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Tasks
-                      </Button>
-                      <Button size="sm" variant="outline" className="flex-1"
+                      <Button size="sm" variant="outline" className="flex-1 hover:bg-green-50 hover:text-green-600 hover:border-green-200"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
                         <DollarSign className="h-3 w-3 mr-1" />
                         Budget
@@ -458,23 +403,39 @@ const ProjectManagementDashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="projects">
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle>All Projects</CardTitle>
+          <Card className="card-modern">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5 text-primary" />
+                All Projects
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProjects.map((project) => (
-                  <Card key={project._id} className="hover:shadow-md transition-shadow cursor-pointer"
+                  <Card key={project._id} className="card-modern hover-lift cursor-pointer group"
                         onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
-                    <CardContent className="p-6 space-y-4">
-                      <h3 className="font-semibold">{project.name}</h3>
+                    <CardContent className="p-6 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
+                          <Briefcase className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground line-clamp-1">{project.name}</h3>
+                        </div>
+                      </div>
                       <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
                       <div className="flex gap-2">
-                        <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
+                        <Badge className={getStatusColor(project.status)} variant="secondary">{project.status}</Badge>
                         <Badge className={getPriorityColor(project.priority)}>{project.priority}</Badge>
                       </div>
-                      <Progress value={project.progress} />
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">Progress</span>
+                          <span className="font-medium">{project.progress}%</span>
+                        </div>
+                        <Progress value={project.progress} className="h-1.5" />
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -496,7 +457,7 @@ const ProjectManagementDashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="reports">
-          <Card className="border-0 shadow-lg">
+          <Card className="card-modern">
             <CardHeader>
               <CardTitle>Project Reports</CardTitle>
             </CardHeader>
@@ -547,10 +508,10 @@ const MyTasksContent: React.FC = () => {
     }
   };
 
-  if (loading) return <Card><CardContent className="p-6 text-center">Loading...</CardContent></Card>;
+  if (loading) return <Card className="card-modern"><CardContent className="p-6 text-center">Loading...</CardContent></Card>;
 
   return (
-    <Card className="border-0 shadow-lg">
+    <Card className="card-modern">
       <CardHeader>
         <CardTitle>My Tasks</CardTitle>
       </CardHeader>
@@ -563,7 +524,7 @@ const MyTasksContent: React.FC = () => {
 
 const TaskManagementContent: React.FC = () => {
   return (
-    <Card className="border-0 shadow-lg">
+    <Card className="card-modern">
       <CardHeader>
         <CardTitle>Task Management</CardTitle>
       </CardHeader>
@@ -576,7 +537,7 @@ const TaskManagementContent: React.FC = () => {
 
 const BudgetOverview = ({ projects }: { projects: Project[] }) => {
   return (
-    <Card className="border-0 shadow-lg">
+    <Card className="card-modern">
       <CardHeader>
         <CardTitle>Project Budgets</CardTitle>
       </CardHeader>

@@ -122,6 +122,7 @@ npm start
 - Project creation and tracking
 - Task assignment and management
 - Kanban-style task boards
+- **Gantt Chart & Timeline Visualization**
 - Project analytics and reporting
 - Team collaboration features
 
@@ -148,6 +149,7 @@ npm start
 - Real-time dashboards
 - Business intelligence reports
 - Data visualization
+- **Timeline & Gantt Chart views**
 - Export capabilities
 
 ### 🔄 Real-time Features

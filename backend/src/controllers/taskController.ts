@@ -33,10 +33,13 @@ const emitProjectStats = async () => {
 
 export const getAllTasks = async (req: Request, res: Response) => {
   try {
-    const tasks = await Task.find()
+    const tasks = await Task.find({ isTemplate: { $ne: true } })
       .populate('project', 'name')
       .populate('assignedTo', 'firstName lastName')
-      .populate('assignedBy', 'firstName lastName');
+      .populate('assignedBy', 'firstName lastName')
+      .populate('dependencies.taskId', 'title')
+      .populate('subtasks', 'title status')
+      .populate('parentTask', 'title');
     res.json(tasks);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching tasks', error });
@@ -348,5 +351,93 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error updating task status:', error);
     res.status(400).json({ message: 'Error updating task status', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const cloneTask = async (req: Request, res: Response) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const { _id, createdAt, updatedAt, ...taskData } = task.toObject();
+    const clonedTask = new Task({ ...taskData, title: `${taskData.title} (Copy)` });
+    await clonedTask.save();
+    await clonedTask.populate('project assignedTo assignedBy');
+    
+    const { io } = await import('../server');
+    io.emit('task:created', clonedTask);
+    res.status(201).json(clonedTask);
+  } catch (error) {
+    res.status(400).json({ message: 'Error cloning task', error });
+  }
+};
+
+export const bulkUpdateTasks = async (req: Request, res: Response) => {
+  try {
+    const { taskIds, updates } = req.body;
+    if (!taskIds?.length) return res.status(400).json({ message: 'Task IDs required' });
+    
+    await Task.updateMany({ _id: { $in: taskIds } }, updates);
+    const tasks = await Task.find({ _id: { $in: taskIds } }).populate('project assignedTo assignedBy');
+    
+    const { io } = await import('../server');
+    io.emit('tasks:bulk:updated', tasks);
+    res.json(tasks);
+  } catch (error) {
+    res.status(400).json({ message: 'Error bulk updating tasks', error });
+  }
+};
+
+export const addWatcher = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.body;
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    if (!task.watchers.includes(userId)) {
+      task.watchers.push(userId);
+      await task.save();
+    }
+    res.json(task);
+  } catch (error) {
+    res.status(400).json({ message: 'Error adding watcher', error });
+  }
+};
+
+export const removeWatcher = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.body;
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    task.watchers = task.watchers.filter(w => w.toString() !== userId);
+    await task.save();
+    res.json(task);
+  } catch (error) {
+    res.status(400).json({ message: 'Error removing watcher', error });
+  }
+};
+
+export const getTaskTemplates = async (req: Request, res: Response) => {
+  try {
+    const templates = await Task.find({ isTemplate: true });
+    res.json(templates);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching templates', error });
+  }
+};
+
+export const createFromTemplate = async (req: Request, res: Response) => {
+  try {
+    const template = await Task.findById(req.params.id);
+    if (!template || !template.isTemplate) return res.status(404).json({ message: 'Template not found' });
+    
+    const { _id, createdAt, updatedAt, isTemplate, templateName, ...taskData } = template.toObject();
+    const task = new Task({ ...taskData, ...req.body });
+    await task.save();
+    await task.populate('project assignedTo assignedBy');
+    res.status(201).json(task);
+  } catch (error) {
+    res.status(400).json({ message: 'Error creating from template', error });
   }
 };

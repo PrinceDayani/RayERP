@@ -8,6 +8,7 @@ import TaskManagement from "@/components/projects/TaskManagement";
 import ProjectTimeline from "@/components/projects/ProjectTimeline";
 import ProjectFiles from "@/components/projects/ProjectFiles";
 import ProjectActivity from "@/components/projects/ProjectActivity";
+import ProjectAnalytics from "@/components/ProjectAnalytics";
 import ProjectProfitLoss from "@/components/projects/finance/ProjectProfitLoss";
 import ProjectTrialBalance from "@/components/projects/finance/ProjectTrialBalance";
 import ProjectBalanceSheet from "@/components/projects/finance/ProjectBalanceSheet";
@@ -30,6 +31,8 @@ import {
 } from "lucide-react";
 import { getProjectById, updateProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
+import { GanttChart } from "@/components/GanttChart";
+import tasksAPI, { type Task } from "@/lib/api/tasksAPI";
 
 
 const ProjectDetailPage = () => {
@@ -40,6 +43,7 @@ const ProjectDetailPage = () => {
   
   const [project, setProject] = useState<Project | null>(null);
   const [budget, setBudget] = useState<any>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('tasks');
 
@@ -57,6 +61,7 @@ const ProjectDetailPage = () => {
     if (isAuthenticated && projectId) {
       fetchProject();
       fetchBudget();
+      fetchTasks();
     }
   }, [isAuthenticated, projectId]);
 
@@ -121,6 +126,15 @@ const ProjectDetailPage = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTasks = async () => {
+    try {
+      const data = await tasksAPI.getTasksByProject(projectId);
+      setTasks(data);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
     }
   };
 
@@ -498,6 +512,7 @@ const ProjectDetailPage = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="budget">Budget</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
@@ -507,6 +522,10 @@ const ProjectDetailPage = () => {
 
           <TabsContent value="tasks">
             <TaskManagement projectId={projectId} showProjectTasks={true} />
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <ProjectAnalytics projectId={projectId} />
           </TabsContent>
 
           <TabsContent value="budget">
@@ -611,7 +630,23 @@ const ProjectDetailPage = () => {
           </TabsContent>
 
           <TabsContent value="timeline">
-            <ProjectTimeline projectId={projectId} />
+            {tasks.length > 0 && (
+              <GanttChart 
+                tasks={tasks.map(task => ({
+                  id: task._id,
+                  name: task.title,
+                  startDate: new Date(task.createdAt),
+                  endDate: task.dueDate ? new Date(task.dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                  progress: task.status === 'completed' ? 100 : task.status === 'in-progress' ? 50 : 0,
+                  status: task.status,
+                  priority: task.priority
+                }))}
+                title={`${project?.name} Timeline`}
+              />
+            )}
+            <div className="mt-6">
+              <ProjectTimeline projectId={projectId} />
+            </div>
           </TabsContent>
 
           <TabsContent value="files">

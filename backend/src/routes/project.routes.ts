@@ -13,6 +13,8 @@ import {
   deleteProjectTask,
   getProjectStats,
   getProjectTimeline,
+  getProjectTimelineData,
+  getAllProjectsTimelineData,
   updateProjectStatus,
   addProjectMember,
   removeProjectMember,
@@ -25,6 +27,13 @@ import {
   deleteProjectFile,
   upload
 } from '../controllers/projectFileController';
+import {
+  getBurndownChart,
+  getVelocity,
+  getResourceUtilization,
+  getPerformanceIndices,
+  getRiskAssessment
+} from '../controllers/projectAnalyticsController';
 import budgetRoutes from './budgetRoutes';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { checkProjectAccess, checkProjectManagementAccess } from '../middleware/projectAccess.middleware';
@@ -43,6 +52,7 @@ router.use(authenticateToken);
 
 // --- Core Project Routes ---
 router.get('/stats', getProjectStats);
+router.get('/timeline-data', getAllProjectsTimelineData);
 router.get('/', getAllProjects);
 router.get('/:id', validateObjectId(), checkProjectAccess, getProjectById);
 router.post('/',
@@ -108,6 +118,14 @@ router.delete('/:id/members/:memberId',
 
 // --- Other Project-specific Routes ---
 router.get('/:id/timeline', validateObjectId(), checkProjectAccess, getProjectTimeline);
+router.get('/:id/timeline-data', validateObjectId(), checkProjectAccess, getProjectTimelineData);
+
+// --- Analytics Routes ---
+router.get('/:id/analytics/burndown', validateObjectId(), checkProjectAccess, getBurndownChart);
+router.get('/:id/analytics/velocity', validateObjectId(), checkProjectAccess, getVelocity);
+router.get('/:id/analytics/resource-utilization', validateObjectId(), checkProjectAccess, getResourceUtilization);
+router.get('/:id/analytics/performance-indices', validateObjectId(), checkProjectAccess, getPerformanceIndices);
+router.get('/:id/analytics/risk-assessment', validateObjectId(), checkProjectAccess, getRiskAssessment);
 
 // --- Nested Budget Routes ---
 router.use('/:id/budget', budgetRoutes);

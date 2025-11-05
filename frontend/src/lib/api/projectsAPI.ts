@@ -95,6 +95,17 @@ export const projectsAPI = {
     const response = await api.get("/reports/team-productivity", { params });
     return response.data;
   },
+
+  // Timeline data
+  getTimelineData: async (projectId: string) => {
+    const response = await api.get(`/projects/${projectId}/timeline-data`);
+    return response.data;
+  },
+
+  getAllTimelineData: async () => {
+    const response = await api.get("/projects/timeline-data");
+    return response.data;
+  },
 };
 
 export const getAllProjects = projectsAPI.getAll;
@@ -110,5 +121,7 @@ export const getProjectStats = projectsAPI.getStats;
 export const getProjectReports = projectsAPI.getProjectReports;
 export const getTaskReports = projectsAPI.getTaskReports;
 export const getTeamProductivity = projectsAPI.getTeamProductivity;
+export const getProjectTimelineData = projectsAPI.getTimelineData;
+export const getAllProjectsTimelineData = projectsAPI.getAllTimelineData;
 
 export default projectsAPI;
