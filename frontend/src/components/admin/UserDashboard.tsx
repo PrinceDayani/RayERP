@@ -1284,7 +1284,7 @@ const EmployeeSection = ({ router }: { router: any }) => {
     const fetchEmployees = async () => {
       try {
         const data = await employeesAPI.getAll();
-        setEmployees(data.slice(0, 6));
+        setEmployees((data.data || data).slice(0, 6));
       } catch (error) {
         console.error("Error fetching employees:", error);
       } finally {
