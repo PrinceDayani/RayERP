@@ -320,7 +320,7 @@ const Dashboard = () => {
       mb-6 theme-card theme-shadow theme-transition
       ${colorScheme === 'red' ? 'border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-800' : ''}
       ${colorScheme === 'purple' ? 'border-purple-200 bg-purple-50/50 dark:bg-purple-950/20 dark:border-purple-800' : ''}
-      ${colorScheme === 'blue' ? 'border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800' : ''}
+      ${colorScheme === 'blue' ? 'border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-800' : ''}
     `}>
       <CardContent className="pt-6 theme-compact-padding">
         <div className="flex items-start gap-4">
@@ -328,14 +328,14 @@ const Dashboard = () => {
             h-8 w-8 flex-shrink-0
             ${colorScheme === 'red' ? 'text-red-600 dark:text-red-400' : ''}
             ${colorScheme === 'purple' ? 'text-purple-600 dark:text-purple-400' : ''}
-            ${colorScheme === 'blue' ? 'text-blue-600 dark:text-blue-400' : ''}
+            ${colorScheme === 'blue' ? 'text-red-600 dark:text-red-400' : ''}
           `} />
           <div>
             <h3 className={`
               font-bold text-lg theme-responsive-text theme-text
               ${colorScheme === 'red' ? 'text-red-800 dark:text-red-300' : ''}
               ${colorScheme === 'purple' ? 'text-purple-800 dark:text-purple-300' : ''}
-              ${colorScheme === 'blue' ? 'text-blue-800 dark:text-blue-300' : ''}
+              ${colorScheme === 'blue' ? 'text-red-800 dark:text-red-300' : ''}
             `}>
               {title}
             </h3>
@@ -343,7 +343,7 @@ const Dashboard = () => {
               theme-text
               ${colorScheme === 'red' ? 'text-red-700 dark:text-red-400' : ''}
               ${colorScheme === 'purple' ? 'text-purple-700 dark:text-purple-400' : ''}
-              ${colorScheme === 'blue' ? 'text-blue-700 dark:text-blue-400' : ''}
+              ${colorScheme === 'blue' ? 'text-red-700 dark:text-red-400' : ''}
             `}>
               {description}
             </p>
@@ -496,18 +496,18 @@ const Dashboard = () => {
               </Card>
             )}
             {user.role === UserRole.ADMIN && (
-              <Card className="mb-6 border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/40 dark:border-blue-800 theme-shadow">
+              <Card className="mb-6 border-red-200 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/40 dark:border-red-800 theme-shadow">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4">
-                      <div className="h-12 w-12 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
+                      <div className="h-12 w-12 rounded-full bg-red-600 dark:bg-red-500 flex items-center justify-center">
                         <UserCog className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-xl text-blue-800 dark:text-blue-300">
+                        <h3 className="font-bold text-xl text-red-800 dark:text-red-300">
                           Admin Dashboard
                         </h3>
-                        <p className="text-blue-700 dark:text-blue-400 mt-1">
+                        <p className="text-red-700 dark:text-red-400 mt-1">
                           You have administrative access to manage business operations.
                         </p>
                       </div>
@@ -652,15 +652,15 @@ const Dashboard = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-l-4 border-l-blue-500">
+                  <Card className="border-l-4 border-l-red-500">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-xs text-muted-foreground">Profit</p>
                           <h3 className="text-xl font-bold">₹{(stats.profit || 0).toLocaleString()}</h3>
-                          <span className="text-xs text-blue-600 flex items-center"><ArrowUpRight className="h-3 w-3" />18.3%</span>
+                          <span className="text-xs text-red-600 flex items-center"><ArrowUpRight className="h-3 w-3" />18.3%</span>
                         </div>
-                        <Target className="h-8 w-8 text-blue-600" />
+                        <Target className="h-8 w-8 text-red-600" />
                       </div>
                     </CardContent>
                   </Card>
@@ -1053,7 +1053,7 @@ const Dashboard = () => {
                         <div className="flex items-center gap-2">
                           <Badge 
                             variant="outline" 
-                            className="text-blue-700 border-blue-700 dark:text-blue-400 dark:border-blue-400 theme-rounded theme-text"
+                            className="text-red-700 border-red-700 dark:text-red-400 dark:border-red-400 theme-rounded theme-text"
                           >
                             Admin
                           </Badge>
@@ -1131,7 +1131,7 @@ const TaskSection = ({ router }: { router: any }) => {
                 <p className="text-sm text-muted-foreground">Total Tasks</p>
                 <h3 className="text-2xl font-bold">{tasks.length}</h3>
               </div>
-              <CheckSquare className="h-8 w-8 text-blue-600" />
+              <CheckSquare className="h-8 w-8 text-red-600" />
             </div>
           </CardContent>
         </Card>
@@ -1229,7 +1229,7 @@ const ProjectSection = ({ router }: { router: any }) => {
                 <p className="text-sm text-muted-foreground">Total Projects</p>
                 <h3 className="text-2xl font-bold">{projects.length}</h3>
               </div>
-              <Briefcase className="h-8 w-8 text-blue-600" />
+              <Briefcase className="h-8 w-8 text-red-600" />
             </div>
           </CardContent>
         </Card>
@@ -1322,7 +1322,7 @@ const EmployeeSection = ({ router }: { router: any }) => {
                 <p className="text-sm text-muted-foreground">Total Employees</p>
                 <h3 className="text-2xl font-bold">{employees.length}</h3>
               </div>
-              <Users className="h-8 w-8 text-blue-600" />
+              <Users className="h-8 w-8 text-red-600" />
             </div>
           </CardContent>
         </Card>

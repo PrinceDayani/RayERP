@@ -9,6 +9,7 @@ import { Server as SocketServer } from "socket.io";
 import { logger } from "./utils/logger";
 import routes from "./routes/index";
 import authRoutes from "./routes/auth.routes";
+import assignmentRoutes from "./routes/assignment.routes";
 import errorMiddleware from "./middleware/error.middleware";
 
 dotenv.config();
@@ -68,6 +69,7 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 app.use("/api", routes);
+app.use("/api", assignmentRoutes);
 
 // Catch-all for undefined routes
 app.all('*', (req, res) => {

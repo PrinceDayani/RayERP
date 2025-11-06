@@ -187,17 +187,7 @@ export const initializePermissions = async () => {
     { name: 'update_user', description: 'Update user details', category: 'User Management' },
     { name: 'delete_user', description: 'Delete users', category: 'User Management' },
     
-    // Product Management
-    { name: 'view_products', description: 'View products', category: 'Product Management' },
-    { name: 'create_product', description: 'Create products', category: 'Product Management' },
-    { name: 'update_product', description: 'Update products', category: 'Product Management' },
-    { name: 'delete_product', description: 'Delete products', category: 'Product Management' },
-    
-    // Order Management
-    { name: 'view_orders', description: 'View orders', category: 'Order Management' },
-    { name: 'create_order', description: 'Create orders', category: 'Order Management' },
-    { name: 'update_order', description: 'Update orders', category: 'Order Management' },
-    { name: 'delete_order', description: 'Delete orders', category: 'Order Management' },
+
     
     // Inventory Management
     { name: 'view_inventory', description: 'View inventory', category: 'Inventory Management' },

@@ -171,7 +171,7 @@ export default function Layout({ children }: LayoutProps) {
       case 'super_admin':
         return 'bg-purple-500';
       case 'admin':
-        return 'bg-blue-500';
+        return 'bg-red-500';
       case 'manager':
         return 'bg-green-500';
       default:
@@ -187,32 +187,32 @@ export default function Layout({ children }: LayoutProps) {
       <div
         className={`${
           isMobile 
-            ? `fixed inset-y-0 left-0 z-30 w-64 bg-theme-sidebar border-r border-border shadow-lg transform transition-transform duration-300 ${
-                (!isMobile || sidebarOpen) ? "translate-x-0" : "-translate-x-full"
+            ? `fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-lg transform transition-transform duration-300 ${
+                sidebarOpen ? "translate-x-0" : "-translate-x-full"
               }`
-            : `${collapsed ? "w-16" : "w-64"} bg-theme-sidebar border-r border-border transition-all duration-300 ease-in-out`
+            : `${collapsed ? "w-16" : "w-64"} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out`
         } flex flex-col h-full`}
       >
         {/* Header */}
-        <div className="p-4 border-b border-border bg-gradient-to-r from-primary/5 to-primary/10">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-red-50 to-red-100 dark:from-gray-800 dark:to-gray-700">
           <div className="flex items-center justify-between">
             {!collapsed && (
               <div className="flex items-center space-x-3">
                 <div className="flex items-center justify-center">
-                  <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg">
-                    <Building2 className="h-5 w-5 text-primary-foreground" />
+                  <div className="h-10 w-10 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center shadow-lg">
+                    <Building2 className="h-5 w-5 text-white" />
                   </div>
                   <div className="ml-3">
-                    <span className="text-lg font-bold text-foreground">RayERP</span>
-                    <p className="text-xs text-muted-foreground">Enterprise Solution</p>
+                    <span className="text-lg font-bold text-gray-900 dark:text-white">RayERP</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Enterprise Solution</p>
                   </div>
                 </div>
               </div>
             )}
             {collapsed && (
               <div className="flex items-center justify-center w-full">
-                <div className="h-8 w-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center shadow-lg">
-                  <Building2 className="h-4 w-4 text-primary-foreground" />
+                <div className="h-8 w-8 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center shadow-lg">
+                  <Building2 className="h-4 w-4 text-white" />
                 </div>
               </div>
             )}
@@ -223,7 +223,7 @@ export default function Layout({ children }: LayoutProps) {
                     variant="ghost"
                     size="sm"
                     onClick={toggleSidebar}
-                    className="p-2 hover:bg-primary/10 rounded-lg transition-colors"
+                    className="p-2 hover:bg-red-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
                     {collapsed ? (
                       <ChevronRight className="w-4 h-4" />
@@ -247,7 +247,7 @@ export default function Layout({ children }: LayoutProps) {
               {menuSections.map((section) => (
                 <div key={section.title}>
                   {!collapsed && (
-                    <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    <h3 className="px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                       {section.title}
                     </h3>
                   )}
@@ -267,8 +267,8 @@ export default function Layout({ children }: LayoutProps) {
                               onClick={() => toggleMenu(item.path)}
                               className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 group ${
                                 isActive
-                                  ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg"
-                                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md"
+                                  ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg"
+                                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white hover:shadow-md"
                               }`}
                             >
                               <div className="flex items-center">
@@ -292,8 +292,8 @@ export default function Layout({ children }: LayoutProps) {
                               <div
                                 className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 group ${
                                   isActive
-                                    ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg"
-                                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md"
+                                    ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg"
+                                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white hover:shadow-md"
                                 }`}
                               >
                                 <Icon className={`w-5 h-5 ${collapsed ? 'mx-auto' : ''} transition-colors`} />
@@ -312,8 +312,8 @@ export default function Layout({ children }: LayoutProps) {
                                   <div
                                     className={`flex items-center px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
                                       pathname === subItem.path
-                                        ? "bg-primary/20 text-primary font-medium"
-                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                                        ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 font-medium"
+                                        : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
                                     }`}
                                   >
                                     <div className="w-2 h-2 rounded-full bg-current opacity-50 mr-3" />
@@ -353,26 +353,26 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* User Profile */}
         {user && (
-          <div className="p-4 border-t border-border bg-gradient-to-r from-muted/30 to-muted/10">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className={`flex items-center space-x-3 p-2 rounded-xl hover:bg-accent/50 transition-colors cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
+                  <div className={`flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
                     <div className="relative">
-                      <Avatar className="w-10 h-10 border-2 border-primary/20">
+                      <Avatar className="w-10 h-10 border-2 border-red-200 dark:border-red-800">
                         <AvatarFallback className={`${getRoleColor(user.role || '')} text-white text-sm font-semibold`}>
                           {user.name?.charAt(0).toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-background rounded-full" />
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full" />
                     </div>
                     {!collapsed && (
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                           {user.name}
                         </p>
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                          <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                             {user.role}
                           </Badge>
                         </div>
@@ -383,8 +383,8 @@ export default function Layout({ children }: LayoutProps) {
                 <TooltipContent side={collapsed ? "right" : "top"} className="ml-2">
                   <div>
                     <p className="font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{user.role} Access</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user.role} Access</p>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -406,7 +406,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="sticky top-0 z-10">
           <Navbar toggleSidebar={toggleSidebar} isMobile={isMobile} />
         </div>
-        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-background to-muted/20">
+        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
           <div className="p-4">
             <BackendStatus />
           </div>

@@ -60,7 +60,7 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
       time: "Just now",
       isRead: false,
       icon: Briefcase,
-      color: 'text-blue-500'
+      color: 'text-red-500'
     },
     {
       id: 2,
@@ -119,7 +119,7 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
       case 'super_admin':
         return 'bg-purple-500';
       case 'admin':
-        return 'bg-blue-500';
+        return 'bg-red-500';
       case 'manager':
         return 'bg-green-500';
       default:

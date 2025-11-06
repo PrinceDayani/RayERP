@@ -17,6 +17,7 @@ import { PlusIcon, EditIcon, TrashIcon, SearchIcon, UserIcon, ShieldIcon, Toggle
 import adminAPI from "@/lib/api/adminAPI";
 import { toast } from "@/components/ui/use-toast";
 import { logActivity } from "@/lib/activityLogger";
+import { CreateRoleDialog } from "./CreateRoleDialog";
 
 interface Role {
   _id: string;
@@ -112,21 +113,13 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
 
   const activeRoles = roles.filter(role => role.isActive);
 
-  const handleCreateRole = async () => {
-    try {
-      const createdRole = await adminAPI.createRole({ ...newRole, isActive: true });
-      setRoles([...roles, createdRole]);
-      await logActivity({
-        action: 'create',
-        resource: 'role',
-        details: `Created role: ${newRole.name} with ${newRole.permissions.length} permissions`
-      });
-      setNewRole({ name: "", description: "", permissions: [] });
-      setIsAddRoleOpen(false);
-      toast({ title: "Success", description: "Role created successfully" });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to create role", variant: "destructive" });
-    }
+  const handleRoleCreated = async (createdRole: any) => {
+    setRoles([...roles, createdRole]);
+    await logActivity({
+      action: 'create',
+      resource: 'role',
+      details: `Created role: ${createdRole.name} with ${createdRole.permissions.length} permissions`
+    });
   };
 
   const handleUpdateRole = async () => {
@@ -294,70 +287,10 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                 </SelectContent>
               </Select>
             </div>
-            <Dialog open={isAddRoleOpen} onOpenChange={setIsAddRoleOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <PlusIcon className="mr-2 h-4 w-4" />
-                  Create Role
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Role</DialogTitle>
-                  <DialogDescription>Define a new role with specific permissions</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">Name</Label>
-                    <Input
-                      id="name"
-                      className="col-span-3"
-                      value={newRole.name}
-                      onChange={(e) => setNewRole({ ...newRole, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="description" className="text-right">Description</Label>
-                    <Textarea
-                      id="description"
-                      className="col-span-3"
-                      value={newRole.description}
-                      onChange={(e) => setNewRole({ ...newRole, description: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-start gap-4">
-                    <Label className="text-right">Permissions</Label>
-                    <div className="col-span-3 space-y-4">
-                      {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
-                        <div key={category} className="space-y-2">
-                          <h4 className="font-medium text-sm">{category}</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {categoryPermissions.map((permission) => (
-                              <div key={permission._id} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`new-${permission.name}`}
-                                  checked={newRole.permissions.includes(permission.name)}
-                                  onCheckedChange={(checked) => 
-                                    handlePermissionChange(permission.name, checked as boolean)
-                                  }
-                                />
-                                <Label htmlFor={`new-${permission.name}`} className="text-sm">
-                                  {permission.name}
-                                </Label>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddRoleOpen(false)}>Cancel</Button>
-                  <Button onClick={handleCreateRole}>Create Role</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => setIsAddRoleOpen(true)}>
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Create Role
+            </Button>
           </div>
 
           <div className="rounded-md border">
@@ -650,6 +583,13 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Role Dialog */}
+      <CreateRoleDialog
+        open={isAddRoleOpen}
+        onOpenChange={setIsAddRoleOpen}
+        onRoleCreated={handleRoleCreated}
+      />
     </div>
   );
 }

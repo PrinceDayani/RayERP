@@ -222,7 +222,7 @@ const MetricCard = React.forwardRef<
     className={cn(
       "border-l-4",
       {
-        'border-l-blue-500': color === 'blue',
+        'border-l-red-500': color === 'blue',
         'border-l-green-500': color === 'green',
         'border-l-orange-500': color === 'orange',
         'border-l-red-500': color === 'red',
@@ -243,7 +243,7 @@ const MetricCard = React.forwardRef<
             <span className={cn(
               "text-xs flex items-center",
               {
-                'text-blue-600': color === 'blue',
+                'text-red-600': color === 'blue',
                 'text-green-600': color === 'green',
                 'text-orange-600': color === 'orange',
                 'text-red-600': color === 'red',
@@ -258,7 +258,7 @@ const MetricCard = React.forwardRef<
           <div className={cn(
             "h-8 w-8",
             {
-              'text-blue-600': color === 'blue',
+              'text-red-600': color === 'blue',
               'text-green-600': color === 'green',
               'text-orange-600': color === 'orange',
               'text-red-600': color === 'red',

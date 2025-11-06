@@ -60,7 +60,7 @@ const AdminControls = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-600 rounded-lg">
+                <div className="p-2 bg-red-600 rounded-lg">
                   <ShieldIcon className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -114,7 +114,7 @@ const AdminControls = () => {
               <Card className="shadow-sm border-0 bg-white dark:bg-slate-800">
                 <CardHeader className="border-b border-slate-200 dark:border-slate-700">
                   <CardTitle className="flex items-center space-x-2">
-                    <UsersIcon className="h-5 w-5 text-blue-600" />
+                    <UsersIcon className="h-5 w-5 text-red-600" />
                     <span>User Management</span>
                   </CardTitle>
                   <CardDescription>

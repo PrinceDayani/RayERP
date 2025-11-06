@@ -102,5 +102,17 @@ export const api = {
   }
 };
 
+export const employeesAPI = {
+  async getEmployee(id: string) {
+    return apiRequest(`/api/employees/${id}`);
+  },
+  async updateEmployee(id: string, data: any) {
+    return apiRequest(`/api/employees/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+};
+
 // Default export for backward compatibility
 export default api;

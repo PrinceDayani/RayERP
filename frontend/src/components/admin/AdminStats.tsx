@@ -83,7 +83,7 @@ export function AdminStats({ isLoading }: AdminStatsProps) {
 
   const getColorClasses = (color: string) => {
     const colors = {
-      blue: "bg-gradient-to-br from-blue-50/80 to-indigo-50/80 border-blue-200/50 dark:from-blue-950/50 dark:to-indigo-950/50 dark:border-blue-800/30",
+      blue: "bg-gradient-to-br from-red-50/80 to-indigo-50/80 border-red-200/50 dark:from-red-950/50 dark:to-indigo-950/50 dark:border-red-800/30",
       green: "bg-gradient-to-br from-emerald-50/80 to-green-50/80 border-emerald-200/50 dark:from-emerald-950/50 dark:to-green-950/50 dark:border-emerald-800/30",
       orange: "bg-gradient-to-br from-orange-50/80 to-amber-50/80 border-orange-200/50 dark:from-orange-950/50 dark:to-amber-950/50 dark:border-orange-800/30",
       red: "bg-gradient-to-br from-red-50/80 to-rose-50/80 border-red-200/50 dark:from-red-950/50 dark:to-rose-950/50 dark:border-red-800/30"
@@ -93,7 +93,7 @@ export function AdminStats({ isLoading }: AdminStatsProps) {
 
   const getIconColor = (color: string) => {
     const colors = {
-      blue: "text-blue-600 dark:text-blue-400",
+      blue: "text-red-600 dark:text-red-400",
       green: "text-emerald-600 dark:text-emerald-400",
       orange: "text-orange-600 dark:text-orange-400",
       red: "text-red-600 dark:text-red-400"
@@ -183,7 +183,7 @@ export function AdminStats({ isLoading }: AdminStatsProps) {
                 <div className="mt-3">
                   <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
                     <div 
-                      className="bg-gradient-to-r from-blue-500 to-indigo-500 h-1.5 rounded-full transition-all duration-1000 ease-out"
+                      className="bg-gradient-to-r from-red-500 to-indigo-500 h-1.5 rounded-full transition-all duration-1000 ease-out"
                       style={{ width: `${activityPercentage}%` }}
                     />
                   </div>
