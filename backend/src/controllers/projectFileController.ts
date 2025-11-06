@@ -49,7 +49,7 @@ export const upload = multer({
 // Get all files for a project
 export const getProjectFiles = async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const { id: projectId } = req.params;
 
     // Check if project exists
     const project = await Project.findById(projectId);
@@ -71,7 +71,7 @@ export const getProjectFiles = async (req: Request, res: Response) => {
 // Upload file to project
 export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const { id: projectId } = req.params;
     const userId = (req as any).user.id;
 
     // Check if project exists
@@ -107,7 +107,7 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
 // Download project file
 export const downloadProjectFile = async (req: Request, res: Response) => {
   try {
-    const { projectId, fileId } = req.params;
+    const { id: projectId, fileId } = req.params;
 
     const file = await ProjectFile.findOne({ 
       _id: fileId, 
@@ -132,7 +132,7 @@ export const downloadProjectFile = async (req: Request, res: Response) => {
 // Delete project file
 export const deleteProjectFile = async (req: Request, res: Response) => {
   try {
-    const { projectId, fileId } = req.params;
+    const { id: projectId, fileId } = req.params;
 
     const file = await ProjectFile.findOne({ 
       _id: fileId, 

@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, DragEvent, ChangeEvent } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,9 @@ import {
   Trash2, 
   Search,
   FolderOpen,
-  Plus
+  Plus,
+  X,
+  Eye
 } from "lucide-react";
 import { projectFilesAPI, ProjectFile } from "@/lib/api/projectFilesAPI";
 import { toast } from "@/components/ui/use-toast";
@@ -34,6 +36,12 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [previewFile, setPreviewFile] = useState<ProjectFile | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (projectId) {
@@ -136,6 +144,84 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
     }
   };
 
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    setSelectedFiles(prev => [...prev, ...files]);
+  };
+
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      setSelectedFiles(prev => [...prev, ...files]);
+    }
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadFiles = async () => {
+    if (selectedFiles.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+        await projectFilesAPI.upload(projectId!, formData);
+      }
+      toast({
+        title: "Success",
+        description: `${selectedFiles.length} file(s) uploaded successfully`,
+      });
+      setSelectedFiles([]);
+      setIsUploadDialogOpen(false);
+      fetchFiles();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload files",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePreview = async (file: ProjectFile) => {
+    try {
+      const blob = await projectFilesAPI.download(projectId!, file._id);
+      const url = window.URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      setPreviewFile(file);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load preview",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const closePreview = () => {
+    if (previewUrl) {
+      window.URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewFile(null);
+    setPreviewUrl("");
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -151,21 +237,66 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
                 Upload File
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Upload New File</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <div 
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                    isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileSelect}
+                    multiple
+                    className="hidden"
+                  />
                   <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-lg font-medium mb-2">Drop files here or click to browse</p>
                   <p className="text-sm text-muted-foreground">
                     Supports: PDF, DOC, XLS, PNG, JPG, ZIP (Max 50MB)
                   </p>
-                  <Button variant="outline" className="mt-4">
-                    Choose Files
-                  </Button>
                 </div>
+
+                {selectedFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Selected Files ({selectedFiles.length})</h4>
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{file.name}</p>
+                            <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeSelectedFile(index);
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button 
+                      onClick={uploadFiles} 
+                      disabled={uploading}
+                      className="w-full"
+                    >
+                      {uploading ? 'Uploading...' : `Upload ${selectedFiles.length} File(s)`}
+                    </Button>
+                  </div>
+                )}
               </div>
             </DialogContent>
           </Dialog>
@@ -220,6 +351,13 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handlePreview(file)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleDownload(file)}
                       >
                         <Download className="h-4 w-4" />
@@ -251,6 +389,36 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
           )}
         </div>
       </CardContent>
+
+      {/* Preview Dialog */}
+      {previewFile && (
+        <Dialog open={!!previewFile} onOpenChange={closePreview}>
+          <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>{previewFile.originalName}</DialogTitle>
+            </DialogHeader>
+            <div className="overflow-auto max-h-[70vh]">
+              {previewFile.mimeType.startsWith('image/') ? (
+                <img src={previewUrl} alt={previewFile.originalName} className="w-full" />
+              ) : previewFile.mimeType === 'application/pdf' ? (
+                <iframe src={previewUrl} className="w-full h-[70vh]" />
+              ) : previewFile.mimeType.includes('text') ? (
+                <iframe src={previewUrl} className="w-full h-[70vh]" />
+              ) : (
+                <div className="text-center py-12">
+                  <File className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-lg font-medium mb-2">Preview not available</p>
+                  <p className="text-muted-foreground mb-4">This file type cannot be previewed</p>
+                  <Button onClick={() => handleDownload(previewFile)}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download File
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 };

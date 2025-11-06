@@ -19,6 +19,7 @@ import projectTemplateRoutes from './projectTemplate.routes';
 import resourceRoutes from './resourceRoutes';
 import departmentRoutes from './department.routes';
 import onboardingRoutes from './onboarding.routes';
+import fileShareRoutes from './fileShare.routes';
 // --- Merged Financial & Ledger Routes ---
 import budgetRoutes from './budgetRoutes';
 import budgetTemplateRoutes from './budgetTemplateRoutes';
@@ -56,6 +57,7 @@ router.use('/resources', resourceRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/onboarding', onboardingRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/file-shares', fileShareRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);
