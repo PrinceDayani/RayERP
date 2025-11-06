@@ -8,22 +8,29 @@ export class ApiError extends Error {
 }
 
 export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem('auth-token');
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...options.headers,
-    },
-    ...options,
-  });
-  
-  if (!response.ok) {
-    throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+  try {
+    const token = localStorage.getItem('auth-token');
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...options.headers,
+      },
+      ...options,
+    });
+    
+    if (!response.ok) {
+      throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Server connection failed. Please check if the backend is running.');
+    }
+    throw error;
   }
-  
-  return response.json();
 };
 
 export const analyticsApi = {

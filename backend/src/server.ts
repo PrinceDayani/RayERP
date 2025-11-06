@@ -191,6 +191,10 @@ io.on("connection", (socket) => {
 export { io };
 export default app;
 
+// Initialize real-time admin emitter
+import { realTimeAdminEmitter } from './utils/realTimeAdminEmitter';
+realTimeAdminEmitter.initialize(io);
+
 // Initialize real-time data emitter
 import './utils/realTimeEmitter';
 
