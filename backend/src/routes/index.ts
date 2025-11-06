@@ -31,6 +31,7 @@ import financialReportRoutes from './financialReport.routes';
 import projectLedgerRoutes from './projectLedger.routes';
 import generalLedgerRoutes from './generalLedger.routes';
 import integratedFinanceRoutes from './integratedFinance.routes';
+import dashboardRoutes from './dashboard.routes';
 
 const router = express.Router();
 
@@ -54,6 +55,7 @@ router.use('/project-templates', projectTemplateRoutes);
 router.use('/resources', resourceRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/onboarding', onboardingRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);

@@ -6,7 +6,8 @@ export interface IEmployee extends Document {
   lastName: string;
   email: string;
   phone: string;
-  department: string;
+  department?: string;
+  departments?: string[];
   position: string;
   salary: number;
   hireDate: Date;
@@ -35,7 +36,8 @@ const employeeSchema = new Schema<IEmployee>({
   lastName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   phone: { type: String, required: true },
-  department: { type: String, required: true },
+  department: { type: String, required: false },
+  departments: { type: [String], default: [] },
   position: { type: String, required: true },
   salary: { type: Number, required: true },
   hireDate: { type: Date, required: true },

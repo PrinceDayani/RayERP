@@ -51,6 +51,7 @@ interface Employee {
   email: string;
   phone: string;
   department: string;
+  departments?: string[];
   position: string;
   salary: number;
   status: 'active' | 'inactive' | 'terminated';
@@ -191,11 +192,14 @@ const EmployeeManagementDashboard = () => {
     }
   };
 
-  const filteredEmployees = employees.filter(employee =>
-    `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.department.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEmployees = employees.filter(employee => {
+    const searchLower = searchTerm.toLowerCase();
+    const nameMatch = `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchLower);
+    const idMatch = employee.employeeId.toLowerCase().includes(searchLower);
+    const deptMatch = employee.department?.toLowerCase().includes(searchLower) || false;
+    const deptsMatch = employee.departments?.some(dept => dept.toLowerCase().includes(searchLower)) || false;
+    return nameMatch || idMatch || deptMatch || deptsMatch;
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -448,9 +452,19 @@ const EmployeeManagementDashboard = () => {
                               </div>
                             </td>
                             <td className="p-4">
-                              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium">
-                                {employee.department}
-                              </span>
+                              {employee.departments && employee.departments.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {employee.departments.map((dept, idx) => (
+                                    <span key={idx} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-medium">
+                                      {dept}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium">
+                                  {employee.department || 'N/A'}
+                                </span>
+                              )}
                             </td>
                             <td className="p-4 text-foreground font-medium">{employee.position}</td>
                             <td className="p-4">

@@ -13,6 +13,7 @@ interface Employee {
   email: string;
   phone: string;
   department: string;
+  departments?: string[];
   position: string;
   salary: number;
   status: 'active' | 'inactive' | 'terminated';
@@ -28,12 +29,16 @@ interface EmployeeListProps {
 export default function EmployeeList({ employees, onEdit, onDelete }: EmployeeListProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredEmployees = employees.filter(employee =>
-    `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.position.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEmployees = employees.filter(employee => {
+    const searchLower = searchTerm.toLowerCase();
+    const nameMatch = `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchLower);
+    const idMatch = employee.employeeId.toLowerCase().includes(searchLower);
+    const positionMatch = employee.position.toLowerCase().includes(searchLower);
+    const deptMatch = employee.department?.toLowerCase().includes(searchLower) || false;
+    const deptsMatch = employee.departments?.some(dept => dept.toLowerCase().includes(searchLower)) || false;
+    
+    return nameMatch || idMatch || positionMatch || deptMatch || deptsMatch;
+  });
 
   return (
     <div className="space-y-4">

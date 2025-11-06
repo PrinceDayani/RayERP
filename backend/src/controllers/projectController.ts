@@ -92,7 +92,10 @@ export const createProject = async (req: Request, res: Response) => {
     const projectData = {
       ...req.body,
       owner: user._id,
-      members: req.body.members || []
+      members: req.body.members || [],
+      milestones: req.body.milestones || [],
+      risks: req.body.risks || [],
+      dependencies: req.body.dependencies || []
     };
     
     const project = new Project(projectData);
@@ -101,6 +104,7 @@ export const createProject = async (req: Request, res: Response) => {
     await project.populate('team', 'firstName lastName');
     await project.populate('owner', 'name email');
     await project.populate('members', 'name email');
+    await project.populate('dependencies', 'name');
     
     // Safely get manager ID
     const managerId = project.manager ? 
@@ -374,12 +378,129 @@ export const getProjectStats = async (req: Request, res: Response) => {
       completedProjects,
       overdueTasks,
       totalTasks: await Task.countDocuments(),
-      completedTasks: await Task.countDocuments({ status: 'completed' })
+      completedTasks: await Task.countDocuments({ status: 'completed' }),
+      atRiskProjects: await Project.countDocuments({ 'risks.severity': { $in: ['high', 'critical'] } }),
+      overdueProjects: await Project.countDocuments({ endDate: { $lt: new Date() }, status: { $ne: 'completed' } })
     };
     
     res.json(stats);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching project stats', error });
+  }
+};
+
+export const cloneProject = async (req: Request, res: Response) => {
+  try {
+    const sourceProject = await Project.findById(req.params.id);
+    if (!sourceProject) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+    
+    const clonedData = {
+      ...sourceProject.toObject(),
+      _id: undefined,
+      name: `${sourceProject.name} (Copy)`,
+      status: 'planning',
+      progress: 0,
+      spentBudget: 0,
+      owner: user._id,
+      createdAt: undefined,
+      updatedAt: undefined
+    };
+    
+    const clonedProject = new Project(clonedData);
+    await clonedProject.save();
+    await clonedProject.populate('manager', 'firstName lastName');
+    await clonedProject.populate('team', 'firstName lastName');
+    await clonedProject.populate('owner', 'name email');
+    
+    const { io } = await import('../server');
+    io.emit('project:created', clonedProject);
+    await emitProjectStats();
+    
+    res.status(201).json(clonedProject);
+  } catch (error) {
+    console.error('Error cloning project:', error);
+    res.status(400).json({ message: 'Error cloning project', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const updateProjectMilestones = async (req: Request, res: Response) => {
+  try {
+    const { milestones } = req.body;
+    const project = await Project.findByIdAndUpdate(
+      req.params.id,
+      { milestones },
+      { new: true, runValidators: true }
+    );
+    
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    const { io } = await import('../server');
+    io.emit('project:milestones:updated', { projectId: project._id, milestones: project.milestones });
+    
+    res.json(project);
+  } catch (error) {
+    res.status(400).json({ message: 'Error updating milestones', error });
+  }
+};
+
+export const updateProjectRisks = async (req: Request, res: Response) => {
+  try {
+    const { risks } = req.body;
+    const project = await Project.findByIdAndUpdate(
+      req.params.id,
+      { risks },
+      { new: true, runValidators: true }
+    );
+    
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    const { io } = await import('../server');
+    io.emit('project:risks:updated', { projectId: project._id, risks: project.risks });
+    
+    res.json(project);
+  } catch (error) {
+    res.status(400).json({ message: 'Error updating risks', error });
+  }
+};
+
+export const calculateProjectProgress = async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.id;
+    const project = await Project.findById(projectId);
+    
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    const tasks = await Task.find({ project: projectId });
+    
+    if (tasks.length === 0) {
+      return res.json({ progress: 0, message: 'No tasks found' });
+    }
+    
+    const completedTasks = tasks.filter(t => t.status === 'completed').length;
+    const progress = Math.round((completedTasks / tasks.length) * 100);
+    
+    project.progress = progress;
+    await project.save();
+    
+    const { io } = await import('../server');
+    io.emit('project:progress:updated', { projectId, progress });
+    
+    res.json({ progress, totalTasks: tasks.length, completedTasks });
+  } catch (error) {
+    res.status(500).json({ message: 'Error calculating progress', error });
   }
 };
 
@@ -685,5 +806,20 @@ export const getProjectActivity = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching project activity:', error);
     res.status(500).json({ message: 'Error fetching project activity', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const getProjectTemplates = async (req: Request, res: Response) => {
+  try {
+    const templates = [
+      { id: 'software', name: 'Software Development', description: 'Standard software project template' },
+      { id: 'marketing', name: 'Marketing Campaign', description: 'Marketing project template' },
+      { id: 'construction', name: 'Construction Project', description: 'Construction management template' },
+      { id: 'research', name: 'Research & Development', description: 'R&D project template' },
+      { id: 'event', name: 'Event Planning', description: 'Event management template' }
+    ];
+    res.json(templates);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching templates', error });
   }
 };

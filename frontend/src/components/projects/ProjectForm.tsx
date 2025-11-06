@@ -62,7 +62,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const fetchEmployees = async () => {
     try {
       const data = await employeesAPI.getAll();
-      setEmployees(data || []);
+      setEmployees(Array.isArray(data) ? data : (data.data || []));
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast({

@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 import DashboardHeader from "@/components/Dashboard/DashboardHeader";
 import StatsCards from "@/components/Dashboard/StatsCards";
@@ -74,17 +75,7 @@ const Dashboard = () => {
   
   // State management with proper typing
   const [activeTab, setActiveTab] = useState("overview");
-  const [stats, setStats] = useState<DashboardStats>({
-    totalEmployees: 0,
-    activeEmployees: 0,
-    totalProjects: 0,
-    completedProjects: 0,
-    totalTasks: 0,
-    completedTasks: 0,
-    revenue: 0,
-    expenses: 0,
-    profit: 0,
-  });
+  const { stats, loading: dataLoading, error: dataError, socketConnected, refresh } = useDashboardData(isAuthenticated);
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     projectProgress: [],
     taskDistribution: [],
@@ -92,37 +83,17 @@ const Dashboard = () => {
     teamProductivity: [],
     recentActivity: [],
   });
-  const [dataLoading, setDataLoading] = useState(true);
-  const [dataError, setDataError] = useState<string | null>(null);
-  const [socketConnected, setSocketConnected] = useState(false);
   
   // Refs
   const socketRef = useRef<any>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Memoized data fetching function
-  const fetchDashboardData = useCallback(async () => {
+  // Memoized data fetching function for analytics
+  const fetchAnalyticsData = useCallback(async () => {
     if (!isAuthenticated) return;
     
     try {
-      setDataLoading(true);
-      setDataError(null);
-      
-      // Mock data for now - replace with actual API calls
-      setStats({
-        totalEmployees: 25,
-        activeEmployees: 23,
-        totalProjects: 12,
-        completedProjects: 8,
-        totalTasks: 156,
-        completedTasks: 98,
-        revenue: 485000,
-        expenses: 325000,
-        profit: 160000,
-      });
-
-      // Add random variation for demo real-time effect
-      const randomVariation = () => Math.floor(Math.random() * 5) + 1;
+      // Generate analytics based on real stats
+      const randomVariation = () => Math.floor(Math.random() * 3) + 1;
       
       setAnalytics({
         projectProgress: [
@@ -132,9 +103,9 @@ const Dashboard = () => {
           { name: "Database Migration", progress: 100, status: "completed" },
         ],
         taskDistribution: [
-          { name: "Completed", value: 98 + randomVariation() },
-          { name: "In Progress", value: 42 },
-          { name: "Pending", value: Math.max(16 - randomVariation(), 0) },
+          { name: "Completed", value: stats.completedTasks },
+          { name: "In Progress", value: stats.inProgressTasks || 0 },
+          { name: "Pending", value: stats.pendingTasks || 0 },
         ],
         monthlyRevenue: [
           { month: "Jan", revenue: 65000, expenses: 45000 },
@@ -142,7 +113,7 @@ const Dashboard = () => {
           { month: "Mar", revenue: 68000, expenses: 46000 },
           { month: "Apr", revenue: 85000, expenses: 52000 },
           { month: "May", revenue: 92000, expenses: 58000 },
-          { month: "Jun", revenue: 103000 + (randomVariation() * 1000), expenses: 76000 },
+          { month: "Jun", revenue: stats.revenue || 103000, expenses: stats.expenses || 76000 },
         ],
         teamProductivity: [
           { name: "Development", completed: 45 + randomVariation(), pending: Math.max(12 - randomVariation(), 0) },
@@ -157,156 +128,23 @@ const Dashboard = () => {
           { id: "4", type: "project", description: "Project 'Mobile App' milestone reached", time: "1 day ago" },
         ],
       });
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error("Error fetching dashboard data:", {
-        message: errorMessage,
-        timestamp: new Date().toISOString()
-      });
-      setDataError("Failed to load dashboard data. Please try refreshing the page.");
-      toast({
-        title: "Error",
-        description: "Failed to load dashboard data. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setDataLoading(false);
+      console.error("Error generating analytics:", error);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, stats]);
 
-  // Initial data fetch
+  // Update analytics when stats change
   useEffect(() => {
-    if (!isAuthenticated) {
-      setDataLoading(false);
-      return;
+    if (isAuthenticated && stats.totalEmployees > 0) {
+      fetchAnalyticsData();
     }
-    
-    fetchDashboardData();
-    
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-  }, [isAuthenticated, fetchDashboardData]);
+  }, [isAuthenticated, stats, fetchAnalyticsData]);
 
-  // Auto-refresh for real-time updates
-  useEffect(() => {
-    if (!isAuthenticated || !socketConnected) return;
-    
-    const refreshInterval = setInterval(() => {
-      fetchDashboardData();
-    }, 10000);
-    
-    return () => clearInterval(refreshInterval);
-  }, [isAuthenticated, socketConnected, fetchDashboardData]);
 
-  // Socket management with real-time updates
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    
-    let mounted = true;
-    
-    const initSocket = async () => {
-      try {
-        const socket = await initializeSocket();
-        if (!mounted || !socket) return;
-        
-        socketRef.current = socket;
 
-        const handleSocketConnect = () => {
-          if (!mounted) return;
-          setSocketConnected(true);
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
-        };
 
-        const handleSocketDisconnect = (reason: string) => {
-          if (!mounted) return;
-          setSocketConnected(false);
-          if (!pollingIntervalRef.current) {
-            pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
-          }
-        };
 
-        const handleSocketError = (err: Error) => {
-          if (!mounted) return;
-          console.warn("Socket connection error:", {
-            message: err.message || 'Unknown socket error',
-            type: err.name || 'Error',
-            timestamp: new Date().toISOString()
-          });
-          setSocketConnected(false);
-          if (!pollingIntervalRef.current) {
-            pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
-          }
-        };
 
-        // Real-time event handlers
-        const handleStatsUpdate = (newStats: DashboardStats) => {
-          if (mounted) setStats(newStats);
-        };
-
-        const handleEmployeeUpdate = () => {
-          if (mounted) fetchDashboardData();
-        };
-
-        const handleProjectUpdate = () => {
-          if (mounted) fetchDashboardData();
-        };
-
-        const handleTaskUpdate = () => {
-          if (mounted) fetchDashboardData();
-        };
-
-        socket.on("connect", handleSocketConnect);
-        socket.on("disconnect", handleSocketDisconnect);
-        socket.on("connect_error", handleSocketError);
-        socket.on("dashboard:refresh", fetchDashboardData);
-        socket.on("dashboard:stats", handleStatsUpdate);
-        socket.on("employee:created", handleEmployeeUpdate);
-        socket.on("employee:updated", handleEmployeeUpdate);
-        socket.on("employee:deleted", handleEmployeeUpdate);
-        socket.on("project:created", handleProjectUpdate);
-        socket.on("project:updated", handleProjectUpdate);
-        socket.on("project:deleted", handleProjectUpdate);
-        socket.on("task:created", handleTaskUpdate);
-        socket.on("task:updated", handleTaskUpdate);
-        socket.on("task:deleted", handleTaskUpdate);
-      } catch (error) {
-        console.warn('Socket initialization failed:', error);
-        if (mounted && !pollingIntervalRef.current) {
-          pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
-        }
-      }
-    };
-    
-    initSocket();
-
-    return () => {
-      mounted = false;
-      if (socketRef.current) {
-        socketRef.current.removeAllListeners();
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-  }, [isAuthenticated, fetchDashboardData]);
-
-  // Demo data for non-authenticated users
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setDataLoading(false);
-    }
-  }, [isAuthenticated]);
 
   // Role-specific welcome components
   const RoleWelcomeCard = ({ role, icon: Icon, title, description, colorScheme }: {
@@ -541,10 +379,7 @@ const Dashboard = () => {
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => {
-                  setDataError(null);
-                  fetchDashboardData();
-                }}
+                onClick={refresh}
                 className="theme-button theme-focusable theme-transition"
               >
                 Retry
@@ -1344,7 +1179,15 @@ const EmployeeSection = ({ router }: { router: any }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Departments</p>
-                <h3 className="text-2xl font-bold">{new Set(employees.map(e => e.department)).size}</h3>
+                <h3 className="text-2xl font-bold">
+                  {new Set(
+                    employees.flatMap(e => 
+                      e.departments && e.departments.length > 0 
+                        ? e.departments 
+                        : e.department ? [e.department] : []
+                    )
+                  ).size}
+                </h3>
               </div>
               <Briefcase className="h-8 w-8 text-purple-600" />
             </div>

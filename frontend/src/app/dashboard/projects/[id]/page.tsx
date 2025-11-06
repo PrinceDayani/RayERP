@@ -9,6 +9,8 @@ import ProjectTimeline from "@/components/projects/ProjectTimeline";
 import ProjectFiles from "@/components/projects/ProjectFiles";
 import ProjectActivity from "@/components/projects/ProjectActivity";
 import ProjectAnalytics from "@/components/ProjectAnalytics";
+import { ProjectMilestones } from "@/components/projects/ProjectMilestones";
+import { ProjectRisks } from "@/components/projects/ProjectRisks";
 import ProjectProfitLoss from "@/components/projects/finance/ProjectProfitLoss";
 import ProjectTrialBalance from "@/components/projects/finance/ProjectTrialBalance";
 import ProjectBalanceSheet from "@/components/projects/finance/ProjectBalanceSheet";
@@ -46,6 +48,42 @@ const ProjectDetailPage = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('tasks');
+
+  const handleUpdateMilestones = async (milestones: any[]) => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/milestones`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ milestones })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setProject(updated);
+        toast({ title: "Milestones updated successfully" });
+      }
+    } catch (error) {
+      toast({ title: "Failed to update milestones", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateRisks = async (risks: any[]) => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/risks`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ risks })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setProject(updated);
+        toast({ title: "Risks updated successfully" });
+      }
+    } catch (error) {
+      toast({ title: "Failed to update risks", variant: "destructive" });
+    }
+  };
 
   useEffect(() => {
     // Check for tab parameter in URL
@@ -508,6 +546,20 @@ const ProjectDetailPage = () => {
           </div>
         </div>
 
+        {/* Milestones and Risks */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ProjectMilestones 
+            projectId={projectId} 
+            milestones={project.milestones || []} 
+            onUpdate={handleUpdateMilestones} 
+          />
+          <ProjectRisks 
+            projectId={projectId} 
+            risks={project.risks || []} 
+            onUpdate={handleUpdateRisks} 
+          />
+        </div>
+
         {/* Tabs for Tasks and Other Details */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
@@ -529,48 +581,46 @@ const ProjectDetailPage = () => {
           </TabsContent>
 
           <TabsContent value="budget">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Project Budget</CardTitle>
-                  <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    {budget ? 'Manage Budget' : 'Create Budget'}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {budget ? (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="text-center">
-                            <DollarSign className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-                            <p className="text-sm text-muted-foreground">Total Budget</p>
-                            <p className="text-2xl font-bold">{budget.currency} {budget.totalBudget?.toLocaleString()}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="text-center">
-                            <BarChart3 className="h-8 w-8 mx-auto text-green-600 mb-2" />
-                            <p className="text-sm text-muted-foreground">Spent</p>
-                            <p className="text-2xl font-bold">{budget.currency} {budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0).toLocaleString()}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="text-center">
-                            <Users className="h-8 w-8 mx-auto text-orange-600 mb-2" />
-                            <p className="text-sm text-muted-foreground">Remaining</p>
-                            <p className="text-2xl font-bold">{budget.currency} {(budget.totalBudget - budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-semibold">Project Budget</h3>
+                <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  {budget ? 'Manage Budget' : 'Create Budget'}
+                </Button>
+              </div>
+              
+              {budget ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <DollarSign className="h-8 w-8 mx-auto text-blue-600 mb-2" />
+                          <p className="text-sm text-muted-foreground">Total Budget</p>
+                          <p className="text-2xl font-bold">{budget.currency} {budget.totalBudget?.toLocaleString()}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <BarChart3 className="h-8 w-8 mx-auto text-green-600 mb-2" />
+                          <p className="text-sm text-muted-foreground">Spent</p>
+                          <p className="text-2xl font-bold">{budget.currency} {budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0).toLocaleString()}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <Users className="h-8 w-8 mx-auto text-orange-600 mb-2" />
+                          <p className="text-sm text-muted-foreground">Remaining</p>
+                          <p className="text-2xl font-bold">{budget.currency} {(budget.totalBudget - budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                     <div className="mt-6">
                       <div className="flex justify-between text-sm mb-2">
                         <span>Budget Utilization</span>
@@ -610,23 +660,27 @@ const ProjectDetailPage = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="text-center py-12">
-                    <DollarSign className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Budget Created</h3>
-                    <p className="text-muted-foreground mb-4">This project doesn't have a budget yet. Create one to start tracking expenses.</p>
-                    <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      Create Budget
+                  <Card>
+                    <CardContent className="text-center py-12">
+                      <DollarSign className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No Budget Created</h3>
+                      <p className="text-muted-foreground mb-4">This project doesn't have a budget yet. Create one to start tracking expenses.</p>
+                      <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Create Budget
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {budget && (
+                  <div className="text-center">
+                    <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)} className="w-full" variant="outline">
+                      View Full Budget Details
                     </Button>
                   </div>
                 )}
-                <div className="mt-6 text-center">
-                  <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)} className="w-full" variant="outline">
-                    View Full Budget Details
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="timeline">

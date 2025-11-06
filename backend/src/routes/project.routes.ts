@@ -19,7 +19,12 @@ import {
   addProjectMember,
   removeProjectMember,
   getProjectMembers,
-  getProjectActivity
+  getProjectActivity,
+  cloneProject as cloneProjectController,
+  updateProjectMilestones,
+  updateProjectRisks,
+  calculateProjectProgress,
+  getProjectTemplates
 } from '../controllers/projectController';
 import {
   getProjectFiles,
@@ -124,8 +129,14 @@ router.get('/:id/timeline-data', validateObjectId(), checkProjectAccess, getProj
 router.get('/:id/activity', validateObjectId(), checkProjectAccess, getProjectActivity);
 
 // --- Template & Cloning Routes ---
-router.post('/:id/clone', validateObjectId(), checkProjectManagementAccess, cloneProject);
+router.get('/templates/list', getProjectTemplates);
+router.post('/:id/clone', validateObjectId(), checkProjectManagementAccess, cloneProjectController);
 router.get('/:id/export-template', validateObjectId(), checkProjectAccess, exportProjectAsTemplate);
+
+// --- Milestone & Risk Management Routes ---
+router.put('/:id/milestones', validateObjectId(), checkProjectAccess, updateProjectMilestones);
+router.put('/:id/risks', validateObjectId(), checkProjectAccess, updateProjectRisks);
+router.post('/:id/calculate-progress', validateObjectId(), checkProjectAccess, calculateProjectProgress);
 
 // --- Analytics Routes ---
 router.get('/:id/analytics/burndown', validateObjectId(), checkProjectAccess, getBurndownChart);

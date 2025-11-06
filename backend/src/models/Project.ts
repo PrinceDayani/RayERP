@@ -2,6 +2,24 @@
 
 import mongoose, { Document, Schema } from 'mongoose';
 
+export interface IMilestone {
+  name: string;
+  description?: string;
+  dueDate: Date;
+  status: 'pending' | 'in-progress' | 'completed' | 'delayed';
+  completedDate?: Date;
+}
+
+export interface IRisk {
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  probability: 'low' | 'medium' | 'high';
+  mitigation?: string;
+  status: 'identified' | 'mitigated' | 'resolved';
+  identifiedDate: Date;
+}
+
 export interface IProject extends Document {
   name: string;
   description: string;
@@ -12,6 +30,7 @@ export interface IProject extends Document {
   budget: number;
   spentBudget: number;
   progress: number;
+  autoCalculateProgress: boolean;
 
   manager: mongoose.Types.ObjectId;
   team: mongoose.Types.ObjectId[];
@@ -19,9 +38,49 @@ export interface IProject extends Document {
   members: mongoose.Types.ObjectId[];
   client?: string;
   tags: string[];
+  
+  milestones: IMilestone[];
+  risks: IRisk[];
+  dependencies: mongoose.Types.ObjectId[];
+  template?: string;
+  
   createdAt: Date;
   updatedAt: Date;
 }
+
+const milestoneSchema = new Schema({
+  name: { type: String, required: true },
+  description: String,
+  dueDate: { type: Date, required: true },
+  status: { 
+    type: String, 
+    enum: ['pending', 'in-progress', 'completed', 'delayed'], 
+    default: 'pending' 
+  },
+  completedDate: Date
+}, { _id: true });
+
+const riskSchema = new Schema({
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  severity: { 
+    type: String, 
+    enum: ['low', 'medium', 'high', 'critical'], 
+    required: true 
+  },
+  probability: { 
+    type: String, 
+    enum: ['low', 'medium', 'high'], 
+    required: true 
+  },
+  mitigation: String,
+  status: { 
+    type: String, 
+    enum: ['identified', 'mitigated', 'resolved'], 
+    default: 'identified' 
+  },
+  identifiedDate: { type: Date, default: Date.now }
+}, { _id: true });
 
 const projectSchema = new Schema<IProject>({
   name: { type: String, required: true },
@@ -42,12 +101,18 @@ const projectSchema = new Schema<IProject>({
   spentBudget: { type: Number, default: 0 },
 
   progress: { type: Number, min: 0, max: 100, default: 0 },
+  autoCalculateProgress: { type: Boolean, default: true },
   manager: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
   team: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
   owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   client: String,
-  tags: [String]
+  tags: [String],
+  
+  milestones: [milestoneSchema],
+  risks: [riskSchema],
+  dependencies: [{ type: Schema.Types.ObjectId, ref: 'Project' }],
+  template: String
 }, { timestamps: true });
 
 export default mongoose.model<IProject>('Project', projectSchema);

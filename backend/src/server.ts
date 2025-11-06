@@ -86,7 +86,7 @@ app.use(errorMiddleware);
 // Socket.IO setup
 const io = new SocketServer(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' ? allowedOrigins : "*",
+    origin: true,
     methods: ["GET", "POST"],
     credentials: true,
   },

@@ -2,6 +2,25 @@
 import api from './api';
 import { Task } from './tasksAPI';
 
+export interface Milestone {
+  _id?: string;
+  name: string;
+  description?: string;
+  dueDate: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'delayed';
+  completedDate?: string;
+}
+
+export interface Risk {
+  _id?: string;
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  probability: 'low' | 'medium' | 'high';
+  mitigation?: string;
+  status: 'identified' | 'mitigated' | 'resolved';
+}
+
 export interface Project {
   _id: string;
   name: string;
@@ -13,10 +32,15 @@ export interface Project {
   budget: number;
   spentBudget?: number;
   progress: number;
+  autoCalculateProgress?: boolean;
   manager: string;
   team: string[];
   client?: string;
   tags?: string[];
+  milestones?: Milestone[];
+  risks?: Risk[];
+  dependencies?: string[];
+  template?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -106,6 +130,36 @@ export const projectsAPI = {
     const response = await api.get("/projects/timeline-data");
     return response.data;
   },
+
+  // Milestones
+  updateMilestones: async (projectId: string, milestones: Milestone[]) => {
+    const response = await api.put(`/projects/${projectId}/milestones`, { milestones });
+    return response.data;
+  },
+
+  // Risks
+  updateRisks: async (projectId: string, risks: Risk[]) => {
+    const response = await api.put(`/projects/${projectId}/risks`, { risks });
+    return response.data;
+  },
+
+  // Clone project
+  cloneProject: async (projectId: string) => {
+    const response = await api.post(`/projects/${projectId}/clone`);
+    return response.data;
+  },
+
+  // Calculate progress
+  calculateProgress: async (projectId: string) => {
+    const response = await api.post(`/projects/${projectId}/calculate-progress`);
+    return response.data;
+  },
+
+  // Templates
+  getTemplates: async () => {
+    const response = await api.get("/projects/templates/list");
+    return response.data;
+  },
 };
 
 export const getAllProjects = projectsAPI.getAll;
@@ -123,5 +177,10 @@ export const getTaskReports = projectsAPI.getTaskReports;
 export const getTeamProductivity = projectsAPI.getTeamProductivity;
 export const getProjectTimelineData = projectsAPI.getTimelineData;
 export const getAllProjectsTimelineData = projectsAPI.getAllTimelineData;
+export const updateProjectMilestones = projectsAPI.updateMilestones;
+export const updateProjectRisks = projectsAPI.updateRisks;
+export const cloneProject = projectsAPI.cloneProject;
+export const calculateProjectProgress = projectsAPI.calculateProgress;
+export const getProjectTemplates = projectsAPI.getTemplates;
 
 export default projectsAPI;
