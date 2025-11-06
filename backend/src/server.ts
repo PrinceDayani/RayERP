@@ -212,66 +212,14 @@ mongoose
   .then(async () => {
     logger.info("✅ Connected to MongoDB");
     
-    // Initialize default permissions and roles
+    // Initialize onboarding system (permissions and roles)
     try {
-      const { initializePermissions } = await import('./controllers/rbacController');
-      await initializePermissions();
+      const { initializeOnboardingSystem } = await import('./utils/initializeOnboarding');
+      await initializeOnboardingSystem();
       
-      // Create default roles if they don't exist
-      const { Role } = await import('./models/Role');
-      
-      const defaultRoles = [
-        {
-          name: 'super_admin',
-          description: 'Super Administrator with complete system access',
-          permissions: [
-            'manage_roles', 'view_users', 'create_user', 'update_user', 'delete_user',
-            'view_products', 'create_product', 'update_product', 'delete_product',
-            'view_orders', 'create_order', 'update_order', 'delete_order',
-            'view_inventory', 'manage_inventory', 'view_customers', 'create_customer',
-            'update_customer', 'delete_customer', 'view_reports', 'export_data',
-            'system_settings', 'view_logs'
-          ]
-        },
-        {
-          name: 'admin',
-          description: 'Administrator with management access',
-          permissions: [
-            'view_users', 'create_user', 'update_user',
-            'view_products', 'create_product', 'update_product',
-            'view_orders', 'create_order', 'update_order',
-            'view_inventory', 'manage_inventory', 'view_customers',
-            'create_customer', 'update_customer', 'view_reports'
-          ]
-        },
-        {
-          name: 'manager',
-          description: 'Manager with operational access',
-          permissions: [
-            'view_users', 'view_products', 'create_product', 'update_product',
-            'view_orders', 'create_order', 'update_order',
-            'view_inventory', 'view_customers', 'create_customer', 'update_customer'
-          ]
-        },
-        {
-          name: 'employee',
-          description: 'Employee with basic access',
-          permissions: [
-            'view_products', 'view_orders', 'create_order',
-            'view_inventory', 'view_customers'
-          ]
-        }
-      ];
-      
-      for (const roleData of defaultRoles) {
-        const existingRole = await Role.findOne({ name: roleData.name });
-        if (!existingRole) {
-          await Role.create(roleData);
-          logger.info(`✅ Default ${roleData.name} role created`);
-        }
-      }
+      logger.info('✅ Onboarding system initialized');
     } catch (error) {
-      logger.error('❌ Error initializing RBAC:', error);
+      logger.error('❌ Error initializing onboarding system:', error);
     }
     
     // Initialize budget monitoring system

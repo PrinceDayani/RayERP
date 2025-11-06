@@ -15,6 +15,7 @@ import leaveRoutes from './leave.routes';
 import employeeReportRoutes from './employeeReport.routes';
 import activityRoutes from './activity.routes';
 import rbacRoutes from './rbac.routes';
+import onboardingRoutes from './onboarding.routes';
 // --- Merged Financial & Ledger Routes ---
 import budgetRoutes from './budgetRoutes';
 import budgetTemplateRoutes from './budgetTemplateRoutes';
@@ -46,6 +47,7 @@ router.use('/leaves', leaveRoutes);
 router.use('/employee-reports', employeeReportRoutes);
 router.use('/activities', activityRoutes);
 router.use('/rbac', rbacRoutes);
+router.use('/onboarding', onboardingRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);
