@@ -213,6 +213,13 @@ export const initializePermissions = async () => {
     { name: 'view_reports', description: 'View reports', category: 'Reports & Analytics' },
     { name: 'export_data', description: 'Export data', category: 'Reports & Analytics' },
     
+    // Project Management
+    { name: 'view_projects', description: 'View projects', category: 'Project Management' },
+    { name: 'create_project', description: 'Create projects', category: 'Project Management' },
+    { name: 'update_project', description: 'Update projects', category: 'Project Management' },
+    { name: 'delete_project', description: 'Delete projects', category: 'Project Management' },
+    { name: 'manage_projects', description: 'Manage project assignments', category: 'Project Management' },
+    
     // System Administration
     { name: 'manage_roles', description: 'Manage roles and permissions', category: 'System Administration' },
     { name: 'system_settings', description: 'Access system settings', category: 'System Administration' },

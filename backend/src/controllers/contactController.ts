@@ -47,9 +47,10 @@ export const getContactById = async (req: Request, res: Response) => {
 
 // Create a new contact
 export const createContact = async (req: Request, res: Response) => {
+  let userId: string;
   try {
-    const userId = getUserId(req);
-    const { name, email, phone, company, position, address, notes, tags } = req.body;
+    userId = getUserId(req);
+    const { name, email, phone, company, position, address, notes, tags, reference, alternativePhone } = req.body;
 
     // Basic validation
     if (!name || !phone) {
@@ -65,13 +66,19 @@ export const createContact = async (req: Request, res: Response) => {
       address,
       notes,
       tags,
+      reference,
+      alternativePhone,
       createdBy: userId,
     });
 
     const savedContact = await newContact.save();
     return res.status(201).json(savedContact);
   } catch (error) {
-    console.error('Error creating contact:', error);
+    console.error('Error creating contact:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      userId: userId || 'unknown',
+      timestamp: new Date().toISOString()
+    });
     return res.status(500).json({ message: 'Error creating contact' });
   }
 };
@@ -80,7 +87,7 @@ export const createContact = async (req: Request, res: Response) => {
 export const updateContact = async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { name, email, phone, company, position, address, notes, tags } = req.body;
+    const { name, email, phone, company, position, address, notes, tags, reference, alternativePhone } = req.body;
 
     // Find contact and check ownership
     const contact = await Contact.findOne({
@@ -101,6 +108,8 @@ export const updateContact = async (req: Request, res: Response) => {
     contact.address = address || contact.address;
     contact.notes = notes || contact.notes;
     contact.tags = tags || contact.tags;
+    contact.reference = reference || contact.reference;
+    contact.alternativePhone = alternativePhone || contact.alternativePhone;
 
     const updatedContact = await contact.save();
     return res.status(200).json(updatedContact);
@@ -132,27 +141,43 @@ export const deleteContact = async (req: Request, res: Response) => {
 
 // Search contacts
 export const searchContacts = async (req: Request, res: Response) => {
+  let userId: string;
   try {
-    const userId = getUserId(req);
+    userId = getUserId(req);
     const { query } = req.query;
     
-    if (!query) {
-      return res.status(400).json({ message: 'Search query is required' });
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({ message: 'Valid search query is required' });
+    }
+
+    // Sanitize the search query to prevent NoSQL injection
+    const sanitizedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim();
+    
+    if (sanitizedQuery.length === 0) {
+      return res.status(400).json({ message: 'Search query cannot be empty' });
+    }
+
+    if (sanitizedQuery.length > 100) {
+      return res.status(400).json({ message: 'Search query too long' });
     }
 
     const contacts = await Contact.find({
       createdBy: userId,
       $or: [
-        { name: { $regex: query, $options: 'i' } },
-        { email: { $regex: query, $options: 'i' } },
-        { phone: { $regex: query, $options: 'i' } },
-        { company: { $regex: query, $options: 'i' } },
+        { name: { $regex: sanitizedQuery, $options: 'i' } },
+        { email: { $regex: sanitizedQuery, $options: 'i' } },
+        { phone: { $regex: sanitizedQuery, $options: 'i' } },
+        { company: { $regex: sanitizedQuery, $options: 'i' } },
       ],
-    }).sort({ name: 1 });
+    }).sort({ name: 1 }).limit(50); // Limit results to prevent performance issues
 
     return res.status(200).json(contacts);
   } catch (error) {
-    console.error('Error searching contacts:', error);
+    console.error('Error searching contacts:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      userId: userId || 'unknown',
+      timestamp: new Date().toISOString()
+    });
     return res.status(500).json({ message: 'Error searching contacts' });
   }
 };

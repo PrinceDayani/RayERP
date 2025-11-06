@@ -20,22 +20,20 @@ const server = http.createServer(app);
 app.set("trust proxy", 1);
 
 // Use exact environment variables from .env
-const allowedOrigins = [
-  ...(process.env.CORS_ORIGIN?.split(',') || []),
-  ...(process.env.FRONTEND_URL?.split(',') || [])
-].filter(Boolean); // Remove undefined/null values
+let allowedOrigins: string[] = [];
+try {
+  allowedOrigins = [
+    ...(process.env.CORS_ORIGIN?.split(',') || []),
+    ...(process.env.FRONTEND_URL?.split(',') || [])
+  ].filter(Boolean); // Remove undefined/null values
+} catch (error) {
+  logger.error("Error parsing CORS origins:", error);
+  allowedOrigins = [];
+}
 
-// CORS configuration
+// CORS configuration - permissive for development
 const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      logger.warn(`❌ CORS blocked origin: ${origin}`);
-      callback(null, true); // Allow all origins in development
-    }
-  },
+  origin: true, // Allow all origins in development
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
@@ -86,7 +84,7 @@ app.use(errorMiddleware);
 // Socket.IO setup
 const io = new SocketServer(server, {
   cors: {
-    origin: allowedOrigins.length > 0 ? allowedOrigins : ["http://localhost:3000"],
+    origin: process.env.NODE_ENV === 'production' ? allowedOrigins : "*",
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -95,6 +93,8 @@ const io = new SocketServer(server, {
   path: "/socket.io/",
   pingTimeout: 60000,
   pingInterval: 25000,
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e6
 });
 
 // Handle socket connections
@@ -104,14 +104,74 @@ io.on("connection", (socket) => {
   // Handle user authentication and room joining
   socket.on("authenticate", (token) => {
     try {
+      if (!token || typeof token !== 'string') {
+        socket.emit("auth_error", "Invalid token format");
+        return;
+      }
+      
       const jwt = require("jsonwebtoken");
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      if (!decoded || !decoded.id) {
+        socket.emit("auth_error", "Invalid token payload");
+        return;
+      }
+      
       socket.join(`user-${decoded.id}`);
       logger.info(`User ${decoded.id} authenticated and joined room`);
+      socket.emit("auth_success", { userId: decoded.id });
     } catch (error) {
-      logger.error("Socket authentication failed:", error);
+      logger.error("Socket authentication failed:", {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        socketId: socket.id
+      });
       socket.emit("auth_error", "Authentication failed");
     }
+  });
+
+  // Settings events
+  socket.on("settings:updated", (data) => {
+    socket.broadcast.emit("settings:synced", {
+      ...data,
+      socketId: socket.id,
+      timestamp: new Date()
+    });
+  });
+
+  socket.on("settings:force_sync", (data) => {
+    socket.emit("settings:synced", {
+      ...data,
+      forced: true,
+      timestamp: new Date()
+    });
+  });
+
+  socket.on("settings:tab_changed", (data) => {
+    // Analytics event - could be stored for user behavior analysis
+    logger.info(`User ${socket.id} changed to tab: ${data.tab}`);
+  });
+
+  // Notification events
+  socket.on("notification:test", (data) => {
+    socket.emit("notification:test", {
+      id: `test-${Date.now()}`,
+      type: 'info',
+      title: data.title || 'Test Notification',
+      message: data.message || 'This is a test notification to verify your settings.',
+      priority: 'low',
+      timestamp: new Date()
+    });
+  });
+
+  // Real-time data events
+  socket.on("subscribe:notifications", () => {
+    socket.join("notifications");
+    logger.info(`Socket ${socket.id} subscribed to notifications`);
+  });
+
+  socket.on("unsubscribe:notifications", () => {
+    socket.leave("notifications");
+    logger.info(`Socket ${socket.id} unsubscribed from notifications`);
   });
 
   socket.on("ping", (data, callback) => {
@@ -131,6 +191,9 @@ io.on("connection", (socket) => {
 export { io };
 export default app;
 
+// Initialize real-time data emitter
+import './utils/realTimeEmitter';
+
 // MongoDB connection and server startup
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGO_URI;
@@ -140,15 +203,20 @@ if (!MONGODB_URI) {
   process.exit(1);
 }
 
+if (!process.env.JWT_SECRET) {
+  logger.error("❌ JWT_SECRET is missing! Check your environment variables.");
+  process.exit(1);
+}
+
 mongoose
   .connect(MONGODB_URI)
   .then(async () => {
     logger.info("✅ Connected to MongoDB");
     
-    // Initialize default permissions and roles
+    // Initialize onboarding system (permissions and roles)
     try {
-      const { initializePermissions } = await import('./controllers/rbacController');
-      await initializePermissions();
+      const { initializeOnboardingSystem } = await import('./utils/initializeOnboarding');
+      await initializeOnboardingSystem();
       
       // Create default roles if they don't exist
       const { Role } = await import('./models/Role');
@@ -206,8 +274,10 @@ mongoose
           logger.info(`✅ Default ${roleData.name} role created`);
         }
       }
+      
+      logger.info('✅ Onboarding system initialized');
     } catch (error) {
-      logger.error('❌ Error initializing RBAC:', error);
+      logger.error('❌ Error initializing onboarding system:', error);
     }
     
     // Initialize budget monitoring system

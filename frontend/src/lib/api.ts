@@ -94,3 +94,6 @@ export const api = {
     return response.json();
   }
 };
+
+// Default export for backward compatibility
+export default api;

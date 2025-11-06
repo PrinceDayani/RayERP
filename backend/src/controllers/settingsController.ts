@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import Setting, { SettingScope } from '../models/Settings';
 import mongoose from 'mongoose';
+import { io } from '../server';
 
 // Get settings based on scope and optional identifiers
 export const getSettings = async (req: Request, res: Response) => {
@@ -75,6 +76,16 @@ export const updateSetting = async (req: Request, res: Response) => {
       { value, ...query },
       { new: true, upsert: true }
     );
+    
+    // Emit real-time update for settings sync
+    if (scope === SettingScope.USER && userId) {
+      io.to(`user-${userId}`).emit('settings:updated', {
+        key,
+        value,
+        scope,
+        timestamp: new Date()
+      });
+    }
     
     return res.status(200).json(updatedSetting);
   } catch (error) {

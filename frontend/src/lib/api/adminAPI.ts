@@ -227,11 +227,11 @@ const adminAPI = {
 
   assignRolesToUser: async (userId: string, roleIds: string[]): Promise<AdminUser> => {
     try {
-      const response = await apiRequest(`/api/auth/users/${userId}/role`, {
+      const response = await apiRequest(`/api/rbac/users/${userId}/roles`, {
         method: 'PUT',
-        body: JSON.stringify({ role: roleIds[0] })
+        body: JSON.stringify({ roleIds })
       });
-      return response.user;
+      return response;
     } catch (error) {
       console.error('Error assigning roles to user:', error);
       throw error;
@@ -241,10 +241,10 @@ const adminAPI = {
   updateUserRole: async (userId: string, role: string): Promise<AdminUser> => {
     try {
       const response = await apiRequest(`/api/auth/users/${userId}/role`, {
-        method: 'PUT',
+        method: 'PATCH',
         body: JSON.stringify({ role })
       });
-      return response.user;
+      return response;
     } catch (error) {
       console.error('Error updating user role:', error);
       throw error;

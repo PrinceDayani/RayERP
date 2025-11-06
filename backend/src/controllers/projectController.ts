@@ -647,3 +647,43 @@ export const getProjectMembers = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Error fetching members', error });
   }
 };
+
+export const getProjectActivity = async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.id;
+    const { type } = req.query;
+    
+    // Validate that the project exists
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    // Mock activity data for now - replace with actual activity model later
+    const activities = [
+      {
+        _id: '1',
+        type: 'project_updated',
+        title: 'Project Updated',
+        description: `Project "${project.name}" was updated`,
+        user: {
+          _id: project.manager?.toString() || 'unknown',
+          firstName: 'Project',
+          lastName: 'Manager'
+        },
+        project: projectId,
+        createdAt: new Date().toISOString()
+      }
+    ];
+    
+    // Filter by type if provided
+    const filteredActivities = type ? 
+      activities.filter(activity => activity.type === type) : 
+      activities;
+    
+    res.json(filteredActivities);
+  } catch (error) {
+    console.error('Error fetching project activity:', error);
+    res.status(500).json({ message: 'Error fetching project activity', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};

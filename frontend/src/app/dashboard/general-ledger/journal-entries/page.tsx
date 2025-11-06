@@ -168,7 +168,7 @@ export default function JournalEntriesPage() {
                 <SelectContent>
                   {accounts.filter(a => !a.isGroup).map(account => (
                     <SelectItem key={account._id} value={account._id}>
-                      {account.name} ({account.code})
+                      {`${account.name} (${account.code})`}
                     </SelectItem>
                   ))}
                 </SelectContent>

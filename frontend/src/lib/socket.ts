@@ -1,6 +1,9 @@
 // path: frontend/src/lib/socket.ts
 import io from "socket.io-client";
 import { useEffect, useState } from "react";
+import { checkServerHealth } from "../utils/socketHealth";
+import { logServerStatus } from "../utils/serverStatus";
+import { getSocketConfig, shouldEnableSocket } from "./socketConfig";
 
 type SocketType = ReturnType<typeof io>;
 
@@ -11,9 +14,15 @@ let socket: SocketType | null = null;
 let isConnecting = false;
 
 // Initialize socket with safe singleton + reconnection
-export const initializeSocket = (token?: string): SocketType | null => {
+export const initializeSocket = async (token?: string): Promise<SocketType | null> => {
   if (!API_URL) {
     console.warn("⚠️ NEXT_PUBLIC_API_URL environment variable is not set");
+    return null;
+  }
+
+  // Check if sockets should be enabled
+  if (!shouldEnableSocket()) {
+    console.log('🔌 Socket connections disabled in development');
     return null;
   }
 
@@ -25,8 +34,23 @@ export const initializeSocket = (token?: string): SocketType | null => {
     return socket;
   }
 
+  // Check server health before connecting (non-blocking)
+  try {
+    const serverHealthy = await checkServerHealth(API_URL);
+    if (!serverHealthy) {
+      console.warn("⚠️ Server health check failed, skipping socket connection");
+      return null;
+    }
+  } catch (error) {
+    console.warn("⚠️ Health check error, skipping socket connection");
+    return null;
+  }
+
   isConnecting = true;
   console.log(`🔌 Initializing socket connection to: ${API_URL}`);
+  
+  // Log server status for debugging
+  await logServerStatus();
 
   // Disconnect existing socket if any
   if (socket) {
@@ -34,20 +58,17 @@ export const initializeSocket = (token?: string): SocketType | null => {
     socket.disconnect();
   }
 
-  socket = io(API_URL, {
-    auth: token ? { token } : undefined,
-    transports: ["polling", "websocket"],
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    timeout: 20000,
-    path: "/socket.io/",
-    autoConnect: true,
-    upgrade: true,
-    rememberUpgrade: true,
-    withCredentials: true,
-  });
+  try {
+    const config = getSocketConfig();
+    socket = io(API_URL, {
+      auth: token ? { token } : undefined,
+      ...config
+    });
+  } catch (error) {
+    console.error('Failed to create socket instance:', error);
+    isConnecting = false;
+    return null;
+  }
 
   socket.on("connect", () => {
     console.log("✅ Socket connected:", socket?.id);
@@ -60,8 +81,22 @@ export const initializeSocket = (token?: string): SocketType | null => {
   });
 
   socket.on("connect_error", (err: Error) => {
-    console.error("❌ Socket connection error:", err.message);
+    console.warn("⚠️ Socket connection error (this is normal if backend socket.io is not configured):", {
+      message: err.message,
+      type: err.name
+    });
     isConnecting = false;
+    
+    // Auto-disconnect on repeated errors to prevent spam
+    if (socket) {
+      setTimeout(() => {
+        if (socket && !socket.connected) {
+          socket.removeAllListeners();
+          socket.disconnect();
+          socket = null;
+        }
+      }, 5000);
+    }
   });
 
   socket.on("reconnect", (attemptNumber: number) => {
@@ -69,7 +104,11 @@ export const initializeSocket = (token?: string): SocketType | null => {
   });
 
   socket.on("reconnect_error", (err: Error) => {
-    console.error("❌ Socket reconnection error:", err.message);
+    console.error("❌ Socket reconnection error:", {
+      message: err.message,
+      type: err.name,
+      attempt: socket?.io?.engine?.upgradeTimeout
+    });
   });
 
   socket.on("reconnect_failed", () => {
@@ -94,38 +133,124 @@ export const disconnectSocket = (): void => {
 export const getSocket = (): SocketType | null => socket;
 
 // Hook for socket state
-export const useSocket = (
+export const useSocket = (url?: string): Socket | null => {
+  const [socketInstance, setSocketInstance] = useState<Socket | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let mounted = true;
+    let newSocket: Socket | null = null;
+
+    const initSocket = async () => {
+      try {
+        const serverUrl = url || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        
+        // Validate URL before connecting
+        const urlObj = new URL(serverUrl);
+        if (!['localhost', '127.0.0.1'].includes(urlObj.hostname) && process.env.NODE_ENV === 'development') {
+          console.warn('Invalid socket URL in development:', serverUrl);
+          return;
+        }
+        
+        newSocket = io(serverUrl, {
+          transports: ['polling', 'websocket'],
+          withCredentials: true,
+          autoConnect: true,
+          reconnection: true,
+          reconnectionAttempts: 3,
+          reconnectionDelay: 1000,
+          timeout: 10000,
+          forceNew: false
+        });
+
+        newSocket.on('connect', () => {
+          if (mounted) {
+            console.log('✅ Socket connected:', newSocket?.id);
+            setSocketInstance(newSocket);
+          }
+        });
+
+        newSocket.on('connect_error', (error) => {
+          if (mounted) {
+            console.warn('⚠️ Socket connection failed:', error.message);
+            setSocketInstance(null);
+          }
+        });
+
+        newSocket.on('disconnect', (reason) => {
+          if (mounted) {
+            console.warn('⚠️ Socket disconnected:', reason);
+            setSocketInstance(null);
+          }
+        });
+      } catch (error) {
+        if (mounted) {
+          console.warn('Socket initialization failed:', error instanceof Error ? error.message : 'Unknown error');
+          setSocketInstance(null);
+        }
+      }
+    };
+
+    initSocket();
+
+    return () => {
+      mounted = false;
+      if (newSocket) {
+        newSocket.removeAllListeners();
+        newSocket.disconnect();
+      }
+      setSocketInstance(null);
+    };
+  }, [url]);
+
+  return socketInstance;
+};
+
+export const useSocketWithStatus = (
   token?: string
 ): [SocketType | null, boolean, string | null] => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const s = initializeSocket(token);
-    if (!s) return;
+    let mounted = true;
+    
+    const initSocket = async () => {
+      const s = await initializeSocket(token);
+      
+      if (!mounted || !s) return;
 
-    const onConnect = () => {
-      setIsConnected(true);
-      setError(null);
+      const onConnect = () => {
+        setIsConnected(true);
+        setError(null);
+      };
+
+      const onDisconnect = () => setIsConnected(false);
+
+      const onError = (err: Error) => {
+        if (mounted) {
+          setIsConnected(false);
+          setError(err.message || 'Connection error');
+        }
+      };
+
+      s.on("connect", onConnect);
+      s.on("disconnect", onDisconnect);
+      s.on("connect_error", onError);
+
+      setIsConnected(s.connected);
     };
-
-    const onDisconnect = () => setIsConnected(false);
-
-    const onError = (err: Error) => {
-      setIsConnected(false);
-      setError(err.message);
-    };
-
-    s.on("connect", onConnect);
-    s.on("disconnect", onDisconnect);
-    s.on("connect_error", onError);
-
-    setIsConnected(s.connected);
+    
+    initSocket();
 
     return () => {
-      s.off("connect", onConnect);
-      s.off("disconnect", onDisconnect);
-      s.off("connect_error", onError);
+      mounted = false;
+      if (socket) {
+        socket.off("connect");
+        socket.off("disconnect");
+        socket.off("connect_error");
+      }
     };
   }, [token]);
 
@@ -228,4 +353,12 @@ export interface NotificationEvent {
   timestamp: string;
   read: boolean;
   link?: string;
+}
+
+export interface RealTimeMetrics {
+  activeUsers: number;
+  totalRevenue: number;
+  ordersToday: number;
+  systemLoad: number;
+  lastUpdated: string;
 }

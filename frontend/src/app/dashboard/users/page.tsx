@@ -157,29 +157,15 @@ const UserManagement = () => {
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     try {
       setError(null);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/users/${userId}/role`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
-        },
-        body: JSON.stringify({ role: newRole })
+      const { default: adminAPI } = await import('@/lib/api/adminAPI');
+      await adminAPI.updateUserRole(userId, newRole);
+      
+      fetchUsers();
+      toast({
+        title: "Success",
+        description: "User role updated successfully",
+        variant: "default"
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update user role');
-      }
-      
-      const data = await response.json();
-      if (data.success) {
-        fetchUsers();
-        toast({
-          title: "Success",
-          description: "User role updated successfully",
-          variant: "default"
-        });
-      }
     } catch (err: any) {
       setError(err.message || 'Failed to update user role');
       toast({

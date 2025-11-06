@@ -8,6 +8,11 @@ declare global {
   namespace Express {
     interface Request {
       user?: IUser;
+      projectAccess?: {
+        projectId: string;
+        accessLevel: 'read' | 'write' | 'admin';
+        assignedAt: Date;
+      };
     }
   }
 }

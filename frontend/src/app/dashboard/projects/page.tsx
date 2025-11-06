@@ -23,7 +23,6 @@ import employeesAPI, { type Employee } from "@/lib/api/employeesAPI";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { GanttChart } from "@/components/GanttChart";
 
 interface ProjectStats {
   totalProjects: number;
@@ -35,7 +34,7 @@ interface ProjectStats {
 }
 
 const ProjectManagementDashboard: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<ProjectStats>({
     totalProjects: 0, activeProjects: 0, completedProjects: 0,
@@ -91,6 +90,16 @@ const ProjectManagementDashboard: React.FC = () => {
     }
   };
 
+  const handleQuickStatusUpdate = async (projectId: string, newStatus: string) => {
+    try {
+      await updateProject(projectId, { status: newStatus });
+      setProjects(prev => prev.map(p => p._id === projectId ? { ...p, status: newStatus } : p));
+      toast({ title: "Status updated successfully" });
+    } catch (error) {
+      toast({ title: "Failed to update status", variant: "destructive" });
+    }
+  };
+
   const filteredProjects = projects.filter(p => {
     const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          p.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -118,16 +127,6 @@ const ProjectManagementDashboard: React.FC = () => {
       'low': 'bg-green-500 text-white'
     };
     return colors[priority as keyof typeof colors] || 'bg-gray-500 text-white';
-  };
-
-  const handleQuickStatusUpdate = async (projectId: string, newStatus: string) => {
-    try {
-      await updateProject(projectId, { status: newStatus });
-      setProjects(prev => prev.map(p => p._id === projectId ? { ...p, status: newStatus } : p));
-      toast({ title: "Status updated successfully" });
-    } catch (error) {
-      toast({ title: "Failed to update status", variant: "destructive" });
-    }
   };
 
   if (!isAuthenticated) {
@@ -244,34 +243,18 @@ const ProjectManagementDashboard: React.FC = () => {
 
       {/* Main Content */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 bg-muted/50 p-1 rounded-xl">
-          <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
-          <TabsTrigger value="projects" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">All Projects</TabsTrigger>
-          <TabsTrigger value="budgets" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Budgets</TabsTrigger>
-          <TabsTrigger value="tasks" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">My Tasks</TabsTrigger>
-          <TabsTrigger value="task-management" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Task Management</TabsTrigger>
-          <TabsTrigger value="reports" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Reports</TabsTrigger>
+        <TabsList className="bg-white shadow-sm border">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="projects">All Projects</TabsTrigger>
+          <TabsTrigger value="budgets">Budgets</TabsTrigger>
+          <TabsTrigger value="tasks">My Tasks</TabsTrigger>
+          <TabsTrigger value="task-management">Task Management</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          {/* Gantt Chart */}
-          {allTasks.length > 0 && (
-            <GanttChart 
-              tasks={allTasks.map(task => ({
-                id: task._id,
-                name: task.title,
-                startDate: new Date(task.createdAt),
-                endDate: task.dueDate ? new Date(task.dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-                progress: task.status === 'completed' ? 100 : task.status === 'in-progress' ? 50 : 0,
-                status: task.status,
-                priority: task.priority
-              }))}
-              title="Projects Timeline Overview"
-            />
-          )}
-
           {/* Search and Filters */}
-          <Card className="card-modern">
+          <Card className="border-0 shadow-lg">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
@@ -314,14 +297,14 @@ const ProjectManagementDashboard: React.FC = () => {
           {/* Projects Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.length === 0 ? (
-              <Card className="col-span-full card-modern">
+              <Card className="col-span-full border-0 shadow-lg">
                 <CardContent className="p-12 text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Briefcase className="w-10 h-10 text-primary" />
+                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Briefcase className="w-10 h-10 text-blue-600" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">No projects found</h3>
                   <p className="text-muted-foreground mb-6">Create your first project to get started</p>
-                  <Button onClick={() => router.push("/dashboard/projects/create")} className="btn-primary-gradient">
+                  <Button onClick={() => router.push("/dashboard/projects/create")} className="shadow-lg">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Project
                   </Button>
@@ -329,20 +312,16 @@ const ProjectManagementDashboard: React.FC = () => {
               </Card>
             ) : (
               filteredProjects.map((project) => (
-                <Card key={project._id} className="card-modern hover-lift cursor-pointer group"
+                <Card key={project._id} className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
                       onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+                  <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                   <CardContent className="p-6 space-y-4">
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Briefcase className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground line-clamp-1">
-                            {project.name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground line-clamp-1">{project.description}</p>
-                        </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors line-clamp-1">
+                          {project.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{project.description}</p>
                       </div>
                       <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/edit`); }}>
@@ -351,7 +330,7 @@ const ProjectManagementDashboard: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className={getStatusColor(project.status)} variant="secondary">
+                      <Badge className={`${getStatusColor(project.status)} border`}>
                         {project.status}
                       </Badge>
                       <Badge className={getPriorityColor(project.priority)}>
@@ -367,29 +346,104 @@ const ProjectManagementDashboard: React.FC = () => {
                       <Progress value={project.progress} className="h-2" />
                     </div>
 
-                    <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t border-border/50">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
                         <span>{new Date(project.endDate).toLocaleDateString()}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Users className="h-4 w-4" />
-                        <span>{project.team?.length || 0} members</span>
+                        <span>{project.team?.length || 0}</span>
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                    <div className="flex gap-2 pt-2">
+                      <Button size="sm" variant="outline" className="flex-1"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=tasks`); }}>
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Tasks
                       </Button>
-                      <Button size="sm" variant="outline" className="flex-1 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200"
-                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/timeline`); }}>
-                        <GanttChartSquare className="h-3 w-3 mr-1" />
-                        Timeline
+                      <Button size="sm" variant="outline" className="flex-1"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
+                        <DollarSign className="h-3 w-3 mr-1" />
+                        Budget
                       </Button>
-                      <Button size="sm" variant="outline" className="flex-1 hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+          {/* Projects Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjects.length === 0 ? (
+              <Card className="col-span-full border-0 shadow-lg">
+                <CardContent className="p-12 text-center">
+                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Briefcase className="w-10 h-10 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">No projects found</h3>
+                  <p className="text-muted-foreground mb-6">Create your first project to get started</p>
+                  <Button onClick={() => router.push("/dashboard/projects/create")} className="shadow-lg">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Project
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredProjects.map((project) => (
+                <Card key={project._id} className="group border-0 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden"
+                      onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+                  <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg group-hover:text-blue-600 transition-colors line-clamp-1">
+                          {project.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{project.description}</p>
+                      </div>
+                      <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/edit`); }}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className={`${getStatusColor(project.status)} border`}>
+                        {project.status}
+                      </Badge>
+                      <Badge className={getPriorityColor(project.priority)}>
+                        {project.priority}
+                      </Badge>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-semibold">{project.progress}%</span>
+                      </div>
+                      <Progress value={project.progress} className="h-2" />
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        <span>{new Date(project.endDate).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        <span>{project.team?.length || 0}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button size="sm" variant="outline" className="flex-1"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=tasks`); }}>
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Tasks
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
                         <DollarSign className="h-3 w-3 mr-1" />
                         Budget
