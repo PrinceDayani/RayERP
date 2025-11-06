@@ -171,8 +171,8 @@ const JournalEntry = () => {
                         </SelectTrigger>
                         <SelectContent className="bg-white">
                           {accounts.map((account) => (
-                            <SelectItem key={`account-${account.id}-${index}`} value={account.id}>
-                              {account.code} - {account.name}
+                            <SelectItem key={account.id} value={account.id}>
+                              {`${account.code} - ${account.name}`}
                             </SelectItem>
                           ))}
                         </SelectContent>

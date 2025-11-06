@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 export enum UserRole {
   ROOT = 'root',
-  SUPER_ADMIN = 'superadmin',
+  SUPER_ADMIN = 'super_admin',
   ADMIN = 'admin',
   NORMAL = 'normal'
 }

@@ -301,7 +301,7 @@ const CreateProjectPage = () => {
                     <SelectContent>
                       {employees.map((employee) => (
                         <SelectItem key={employee._id} value={employee._id}>
-                          {employee.firstName} {employee.lastName}
+                          {`${employee.firstName} ${employee.lastName}`}
                         </SelectItem>
                       ))}
                     </SelectContent>

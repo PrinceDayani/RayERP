@@ -440,8 +440,8 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {currencies.map((currency) => (
-                    <SelectItem key={currency.code} value={currency.code}>
+                  {currencies.map((currency, index) => (
+                    <SelectItem key={`${currency.code}-${index}`} value={currency.code}>
                       {currency.symbol} {currency.name}
                     </SelectItem>
                   ))}
@@ -457,7 +457,7 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
                 <SelectValue placeholder="Start from scratch" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Start from scratch</SelectItem>
+                <SelectItem key="none" value="none">Start from scratch</SelectItem>
                 {templates.map((template) => (
                   <SelectItem key={template._id} value={template._id}>
                     {template.name}
@@ -523,10 +523,10 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="labor">Labor</SelectItem>
-                            <SelectItem value="materials">Materials</SelectItem>
-                            <SelectItem value="equipment">Equipment</SelectItem>
-                            <SelectItem value="overhead">Overhead</SelectItem>
+                            <SelectItem key="labor" value="labor">Labor</SelectItem>
+                            <SelectItem key="materials" value="materials">Materials</SelectItem>
+                            <SelectItem key="equipment" value="equipment">Equipment</SelectItem>
+                            <SelectItem key="overhead" value="overhead">Overhead</SelectItem>
                           </SelectContent>
                         </Select>
                         <Button

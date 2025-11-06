@@ -20,10 +20,16 @@ const server = http.createServer(app);
 app.set("trust proxy", 1);
 
 // Use exact environment variables from .env
-const allowedOrigins = [
-  ...(process.env.CORS_ORIGIN?.split(',') || []),
-  ...(process.env.FRONTEND_URL?.split(',') || [])
-].filter(Boolean); // Remove undefined/null values
+let allowedOrigins: string[] = [];
+try {
+  allowedOrigins = [
+    ...(process.env.CORS_ORIGIN?.split(',') || []),
+    ...(process.env.FRONTEND_URL?.split(',') || [])
+  ].filter(Boolean); // Remove undefined/null values
+} catch (error) {
+  logger.error("Error parsing CORS origins:", error);
+  allowedOrigins = [];
+}
 
 // CORS configuration - permissive for development
 const corsOptions = {
@@ -120,6 +126,51 @@ io.on("connection", (socket) => {
       });
       socket.emit("auth_error", "Authentication failed");
     }
+  });
+
+  // Settings events
+  socket.on("settings:updated", (data) => {
+    socket.broadcast.emit("settings:synced", {
+      ...data,
+      socketId: socket.id,
+      timestamp: new Date()
+    });
+  });
+
+  socket.on("settings:force_sync", (data) => {
+    socket.emit("settings:synced", {
+      ...data,
+      forced: true,
+      timestamp: new Date()
+    });
+  });
+
+  socket.on("settings:tab_changed", (data) => {
+    // Analytics event - could be stored for user behavior analysis
+    logger.info(`User ${socket.id} changed to tab: ${data.tab}`);
+  });
+
+  // Notification events
+  socket.on("notification:test", (data) => {
+    socket.emit("notification:test", {
+      id: `test-${Date.now()}`,
+      type: 'info',
+      title: data.title || 'Test Notification',
+      message: data.message || 'This is a test notification to verify your settings.',
+      priority: 'low',
+      timestamp: new Date()
+    });
+  });
+
+  // Real-time data events
+  socket.on("subscribe:notifications", () => {
+    socket.join("notifications");
+    logger.info(`Socket ${socket.id} subscribed to notifications`);
+  });
+
+  socket.on("unsubscribe:notifications", () => {
+    socket.leave("notifications");
+    logger.info(`Socket ${socket.id} unsubscribed from notifications`);
   });
 
   socket.on("ping", (data, callback) => {

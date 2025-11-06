@@ -1,33 +1,63 @@
 // Socket health check utility
 export const checkServerHealth = async (apiUrl: string): Promise<boolean> => {
   try {
-    // Validate URL to prevent SSRF attacks
-    const url = new URL(`${apiUrl}/api/health`);
-    
-    // Only allow localhost and specific domains in development
-    const allowedHosts = ['localhost', '127.0.0.1'];
-    if (!allowedHosts.includes(url.hostname)) {
-      console.warn('Invalid host for health check:', url.hostname);
+    // Validate and sanitize URL to prevent SSRF attacks
+    if (!apiUrl || typeof apiUrl !== 'string') {
       return false;
     }
+    
+    const url = new URL(`${apiUrl}/api/health`);
+    
+    // Only allow HTTP/HTTPS protocols
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return false;
+    }
+    
+    // Only allow localhost and specific domains
+    const allowedHosts = ['localhost', '127.0.0.1'];
+    if (!allowedHosts.includes(url.hostname)) {
+      return false;
+    }
+    
+    // Prevent port scanning by restricting ports
+    const allowedPorts = ['3000', '5000', '8000', '8080'];
+    if (url.port && !allowedPorts.includes(url.port)) {
+      return false;
+    }
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
     
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(5000)
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     return response.ok;
   } catch (error) {
-    console.warn('Health check failed:', error instanceof Error ? error.message : 'Unknown error');
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.warn('Health check timeout - server may not be running');
+    } else {
+      console.warn('Health check failed:', error instanceof Error ? error.message : 'Unknown error');
+    }
     return false;
   }
 };
 
 export const waitForServer = async (apiUrl: string, maxAttempts = 5): Promise<boolean> => {
   try {
+    // Validate input parameters
+    if (!apiUrl || typeof apiUrl !== 'string' || maxAttempts < 1) {
+      return false;
+    }
+    
     for (let i = 0; i < maxAttempts; i++) {
       if (await checkServerHealth(apiUrl)) return true;
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Exponential backoff for better connection stability
+      const delay = Math.min(2000 * Math.pow(1.5, i), 10000);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
     return false;
   } catch (error) {

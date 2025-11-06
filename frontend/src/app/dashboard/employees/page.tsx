@@ -652,7 +652,7 @@ const LeaveManagement = () => {
                   <SelectContent>
                     {employees.map((emp: any) => (
                       <SelectItem key={emp._id} value={emp._id}>
-                        {emp.firstName} {emp.lastName}
+                        {`${emp.firstName} ${emp.lastName}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
