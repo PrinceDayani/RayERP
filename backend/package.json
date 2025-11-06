@@ -10,20 +10,10 @@
     "dev": "nodemon --exec ts-node src/server.ts",
     "clean": "rm -rf dist",
     "build:clean": "npm run clean && npm run build",
-    "build:prod": "npm run clean && npm run build && npm run validate",
     "dev:debug": "nodemon --inspect --exec ts-node src/server.ts",
     "seed": "node scripts/seedTestData.js",
-    "seed:accounts": "node scripts/seedChartOfAccounts.js",
-    "test": "echo \"Backend tests not implemented yet\" && exit 0",
-    "test:watch": "echo \"Backend test watch not implemented yet\" && exit 0",
-    "lint": "eslint src --ext .ts,.js --fix",
-    "lint:check": "eslint src --ext .ts,.js",
-    "validate": "node -e \"console.log('Validating build...'); require('./dist/server.js'); console.log('✅ Build validation passed');\"",
-    "health-check": "curl -f http://localhost:5000/api/health || exit 1",
-    "start:prod": "NODE_ENV=production npm start",
-    "docker:build": "docker build -t rayerp-backend .",
-    "docker:run": "docker run -p 5000:5000 rayerp-backend"
-  }
+    "seed:accounts": "node scripts/seedChartOfAccounts.js"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",

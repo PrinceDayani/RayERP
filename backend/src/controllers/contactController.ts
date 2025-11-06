@@ -47,8 +47,9 @@ export const getContactById = async (req: Request, res: Response) => {
 
 // Create a new contact
 export const createContact = async (req: Request, res: Response) => {
+  let userId: string;
   try {
-    const userId = getUserId(req);
+    userId = getUserId(req);
     const { name, email, phone, company, position, address, notes, tags, reference, alternativePhone } = req.body;
 
     // Basic validation
@@ -75,7 +76,7 @@ export const createContact = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error creating contact:', {
       message: error instanceof Error ? error.message : 'Unknown error',
-      userId,
+      userId: userId || 'unknown',
       timestamp: new Date().toISOString()
     });
     return res.status(500).json({ message: 'Error creating contact' });
@@ -140,8 +141,9 @@ export const deleteContact = async (req: Request, res: Response) => {
 
 // Search contacts
 export const searchContacts = async (req: Request, res: Response) => {
+  let userId: string;
   try {
-    const userId = getUserId(req);
+    userId = getUserId(req);
     const { query } = req.query;
     
     if (!query || typeof query !== 'string') {
@@ -173,7 +175,7 @@ export const searchContacts = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error searching contacts:', {
       message: error instanceof Error ? error.message : 'Unknown error',
-      userId,
+      userId: userId || 'unknown',
       timestamp: new Date().toISOString()
     });
     return res.status(500).json({ message: 'Error searching contacts' });

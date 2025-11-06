@@ -111,7 +111,6 @@ io.on("connection", (socket) => {
       }
       
       socket.join(`user-${decoded.id}`);
-      socket.userId = decoded.id;
       logger.info(`User ${decoded.id} authenticated and joined room`);
       socket.emit("auth_success", { userId: decoded.id });
     } catch (error) {
