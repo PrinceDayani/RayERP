@@ -1,47 +1,13 @@
-# 🏢 ERP Management System
+# RayERP - Enterprise Resource Planning System
 
-A comprehensive Enterprise Resource Planning (ERP) system built with modern web technologies. This full-stack application manages employees, projects, tasks, contacts, and more with real-time updates and role-based access control.
-
-## 🏗️ Project Structure
-
-```
-erp-main/
-├── frontend/         # Next.js React application
-├── backend/          # Express.js API server
-├── Documentation/    # Project documentation
-└── scripts/         # Database seeding and utility scripts
-```
-
-## 🚀 Technology Stack
-
-### Frontend
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Type-safe JavaScript development
-- **Tailwind CSS** - Utility-first CSS framework
-- **Shadcn/ui** - Modern React component library
-- **Recharts** - Data visualization and charts
-- **Socket.IO Client** - Real-time communication
-- **React Hook Form** - Form handling and validation
-- **Framer Motion** - Animation library
-
-### Backend
-- **Express.js** - Node.js web framework
-- **TypeScript** - Type-safe server development
-- **MongoDB** - NoSQL database with Mongoose ODM
-- **Socket.IO** - Real-time WebSocket communication
-- **JWT** - JSON Web Token authentication
-- **bcryptjs** - Password hashing
-- **Winston** - Logging library
-- **Helmet** - Security middleware
-
-## 🚀 Getting Started
+## Quick Start Guide
 
 ### Prerequisites
-- **Node.js** (v22.x recommended)
-- **npm** (v10.0.0+)
-- **MongoDB** (local or cloud instance)
+- Node.js (v18 or higher)
+- MongoDB (local or cloud)
+- npm or yarn
 
-### Installation
+### Installation & Setup
 
 1. **Clone the repository**
 ```bash
@@ -122,7 +88,6 @@ npm start
 - Project creation and tracking
 - Task assignment and management
 - Kanban-style task boards
-- **Gantt Chart & Timeline Visualization**
 - Project analytics and reporting
 - Team collaboration features
 
@@ -149,7 +114,6 @@ npm start
 - Real-time dashboards
 - Business intelligence reports
 - Data visualization
-- **Timeline & Gantt Chart views**
 - Export capabilities
 
 ### 🔄 Real-time Features

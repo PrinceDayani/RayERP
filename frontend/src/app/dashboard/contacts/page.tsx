@@ -20,7 +20,8 @@ import {
   Building2,
   Tag,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  MapPin
 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,6 +86,9 @@ export default function ContactsPage() {
   }>({ tags: [], company: [] });
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -362,6 +366,68 @@ export default function ContactsPage() {
     return activeFilters.tags.length + activeFilters.company.length;
   };
 
+  const toggleContactSelection = (contactId: string) => {
+    setSelectedContacts(prev => 
+      prev.includes(contactId) 
+        ? prev.filter(id => id !== contactId)
+        : [...prev, contactId]
+    );
+  };
+
+  const selectAllContacts = () => {
+    if (selectedContacts.length === contacts.length) {
+      setSelectedContacts([]);
+    } else {
+      setSelectedContacts(contacts.map(c => c._id!));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (window.confirm(`Delete ${selectedContacts.length} selected contacts?`)) {
+      try {
+        await Promise.all(selectedContacts.map(id => deleteContact(id)));
+        const updatedContacts = contacts.filter(c => !selectedContacts.includes(c._id!));
+        setContacts(updatedContacts);
+        setAllContacts(allContacts.filter(c => !selectedContacts.includes(c._id!)));
+        setSelectedContacts([]);
+        setSuccess(`Successfully deleted ${selectedContacts.length} contacts`);
+        setTimeout(() => setSuccess(null), 3000);
+      } catch (err) {
+        setError('Failed to delete some contacts. Please try again.');
+      }
+    }
+  };
+
+  const exportSelectedContacts = () => {
+    const contactsToExport = contacts.filter(c => selectedContacts.includes(c._id!));
+    if (contactsToExport.length === 0) return;
+    
+    const dataToExport = contactsToExport.map(contact => ({
+      Name: contact.name,
+      Email: contact.email || '',
+      Phone: contact.phone,
+      Company: contact.company || '',
+      Position: contact.position || '',
+      Address: contact.address || '',
+      Notes: contact.notes || '',
+      Tags: contact.tags ? contact.tags.join(', ') : ''
+    }));
+    
+    const csv = Papa.unparse(dataToExport);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `selected_contacts_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setSuccess(`Exported ${contactsToExport.length} selected contacts`);
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
   return (
     <div className="space-y-6">
         {/* Header */}
@@ -381,6 +447,17 @@ export default function ContactsPage() {
               onChange={handleFileUpload} 
             />
             
+            {selectedContacts.length > 0 && (
+              <div className="flex gap-2 mr-2">
+                <Button variant="outline" size="sm" onClick={exportSelectedContacts}>
+                  <Download className="mr-2 h-4 w-4" /> Export Selected ({selectedContacts.length})
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
+                </Button>
+              </div>
+            )}
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="hover:bg-primary/5">
@@ -392,8 +469,14 @@ export default function ContactsPage() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={exportContacts}>
                   <FileText className="mr-2 h-4 w-4" />
-                  Export to CSV
+                  Export All to CSV
                 </DropdownMenuItem>
+                {selectedContacts.length > 0 && (
+                  <DropdownMenuItem onClick={exportSelectedContacts}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export Selected ({selectedContacts.length})
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             
@@ -408,14 +491,16 @@ export default function ContactsPage() {
         </div>
         
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Contacts</p>
                   <p className="text-3xl font-bold text-foreground">{allContacts.length}</p>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Active database</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    {contacts.length !== allContacts.length ? `${contacts.length} filtered` : 'Active database'}
+                  </p>
                 </div>
                 <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
                   <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -453,6 +538,23 @@ export default function ContactsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {selectedContacts.length > 0 && (
+            <Card className="card-modern hover-lift border-l-4 border-l-orange-500">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Selected</p>
+                    <p className="text-3xl font-bold text-foreground">{selectedContacts.length}</p>
+                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Ready for action</p>
+                  </div>
+                  <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-xl">
+                    <Checkbox className="h-6 w-6 text-orange-600 dark:text-orange-400" checked />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
         
         {/* Error/Success Alerts */}
@@ -479,6 +581,40 @@ export default function ContactsPage() {
           </Alert>
         )}
 
+        {/* Selected Contacts Summary */}
+        {selectedContacts.length > 0 && (
+          <Card className="card-modern border-orange-200 bg-orange-50/50 dark:bg-orange-900/10">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                    <Checkbox className="h-4 w-4 text-orange-600" checked />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {selectedContacts.length} contact{selectedContacts.length > 1 ? 's' : ''} selected
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Choose an action to perform on selected contacts
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={exportSelectedContacts}>
+                    <Download className="mr-2 h-4 w-4" /> Export
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedContacts([])}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Search and Filters */}
         <Card className="card-modern">
           <CardHeader className="pb-4">
@@ -502,6 +638,18 @@ export default function ContactsPage() {
               
               {/* Action Buttons */}
               <div className="flex gap-2">
+                {contacts.length > 0 && (
+                  <div 
+                    onClick={selectAllContacts}
+                    className="flex items-center gap-2 px-3 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md cursor-pointer transition-colors"
+                  >
+                    <Checkbox 
+                      checked={selectedContacts.length === contacts.length && contacts.length > 0}
+                    />
+                    <span className="text-sm font-medium">Select All</span>
+                  </div>
+                )}
+                
                 <Button 
                   variant="outline"
                   onClick={refreshData}
@@ -664,14 +812,29 @@ export default function ContactsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {contacts.map((contact) => (
-                  <Card key={contact._id} className="card-modern hover-lift group">
+                  <Card key={contact._id} className={`card-modern hover-lift group cursor-pointer transition-all ${
+                    selectedContacts.includes(contact._id!) ? 'ring-2 ring-primary bg-primary/5' : ''
+                  }`} onClick={() => router.push(`/dashboard/contacts/${contact._id}`)}>
                     <CardHeader className="pb-3">
                       <div className="flex justify-between items-start">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <span className="text-primary font-semibold text-lg">
-                              {contact.name.charAt(0).toUpperCase()}
-                            </span>
+                          <div className="flex items-center gap-2">
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleContactSelection(contact._id!);
+                              }}
+                              className="flex-shrink-0"
+                            >
+                              <Checkbox
+                                checked={selectedContacts.includes(contact._id!)}
+                              />
+                            </div>
+                            <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <span className="text-primary font-semibold text-lg">
+                                {contact.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <CardTitle className="text-lg truncate text-foreground">
@@ -696,7 +859,10 @@ export default function ContactsPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => router.push(`/dashboard/contacts/edit/${contact._id}`)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/dashboard/contacts/edit/${contact._id}`);
+                                  }}
                                   className="hover:bg-blue-50 hover:text-blue-600"
                                 >
                                   <Edit2 className="h-4 w-4" />
@@ -712,7 +878,10 @@ export default function ContactsPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setContactToDelete(contact._id!)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setContactToDelete(contact._id!);
+                                  }}
                                   className="hover:bg-red-50 hover:text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -728,27 +897,79 @@ export default function ContactsPage() {
                     <CardContent className="space-y-4">
                       {/* Contact Info */}
                       <div className="space-y-3">
-                        <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg">
-                          <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                            <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                              <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <span className="text-foreground font-medium">
+                              {contact.phone}
+                            </span>
                           </div>
-                          <a href={`tel:${contact.phone}`} className="text-foreground hover:text-primary transition-colors font-medium">
-                            {contact.phone}
-                          </a>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`tel:${contact.phone}`);
+                            }}
+                            className="hover:bg-blue-50 hover:text-blue-600"
+                          >
+                            <Phone className="h-4 w-4" />
+                          </Button>
                         </div>
                         
                         {contact.email && (
-                          <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg">
-                            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                              <Mail className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                                <Mail className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              </div>
+                              <span 
+                                className="text-foreground font-medium truncate"
+                                title={contact.email}
+                              >
+                                {contact.email}
+                              </span>
                             </div>
-                            <a 
-                              href={`mailto:${contact.email}`} 
-                              className="text-foreground hover:text-primary transition-colors font-medium truncate"
-                              title={contact.email}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`mailto:${contact.email}`);
+                              }}
+                              className="hover:bg-green-50 hover:text-green-600 flex-shrink-0"
                             >
-                              {contact.email}
-                            </a>
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {contact.address && (
+                          <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                                <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                              </div>
+                              <span 
+                                className="text-foreground font-medium truncate"
+                                title={contact.address}
+                              >
+                                {contact.address}
+                              </span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`https://maps.google.com/?q=${encodeURIComponent(contact.address)}`);
+                              }}
+                              className="hover:bg-orange-50 hover:text-orange-600 flex-shrink-0"
+                            >
+                              <MapPin className="h-4 w-4" />
+                            </Button>
                           </div>
                         )}
                       </div>

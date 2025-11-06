@@ -1,6 +1,7 @@
 // path: frontend/src/lib/socket.ts
 import { io, Socket } from "socket.io-client";
 import { useEffect, useState } from "react";
+import { checkServerHealth } from "../utils/socketHealth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -9,7 +10,7 @@ let socket: Socket | null = null;
 let isConnecting = false;
 
 // Initialize socket with safe singleton + reconnection
-export const initializeSocket = (token?: string): Socket | null => {
+export const initializeSocket = async (token?: string): Promise<Socket | null> => {
   if (!API_URL) {
     console.warn("⚠️ NEXT_PUBLIC_API_URL environment variable is not set");
     return null;
@@ -23,6 +24,13 @@ export const initializeSocket = (token?: string): Socket | null => {
     return socket;
   }
 
+  // Check server health before connecting
+  const serverHealthy = await checkServerHealth(API_URL);
+  if (!serverHealthy) {
+    console.warn("⚠️ Server is not responding, skipping socket connection");
+    return null;
+  }
+
   isConnecting = true;
   console.log(`🔌 Initializing socket connection to: ${API_URL}`);
 
@@ -34,15 +42,16 @@ export const initializeSocket = (token?: string): Socket | null => {
 
   socket = io(API_URL, {
     auth: token ? { token } : undefined,
-    transports: ["polling"],
+    transports: ["websocket", "polling"],
     reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    timeout: 20000,
-    forceNew: false,
-    upgrade: false,
+    reconnectionAttempts: 3,
+    reconnectionDelay: 2000,
+    reconnectionDelayMax: 10000,
+    timeout: 10000,
+    forceNew: true,
+    upgrade: true,
     autoConnect: true,
+    withCredentials: true
   });
 
   socket.on("connect", () => {
@@ -90,37 +99,88 @@ export const disconnectSocket = (): void => {
 export const getSocket = (): Socket | null => socket;
 
 // Hook for socket state
-export const useSocket = (
+export const useSocket = (url?: string): Socket | null => {
+  const [socketInstance, setSocketInstance] = useState<Socket | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const serverUrl = url || 'http://localhost:5000';
+      
+      const newSocket = io(serverUrl, {
+        transports: ['polling', 'websocket'],
+        withCredentials: false,
+        autoConnect: true,
+        reconnection: false,
+        timeout: 5000
+      });
+
+      newSocket.on('connect', () => {
+        console.log('✅ Socket connected');
+        setSocketInstance(newSocket);
+      });
+
+      newSocket.on('connect_error', () => {
+        console.warn('⚠️ Socket connection failed');
+        setSocketInstance(null);
+      });
+
+      return () => {
+        newSocket.disconnect();
+        setSocketInstance(null);
+      };
+    } catch (error) {
+      console.warn('Socket initialization failed');
+      setSocketInstance(null);
+    }
+  }, [url]);
+
+  return socketInstance;
+};
+
+export const useSocketWithStatus = (
   token?: string
 ): [Socket | null, boolean, string | null] => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const s = initializeSocket(token);
+    let mounted = true;
+    
+    const initSocket = async () => {
+      const s = await initializeSocket(token);
+      
+      if (!mounted || !s) return;
 
-    const onConnect = () => {
-      setIsConnected(true);
-      setError(null);
+      const onConnect = () => {
+        setIsConnected(true);
+        setError(null);
+      };
+
+      const onDisconnect = () => setIsConnected(false);
+
+      const onError = (err: Error) => {
+        setIsConnected(false);
+        setError(err.message);
+      };
+
+      s.on("connect", onConnect);
+      s.on("disconnect", onDisconnect);
+      s.on("connect_error", onError);
+
+      setIsConnected(s.connected);
     };
-
-    const onDisconnect = () => setIsConnected(false);
-
-    const onError = (err: Error) => {
-      setIsConnected(false);
-      setError(err.message);
-    };
-
-    s.on("connect", onConnect);
-    s.on("disconnect", onDisconnect);
-    s.on("connect_error", onError);
-
-    setIsConnected(s.connected);
+    
+    initSocket();
 
     return () => {
-      s.off("connect", onConnect);
-      s.off("disconnect", onDisconnect);
-      s.off("connect_error", onError);
+      mounted = false;
+      if (socket) {
+        socket.off("connect");
+        socket.off("disconnect");
+        socket.off("connect_error");
+      }
     };
   }, [token]);
 
@@ -223,4 +283,12 @@ export interface NotificationEvent {
   timestamp: string;
   read: boolean;
   link?: string;
+}
+
+export interface RealTimeMetrics {
+  activeUsers: number;
+  totalRevenue: number;
+  ordersToday: number;
+  systemLoad: number;
+  lastUpdated: string;
 }

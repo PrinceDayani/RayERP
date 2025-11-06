@@ -203,93 +203,94 @@ const Dashboard = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    const socket = initializeSocket();
-    socketRef.current = socket;
+    let mounted = true;
+    
+    const initSocket = async () => {
+      try {
+        const socket = await initializeSocket();
+        if (!mounted || !socket) return;
+        
+        socketRef.current = socket;
 
-    const handleSocketConnect = () => {
-      setSocketConnected(true);
+        const handleSocketConnect = () => {
+          if (!mounted) return;
+          setSocketConnected(true);
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+        };
+
+        const handleSocketDisconnect = (reason: string) => {
+          if (!mounted) return;
+          setSocketConnected(false);
+          if (!pollingIntervalRef.current) {
+            pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
+          }
+        };
+
+        const handleSocketError = (err: Error) => {
+          if (!mounted) return;
+          console.warn("Socket connection error:", err.message);
+          setSocketConnected(false);
+          if (!pollingIntervalRef.current) {
+            pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
+          }
+        };
+
+        // Real-time event handlers
+        const handleStatsUpdate = (newStats: DashboardStats) => {
+          if (mounted) setStats(newStats);
+        };
+
+        const handleEmployeeUpdate = () => {
+          if (mounted) fetchDashboardData();
+        };
+
+        const handleProjectUpdate = () => {
+          if (mounted) fetchDashboardData();
+        };
+
+        const handleTaskUpdate = () => {
+          if (mounted) fetchDashboardData();
+        };
+
+        socket.on("connect", handleSocketConnect);
+        socket.on("disconnect", handleSocketDisconnect);
+        socket.on("connect_error", handleSocketError);
+        socket.on("dashboard:refresh", fetchDashboardData);
+        socket.on("dashboard:stats", handleStatsUpdate);
+        socket.on("employee:created", handleEmployeeUpdate);
+        socket.on("employee:updated", handleEmployeeUpdate);
+        socket.on("employee:deleted", handleEmployeeUpdate);
+        socket.on("project:created", handleProjectUpdate);
+        socket.on("project:updated", handleProjectUpdate);
+        socket.on("project:deleted", handleProjectUpdate);
+        socket.on("task:created", handleTaskUpdate);
+        socket.on("task:updated", handleTaskUpdate);
+        socket.on("task:deleted", handleTaskUpdate);
+      } catch (error) {
+        console.warn('Socket initialization failed:', error);
+        if (mounted && !pollingIntervalRef.current) {
+          pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
+        }
+      }
+    };
+    
+    initSocket();
+
+    return () => {
+      mounted = false;
+      if (socketRef.current) {
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
-      toast({
-        title: "Connected",
-        description: "Real-time updates are now active",
-        variant: "default",
-      });
     };
-
-    const handleSocketDisconnect = (reason: string) => {
-      setSocketConnected(false);
-      if (!pollingIntervalRef.current) {
-        pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
-      }
-    };
-
-    const handleSocketError = (err: Error) => {
-      console.error("Socket connection error:", err.message);
-      setSocketConnected(false);
-      if (!pollingIntervalRef.current) {
-        pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
-      }
-    };
-
-    // Real-time event handlers
-    const handleStatsUpdate = (newStats: DashboardStats) => {
-      setStats(newStats);
-    };
-
-    const handleEmployeeUpdate = () => {
-      fetchDashboardData();
-    };
-
-    const handleProjectUpdate = () => {
-      fetchDashboardData();
-    };
-
-    const handleTaskUpdate = () => {
-      fetchDashboardData();
-    };
-
-    if (socket) {
-      socket.on("connect", handleSocketConnect);
-      socket.on("disconnect", handleSocketDisconnect);
-      socket.on("connect_error", handleSocketError);
-      socket.on("dashboard:refresh", fetchDashboardData);
-      socket.on("dashboard:stats", handleStatsUpdate);
-      socket.on("employee:created", handleEmployeeUpdate);
-      socket.on("employee:updated", handleEmployeeUpdate);
-      socket.on("employee:deleted", handleEmployeeUpdate);
-      socket.on("project:created", handleProjectUpdate);
-      socket.on("project:updated", handleProjectUpdate);
-      socket.on("project:deleted", handleProjectUpdate);
-      socket.on("task:created", handleTaskUpdate);
-      socket.on("task:updated", handleTaskUpdate);
-      socket.on("task:deleted", handleTaskUpdate);
-
-      return () => {
-        socket.off("connect", handleSocketConnect);
-        socket.off("disconnect", handleSocketDisconnect);
-        socket.off("connect_error", handleSocketError);
-        socket.off("dashboard:refresh", fetchDashboardData);
-        socket.off("dashboard:stats", handleStatsUpdate);
-        socket.off("employee:created", handleEmployeeUpdate);
-        socket.off("employee:updated", handleEmployeeUpdate);
-        socket.off("employee:deleted", handleEmployeeUpdate);
-        socket.off("project:created", handleProjectUpdate);
-        socket.off("project:updated", handleProjectUpdate);
-        socket.off("project:deleted", handleProjectUpdate);
-        socket.off("task:created", handleTaskUpdate);
-        socket.off("task:updated", handleTaskUpdate);
-        socket.off("task:deleted", handleTaskUpdate);
-        socket.disconnect();
-        
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
-      };
-    }
   }, [isAuthenticated, fetchDashboardData]);
 
   // Demo data for non-authenticated users

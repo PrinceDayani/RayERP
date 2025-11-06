@@ -157,33 +157,54 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "success":
-        return <Badge className="bg-green-500">Success</Badge>;
+        return (
+          <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-md">
+            <div className="w-2 h-2 bg-white rounded-full mr-2" />
+            Success
+          </Badge>
+        );
       case "error":
-        return <Badge className="bg-red-500">Error</Badge>;
+        return (
+          <Badge className="bg-gradient-to-r from-red-500 to-rose-500 text-white border-0 shadow-md">
+            <div className="w-2 h-2 bg-white rounded-full mr-2" />
+            Error
+          </Badge>
+        );
       case "warning":
-        return <Badge className="bg-yellow-500">Warning</Badge>;
+        return (
+          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-md">
+            <div className="w-2 h-2 bg-white rounded-full mr-2" />
+            Warning
+          </Badge>
+        );
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge className="bg-gradient-to-r from-slate-400 to-slate-500 text-white border-0">{status}</Badge>;
     }
   };
 
   const getActionBadge = (action: string) => {
+    const badgeClasses = "text-white border-0 shadow-md font-medium";
     switch (action) {
       case "login":
       case "logout":
-        return <Badge className="bg-blue-500">{action}</Badge>;
+        return <Badge className={`bg-gradient-to-r from-blue-500 to-indigo-500 ${badgeClasses}`}>{action}</Badge>;
       case "create":
-        return <Badge className="bg-green-500">{action}</Badge>;
+        return <Badge className={`bg-gradient-to-r from-emerald-500 to-green-500 ${badgeClasses}`}>{action}</Badge>;
       case "update":
-        return <Badge className="bg-orange-500">{action}</Badge>;
+        return <Badge className={`bg-gradient-to-r from-amber-500 to-orange-500 ${badgeClasses}`}>{action}</Badge>;
       case "delete":
-        return <Badge className="bg-red-500">{action}</Badge>;
+        return <Badge className={`bg-gradient-to-r from-red-500 to-rose-500 ${badgeClasses}`}>{action}</Badge>;
       case "approve":
-        return <Badge className="bg-emerald-500">{action}</Badge>;
+        return <Badge className={`bg-gradient-to-r from-emerald-600 to-green-600 ${badgeClasses}`}>{action}</Badge>;
       case "reject":
-        return <Badge className="bg-rose-500">{action}</Badge>;
+        return <Badge className={`bg-gradient-to-r from-rose-500 to-pink-500 ${badgeClasses}`}>{action}</Badge>;
+      case "view":
+        return <Badge className={`bg-gradient-to-r from-cyan-500 to-blue-500 ${badgeClasses}`}>{action}</Badge>;
+      case "export":
+      case "import":
+        return <Badge className={`bg-gradient-to-r from-purple-500 to-violet-500 ${badgeClasses}`}>{action}</Badge>;
       default:
-        return <Badge className="bg-slate-500">{action}</Badge>;
+        return <Badge className={`bg-gradient-to-r from-slate-500 to-slate-600 ${badgeClasses}`}>{action}</Badge>;
     }
   };
 
@@ -227,14 +248,14 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+    <div className="space-y-6">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+          <div className="relative w-full sm:w-80">
+            <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Search logs..."
-              className="pl-8"
+              placeholder="Search logs by user, action, or details..."
+              className="pl-10 h-12 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 focus:bg-white dark:focus:bg-slate-800 transition-all duration-200"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -242,10 +263,10 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
           
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger className="w-full sm:w-[130px]">
+              <SelectTrigger className="w-full sm:w-[150px] h-12 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
                 <div className="flex items-center">
-                  <FilterIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span>{actionFilter === "all" ? "All Actions" : actionFilter}</span>
+                  <FilterIcon className="mr-2 h-4 w-4 text-slate-400" />
+                  <span className="font-medium">{actionFilter === "all" ? "All Actions" : actionFilter}</span>
                 </div>
               </SelectTrigger>
               <SelectContent>
@@ -266,8 +287,8 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
 
             
             <Select value={resourceFilter} onValueChange={setResourceFilter}>
-              <SelectTrigger className="w-full sm:w-[130px]">
-                <span>{resourceFilter === "all" ? "All Resources" : resourceFilter}</span>
+              <SelectTrigger className="w-full sm:w-[150px] h-12 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
+                <span className="font-medium">{resourceFilter === "all" ? "All Resources" : resourceFilter}</span>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Resources</SelectItem>
@@ -282,17 +303,28 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Button 
             variant={autoRefresh ? "default" : "outline"} 
             onClick={() => setAutoRefresh(!autoRefresh)}
-            size="sm"
+            className={`h-12 px-4 ${
+              autoRefresh 
+                ? "bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white border-0 shadow-lg" 
+                : "bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800"
+            } transition-all duration-200`}
           >
+            <div className={`w-2 h-2 rounded-full mr-2 ${
+              autoRefresh ? "bg-white animate-pulse" : "bg-slate-400"
+            }`} />
             {autoRefresh ? "Live" : "Paused"}
           </Button>
-          <Button variant="outline" onClick={exportLogs} className="w-full sm:w-auto">
+          <Button 
+            variant="outline" 
+            onClick={exportLogs} 
+            className="h-12 px-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 transition-all duration-200"
+          >
             <DownloadIcon className="mr-2 h-4 w-4" />
-            Export
+            Export CSV
           </Button>
         </div>
       </div>
@@ -318,42 +350,66 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
         </div>
       )}
       
-      <div className="rounded-md border">
+      <div className="rounded-2xl border-0 shadow-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Resource</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Details</TableHead>
-              <TableHead>IP Address</TableHead>
+            <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 border-b border-slate-200/50 dark:border-slate-700/50">
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">Timestamp</TableHead>
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">User</TableHead>
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">Action</TableHead>
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">Resource</TableHead>
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">Status</TableHead>
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">Details</TableHead>
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">IP Address</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {getCurrentPageLogs().length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                  No logs found matching your filters
+                <TableCell colSpan={7} className="text-center py-12">
+                  <div className="flex flex-col items-center space-y-3">
+                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
+                      <ActivityIcon className="h-8 w-8 text-slate-400" />
+                    </div>
+                    <div className="text-slate-500 dark:text-slate-400 font-medium">No activity logs found</div>
+                    <div className="text-sm text-slate-400 dark:text-slate-500">Try adjusting your search filters</div>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
-              getCurrentPageLogs().map((log) => (
-                <TableRow key={log._id} className="group hover:bg-muted/50">
-                  <TableCell className="font-mono text-xs">
+              getCurrentPageLogs().map((log, index) => (
+                <TableRow 
+                  key={log._id} 
+                  className="group hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-200 border-b border-slate-100/50 dark:border-slate-700/50"
+                  style={{
+                    animationDelay: `${index * 30}ms`,
+                    animation: 'fadeInUp 0.4s ease-out forwards'
+                  }}
+                >
+                  <TableCell className="font-mono text-xs text-slate-600 dark:text-slate-400 py-4">
                     {formatDate(log.timestamp)}
                   </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{log.user}</div>
+                  <TableCell className="py-4">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-xs">
+                        {log.user.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{log.user}</div>
+                    </div>
                   </TableCell>
-                  <TableCell>{getActionBadge(log.action)}</TableCell>
-                  <TableCell className="capitalize">{log.resource}</TableCell>
-                  <TableCell>{getStatusBadge(log.status || 'success')}</TableCell>
-                  <TableCell className="max-w-xs truncate" title={log.details}>
+                  <TableCell className="py-4">{getActionBadge(log.action)}</TableCell>
+                  <TableCell className="capitalize py-4">
+                    <Badge className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-0">
+                      {log.resource}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="py-4">{getStatusBadge(log.status || 'success')}</TableCell>
+                  <TableCell className="max-w-xs truncate py-4 text-slate-600 dark:text-slate-400" title={log.details}>
                     {log.details}
                   </TableCell>
-                  <TableCell className="font-mono">{log.ipAddress || 'N/A'}</TableCell>
+                  <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-500 py-4">
+                    {log.ipAddress || 'N/A'}
+                  </TableCell>
                 </TableRow>
               ))
             )}

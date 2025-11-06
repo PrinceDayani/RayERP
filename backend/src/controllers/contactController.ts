@@ -49,7 +49,7 @@ export const getContactById = async (req: Request, res: Response) => {
 export const createContact = async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { name, email, phone, company, position, address, notes, tags } = req.body;
+    const { name, email, phone, company, position, address, notes, tags, reference, alternativePhone } = req.body;
 
     // Basic validation
     if (!name || !phone) {
@@ -65,6 +65,8 @@ export const createContact = async (req: Request, res: Response) => {
       address,
       notes,
       tags,
+      reference,
+      alternativePhone,
       createdBy: userId,
     });
 
@@ -80,7 +82,7 @@ export const createContact = async (req: Request, res: Response) => {
 export const updateContact = async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { name, email, phone, company, position, address, notes, tags } = req.body;
+    const { name, email, phone, company, position, address, notes, tags, reference, alternativePhone } = req.body;
 
     // Find contact and check ownership
     const contact = await Contact.findOne({
@@ -101,6 +103,8 @@ export const updateContact = async (req: Request, res: Response) => {
     contact.address = address || contact.address;
     contact.notes = notes || contact.notes;
     contact.tags = tags || contact.tags;
+    contact.reference = reference || contact.reference;
+    contact.alternativePhone = alternativePhone || contact.alternativePhone;
 
     const updatedContact = await contact.save();
     return res.status(200).json(updatedContact);

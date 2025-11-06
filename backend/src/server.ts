@@ -25,17 +25,9 @@ const allowedOrigins = [
   ...(process.env.FRONTEND_URL?.split(',') || [])
 ].filter(Boolean); // Remove undefined/null values
 
-// CORS configuration
+// CORS configuration - permissive for development
 const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      logger.warn(`❌ CORS blocked origin: ${origin}`);
-      callback(null, true); // Allow all origins in development
-    }
-  },
+  origin: true, // Allow all origins in development
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
@@ -86,13 +78,16 @@ app.use(errorMiddleware);
 // Socket.IO setup
 const io = new SocketServer(server, {
   cors: {
-    origin: allowedOrigins.length > 0 ? allowedOrigins : "*",
+    origin: process.env.NODE_ENV === 'production' ? allowedOrigins : "*",
     methods: ["GET", "POST"],
     credentials: true,
   },
   transports: ["websocket", "polling"],
   allowEIO3: true,
-  path: "/socket.io/"
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e6
 });
 
 // Handle socket connections
@@ -128,6 +123,9 @@ io.on("connection", (socket) => {
 // Export for use in other files
 export { io };
 export default app;
+
+// Initialize real-time data emitter
+import './utils/realTimeEmitter';
 
 // MongoDB connection and server startup
 const PORT = process.env.PORT || 5000;

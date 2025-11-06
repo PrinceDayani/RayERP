@@ -18,7 +18,8 @@ import {
   updateProjectStatus,
   addProjectMember,
   removeProjectMember,
-  getProjectMembers
+  getProjectMembers,
+  getProjectActivity
 } from '../controllers/projectController';
 import {
   getProjectFiles,
@@ -119,6 +120,7 @@ router.delete('/:id/members/:memberId',
 // --- Other Project-specific Routes ---
 router.get('/:id/timeline', validateObjectId(), checkProjectAccess, getProjectTimeline);
 router.get('/:id/timeline-data', validateObjectId(), checkProjectAccess, getProjectTimelineData);
+router.get('/:id/activity', validateObjectId(), checkProjectAccess, getProjectActivity);
 
 // --- Analytics Routes ---
 router.get('/:id/analytics/burndown', validateObjectId(), checkProjectAccess, getBurndownChart);
