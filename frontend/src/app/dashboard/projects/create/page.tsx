@@ -53,10 +53,12 @@ const CreateProjectPage = () => {
 
   const fetchEmployees = async () => {
     try {
-      const data = await getAllEmployees();
-      setEmployees(data);
+      const response = await getAllEmployees();
+      const data = response?.data || response;
+      setEmployees(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching employees:", error);
+      setEmployees([]);
     }
   };
 

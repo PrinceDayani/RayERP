@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Edit, DollarSign, TrendingUp, AlertTriangle, BarChart3 } from "lucide-react";
+import { Plus, Edit, DollarSign, TrendingUp, AlertTriangle, BarChart3, Send, CheckCircle, XCircle, Clock, FileText, ThumbsUp, ThumbsDown, RotateCcw } from "lucide-react";
 import { Budget } from "@/types/budget";
 import BudgetDialog from "@/components/budget/BudgetDialog";
 import ProjectBudgetAnalytics from "@/components/budget/ProjectBudgetAnalytics";
@@ -126,6 +126,124 @@ export default function ProjectBudgetPage() {
     }
   };
 
+  const sendForApproval = async () => {
+    if (!budget) return;
+    
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/budget/${budget._id}/submit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        alert('Budget sent for approval successfully!');
+        fetchProjectBudget();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to send budget for approval');
+      }
+    } catch (error) {
+      console.error('Error sending budget for approval:', error);
+      alert('Failed to send budget for approval');
+    }
+  };
+
+  const approveBudget = async () => {
+    if (!budget) return;
+    const comments = prompt('Add approval comments (optional):');
+    
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/budget/${budget._id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ comments })
+      });
+
+      if (response.ok) {
+        alert('Budget approved successfully!');
+        fetchProjectBudget();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to approve budget');
+      }
+    } catch (error) {
+      console.error('Error approving budget:', error);
+      alert('Failed to approve budget');
+    }
+  };
+
+  const rejectBudget = async () => {
+    if (!budget) return;
+    const comments = prompt('Add rejection reason (required):');
+    if (!comments) return;
+    
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/budget/${budget._id}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ comments })
+      });
+
+      if (response.ok) {
+        alert('Budget rejected successfully!');
+        fetchProjectBudget();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to reject budget');
+      }
+    } catch (error) {
+      console.error('Error rejecting budget:', error);
+      alert('Failed to reject budget');
+    }
+  };
+
+  const unapproveBudget = async () => {
+    if (!budget) return;
+    const comments = prompt('Add reason for unapproving (optional):');
+    
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/budget/${budget._id}/unapprove`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ comments })
+      });
+
+      if (response.ok) {
+        alert('Budget unapproved successfully!');
+        fetchProjectBudget();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to unapprove budget');
+      }
+    } catch (error) {
+      console.error('Error unapproving budget:', error);
+      alert('Failed to unapprove budget');
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
@@ -134,12 +252,53 @@ export default function ProjectBudgetPage() {
       <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Project Budget</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">Project Budget</h1>
+            {budget && (
+              <Badge className={
+                budget.status === 'approved' ? 'bg-green-100 text-green-800' :
+                budget.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                budget.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                budget.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                'bg-blue-100 text-blue-800'
+              }>
+                {budget.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
+                {budget.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
+                {budget.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                {budget.status === 'draft' && <FileText className="h-3 w-3 mr-1" />}
+                {budget.status.charAt(0).toUpperCase() + budget.status.slice(1)}
+              </Badge>
+            )}
+          </div>
           <p className="text-gray-600">{project?.name}</p>
         </div>
         <div className="flex gap-2">
           {budget ? (
             <>
+              {budget.status === 'draft' && (
+                <Button onClick={sendForApproval}>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send for Approval
+                </Button>
+              )}
+              {budget.status === 'pending' && (
+                <>
+                  <Button onClick={approveBudget} className="bg-green-600 hover:bg-green-700">
+                    <ThumbsUp className="w-4 h-4 mr-2" />
+                    Approve
+                  </Button>
+                  <Button onClick={rejectBudget} variant="destructive">
+                    <ThumbsDown className="w-4 h-4 mr-2" />
+                    Reject
+                  </Button>
+                </>
+              )}
+              {(budget.status === 'approved' || budget.status === 'rejected') && (
+                <Button onClick={unapproveBudget} variant="outline">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Revert to Pending
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setShowDialog(true)}>
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Budget
@@ -206,12 +365,18 @@ export default function ProjectBudgetPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Status</CardTitle>
+                {budget.status === 'approved' && <CheckCircle className="h-4 w-4 text-green-600" />}
+                {budget.status === 'rejected' && <XCircle className="h-4 w-4 text-red-600" />}
+                {budget.status === 'pending' && <Clock className="h-4 w-4 text-yellow-600" />}
+                {budget.status === 'draft' && <FileText className="h-4 w-4 text-gray-600" />}
               </CardHeader>
               <CardContent>
                 <Badge className={
                   budget.status === 'approved' ? 'bg-green-100 text-green-800' :
                   budget.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
+                  budget.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                  budget.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                  'bg-blue-100 text-blue-800'
                 }>
                   {budget.status.charAt(0).toUpperCase() + budget.status.slice(1)}
                 </Badge>
@@ -233,6 +398,61 @@ export default function ProjectBudgetPage() {
               </div>
             </CardContent>
           </Card>
+
+          {budget.approvals && budget.approvals.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Approval History</CardTitle>
+                  {budget.status === 'pending' && (
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={approveBudget} className="bg-green-600 hover:bg-green-700">
+                        <ThumbsUp className="w-3 h-3 mr-1" />
+                        Approve
+                      </Button>
+                      <Button size="sm" onClick={rejectBudget} variant="destructive">
+                        <ThumbsDown className="w-3 h-3 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {budget.approvals.map((approval: any, index: number) => (
+                    <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="mt-1">
+                        {approval.status === 'approved' && <CheckCircle className="h-5 w-5 text-green-600" />}
+                        {approval.status === 'rejected' && <XCircle className="h-5 w-5 text-red-600" />}
+                        {approval.status === 'pending' && <Clock className="h-5 w-5 text-yellow-600" />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{approval.userName || 'Unknown User'}</span>
+                          <Badge variant="outline" className={
+                            approval.status === 'approved' ? 'bg-green-50 text-green-700 border-green-200' :
+                            approval.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                            'bg-yellow-50 text-yellow-700 border-yellow-200'
+                          }>
+                            {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
+                          </Badge>
+                        </div>
+                        {approval.comments && (
+                          <p className="text-sm text-gray-600 mt-1">{approval.comments}</p>
+                        )}
+                        {approval.approvedAt && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(approval.approvedAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {budget.categories.map((category) => {
@@ -287,7 +507,61 @@ export default function ProjectBudgetPage() {
           </div>
           </TabsContent>
 
-          <TabsContent value="analytics">
+          <TabsContent value="analytics" className="space-y-6">
+            {budget.approvals && budget.approvals.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Approval Status</CardTitle>
+                    {budget.status === 'pending' && (
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={approveBudget} className="bg-green-600 hover:bg-green-700">
+                          <ThumbsUp className="w-3 h-3 mr-1" />
+                          Approve
+                        </Button>
+                        <Button size="sm" onClick={rejectBudget} variant="destructive">
+                          <ThumbsDown className="w-3 h-3 mr-1" />
+                          Reject
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {budget.approvals.map((approval: any, index: number) => (
+                      <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="mt-1">
+                          {approval.status === 'approved' && <CheckCircle className="h-5 w-5 text-green-600" />}
+                          {approval.status === 'rejected' && <XCircle className="h-5 w-5 text-red-600" />}
+                          {approval.status === 'pending' && <Clock className="h-5 w-5 text-yellow-600" />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{approval.userName || 'Unknown User'}</span>
+                            <Badge variant="outline" className={
+                              approval.status === 'approved' ? 'bg-green-50 text-green-700 border-green-200' :
+                              approval.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                              'bg-yellow-50 text-yellow-700 border-yellow-200'
+                            }>
+                              {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
+                            </Badge>
+                          </div>
+                          {approval.comments && (
+                            <p className="text-sm text-gray-600 mt-1">{approval.comments}</p>
+                          )}
+                          {approval.approvedAt && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(approval.approvedAt).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             <ProjectBudgetAnalytics budget={budget} project={project} />
           </TabsContent>
 

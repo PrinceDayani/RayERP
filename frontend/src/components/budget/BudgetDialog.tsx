@@ -78,12 +78,13 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
   const [templates, setTemplates] = useState<BudgetTemplate[]>([]);
   const [currencies] = useState<Currency[]>([
     { code: "INR", name: "Indian Rupee", symbol: "₹", exchangeRate: 1 },
-    { code: "INR", name: "US Dollar", symbol: "$", exchangeRate: 83.12 },
+    { code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 83.12 },
     { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 90.45 },
     { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 105.23 }
   ]);
 
   const [loading, setLoading] = useState(false);
+  const [sendForApproval, setSendForApproval] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -314,7 +315,29 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
         throw new Error(result.message || `Failed to ${editMode ? 'update' : 'create'} budget`);
       }
       
-      alert(`Budget ${editMode ? 'updated' : 'created'} successfully!`);
+      // If sendForApproval is checked and we just created a budget, submit it
+      if (!editMode && sendForApproval && result.data?._id) {
+        try {
+          const submitResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${formData.projectId}/budget/${result.data._id}/submit`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (submitResponse.ok) {
+            alert('Budget created and sent for approval successfully!');
+          } else {
+            alert('Budget created but failed to send for approval');
+          }
+        } catch (submitError) {
+          console.error('Error submitting for approval:', submitError);
+          alert('Budget created but failed to send for approval');
+        }
+      } else {
+        alert(`Budget ${editMode ? 'updated' : 'created'} successfully!`);
+      }
+      
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -621,13 +644,29 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
             </TabsContent>
           </Tabs>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading || projectLoading || !formData.projectName}>
-              {loading ? (editMode ? "Updating..." : "Creating...") : (editMode ? "Update Budget" : "Create Budget")}
-            </Button>
+          <div className="space-y-4">
+            {!editMode && (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="sendForApproval"
+                  checked={sendForApproval}
+                  onChange={(e) => setSendForApproval(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300"
+                />
+                <label htmlFor="sendForApproval" className="text-sm font-medium">
+                  Send for approval after creating
+                </label>
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading || projectLoading || !formData.projectName}>
+                {loading ? (editMode ? "Updating..." : "Creating...") : (editMode ? "Update Budget" : "Create Budget")}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

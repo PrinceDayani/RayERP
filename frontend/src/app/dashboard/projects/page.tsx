@@ -13,9 +13,9 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Plus, Calendar, Users, BarChart3, CheckCircle, AlertCircle, TrendingUp, Search,
   MessageSquare, Clock, DollarSign, Edit, FileText, Download, Filter, ArrowRight,
-  Briefcase, Target, Activity, Zap, GanttChartSquare
+  Briefcase, Target, Activity, Zap, GanttChartSquare, Trash2
 } from "lucide-react";
-import { getProjectStats, getAllProjects, updateProject, type Project } from "@/lib/api/projectsAPI";
+import { getProjectStats, getAllProjects, updateProject, deleteProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { useSocket } from "@/hooks/useSocket";
 import tasksAPI, { type Task, type CreateTaskData } from "@/lib/api/tasksAPI";
@@ -133,6 +133,19 @@ const ProjectManagementDashboard: React.FC = () => {
       }
     } catch (error) {
       toast({ title: "Failed to clone project", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string, projectName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) return;
+    try {
+      await deleteProject(projectId);
+      setProjects(prev => prev.filter(p => p._id !== projectId));
+      toast({ title: "Project deleted successfully" });
+      fetchData();
+    } catch (error) {
+      toast({ title: "Failed to delete project", variant: "destructive" });
     }
   };
 
@@ -366,10 +379,16 @@ const ProjectManagementDashboard: React.FC = () => {
                           <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{project.description}</p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/edit`); }}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <Button variant="ghost" size="icon"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/edit`); }}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="hover:bg-red-100 hover:text-red-600"
+                                onClick={(e) => handleDeleteProject(project._id, project.name, e)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
