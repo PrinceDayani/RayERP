@@ -10,6 +10,10 @@ export interface IProjectFile extends Document {
   mimeType: string;
   project: mongoose.Types.ObjectId;
   uploadedBy: mongoose.Types.ObjectId;
+  fileData?: Buffer;
+  storageType: 'disk' | 'database';
+  compressed: boolean;
+  originalSize: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +50,22 @@ const ProjectFileSchema: Schema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  fileData: {
+    type: Buffer
+  },
+  storageType: {
+    type: String,
+    enum: ['disk', 'database'],
+    default: 'database'
+  },
+  compressed: {
+    type: Boolean,
+    default: false
+  },
+  originalSize: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

@@ -4,8 +4,14 @@ import { Request, Response } from 'express';
 import multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as zlib from 'zlib';
+import { promisify } from 'util';
+import sharp from 'sharp';
 import ProjectFile from '../models/ProjectFile';
 import Project from '../models/Project';
+
+const gzip = promisify(zlib.gzip);
+const gunzip = promisify(zlib.gunzip);
 
 // Extend Request interface to include file property
 interface MulterRequest extends Request {
@@ -58,6 +64,7 @@ export const getProjectFiles = async (req: Request, res: Response) => {
     }
 
     const files = await ProjectFile.find({ project: projectId })
+      .select('-fileData')
       .populate('uploadedBy', 'firstName lastName email')
       .sort({ createdAt: -1 });
 
@@ -84,20 +91,72 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
+    // Read file data
+    let fileData = fs.readFileSync(req.file.path);
+    const originalSize = fileData.length;
+
+    let finalData: Buffer = fileData;
+    let isCompressed = false;
+
+    // Lossless image optimization
+    if (/^image\/(jpeg|jpg|png|webp|tiff)/.test(req.file.mimetype)) {
+      try {
+        const optimized = await sharp(fileData)
+          .png({ compressionLevel: 9, quality: 100 })  // Lossless PNG
+          .toBuffer();
+        
+        if (optimized.length < originalSize) {
+          finalData = Buffer.from(optimized);
+          const reduction = ((1 - optimized.length / originalSize) * 100).toFixed(2);
+          console.log(`Image optimized (lossless): ${originalSize} -> ${optimized.length} bytes (${reduction}% reduction)`);
+        } else {
+          console.log(`Image optimization skipped (no benefit): ${req.file.originalname}`);
+        }
+      } catch (error) {
+        console.log(`Image optimization failed, using original: ${req.file.originalname}`);
+      }
+    }
+    // Gzip compression for documents
+    else if (!/^(video|audio)\//.test(req.file.mimetype) && 
+             !/\.(zip|rar|7z|gz|bz2)$/i.test(req.file.originalname)) {
+      const compressedData = await gzip(fileData, { level: 9 });
+      
+      if (compressedData.length < originalSize * 0.95) {
+        finalData = Buffer.from(compressedData);
+        isCompressed = true;
+        const reduction = ((1 - compressedData.length / originalSize) * 100).toFixed(2);
+        console.log(`Document compressed: ${originalSize} -> ${compressedData.length} bytes (${reduction}% reduction)`);
+      }
+    }
+
     const projectFile = new ProjectFile({
       name: req.file.filename,
       originalName: req.file.originalname,
       path: req.file.path,
-      size: req.file.size,
+      size: finalData.length,
+      originalSize: originalSize,
       mimeType: req.file.mimetype,
       project: projectId,
-      uploadedBy: userId
+      uploadedBy: userId,
+      fileData: finalData,
+      storageType: 'database',
+      compressed: isCompressed
     });
 
     await projectFile.save();
+
+    // Delete file from disk after saving to DB
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
     await projectFile.populate('uploadedBy', 'firstName lastName email');
 
-    res.status(201).json(projectFile);
+    // Remove fileData from response
+    const response = projectFile.toObject();
+    delete response.fileData;
+
+    res.status(201).json(response);
   } catch (error) {
     console.error('Error uploading file:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -118,11 +177,26 @@ export const downloadProjectFile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'File not found' });
     }
 
-    if (!fs.existsSync(file.path)) {
-      return res.status(404).json({ message: 'File not found on disk' });
+    // If stored in database
+    if (file.storageType === 'database' && file.fileData) {
+      let fileData = file.fileData;
+      
+      // Decompress if compressed
+      if (file.compressed) {
+        fileData = await gunzip(file.fileData);
+      }
+      
+      res.setHeader('Content-Type', file.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+      res.send(fileData);
+    } 
+    // If stored on disk (legacy)
+    else if (fs.existsSync(file.path)) {
+      res.download(file.path, file.originalName);
+    } 
+    else {
+      return res.status(404).json({ message: 'File data not found' });
     }
-
-    res.download(file.path, file.originalName);
   } catch (error) {
     console.error('Error downloading file:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -143,8 +217,8 @@ export const deleteProjectFile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'File not found' });
     }
 
-    // Delete file from disk
-    if (fs.existsSync(file.path)) {
+    // Delete file from disk if it exists (legacy files)
+    if (file.storageType === 'disk' && fs.existsSync(file.path)) {
       fs.unlinkSync(file.path);
     }
 
