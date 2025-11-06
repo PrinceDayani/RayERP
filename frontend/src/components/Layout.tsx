@@ -25,7 +25,8 @@ import {
   Target,
   ClipboardList,
   UserCog,
-  Boxes
+  Boxes,
+  Building
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,8 @@ export default function Layout({ children }: LayoutProps) {
       title: "Human Resources",
       items: [
         { path: "/dashboard/users", name: "User Management", icon: UserCog, description: "System user administration", access: isAdmin || isSuperAdmin || isRoot } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/employees", name: "Employees", icon: UserCheck, description: "Employee management" } as MenuItem & { icon: any; description: string }
+        { path: "/dashboard/employees", name: "Employees", icon: UserCheck, description: "Employee management" } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/departments", name: "Departments", icon: Building, description: "Department management" } as MenuItem & { icon: any; description: string }
       ]
     },
     {

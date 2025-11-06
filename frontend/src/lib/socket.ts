@@ -1,16 +1,17 @@
 // path: frontend/src/lib/socket.ts
-import { io } from "socket.io-client";
-import type { Socket } from "socket.io-client";
+import io from "socket.io-client";
 import { useEffect, useState } from "react";
+
+type SocketType = ReturnType<typeof io>;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Global singleton
-let socket: Socket | null = null;
+let socket: SocketType | null = null;
 let isConnecting = false;
 
 // Initialize socket with safe singleton + reconnection
-export const initializeSocket = (token?: string): Socket | null => {
+export const initializeSocket = (token?: string): SocketType | null => {
   if (!API_URL) {
     console.warn("⚠️ NEXT_PUBLIC_API_URL environment variable is not set");
     return null;
@@ -35,7 +36,7 @@ export const initializeSocket = (token?: string): Socket | null => {
 
   socket = io(API_URL, {
     auth: token ? { token } : undefined,
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
@@ -43,6 +44,9 @@ export const initializeSocket = (token?: string): Socket | null => {
     timeout: 20000,
     path: "/socket.io/",
     autoConnect: true,
+    upgrade: true,
+    rememberUpgrade: true,
+    withCredentials: true,
   });
 
   socket.on("connect", () => {
@@ -87,17 +91,18 @@ export const disconnectSocket = (): void => {
 };
 
 // Get socket instance
-export const getSocket = (): Socket | null => socket;
+export const getSocket = (): SocketType | null => socket;
 
 // Hook for socket state
 export const useSocket = (
   token?: string
-): [Socket | null, boolean, string | null] => {
+): [SocketType | null, boolean, string | null] => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const s = initializeSocket(token);
+    if (!s) return;
 
     const onConnect = () => {
       setIsConnected(true);

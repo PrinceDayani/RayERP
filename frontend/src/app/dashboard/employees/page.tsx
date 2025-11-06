@@ -146,7 +146,8 @@ const EmployeeManagementDashboard = () => {
       // Fetch employees first (most important)
       let employeesData = [];
       try {
-        employeesData = await employeesAPI.getAll();
+        const response = await employeesAPI.getAll();
+        employeesData = Array.isArray(response) ? response : (response?.data || []);
         setEmployees(employeesData);
       } catch (error) {
         console.error("Error fetching employees:", error);
@@ -560,7 +561,8 @@ const LeaveManagement = () => {
 
   const fetchEmployees = async () => {
     try {
-      const data = await employeesAPI.getAll();
+      const response = await employeesAPI.getAll();
+      const data = Array.isArray(response) ? response : (response?.data || []);
       setEmployees(data);
     } catch (error) {
       console.error('Error fetching employees:', error);

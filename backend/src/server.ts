@@ -86,13 +86,15 @@ app.use(errorMiddleware);
 // Socket.IO setup
 const io = new SocketServer(server, {
   cors: {
-    origin: allowedOrigins.length > 0 ? allowedOrigins : "*",
+    origin: allowedOrigins.length > 0 ? allowedOrigins : ["http://localhost:3000"],
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["websocket", "polling"],
+  transports: ["polling", "websocket"],
   allowEIO3: true,
-  path: "/socket.io/"
+  path: "/socket.io/",
+  pingTimeout: 60000,
+  pingInterval: 25000,
 });
 
 // Handle socket connections
@@ -157,6 +159,7 @@ mongoose
           description: 'Super Administrator with complete system access',
           permissions: [
             'manage_roles', 'view_users', 'create_user', 'update_user', 'delete_user',
+            'view_employees', 'create_employee', 'update_employee', 'delete_employee',
             'view_products', 'create_product', 'update_product', 'delete_product',
             'view_orders', 'create_order', 'update_order', 'delete_order',
             'view_inventory', 'manage_inventory', 'view_customers', 'create_customer',
@@ -169,6 +172,7 @@ mongoose
           description: 'Administrator with management access',
           permissions: [
             'view_users', 'create_user', 'update_user',
+            'view_employees', 'create_employee', 'update_employee',
             'view_products', 'create_product', 'update_product',
             'view_orders', 'create_order', 'update_order',
             'view_inventory', 'manage_inventory', 'view_customers',
@@ -179,7 +183,8 @@ mongoose
           name: 'manager',
           description: 'Manager with operational access',
           permissions: [
-            'view_users', 'view_products', 'create_product', 'update_product',
+            'view_users', 'view_employees',
+            'view_products', 'create_product', 'update_product',
             'view_orders', 'create_order', 'update_order',
             'view_inventory', 'view_customers', 'create_customer', 'update_customer'
           ]
@@ -188,7 +193,7 @@ mongoose
           name: 'employee',
           description: 'Employee with basic access',
           permissions: [
-            'view_products', 'view_orders', 'create_order',
+            'view_employees', 'view_products', 'view_orders', 'create_order',
             'view_inventory', 'view_customers'
           ]
         }

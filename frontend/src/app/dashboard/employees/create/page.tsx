@@ -10,8 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import api from '@/lib/api';
-import { apiRequest } from '@/lib/api';
+import { api, apiRequest } from '@/lib/api';
 import { toast } from '@/components/ui/use-toast';
 
 export default function CreateEmployeePage() {

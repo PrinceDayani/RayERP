@@ -6,9 +6,9 @@ import Task from '../models/Task';
 export const getAllEmployees = async (req: Request, res: Response) => {
   try {
     const employees = await Employee.find().populate('manager', 'firstName lastName');
-    res.json(employees);
+    res.json({ success: true, data: employees });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching employees', error });
+    res.status(500).json({ success: false, message: 'Error fetching employees', error });
   }
 };
 

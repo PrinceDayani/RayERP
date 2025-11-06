@@ -17,6 +17,7 @@ import activityRoutes from './activity.routes';
 import rbacRoutes from './rbac.routes';
 import projectTemplateRoutes from './projectTemplate.routes';
 import resourceRoutes from './resourceRoutes';
+import departmentRoutes from './department.routes';
 // --- Merged Financial & Ledger Routes ---
 import budgetRoutes from './budgetRoutes';
 import budgetTemplateRoutes from './budgetTemplateRoutes';
@@ -50,6 +51,7 @@ router.use('/activities', activityRoutes);
 router.use('/rbac', rbacRoutes);
 router.use('/project-templates', projectTemplateRoutes);
 router.use('/resources', resourceRoutes);
+router.use('/departments', departmentRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);
