@@ -22,16 +22,32 @@ interface StatsCardsProps {
 
 const StatsCards: React.FC<StatsCardsProps> = ({ stats, isAuthenticated, loading }) => {
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
+    try {
+      if (typeof value !== 'number' || isNaN(value)) {
+        return '₹0.00';
+      }
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(value);
+    } catch (error) {
+      console.warn('Currency formatting failed:', error instanceof Error ? error.message : 'Unknown error');
+      return '₹0.00';
+    }
   };
 
   const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('en-US').format(value);
+    try {
+      if (typeof value !== 'number' || isNaN(value)) {
+        return '0';
+      }
+      return new Intl.NumberFormat('en-US').format(value);
+    } catch (error) {
+      console.warn('Number formatting failed:', error instanceof Error ? error.message : 'Unknown error');
+      return '0';
+    }
   };
 
   const cards = [

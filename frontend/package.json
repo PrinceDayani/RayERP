@@ -5,9 +5,23 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:analyze": "ANALYZE=true next build",
+    "build:prod": "NODE_ENV=production next build",
     "start": "next start",
-    "lint": "next lint"
-  },
+    "start:prod": "NODE_ENV=production next start",
+    "lint": "next lint --fix",
+    "lint:check": "next lint",
+    "test": "echo \"Frontend tests not implemented yet\" && exit 0",
+    "test:watch": "echo \"Frontend test watch not implemented yet\" && exit 0",
+    "test:e2e": "echo \"E2E tests not implemented yet\" && exit 0",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next out",
+    "export": "next export",
+    "serve": "npx serve out",
+    "health-check": "curl -f http://localhost:3000 || exit 1",
+    "docker:build": "docker build -t rayerp-frontend .",
+    "docker:run": "docker run -p 3000:3000 rayerp-frontend"
+  }
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",

@@ -97,12 +97,28 @@ io.on("connection", (socket) => {
   // Handle user authentication and room joining
   socket.on("authenticate", (token) => {
     try {
+      if (!token || typeof token !== 'string') {
+        socket.emit("auth_error", "Invalid token format");
+        return;
+      }
+      
       const jwt = require("jsonwebtoken");
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      if (!decoded || !decoded.id) {
+        socket.emit("auth_error", "Invalid token payload");
+        return;
+      }
+      
       socket.join(`user-${decoded.id}`);
+      socket.userId = decoded.id;
       logger.info(`User ${decoded.id} authenticated and joined room`);
+      socket.emit("auth_success", { userId: decoded.id });
     } catch (error) {
-      logger.error("Socket authentication failed:", error);
+      logger.error("Socket authentication failed:", {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        socketId: socket.id
+      });
       socket.emit("auth_error", "Authentication failed");
     }
   });
@@ -133,6 +149,11 @@ const MONGODB_URI = process.env.MONGO_URI;
 
 if (!MONGODB_URI) {
   logger.error("❌ MongoDB URI is missing! Check your environment variables.");
+  process.exit(1);
+}
+
+if (!process.env.JWT_SECRET) {
+  logger.error("❌ JWT_SECRET is missing! Check your environment variables.");
   process.exit(1);
 }
 

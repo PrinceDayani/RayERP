@@ -65,7 +65,11 @@ export const initializeSocket = async (token?: string): Promise<Socket | null> =
   });
 
   socket.on("connect_error", (err: Error) => {
-    console.error("❌ Socket connection error:", err.message);
+    console.error("❌ Socket connection error:", {
+      message: err.message,
+      type: err.name,
+      socketId: socket?.id
+    });
     isConnecting = false;
   });
 
@@ -74,7 +78,11 @@ export const initializeSocket = async (token?: string): Promise<Socket | null> =
   });
 
   socket.on("reconnect_error", (err: Error) => {
-    console.error("❌ Socket reconnection error:", err.message);
+    console.error("❌ Socket reconnection error:", {
+      message: err.message,
+      type: err.name,
+      attempt: socket?.io?.engine?.upgradeTimeout
+    });
   });
 
   socket.on("reconnect_failed", () => {
@@ -105,35 +113,69 @@ export const useSocket = (url?: string): Socket | null => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    try {
-      const serverUrl = url || 'http://localhost:5000';
-      
-      const newSocket = io(serverUrl, {
-        transports: ['polling', 'websocket'],
-        withCredentials: false,
-        autoConnect: true,
-        reconnection: false,
-        timeout: 5000
-      });
+    let mounted = true;
+    let newSocket: Socket | null = null;
 
-      newSocket.on('connect', () => {
-        console.log('✅ Socket connected');
-        setSocketInstance(newSocket);
-      });
+    const initSocket = async () => {
+      try {
+        const serverUrl = url || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        
+        // Validate URL before connecting
+        const urlObj = new URL(serverUrl);
+        if (!['localhost', '127.0.0.1'].includes(urlObj.hostname) && process.env.NODE_ENV === 'development') {
+          console.warn('Invalid socket URL in development:', serverUrl);
+          return;
+        }
+        
+        newSocket = io(serverUrl, {
+          transports: ['polling', 'websocket'],
+          withCredentials: true,
+          autoConnect: true,
+          reconnection: true,
+          reconnectionAttempts: 3,
+          reconnectionDelay: 1000,
+          timeout: 10000,
+          forceNew: false
+        });
 
-      newSocket.on('connect_error', () => {
-        console.warn('⚠️ Socket connection failed');
-        setSocketInstance(null);
-      });
+        newSocket.on('connect', () => {
+          if (mounted) {
+            console.log('✅ Socket connected:', newSocket?.id);
+            setSocketInstance(newSocket);
+          }
+        });
 
-      return () => {
+        newSocket.on('connect_error', (error) => {
+          if (mounted) {
+            console.warn('⚠️ Socket connection failed:', error.message);
+            setSocketInstance(null);
+          }
+        });
+
+        newSocket.on('disconnect', (reason) => {
+          if (mounted) {
+            console.warn('⚠️ Socket disconnected:', reason);
+            setSocketInstance(null);
+          }
+        });
+      } catch (error) {
+        if (mounted) {
+          console.warn('Socket initialization failed:', error instanceof Error ? error.message : 'Unknown error');
+          setSocketInstance(null);
+        }
+      }
+    };
+
+    initSocket();
+
+    return () => {
+      mounted = false;
+      if (newSocket) {
+        newSocket.removeAllListeners();
         newSocket.disconnect();
-        setSocketInstance(null);
-      };
-    } catch (error) {
-      console.warn('Socket initialization failed');
+      }
       setSocketInstance(null);
-    }
+    };
   }, [url]);
 
   return socketInstance;
@@ -161,8 +203,10 @@ export const useSocketWithStatus = (
       const onDisconnect = () => setIsConnected(false);
 
       const onError = (err: Error) => {
-        setIsConnected(false);
-        setError(err.message);
+        if (mounted) {
+          setIsConnected(false);
+          setError(err.message || 'Connection error');
+        }
       };
 
       s.on("connect", onConnect);

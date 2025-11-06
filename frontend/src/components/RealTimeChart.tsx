@@ -16,26 +16,39 @@ export default function RealTimeChart() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const timeString = now.toLocaleTimeString();
+    let mounted = true;
+    
+    const updateChartData = () => {
+      if (!mounted) return;
       
-      setChartData(prev => {
-        const newData = [
-          ...prev,
-          {
-            time: timeString,
-            revenue: Math.floor(Math.random() * 5000) + 1000,
-            users: Math.floor(Math.random() * 50) + 10,
-            orders: Math.floor(Math.random() * 20) + 5
-          }
-        ].slice(-20); // Keep only last 20 data points
+      try {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
         
-        return newData;
-      });
-    }, 3000);
+        setChartData(prev => {
+          const newData = [
+            ...prev,
+            {
+              time: timeString,
+              revenue: Math.floor(Math.random() * 5000) + 1000,
+              users: Math.floor(Math.random() * 50) + 10,
+              orders: Math.floor(Math.random() * 20) + 5
+            }
+          ].slice(-20); // Keep only last 20 data points
+          
+          return newData;
+        });
+      } catch (error) {
+        console.warn('Chart data update failed:', error instanceof Error ? error.message : 'Unknown error');
+      }
+    };
+    
+    const interval = setInterval(updateChartData, 3000);
 
-    return () => clearInterval(interval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   return (

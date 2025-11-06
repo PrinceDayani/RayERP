@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SearchIcon, FilterIcon, DownloadIcon } from "lucide-react";
+import { SearchIcon, FilterIcon, DownloadIcon, Activity } from "lucide-react";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { getActivityLogs, ActivityLog } from "@/lib/api/activityAPI";
 
@@ -369,7 +369,7 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
                 <TableCell colSpan={7} className="text-center py-12">
                   <div className="flex flex-col items-center space-y-3">
                     <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
-                      <ActivityIcon className="h-8 w-8 text-slate-400" />
+                      <Activity className="h-8 w-8 text-slate-400" />
                     </div>
                     <div className="text-slate-500 dark:text-slate-400 font-medium">No activity logs found</div>
                     <div className="text-sm text-slate-400 dark:text-slate-500">Try adjusting your search filters</div>

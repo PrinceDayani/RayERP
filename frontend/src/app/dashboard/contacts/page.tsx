@@ -964,7 +964,7 @@ export default function ContactsPage() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(`https://maps.google.com/?q=${encodeURIComponent(contact.address)}`);
+                                window.open(`https://maps.google.com/?q=${encodeURIComponent(contact.address || '')}`);
                               }}
                               className="hover:bg-orange-50 hover:text-orange-600 flex-shrink-0"
                             >

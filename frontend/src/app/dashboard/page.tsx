@@ -158,8 +158,12 @@ const Dashboard = () => {
         ],
       });
 
-    } catch (error: any) {
-      console.error("Error fetching dashboard data:", error);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error("Error fetching dashboard data:", {
+        message: errorMessage,
+        timestamp: new Date().toISOString()
+      });
       setDataError("Failed to load dashboard data. Please try refreshing the page.");
       toast({
         title: "Error",
@@ -231,7 +235,11 @@ const Dashboard = () => {
 
         const handleSocketError = (err: Error) => {
           if (!mounted) return;
-          console.warn("Socket connection error:", err.message);
+          console.warn("Socket connection error:", {
+            message: err.message || 'Unknown socket error',
+            type: err.name || 'Error',
+            timestamp: new Date().toISOString()
+          });
           setSocketConnected(false);
           if (!pollingIntervalRef.current) {
             pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
