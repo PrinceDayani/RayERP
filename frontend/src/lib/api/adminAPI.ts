@@ -295,6 +295,19 @@ const adminAPI = {
       throw error;
     }
   },
+
+  resetPassword: async (userId: string, newPassword: string): Promise<void> => {
+    try {
+      const response = await apiRequest(`/api/users/${userId}/reset-password`, {
+        method: 'PUT',
+        body: JSON.stringify({ newPassword })
+      });
+      return response;
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      throw error;
+    }
+  },
 };
 
 export default adminAPI;

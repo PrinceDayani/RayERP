@@ -2,20 +2,11 @@ import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-export enum UserRole {
-  ROOT = 'root',
-  SUPER_ADMIN = 'super_admin',
-  ADMIN = 'admin',
-  MEMBER = 'member',
-  NORMAL = 'normal'
-}
-
 export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
-  role: UserRole;
-  roles?: string[]; // New RBAC roles
+  role: mongoose.Types.ObjectId; // Reference to Role model
   status?: string;
   lastLogin?: Date;
   createdAt: Date;
@@ -49,14 +40,10 @@ const userSchema = new Schema<IUser>(
       select: false, // Don't include password in query results
     },
     role: {
-      type: String,
-      enum: Object.values(UserRole),
-      default: UserRole.NORMAL,
-    },
-    roles: [{
       type: Schema.Types.ObjectId,
-      ref: 'Role'
-    }],
+      ref: 'Role',
+      required: true
+    },
     status: {
       type: String,
       enum: ['active', 'inactive', 'pending'],

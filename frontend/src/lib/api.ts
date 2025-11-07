@@ -1,7 +1,7 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public data?: any) {
     super(message);
     this.name = 'ApiError';
   }
@@ -21,7 +21,9 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
     });
     
     if (!response.ok) {
-      throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData.error || errorData.message || `HTTP error! status: ${response.status}`;
+      throw new ApiError(response.status, message, errorData);
     }
     
     return response.json();

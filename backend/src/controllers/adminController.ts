@@ -27,14 +27,15 @@ export const getAdminStats = async (req: Request, res: Response) => {
 // Get all users for admin
 export const getAdminUsers = async (req: Request, res: Response) => {
   try {
-    const users = await User.find().select('-password').populate('roles').sort({ createdAt: -1 });
+    const users = await User.find().select('-password').populate('role').sort({ createdAt: -1 });
     
     const formattedUsers = users.map(user => ({
+      id: user._id.toString(),
       _id: user._id.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
-      roles: user.roles || [],
+      roles: user.role ? [user.role] : [],
       status: user.status || 'active',
       lastLogin: user.lastLogin || user.createdAt
     }));
@@ -70,6 +71,7 @@ export const createAdminUser = async (req: Request, res: Response) => {
 
     res.status(201).json({
       id: user._id.toString(),
+      _id: user._id.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
@@ -88,7 +90,7 @@ export const updateAdminUser = async (req: Request, res: Response) => {
     const { userId } = req.params;
     const updates = req.body;
 
-    const user = await User.findByIdAndUpdate(userId, updates, { new: true }).populate('roles').select('-password');
+    const user = await User.findByIdAndUpdate(userId, updates, { new: true }).populate('role').select('-password');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -104,11 +106,12 @@ export const updateAdminUser = async (req: Request, res: Response) => {
     });
 
     res.json({
+      id: user._id.toString(),
       _id: user._id.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
-      roles: user.roles || [],
+      roles: user.role ? [user.role] : [],
       status: user.status || 'active',
       lastLogin: user.lastLogin || user.createdAt
     });

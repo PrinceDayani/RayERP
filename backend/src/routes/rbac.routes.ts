@@ -11,26 +11,25 @@ import {
   toggleRoleStatus
 } from '../controllers/rbacController';
 import { authenticateToken } from '../middleware/auth.middleware';
-import { requirePermission } from '../middleware/rbac.middleware';
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticateToken);
 
-// Roles management
-router.get('/roles', requirePermission('manage_roles'), getRoles);
-router.post('/roles', requirePermission('manage_roles'), createRole);
-router.put('/roles/:roleId', requirePermission('manage_roles'), updateRole);
-router.delete('/roles/:roleId', requirePermission('manage_roles'), deleteRole);
+// Roles management - Only Root can manage roles
+router.get('/roles', getRoles);
+router.post('/roles', createRole);
+router.put('/roles/:roleId', updateRole);
+router.delete('/roles/:roleId', deleteRole);
+router.patch('/roles/:roleId/toggle-status', toggleRoleStatus);
 
-// Permissions management
-router.get('/permissions', requirePermission('manage_roles'), getPermissions);
-router.post('/permissions', requirePermission('manage_roles'), createPermission);
+// Permissions management - Only Root can manage permissions
+router.get('/permissions', getPermissions);
+router.post('/permissions', createPermission);
 
-// User role assignment
-router.put('/users/:userId/roles', requirePermission('manage_roles'), assignRolesToUser);
-router.get('/users/:userId/permissions', requirePermission('view_users'), getUserPermissions);
-router.patch('/roles/:roleId/toggle-status', requirePermission('manage_roles'), toggleRoleStatus);
+// User role assignment - Only Root can assign roles
+router.put('/users/:userId/role', assignRolesToUser);
+router.get('/users/:userId/permissions', getUserPermissions);
 
 export default router;

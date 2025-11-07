@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import Project from '../models/Project';
-import { UserRole } from '../models/User';
 
 export const checkProjectAccess = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -11,8 +10,8 @@ export const checkProjectAccess = async (req: Request, res: Response, next: Next
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    // Root user has access to everything
-    if ((user.role as string) === 'root') {
+    const userRole = (user.role as any);
+    if (userRole?.name === 'Root') {
       return next();
     }
 
@@ -21,9 +20,8 @@ export const checkProjectAccess = async (req: Request, res: Response, next: Next
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    // Check access permissions
     const hasAccess = 
-      (user.role as string) === 'root' ||
+      userRole?.name === 'Root' ||
       project.owner.toString() === user._id.toString() ||
       project.members.some(memberId => memberId.toString() === user._id.toString());
 
@@ -46,8 +44,8 @@ export const checkProjectManagementAccess = async (req: Request, res: Response, 
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    // Only root and super_admin can manage projects
-    if ((user.role as string) !== 'root' && (user.role as string) !== 'super_admin') {
+    const userRole = (user.role as any);
+    if (userRole?.name !== 'Root' && userRole?.name !== 'Superadmin') {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 

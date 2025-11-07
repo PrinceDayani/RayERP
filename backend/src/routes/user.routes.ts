@@ -1,11 +1,13 @@
-import { Router } from "express"
+import { Router } from "express";
+import { getAllUsers, getUserById, updateUserRole, resetUserPassword } from '../controllers/userController';
+import { protect } from '../middleware/auth.middleware';
+import { requireRole } from '../middleware/role.middleware';
 
-const router = Router()
+const router = Router();
 
-router.get("/", (req, res) => res.send("Get all users"))
-router.get("/:id", (req, res) => res.send(`Get user ${req.params.id}`))
-router.post("/", (req, res) => res.send("Create user"))
-router.put("/:id", (req, res) => res.send(`Update user ${req.params.id}`))
-router.delete("/:id", (req, res) => res.send(`Delete user ${req.params.id}`))
+router.get("/", protect, requireRole(['Superadmin', 'Root']), getAllUsers);
+router.get("/:id", protect, getUserById);
+router.put("/:id/role", protect, requireRole(['Superadmin', 'Root']), updateUserRole);
+router.put("/:id/reset-password", protect, requireRole(['Superadmin', 'Root']), resetUserPassword);
 
-export default router
+export default router;

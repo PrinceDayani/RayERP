@@ -1,17 +1,30 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
+
 export enum UserRole {
-  ROOT = 'root',
-  SUPER_ADMIN = 'super_admin',
-  ADMIN = 'admin',
-  NORMAL = 'normal'
+  ROOT = 'Root',
+  SUPER_ADMIN = 'Super Admin',
+  ADMIN = 'Admin',
+  MANAGER = 'Manager',
+  EMPLOYEE = 'Employee',
+  NORMAL = 'Normal'
+}
+
+export interface Role {
+  _id: string;
+  name: string;
+  description?: string;
+  permissions: string[];
+  level: number;
+  isDefault: boolean;
+  isActive: boolean;
 }
 
 interface User {
   _id: string;
   name: string;
   email: string;
-  role: string;
+  role: Role;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,15 +34,18 @@ interface AuthContextType {
   token: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, roleId?: string) => Promise<boolean>;
   error: string | null;
   isLoading: boolean;
   loading: boolean;
   isAuthenticated: boolean;
-  hasMinimumRole: (requiredRole: UserRole) => boolean;
-  updateUserRole: (newRole: string) => void;
+  hasMinimumLevel: (requiredLevel: number) => boolean;
+  hasRole: (roleName: string) => boolean;
+  updateUserRole: (newRole: Role) => void;
   checkAuth: () => Promise<boolean>;
   backendAvailable: boolean;
+  roles: Role[];
+  fetchRoles: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,13 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [backendAvailable, setBackendAvailable] = useState(true);
+  const [roles, setRoles] = useState<Role[]>([]);
 
-  // Load token from localStorage on mount
   useEffect(() => {
     const savedToken = localStorage.getItem('auth-token');
     if (savedToken) {
       setToken(savedToken);
       getCurrentUser(savedToken);
+      fetchRoles();
     } else {
       setInitialLoading(false);
     }
@@ -76,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           socket?.emit('authenticate', token);
         });
         
-        socket.on('roleUpdated', (data: { userId: string; newRole: string }) => {
+        socket.on('roleUpdated', (data: { userId: string; newRole: Role }) => {
           if (data.userId === user._id) {
             updateUserRole(data.newRole);
           }
@@ -209,7 +226,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+  const fetchRoles = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/rbac/roles`, {
+        headers: {
+          'Authorization': `Bearer ${token || localStorage.getItem('auth-token')}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRoles(data);
+      }
+    } catch (err) {
+      console.error('Error fetching roles:', err);
+    }
+  };
+
+  const register = async (name: string, email: string, password: string, roleId?: string): Promise<boolean> => {
     setError(null);
     setIsLoading(true);
     
@@ -228,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, roleId })
       });
 
       const data = await response.json();
@@ -278,23 +314,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const hasMinimumRole = (requiredRole: UserRole): boolean => {
-    if (!user) return false;
-    
-    const roleHierarchy = {
-      [UserRole.NORMAL]: 0,
-      [UserRole.ADMIN]: 1,
-      [UserRole.SUPER_ADMIN]: 2,
-      [UserRole.ROOT]: 3
-    };
-    
-    const userRoleLevel = roleHierarchy[user.role as UserRole] ?? 0;
-    const requiredRoleLevel = roleHierarchy[requiredRole] ?? 0;
-    
-    return userRoleLevel >= requiredRoleLevel;
+  const hasMinimumLevel = (requiredLevel: number): boolean => {
+    if (!user || !user.role) return false;
+    return user.role.level >= requiredLevel;
   };
 
-  const updateUserRole = (newRole: string) => {
+  const hasRole = (roleName: string): boolean => {
+    if (!user || !user.role) return false;
+    return user.role.name === roleName;
+  };
+
+  const updateUserRole = (newRole: Role) => {
     if (user) {
       setUser({ ...user, role: newRole });
     }
@@ -362,10 +392,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       loading: initialLoading || isLoading,
       isAuthenticated,
-      hasMinimumRole,
+      hasMinimumLevel,
+      hasRole,
       updateUserRole,
       checkAuth,
-      backendAvailable
+      backendAvailable,
+      roles,
+      fetchRoles
     }}>
       {children}
     </AuthContext.Provider>

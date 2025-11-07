@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import User, { UserRole } from '../models/User';
+import User from '../models/User';
 import { Role } from '../models/Role';
 import { UserProject } from '../models/UserProject';
 import Project from '../models/Project';
+import { seedDefaultRoles } from '../utils/seedDefaultRoles';
 
 export const onboardUser = async (req: Request, res: Response) => {
   try {
@@ -13,12 +14,19 @@ export const onboardUser = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    await seedDefaultRoles();
+    
+    let assignedRoleId = role;
+    if (!assignedRoleId) {
+      const defaultRole = await Role.findOne({ isDefault: true }).sort({ level: 1 });
+      assignedRoleId = defaultRole?._id;
+    }
+
     const user = await User.create({
       name,
       email,
       password,
-      role: role || UserRole.NORMAL,
-      roles: roleIds || []
+      role: assignedRoleId
     });
 
     if (projectIds?.length) {
@@ -35,7 +43,7 @@ export const onboardUser = async (req: Request, res: Response) => {
     }
 
     const result = await User.findById(user._id)
-      .populate('roles', 'name')
+      .populate('role')
       .select('-password');
 
     res.status(201).json({ message: 'User onboarded successfully', user: result });
@@ -61,7 +69,7 @@ export const getUserWithProjects = async (req: Request, res: Response) => {
     const { userId } = req.params;
     
     const user = await User.findById(userId)
-      .populate('roles', 'name')
+      .populate('role')
       .select('-password');
     
     const projects = await UserProject.find({ userId, isActive: true })

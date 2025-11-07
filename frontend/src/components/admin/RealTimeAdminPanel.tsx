@@ -90,11 +90,11 @@ export function RealTimeAdminPanel() {
       const isAdmin = ['admin', 'super_admin', 'root'].includes(userRole || '');
       
       setPermissions({
-        canViewUsers: isAdmin || user?.permissions?.includes('users:read'),
-        canManageUsers: isAdmin || user?.permissions?.includes('users:write'),
-        canViewLogs: isAdmin || user?.permissions?.includes('logs:read'),
-        canManageSystem: isAdmin || user?.permissions?.includes('system:manage'),
-        canViewMetrics: isAdmin || user?.permissions?.includes('metrics:read')
+        canViewUsers: isAdmin,
+        canManageUsers: isAdmin,
+        canViewLogs: isAdmin,
+        canManageSystem: isAdmin,
+        canViewMetrics: isAdmin
       });
     };
 
@@ -133,19 +133,29 @@ export function RealTimeAdminPanel() {
       try {
         const promises = [];
         if (permissions.canViewMetrics) {
-          promises.push(adminAPI.getStats().catch(() => null));
+          promises.push(adminAPI.getStats().catch((err) => {
+            if (err.status === 403 || err.status === 401) {
+              setPermissions(prev => ({ ...prev, canViewMetrics: false }));
+            }
+            return null;
+          }));
         } else {
           promises.push(Promise.resolve(null));
         }
         if (permissions.canViewLogs) {
-          promises.push(adminAPI.getLogs({ limit: 50 }).catch(() => []));
+          promises.push(adminAPI.getLogs({ limit: 50 }).catch((err) => {
+            if (err.status === 403 || err.status === 401) {
+              setPermissions(prev => ({ ...prev, canViewLogs: false }));
+            }
+            return [];
+          }));
         } else {
           promises.push(Promise.resolve([]));
         }
         
         const [statsData, logsData] = await Promise.all(promises);
 
-        if (statsData && permissions.canViewMetrics) {
+        if (statsData && permissions.canViewMetrics && typeof statsData === 'object' && 'activeUsers' in statsData) {
           setMetrics(prev => ({
             ...prev,
             activeUsers: statsData.activeUsers || 0,
@@ -154,7 +164,7 @@ export function RealTimeAdminPanel() {
           }));
         }
 
-        if (logsData && permissions.canViewLogs) {
+        if (logsData && permissions.canViewLogs && Array.isArray(logsData)) {
           const formattedActivities = logsData.map((log: any) => ({
             id: log.id,
             userId: log.userId || 'system',

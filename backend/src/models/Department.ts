@@ -12,6 +12,7 @@ export interface IDepartment extends Document {
   budget: number;
   status: 'active' | 'inactive';
   employeeCount: number;
+  permissions: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,7 +28,8 @@ const departmentSchema = new Schema<IDepartment>({
   location: { type: String, required: true },
   budget: { type: Number, required: true, min: 0, default: 0 },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
-  employeeCount: { type: Number, default: 0, min: 0 }
+  employeeCount: { type: Number, default: 0, min: 0 },
+  permissions: [{ type: String, trim: true }]
 }, { timestamps: true });
 
 departmentSchema.index({ name: 1 });

@@ -112,11 +112,13 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
     console.log("Searching for:", searchQuery);
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role?.toLowerCase()) {
+  const getRoleColor = (role: any) => {
+    const roleName = typeof role === 'string' ? role : role?.name || '';
+    switch (roleName.toLowerCase()) {
       case 'root':
         return 'bg-red-500';
       case 'super_admin':
+      case 'superadmin':
         return 'bg-purple-500';
       case 'admin':
         return 'bg-red-500';
@@ -287,7 +289,7 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
               <Button variant="ghost" className="relative h-12 w-12 rounded-full hover:bg-accent/50 transition-all duration-300 hover:scale-110 focus-ring-modern">
                 <div className="relative">
                   <Avatar className="h-10 w-10 border-2 border-primary/30 shadow-lg">
-                    <AvatarFallback className={`${getRoleColor(user?.role || '')} text-white font-bold`}>
+                    <AvatarFallback className={`${getRoleColor(user?.role)} text-white font-bold`}>
                       {user?.name?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
@@ -299,7 +301,7 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
               <DropdownMenuLabel className="font-normal p-4">
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-12 w-12">
-                    <AvatarFallback className={`${getRoleColor(user?.role || '')} text-white font-semibold text-lg`}>
+                    <AvatarFallback className={`${getRoleColor(user?.role)} text-white font-semibold text-lg`}>
                       {user?.name?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
@@ -310,7 +312,7 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
                     </p>
                     <Badge variant="outline" className="w-fit mt-2 text-xs">
                       <Shield className="h-3 w-3 mr-1" />
-                      {user?.role || "user"}
+                      {typeof user?.role === 'string' ? user.role : user?.role?.name || 'user'}
                     </Badge>
                   </div>
                 </div>

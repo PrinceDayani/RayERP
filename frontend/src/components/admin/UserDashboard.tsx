@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { initializeSocket, getSocket } from "@/lib/socket";
+import { compareRoles, getRoleDisplayName } from "@/lib/roleUtils";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { EmployeeList } from "@/components/employee";
 import { employeesAPI } from "@/lib/api/employeesAPI";
@@ -70,7 +71,7 @@ interface AnalyticsData {
 }
 
 const Dashboard = () => {
-  const { user, loading, isAuthenticated, hasMinimumRole } = useAuth();
+  const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
   
   // State management with proper typing
@@ -148,7 +149,7 @@ const Dashboard = () => {
 
   // Role-specific welcome components
   const RoleWelcomeCard = ({ role, icon: Icon, title, description, colorScheme }: {
-    role: UserRole;
+    role: string;
     icon: any;
     title: string;
     description: string;
@@ -241,6 +242,39 @@ const Dashboard = () => {
     </Card>
   );
 
+  // Helper function to check role
+  const hasMinimumRole = (requiredRole: UserRole): boolean => {
+    if (!user || !user.role) return false;
+    const userRoleObj = typeof user.role === 'string' ? null : user.role;
+    
+    // Use role level if available (from database)
+    if (userRoleObj && userRoleObj.level !== undefined) {
+      const requiredLevels: { [key: string]: number } = {
+        [UserRole.ROOT]: 100,
+        [UserRole.SUPER_ADMIN]: 90,
+        [UserRole.ADMIN]: 80,
+        [UserRole.MANAGER]: 70,
+        [UserRole.EMPLOYEE]: 60,
+        [UserRole.NORMAL]: 50
+      };
+      return userRoleObj.level >= (requiredLevels[requiredRole] || 0);
+    }
+    
+    // Fallback to name comparison
+    const roleName = typeof user.role === 'string' ? user.role : user.role.name;
+    const roleHierarchy: { [key: string]: number } = {
+      'root': 6,
+      'super admin': 5,
+      'superadmin': 5,
+      'admin': 4,
+      'manager': 3,
+      'employee': 2,
+      'normal': 1
+    };
+    
+    return (roleHierarchy[roleName.toLowerCase()] || 0) >= (roleHierarchy[requiredRole.toLowerCase()] || 0);
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -265,7 +299,7 @@ const Dashboard = () => {
         {/* Role-specific welcome messages with live status */}
         {isAuthenticated && user && (
           <>
-            {user.role === UserRole.ROOT && (
+            {(typeof user.role === 'string' ? user.role : user.role.name) === UserRole.ROOT && (
               <Card className="mb-6 border-red-200 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/40 dark:border-red-800 theme-shadow">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
@@ -299,7 +333,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             )}
-            {user.role === UserRole.SUPER_ADMIN && (
+            {(typeof user.role === 'string' ? user.role : user.role.name) === UserRole.SUPER_ADMIN && (
               <Card className="mb-6 border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950/40 dark:to-purple-900/40 dark:border-purple-800 theme-shadow">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
@@ -333,7 +367,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             )}
-            {user.role === UserRole.ADMIN && (
+            {(typeof user.role === 'string' ? user.role : user.role.name) === UserRole.ADMIN && (
               <Card className="mb-6 border-red-200 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/40 dark:border-red-800 theme-shadow">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
@@ -860,7 +894,7 @@ const Dashboard = () => {
                         variant="outline" 
                         className="font-semibold theme-rounded theme-text"
                       >
-                        {user?.role}
+                        {typeof user?.role === 'string' ? user.role : user?.role?.name}
                       </Badge>
                     </div>
                     
@@ -872,7 +906,7 @@ const Dashboard = () => {
                             variant="outline" 
                             className="text-red-700 border-red-700 dark:text-red-400 dark:border-red-400 theme-rounded theme-text"
                           >
-                            Root
+                            {UserRole.ROOT}
                           </Badge>
                           <span className="text-sm text-muted-foreground theme-text">Complete system access</span>
                         </div>
@@ -881,7 +915,7 @@ const Dashboard = () => {
                             variant="outline" 
                             className="text-purple-700 border-purple-700 dark:text-purple-400 dark:border-purple-400 theme-rounded theme-text"
                           >
-                            Super Admin
+                            {UserRole.SUPER_ADMIN}
                           </Badge>
                           <span className="text-sm text-muted-foreground theme-text">Administrative access</span>
                         </div>
@@ -890,7 +924,7 @@ const Dashboard = () => {
                             variant="outline" 
                             className="text-red-700 border-red-700 dark:text-red-400 dark:border-red-400 theme-rounded theme-text"
                           >
-                            Admin
+                            {UserRole.ADMIN}
                           </Badge>
                           <span className="text-sm text-muted-foreground theme-text">Management access</span>
                         </div>
@@ -899,7 +933,7 @@ const Dashboard = () => {
                             variant="outline" 
                             className="text-green-700 border-green-700 dark:text-green-400 dark:border-green-400 theme-rounded theme-text"
                           >
-                            Normal
+                            {UserRole.NORMAL}
                           </Badge>
                           <span className="text-sm text-muted-foreground theme-text">Standard access</span>
                         </div>

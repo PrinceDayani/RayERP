@@ -324,3 +324,99 @@ export const unassignEmployee = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const updateDepartmentPermissions = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { permissions } = req.body;
+
+    if (!permissions || !Array.isArray(permissions)) {
+      return res.status(400).json({ success: false, message: 'Permissions array is required' });
+    }
+
+    const department = await Department.findById(id);
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    department.permissions = permissions;
+    await department.save();
+
+    res.json({ success: true, data: department, message: 'Department permissions updated successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getDepartmentPermissions = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const department = await Department.findById(id);
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    res.json({ success: true, data: { permissions: department.permissions || [] } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const addDepartmentPermission = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { permission } = req.body;
+
+    if (!permission) {
+      return res.status(400).json({ success: false, message: 'Permission is required' });
+    }
+
+    const department = await Department.findById(id);
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    if (!department.permissions) {
+      department.permissions = [];
+    }
+
+    if (department.permissions.includes(permission)) {
+      return res.status(400).json({ success: false, message: 'Permission already exists' });
+    }
+
+    department.permissions.push(permission);
+    await department.save();
+
+    res.json({ success: true, data: department, message: 'Permission added successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const removeDepartmentPermission = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { permission } = req.body;
+
+    if (!permission) {
+      return res.status(400).json({ success: false, message: 'Permission is required' });
+    }
+
+    const department = await Department.findById(id);
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    if (!department.permissions || !department.permissions.includes(permission)) {
+      return res.status(400).json({ success: false, message: 'Permission not found' });
+    }
+
+    department.permissions = department.permissions.filter(p => p !== permission);
+    await department.save();
+
+    res.json({ success: true, data: department, message: 'Permission removed successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

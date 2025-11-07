@@ -18,6 +18,7 @@ export const getAccounts = async (req: Request, res: Response) => {
     
     const accounts = await Account.find(query)
       .populate('parentId', 'name code type')
+      .lean()
       .sort({ code: 1 });
     
     // Build hierarchy if requested
@@ -26,15 +27,25 @@ export const getAccounts = async (req: Request, res: Response) => {
       const rootAccounts: any[] = [];
       
       accounts.forEach(acc => {
-        accountMap.set(acc._id.toString(), { ...acc.toObject(), children: [] });
+        accountMap.set(acc._id.toString(), { ...acc, children: [] });
       });
       
       accounts.forEach(acc => {
         const account = accountMap.get(acc._id.toString());
-        if (acc.parentId) {
+        if (acc.parentId && typeof acc.parentId === 'object') {
+          const parentId = (acc.parentId as any)._id?.toString() || acc.parentId.toString();
+          const parent = accountMap.get(parentId);
+          if (parent) {
+            parent.children.push(account);
+          } else {
+            rootAccounts.push(account);
+          }
+        } else if (acc.parentId) {
           const parent = accountMap.get(acc.parentId.toString());
           if (parent) {
             parent.children.push(account);
+          } else {
+            rootAccounts.push(account);
           }
         } else {
           rootAccounts.push(account);
@@ -47,15 +58,32 @@ export const getAccounts = async (req: Request, res: Response) => {
     res.json({ accounts, total: accounts.length });
   } catch (error) {
     logger.error('Error fetching accounts:', error);
-    res.status(500).json({ message: 'Error fetching accounts' });
+    res.status(500).json({ 
+      message: 'Error fetching accounts',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
 // Create new account
 export const createAccount = async (req: Request, res: Response) => {
   try {
+    console.log('=== CREATE ACCOUNT REQUEST ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const accountData = req.body;
     const userId = (req as any).user?.id || (req as any).user?._id;
+    console.log('User ID:', userId);
+
+    // Validate required fields
+    if (!accountData.name || !accountData.code || !accountData.type) {
+      console.log('Validation failed: Missing required fields');
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        required: ['name', 'code', 'type']
+      });
+    }
+    console.log('Validation passed');
 
     // Check if account code already exists
     const existingAccount = await Account.findOne({ code: accountData.code });
@@ -65,31 +93,66 @@ export const createAccount = async (req: Request, res: Response) => {
 
     // Calculate level based on parent
     let level = 0;
+    let parentType = accountData.type;
     if (accountData.parentId) {
       const parent = await Account.findById(accountData.parentId);
       if (parent) {
         level = parent.level + 1;
+        parentType = parent.type;
         // Inherit type from parent if not specified
         if (!accountData.type) {
           accountData.type = parent.type;
         }
+      } else {
+        return res.status(400).json({ message: 'Parent account not found' });
       }
     }
 
-    const account = new Account({
-      ...accountData,
+    const accountDoc: any = {
+      name: accountData.name,
+      code: accountData.code,
+      type: accountData.type || parentType,
+      subType: accountData.subType || '',
+      category: accountData.category || '',
       level,
-      balance: accountData.openingBalance || 0,
-      createdBy: userId
-    });
+      balance: accountData.openingBalance || accountData.balance || 0,
+      openingBalance: accountData.openingBalance || 0,
+      currency: accountData.currency || 'INR',
+      parentId: accountData.parentId || undefined,
+      isActive: accountData.isActive !== undefined ? accountData.isActive : true,
+      isGroup: accountData.isGroup || false,
+      description: accountData.description || ''
+    };
 
+    // Only add createdBy if userId exists
+    if (userId) {
+      accountDoc.createdBy = userId;
+    }
+
+    console.log('Creating account with document:', JSON.stringify(accountDoc, null, 2));
+    const account = new Account(accountDoc);
+    console.log('Account model created, attempting to save...');
     await account.save();
-    await account.populate('parentId', 'name code');
+    console.log('Account saved successfully:', account._id);
+    
+    if (account.parentId) {
+      await account.populate('parentId', 'name code');
+    }
     
     res.status(201).json(account);
   } catch (error) {
+    console.error('=== ERROR CREATING ACCOUNT ===');
+    console.error('Error type:', error instanceof Error ? error.name : typeof error);
+    console.error('Error message:', error instanceof Error ? error.message : error);
+    console.error('Full error:', error);
+    
     logger.error('Error creating account:', error);
-    res.status(500).json({ message: 'Error creating account', error: error instanceof Error ? error.message : 'Unknown error' });
+    res.status(500).json({ 
+      message: 'Error creating account', 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: error instanceof Error && error.name === 'ValidationError' ? (error as any).errors : undefined,
+      stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
+    });
   }
 };
 

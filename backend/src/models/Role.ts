@@ -5,6 +5,8 @@ export interface IRole extends Document {
   description?: string;
   permissions: string[];
   isActive: boolean;
+  isDefault: boolean; // Mark default system roles
+  level: number; // Role hierarchy level (higher = more privileges)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +29,15 @@ const roleSchema = new Schema<IRole>({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isDefault: {
+    type: Boolean,
+    default: false
+  },
+  level: {
+    type: Number,
+    required: true,
+    default: 1
   }
 }, {
   timestamps: true

@@ -41,12 +41,15 @@ export const getAllProjects = async (req: Request, res: Response) => {
 
     let query = {};
     
+    // Get role name (handle both populated and unpopulated role)
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    
     // Root user can see all projects
-    if (user.role === 'root') {
+    if (roleName === 'Root') {
       query = {};
     }
     // Super admin can see projects they own
-    else if (user.role === 'super_admin') {
+    else if (roleName === 'Super Admin') {
       query = { owner: user._id };
     }
     // Members can only see projects they're assigned to
@@ -552,9 +555,13 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
     }
 
     let query = {};
-    if (user.role === 'root') {
+    
+    // Get role name (handle both populated and unpopulated role)
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    
+    if (roleName === 'Root') {
       query = {};
-    } else if (user.role === 'super_admin') {
+    } else if (roleName === 'Super Admin') {
       query = { owner: user._id };
     } else {
       query = { members: user._id };

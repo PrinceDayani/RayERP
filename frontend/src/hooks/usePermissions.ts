@@ -48,32 +48,17 @@ export function usePermissions() {
 
     const userPermissions = new Set<string>();
     
-    // Admin roles get all permissions
-    if (['root', 'super_admin', 'admin'].includes(user.role?.toLowerCase() || '')) {
+    const userRoleName = user.role?.name?.toLowerCase().trim() || '';
+    
+    if (userRoleName === 'root') {
       Object.keys(PERMISSIONS).forEach(p => userPermissions.add(p));
       return userPermissions;
     }
 
-    // Role-based permissions
-    const rolePermissions: Record<string, string[]> = {
-      manager: [
-        'users.view', 'projects.view', 'projects.create', 'projects.edit', 
-        'tasks.view', 'tasks.create', 'tasks.edit', 'finance.view'
-      ],
-      supervisor: [
-        'projects.view', 'tasks.view', 'tasks.create', 'tasks.edit'
-      ],
-      employee: [
-        'projects.view', 'tasks.view'
-      ]
-    };
-
-    const role = user.role?.toLowerCase() || '';
-    if (rolePermissions[role]) {
-      rolePermissions[role].forEach(p => userPermissions.add(p));
+    if (user.role?.permissions) {
+      user.role.permissions.forEach((p: string) => userPermissions.add(p));
     }
 
-    // Add explicit user permissions
     if (user.permissions) {
       user.permissions.forEach((p: string) => userPermissions.add(p));
     }
@@ -107,6 +92,6 @@ export function usePermissions() {
     canAny,
     canAll,
     permissions: Array.from(permissions),
-    isAdmin: ['root', 'super_admin', 'admin'].includes(user?.role?.toLowerCase() || '')
+    isAdmin: user?.role?.name?.toLowerCase() === 'root' || user?.role?.level >= 80
   };
 }

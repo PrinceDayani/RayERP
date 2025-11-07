@@ -60,10 +60,11 @@ export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  const isRoot = user?.role === "root";
-  const isSuperAdmin = user?.role === "super_admin";
-  const isAdmin = user?.role === "admin";
-  const isManager = user?.role as string === "manager" || isAdmin || isSuperAdmin || isRoot;
+  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
+  const isRoot = roleName.toLowerCase() === "root";
+  const isSuperAdmin = roleName.toLowerCase() === "super_admin" || roleName.toLowerCase() === "superadmin";
+  const isAdmin = roleName.toLowerCase() === "admin";
+  const isManager = roleName.toLowerCase() === "manager" || isAdmin || isSuperAdmin || isRoot;
 
   const menuSections = [
     {
@@ -164,11 +165,13 @@ export default function Layout({ children }: LayoutProps) {
     return item.subItems.some((subItem: SubMenuItem) => pathname === subItem.path);
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role?.toLowerCase()) {
+  const getRoleColor = (role: any) => {
+    const roleName = typeof role === 'string' ? role : role?.name || '';
+    switch (roleName.toLowerCase()) {
       case 'root':
         return 'bg-red-500';
       case 'super_admin':
+      case 'superadmin':
         return 'bg-purple-500';
       case 'admin':
         return 'bg-red-500';
@@ -360,7 +363,7 @@ export default function Layout({ children }: LayoutProps) {
                   <div className={`flex items-center space-x-3 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
                     <div className="relative">
                       <Avatar className="w-10 h-10 border-2 border-red-200 dark:border-red-800">
-                        <AvatarFallback className={`${getRoleColor(user.role || '')} text-white text-sm font-semibold`}>
+                        <AvatarFallback className={`${getRoleColor(user.role)} text-white text-sm font-semibold`}>
                           {user.name?.charAt(0).toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
@@ -373,7 +376,7 @@ export default function Layout({ children }: LayoutProps) {
                         </p>
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                            {user.role}
+                            {typeof user.role === 'string' ? user.role : user.role?.name || 'User'}
                           </Badge>
                         </div>
                       </div>
@@ -384,7 +387,7 @@ export default function Layout({ children }: LayoutProps) {
                   <div>
                     <p className="font-medium">{user.name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user.role} Access</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{typeof user.role === 'string' ? user.role : user.role?.name || 'User'} Access</p>
                   </div>
                 </TooltipContent>
               </Tooltip>

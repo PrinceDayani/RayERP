@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Plus, FolderOpen, Edit, Trash2, ArrowLeft } from 'lucide-react';
 import { generalLedgerAPI, type Account } from '@/lib/api/generalLedgerAPI';
@@ -225,6 +225,9 @@ export default function ChartOfAccountsPage() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Account</DialogTitle>
+              <DialogDescription>
+                Add a new account to your chart of accounts. Group accounts can contain sub-accounts.
+              </DialogDescription>
             </DialogHeader>
             <CreateAccountForm />
           </DialogContent>

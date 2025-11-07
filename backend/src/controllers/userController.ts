@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
-import User, { UserRole } from '../models/User';
+import User from '../models/User';
+import { Role } from '../models/Role';
 import { logger } from '../utils/logger';
 import { emitToUser } from '../utils/socket.utils';
 
 // Get all users (admin access)
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
-    const users = await User.find().select('-password');
+    const users = await User.find().populate('role').select('-password');
     
     res.status(200).json({
       success: true,
@@ -25,7 +26,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 // Get user by ID
 export const getUserById = async (req: Request, res: Response) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id).populate('role').select('-password');
     
     if (!user) {
       return res.status(404).json({
@@ -47,22 +48,71 @@ export const getUserById = async (req: Request, res: Response) => {
   }
 };
 
+// Reset user password (SuperAdmin only)
+export const resetUserPassword = async (req: Request, res: Response) => {
+  try {
+    const { newPassword } = req.body;
+    const userId = req.params.id;
+    
+    logger.info(`Reset password request for user ${userId}`);
+    
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      });
+    }
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      logger.error(`User not found: ${userId}`);
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    user.password = newPassword;
+    user.markModified('password');
+    await user.save({ validateBeforeSave: true });
+    
+    logger.info(`Password reset successfully for user ${user.email}`);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error: any) {
+    logger.error(`Reset password error: ${error.message}`, error.stack);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error resetting password'
+    });
+  }
+};
+
 // Update user role
 export const updateUserRole = async (req: Request, res: Response) => {
   try {
-    const { role } = req.body;
+    const { roleId } = req.body;
     const userId = req.params.id;
     
-    // Validate role
-    if (!Object.values(UserRole).includes(role as UserRole)) {
+    if (!roleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Role ID is required'
+      });
+    }
+    
+    const newRole = await Role.findById(roleId);
+    if (!newRole) {
       return res.status(400).json({
         success: false,
         message: 'Invalid role'
       });
     }
     
-    // Get user to update
-    const userToUpdate = await User.findById(userId);
+    const userToUpdate = await User.findById(userId).populate('role');
     if (!userToUpdate) {
       return res.status(404).json({
         success: false,
@@ -70,50 +120,45 @@ export const updateUserRole = async (req: Request, res: Response) => {
       });
     }
     
-    // Role update permission checks
+    const targetUserCurrentRole = (userToUpdate.role as any);
+    
+    if (targetUserCurrentRole.name?.toLowerCase() === 'root') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot modify Root user role'
+      });
+    }
+    
+    if (newRole.name?.toLowerCase() === 'root') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot assign Root role to other users'
+      });
+    }
+    
     if (req.user) {
-      // Cannot update a user with higher role than yourself
-      const roleHierarchy = {
-        [UserRole.ROOT]: 4,
-        [UserRole.SUPER_ADMIN]: 3,
-        [UserRole.ADMIN]: 2,
-        [UserRole.NORMAL]: 1
-      };
+      const currentUserRole = (req.user.role as any);
       
-      const currentUserRole = req.user.role as UserRole;
-      const targetUserCurrentRole = userToUpdate.role;
-      
-      // Check if trying to update a user with higher or equal role
-      if (roleHierarchy[targetUserCurrentRole] >= roleHierarchy[currentUserRole]) {
+      if (targetUserCurrentRole.level >= currentUserRole.level) {
         return res.status(403).json({
           success: false,
-          message: 'You cannot modify a user with equal or higher role than yours'
+          message: 'You cannot modify a user with equal or higher role level'
         });
       }
       
-      // Check if trying to assign a role higher than or equal to your own
-      if (roleHierarchy[role as UserRole] >= roleHierarchy[currentUserRole]) {
+      if (newRole.level >= currentUserRole.level) {
         return res.status(403).json({
           success: false,
           message: 'You cannot assign a role equal to or higher than your own'
         });
       }
-      
-      // Only ROOT can assign ROOT role
-      if (role === UserRole.ROOT && req.user.role !== UserRole.ROOT) {
-        return res.status(403).json({
-          success: false,
-          message: 'Only ROOT users can assign ROOT role'
-        });
-      }
     }
     
-    // Update user role
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { role },
+      { role: roleId },
       { new: true, runValidators: true }
-    ).select('-password');
+    ).populate('role').select('-password');
     
     if (!updatedUser) {
       return res.status(404).json({
@@ -122,12 +167,11 @@ export const updateUserRole = async (req: Request, res: Response) => {
       });
     }
     
-    logger.info(`Updated role for user ${updatedUser.email} to ${role}`);
+    logger.info(`Updated role for user ${updatedUser.email} to ${newRole.name}`);
     
-    // Emit roleUpdated event to the affected user
     emitToUser(userId, 'roleUpdated', {
       userId: userId,
-      newRole: role
+      newRole: updatedUser.role
     });
     
     res.status(200).json({

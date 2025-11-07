@@ -57,11 +57,13 @@ const AccountSchema = new Schema<IAccount>({
   },
   subType: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   },
   category: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   },
   level: {
     type: Number,

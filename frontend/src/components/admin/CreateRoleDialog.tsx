@@ -59,6 +59,15 @@ export function CreateRoleDialog({ open, onOpenChange, onRoleCreated }: CreateRo
       return;
     }
 
+    if (newRole.permissions.length === 0) {
+      toast({
+        title: "Error",
+        description: "At least one permission is required",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const createdRole = await adminAPI.createRole(newRole);

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, FileText, Calculator, DollarSign, Trash2, AlertCircle, FolderOpen, Building2, Users, Package, CreditCard, Banknote, Receipt, FileSpreadsheet, ChevronRight } from 'lucide-react';
@@ -114,10 +114,13 @@ export default function GeneralLedgerPage() {
     try {
       setLoading(true);
       const [accountsData, journalData] = await Promise.all([
-        generalLedgerAPI.getAccounts({ hierarchy: true }),
+        generalLedgerAPI.getAccounts({}),
         generalLedgerAPI.getJournalEntries({ limit: 50 })
       ]);
       
+      console.log('Fetched accounts:', accountsData.accounts);
+      console.log('Groups:', accountsData.accounts?.filter((a: Account) => a.isGroup));
+      console.log('Ledgers:', accountsData.accounts?.filter((a: Account) => !a.isGroup));
       setAccounts(accountsData.accounts || []);
       setJournalEntries(journalData.journalEntries || []);
     } catch (error) {
@@ -149,6 +152,73 @@ export default function GeneralLedgerPage() {
       });
     }
   };
+
+  const deleteLedger = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete ledger "${name}"?`)) return;
+    
+    try {
+      await generalLedgerAPI.deleteAccount(id);
+      toast({
+        title: 'Success',
+        description: 'Ledger deleted successfully'
+      });
+      fetchData();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete ledger',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const deleteGroup = async (id: string, name: string) => {
+    const ledgersInGroup = accounts.filter(a => a.parentId === id).length;
+    if (ledgersInGroup > 0) {
+      toast({
+        title: 'Error',
+        description: `Cannot delete group with ${ledgersInGroup} ledger(s). Delete ledgers first.`,
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete group "${name}"?`)) return;
+    
+    try {
+      await generalLedgerAPI.deleteAccount(id);
+      toast({
+        title: 'Success',
+        description: 'Group deleted successfully'
+      });
+      fetchData();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete group',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const deleteVoucher = async (id: string, entryNumber: string) => {
+    if (!confirm(`Are you sure you want to delete voucher "${entryNumber}"?`)) return;
+    
+    try {
+      await generalLedgerAPI.deleteJournalEntry(id);
+      toast({
+        title: 'Success',
+        description: 'Voucher deleted successfully'
+      });
+      fetchData();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete voucher',
+        variant: 'destructive'
+      });
+    }
+  };
   const [activeTab, setActiveTab] = useState('groups');
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [showLedgerDialog, setShowLedgerDialog] = useState(false);
@@ -164,7 +234,7 @@ export default function GeneralLedgerPage() {
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       try {
-        await generalLedgerAPI.createAccount({
+        const accountData = {
           name: formData.name,
           type: formData.nature as any,
           parentId: formData.parentId || undefined,
@@ -173,7 +243,11 @@ export default function GeneralLedgerPage() {
           balance: 0,
           code: `${formData.name.substring(0, 3).toUpperCase()}${Date.now()}`,
           level: 0
-        });
+        };
+        
+        console.log('Creating account with data:', accountData);
+        const result = await generalLedgerAPI.createAccount(accountData);
+        console.log('Account created:', result);
         
         toast({
           title: 'Success',
@@ -182,10 +256,12 @@ export default function GeneralLedgerPage() {
         
         setShowGroupDialog(false);
         fetchData();
-      } catch (error) {
+      } catch (error: any) {
+        console.error('Error creating account group:', error);
+        const errorMessage = error?.message || error?.error || 'Failed to create account group';
         toast({
           title: 'Error',
-          description: 'Failed to create account group',
+          description: errorMessage,
           variant: 'destructive'
         });
       }
@@ -205,7 +281,8 @@ export default function GeneralLedgerPage() {
               <SelectContent>
                 <SelectItem value="asset">Asset</SelectItem>
                 <SelectItem value="liability">Liability</SelectItem>
-                <SelectItem value="income">Income</SelectItem>
+                <SelectItem value="equity">Equity</SelectItem>
+                <SelectItem value="revenue">Revenue</SelectItem>
                 <SelectItem value="expense">Expense</SelectItem>
               </SelectContent>
             </Select>
@@ -236,6 +313,16 @@ export default function GeneralLedgerPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+      
+      if (!formData.groupId) {
+        toast({
+          title: 'Error',
+          description: 'Please select a group',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
       try {
         await generalLedgerAPI.createAccount({
           name: formData.name,
@@ -245,7 +332,7 @@ export default function GeneralLedgerPage() {
           isGroup: false,
           isActive: true,
           level: 1,
-          type: 'asset' // This should be determined by parent group
+          type: 'asset'
         });
         
         toast({
@@ -506,45 +593,57 @@ export default function GeneralLedgerPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 space-y-6">
+      <div className="flex justify-between items-center bg-white rounded-xl shadow-sm p-6 border border-gray-200">
         <div>
-          <h1 className="text-3xl font-bold">General Ledger</h1>
-          <p className="text-gray-600 mt-1">Complete accounting and financial management</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">General Ledger</h1>
+          <p className="text-gray-600 mt-1 flex items-center gap-2">
+            <Calculator className="w-4 h-4" />
+            Complete accounting and financial management
+          </p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex space-x-3">
           <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="hover:bg-blue-50 hover:border-blue-300 transition-all">
                 <FolderOpen className="w-4 h-4 mr-2" />Create Group
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
-              <DialogHeader><DialogTitle>Create Account Group</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Create Account Group</DialogTitle>
+                <DialogDescription>Create a new account group to organize your ledger accounts.</DialogDescription>
+              </DialogHeader>
               <GroupForm />
             </DialogContent>
           </Dialog>
 
           <Dialog open={showLedgerDialog} onOpenChange={setShowLedgerDialog}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg transition-all">
                 <Plus className="w-4 h-4 mr-2" />Create Ledger
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl">
-              <DialogHeader><DialogTitle>Create New Ledger</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Create New Ledger</DialogTitle>
+                <DialogDescription>Add a new ledger account under an existing group.</DialogDescription>
+              </DialogHeader>
               <LedgerForm />
             </DialogContent>
           </Dialog>
 
           <Dialog open={showAdvancedJournal} onOpenChange={setShowAdvancedJournal}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-md hover:shadow-lg transition-all">
                 <Calculator className="w-4 h-4 mr-2" />Advanced Journal
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Advanced Journal Entry</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Advanced Journal Entry</DialogTitle>
+                <DialogDescription>Create a multi-line journal entry with cost centers and bill references.</DialogDescription>
+              </DialogHeader>
               <AdvancedJournalForm />
             </DialogContent>
           </Dialog>
@@ -552,83 +651,91 @@ export default function GeneralLedgerPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/dashboard/general-ledger/chart-of-accounts')}>
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-blue-50 to-blue-100" onClick={() => router.push('/dashboard/general-ledger/chart-of-accounts')}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <FolderOpen className="w-12 h-12 text-blue-600" />
-              <ChevronRight className="w-6 h-6 text-gray-400" />
+              <div className="p-3 bg-blue-600 rounded-xl shadow-lg">
+                <FolderOpen className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Chart of Accounts</h3>
-            <p className="text-sm text-gray-600">Manage account structure and hierarchy</p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-2xl font-bold">{accounts.filter(a => a.isGroup).length}</span>
-              <span className="text-xs text-gray-500">Groups</span>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800">Chart of Accounts</h3>
+            <p className="text-sm text-gray-600 mb-4">Manage account structure and hierarchy</p>
+            <div className="mt-4 flex items-center justify-between bg-white rounded-lg p-3">
+              <span className="text-3xl font-bold text-blue-600">{accounts.filter(a => a.isGroup).length}</span>
+              <span className="text-xs text-gray-500 font-medium">Groups</span>
             </div>
           </CardContent>
         </Card>
         
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setActiveTab('ledgers')}>
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-green-50 to-green-100" onClick={() => setActiveTab('ledgers')}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <Building2 className="w-12 h-12 text-green-600" />
-              <ChevronRight className="w-6 h-6 text-gray-400" />
+              <div className="p-3 bg-green-600 rounded-xl shadow-lg">
+                <Building2 className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-green-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Ledger Accounts</h3>
-            <p className="text-sm text-gray-600">View and manage all ledger accounts</p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-2xl font-bold">{accounts.filter(a => !a.isGroup).length}</span>
-              <span className="text-xs text-gray-500">Ledgers</span>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800">Ledger Accounts</h3>
+            <p className="text-sm text-gray-600 mb-4">View and manage all ledger accounts</p>
+            <div className="mt-4 flex items-center justify-between bg-white rounded-lg p-3">
+              <span className="text-3xl font-bold text-green-600">{accounts.filter(a => !a.isGroup).length}</span>
+              <span className="text-xs text-gray-500 font-medium">Ledgers</span>
             </div>
           </CardContent>
         </Card>
         
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/dashboard/general-ledger/journal-entries')}>
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-purple-50 to-purple-100" onClick={() => router.push('/dashboard/general-ledger/journal-entries')}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <Receipt className="w-12 h-12 text-purple-600" />
-              <ChevronRight className="w-6 h-6 text-gray-400" />
+              <div className="p-3 bg-purple-600 rounded-xl shadow-lg">
+                <Receipt className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-purple-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Journal Entries</h3>
-            <p className="text-sm text-gray-600">Create and manage journal vouchers</p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-2xl font-bold">{journalEntries.length}</span>
-              <span className="text-xs text-gray-500">Entries</span>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800">Journal Entries</h3>
+            <p className="text-sm text-gray-600 mb-4">Create and manage journal vouchers</p>
+            <div className="mt-4 flex items-center justify-between bg-white rounded-lg p-3">
+              <span className="text-3xl font-bold text-purple-600">{journalEntries.length}</span>
+              <span className="text-xs text-gray-500 font-medium">Entries</span>
             </div>
           </CardContent>
         </Card>
         
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/dashboard/general-ledger/reports')}>
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-orange-50 to-orange-100" onClick={() => router.push('/dashboard/general-ledger/reports')}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <Calculator className="w-12 h-12 text-orange-600" />
-              <ChevronRight className="w-6 h-6 text-gray-400" />
+              <div className="p-3 bg-orange-600 rounded-xl shadow-lg">
+                <Calculator className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-orange-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Reports</h3>
-            <p className="text-sm text-gray-600">Trial balance and financial reports</p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-2xl font-bold">5</span>
-              <span className="text-xs text-gray-500">Reports</span>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800">Reports</h3>
+            <p className="text-sm text-gray-600 mb-4">Trial balance and financial reports</p>
+            <div className="mt-4 flex items-center justify-between bg-white rounded-lg p-3">
+              <span className="text-3xl font-bold text-orange-600">5</span>
+              <span className="text-xs text-gray-500 font-medium">Reports</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="groups">Account Groups</TabsTrigger>
-          <TabsTrigger value="ledgers">Ledgers</TabsTrigger>
-          <TabsTrigger value="vouchers">Vouchers</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+        <TabsList className="bg-gray-100 p-1 rounded-lg">
+          <TabsTrigger value="groups" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Account Groups</TabsTrigger>
+          <TabsTrigger value="ledgers" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Ledgers</TabsTrigger>
+          <TabsTrigger value="vouchers" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Vouchers</TabsTrigger>
+          <TabsTrigger value="reports" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Reports</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="groups">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <FolderOpen className="w-5 h-5 mr-2" />Account Groups ({accounts.filter(a => a.isGroup).length} groups)
+        <TabsContent value="groups" className="mt-6">
+          <Card className="border-0 shadow-md">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
+              <CardTitle className="flex items-center text-gray-800">
+                <FolderOpen className="w-5 h-5 mr-2 text-blue-600" />Account Groups ({accounts.filter(a => a.isGroup).length} groups)
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -636,6 +743,7 @@ export default function GeneralLedgerPage() {
                     <TableHead>Nature</TableHead>
                     <TableHead>Affects</TableHead>
                     <TableHead>Ledgers Count</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -651,6 +759,16 @@ export default function GeneralLedgerPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>{accounts.filter(l => l.parentId === group._id).length}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteGroup(group._id, group.name)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -676,6 +794,7 @@ export default function GeneralLedgerPage() {
                     <TableHead className="text-right">Current Balance</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -702,6 +821,16 @@ export default function GeneralLedgerPage() {
                           <Badge variant={ledger.isActive ? "default" : "secondary"}>
                             {ledger.isActive ? "Active" : "Inactive"}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteLedger(ledger._id, ledger.name)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -730,6 +859,7 @@ export default function GeneralLedgerPage() {
                     <TableHead>Project</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -751,6 +881,16 @@ export default function GeneralLedgerPage() {
                           <Badge variant={entry.isPosted ? "default" : "secondary"}>
                             {entry.isPosted ? "Posted" : "Draft"}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteVoucher(entry._id, entry.entryNumber)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );

@@ -186,9 +186,11 @@ Base URL: `http://localhost:5000/api`
 
 ### Permission System
 - **RBAC (Role-Based Access Control)** implementation
+- **Department-Based Permissions** - Custom permissions per department
 - **Module-level permissions** for different system areas
 - **Action-level permissions** (create, read, update, delete)
 - **Data-level permissions** for sensitive information
+- **Multi-source permissions** - Users inherit permissions from roles AND departments
 
 ## 🧠 Project Architecture
 
@@ -309,10 +311,13 @@ node test-backend.js
 ## 📚 Documentation
 
 For detailed documentation, see:
+- [Department Permissions Guide](DEPARTMENT_PERMISSIONS.md) - **NEW!** Department-based permissions
+- [Department Permissions Quick Reference](DEPARTMENT_PERMISSIONS_QUICK_GUIDE.md) - Quick start guide
 - [API Fixes Summary](API_FIXES_SUMMARY.md)
 - [Employee & Project Management](EMPLOYEE_PROJECT_MANAGEMENT.md)
 - [Task Management System](TASK_MANAGEMENT.md)
 - [Budget & Project Connection](BUDGET_PROJECT_CONNECTION.md)
+- [Multi-Department Employees](MULTI_DEPARTMENT_EMPLOYEES.md)
 - [Attendance System Fix](../ATTENDANCE_FIX_README.md)
 - [Employee Management Fix](../EMPLOYEE_MANAGEMENT_FIX_README.md)
 

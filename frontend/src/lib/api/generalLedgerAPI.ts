@@ -79,7 +79,10 @@ export const generalLedgerAPI = {
       headers: getAuthHeaders(),
       body: JSON.stringify(accountData)
     });
-    if (!response.ok) throw new Error('Failed to create account');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Failed to create account' }));
+      throw new Error(errorData.message || errorData.error || 'Failed to create account');
+    }
     return response.json();
   },
 
@@ -90,6 +93,24 @@ export const generalLedgerAPI = {
       body: JSON.stringify(updates)
     });
     if (!response.ok) throw new Error('Failed to update account');
+    return response.json();
+  },
+
+  async deleteAccount(id: string) {
+    const response = await fetch(`${API_BASE_URL}/api/general-ledger/accounts/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to delete account');
+    return response.json();
+  },
+
+  async deleteJournalEntry(id: string) {
+    const response = await fetch(`${API_BASE_URL}/api/general-ledger/journal-entries/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to delete journal entry');
     return response.json();
   },
 
@@ -108,6 +129,14 @@ export const generalLedgerAPI = {
     return response.json();
   },
 
+  async getJournalEntry(id: string) {
+    const response = await fetch(`${API_BASE_URL}/api/general-ledger/journal-entries/${id}`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to fetch journal entry');
+    return response.json();
+  },
+
   async createJournalEntry(entryData: {
     date: string;
     reference?: string;
@@ -120,6 +149,21 @@ export const generalLedgerAPI = {
       body: JSON.stringify(entryData)
     });
     if (!response.ok) throw new Error('Failed to create journal entry');
+    return response.json();
+  },
+
+  async updateJournalEntry(id: string, entryData: {
+    date?: string;
+    reference?: string;
+    description?: string;
+    lines?: JournalLine[];
+  }) {
+    const response = await fetch(`${API_BASE_URL}/api/general-ledger/journal-entries/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(entryData)
+    });
+    if (!response.ok) throw new Error('Failed to update journal entry');
     return response.json();
   },
 

@@ -21,6 +21,9 @@ export default function JournalEntriesPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -45,6 +48,37 @@ export default function JournalEntriesPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleView = async (id: string) => {
+    try {
+      const entry = await generalLedgerAPI.getJournalEntry(id);
+      setSelectedEntry(entry);
+      setShowViewDialog(true);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to load entry', variant: 'destructive' });
+    }
+  };
+
+  const handleEdit = async (id: string) => {
+    try {
+      const entry = await generalLedgerAPI.getJournalEntry(id);
+      setSelectedEntry(entry);
+      setShowEditDialog(true);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to load entry', variant: 'destructive' });
+    }
+  };
+
+  const handleDelete = async (id: string, entryNumber: string) => {
+    if (!confirm(`Delete journal entry ${entryNumber}?`)) return;
+    try {
+      await generalLedgerAPI.deleteJournalEntry(id);
+      toast({ title: 'Success', description: 'Entry deleted' });
+      fetchData();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete entry', variant: 'destructive' });
     }
   };
 
@@ -310,14 +344,16 @@ export default function JournalEntriesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => handleView(entry._id)}>
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
-                          <Edit className="w-4 h-4" />
-                        </Button>
                         {!entry.isPosted && (
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(entry._id)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {!entry.isPosted && (
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(entry._id, entry.entryNumber)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         )}
@@ -330,6 +366,142 @@ export default function JournalEntriesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* View Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>View Journal Entry - {selectedEntry?.entryNumber}</DialogTitle>
+          </DialogHeader>
+          {selectedEntry && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div><strong>Date:</strong> {new Date(selectedEntry.date).toLocaleDateString('en-IN')}</div>
+                <div><strong>Reference:</strong> {selectedEntry.reference || '-'}</div>
+                <div><strong>Status:</strong> <Badge variant={selectedEntry.isPosted ? "default" : "secondary"}>{selectedEntry.isPosted ? "Posted" : "Draft"}</Badge></div>
+              </div>
+              <div><strong>Description:</strong> {selectedEntry.description}</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Debit</TableHead>
+                    <TableHead className="text-right">Credit</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedEntry.lines.map((line, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{(line.accountId as any)?.name || line.accountId}</TableCell>
+                      <TableCell>{line.description}</TableCell>
+                      <TableCell className="text-right">₹{line.debit.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₹{line.credit.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="font-bold">
+                    <TableCell colSpan={2}>Total</TableCell>
+                    <TableCell className="text-right">₹{selectedEntry.totalDebit.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{selectedEntry.totalCredit.toFixed(2)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Journal Entry - {selectedEntry?.entryNumber}</DialogTitle>
+          </DialogHeader>
+          {selectedEntry && <EditJournalForm entry={selectedEntry} onClose={() => { setShowEditDialog(false); fetchData(); }} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
+
+  function EditJournalForm({ entry, onClose }: { entry: JournalEntry; onClose: () => void }) {
+    const [formData, setFormData] = useState({
+      date: new Date(entry.date).toISOString().split('T')[0],
+      reference: entry.reference || '',
+      description: entry.description,
+      lines: entry.lines.map(l => ({
+        accountId: typeof l.accountId === 'object' ? (l.accountId as any)._id : l.accountId,
+        description: l.description,
+        debit: l.debit,
+        credit: l.credit
+      }))
+    });
+
+    const addLine = () => setFormData({ ...formData, lines: [...formData.lines, { accountId: '', description: '', debit: 0, credit: 0 }] });
+    const updateLine = (index: number, field: string, value: any) => {
+      const newLines = [...formData.lines];
+      newLines[index] = { ...newLines[index], [field]: value };
+      setFormData({ ...formData, lines: newLines });
+    };
+    const removeLine = (index: number) => formData.lines.length > 2 && setFormData({ ...formData, lines: formData.lines.filter((_, i) => i !== index) });
+
+    const totalDebits = formData.lines.reduce((sum, line) => sum + (Number(line.debit) || 0), 0);
+    const totalCredits = formData.lines.reduce((sum, line) => sum + (Number(line.credit) || 0), 0);
+    const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!isBalanced) {
+        toast({ title: 'Error', description: 'Debits must equal credits', variant: 'destructive' });
+        return;
+      }
+      try {
+        await generalLedgerAPI.updateJournalEntry(entry._id, formData);
+        toast({ title: 'Success', description: 'Journal entry updated' });
+        onClose();
+      } catch (error) {
+        toast({ title: 'Error', description: 'Failed to update entry', variant: 'destructive' });
+      }
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-3 gap-4">
+          <div><Label>Date *</Label><Input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} required /></div>
+          <div><Label>Reference</Label><Input value={formData.reference} onChange={(e) => setFormData({ ...formData, reference: e.target.value })} /></div>
+        </div>
+        <div><Label>Description *</Label><Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} required rows={2} /></div>
+        <div className="space-y-3">
+          <Label>Journal Lines</Label>
+          <div className="bg-gray-50 p-2 rounded text-sm font-medium grid grid-cols-5 gap-2">
+            <div>Account</div><div>Description</div><div>Debit</div><div>Credit</div><div>Action</div>
+          </div>
+          {formData.lines.map((line, index) => (
+            <div key={index} className="grid grid-cols-5 gap-2">
+              <Select value={line.accountId} onValueChange={(value) => updateLine(index, 'accountId', value)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{accounts.filter(a => !a.isGroup).map(account => <SelectItem key={account._id} value={account._id}>{`${account.name} (${account.code})`}</SelectItem>)}</SelectContent>
+              </Select>
+              <Input value={line.description} onChange={(e) => updateLine(index, 'description', e.target.value)} />
+              <Input type="number" step="0.01" value={line.debit || ''} onChange={(e) => updateLine(index, 'debit', parseFloat(e.target.value) || 0)} />
+              <Input type="number" step="0.01" value={line.credit || ''} onChange={(e) => updateLine(index, 'credit', parseFloat(e.target.value) || 0)} />
+              <Button type="button" variant="outline" size="sm" onClick={() => removeLine(index)} disabled={formData.lines.length <= 2}><Trash2 className="w-4 h-4" /></Button>
+            </div>
+          ))}
+          <Button type="button" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-2" />Add Line</Button>
+        </div>
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div><strong>Total Debits:</strong> ₹{totalDebits.toFixed(2)}</div>
+            <div><strong>Total Credits:</strong> ₹{totalCredits.toFixed(2)}</div>
+            <div><strong>Difference:</strong> ₹{Math.abs(totalDebits - totalCredits).toFixed(2)}</div>
+          </div>
+          <div className="text-center mt-2"><Badge variant={isBalanced ? "default" : "destructive"}>{isBalanced ? "✓ Balanced" : "✗ Not Balanced"}</Badge></div>
+        </div>
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={!isBalanced}>Update Entry</Button>
+        </div>
+      </form>
+    );
+  }
 }

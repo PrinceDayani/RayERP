@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/lib/toast";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,8 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { PlusIcon, SearchIcon, EditIcon, TrashIcon, UsersIcon } from "lucide-react";
+import { PlusIcon, SearchIcon, EditIcon, TrashIcon, UsersIcon, KeyRoundIcon } from "lucide-react";
 import adminAPI, { AdminUser } from "@/lib/api/adminAPI";
+import { compareRoles, getRoleDisplayName } from "@/lib/roleUtils";
 
 interface UserManagementProps {
   isLoading: boolean;
@@ -22,7 +24,10 @@ export function UserManagement({ isLoading }: UserManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+  const [resetPassword, setResetPassword] = useState({ newPassword: "", confirmPassword: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -43,7 +48,6 @@ export function UserManagement({ isLoading }: UserManagementProps) {
         // Mock data if API fails
         setUsers([
           {
-            _id: "1",
             id: "1",
             name: "John Doe",
             email: "john@example.com",
@@ -52,7 +56,6 @@ export function UserManagement({ isLoading }: UserManagementProps) {
             lastLogin: "2025-08-27T15:30:00Z",
           },
           {
-            _id: "2",
             id: "2",
             name: "Jane Smith",
             email: "jane@example.com",
@@ -61,7 +64,6 @@ export function UserManagement({ isLoading }: UserManagementProps) {
             lastLogin: "2025-08-26T10:15:00Z",
           },
           {
-            _id: "3",
             id: "3",
             name: "Bob Johnson",
             email: "bob@example.com",
@@ -70,7 +72,6 @@ export function UserManagement({ isLoading }: UserManagementProps) {
             lastLogin: "2025-08-15T09:45:00Z",
           },
           {
-            _id: "4",
             id: "4",
             name: "Alice Williams",
             email: "alice@example.com",
@@ -100,12 +101,12 @@ export function UserManagement({ isLoading }: UserManagementProps) {
   };
 
   const handleSaveUser = async () => {
-    // Validation
     if (newUser.password !== newUser.confirmPassword) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
+    setIsSubmitting(true);
     try {
       // Using adminAPI instead of direct fetch
       const response = await adminAPI.createUser(newUser);
@@ -135,8 +136,10 @@ export function UserManagement({ isLoading }: UserManagementProps) {
         confirmPassword: "",
       });
       setIsAddUserOpen(false);
-    } catch (error) {
+      toast.success(`User ${newUser.name} created successfully`);
+    } catch (error: any) {
       console.error("Failed to add user:", error);
+      toast.error(error.message || "Failed to create user");
       // Simulate successful addition in case of API failure
       const newId = Date.now().toString();
       setUsers([
@@ -160,12 +163,15 @@ export function UserManagement({ isLoading }: UserManagementProps) {
         confirmPassword: "",
       });
       setIsAddUserOpen(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleUpdateUser = async () => {
     if (!currentUser) return;
 
+    setIsSubmitting(true);
     try {
       // Using adminAPI instead of direct fetch
       await adminAPI.updateUser(currentUser.id, currentUser);
@@ -189,17 +195,63 @@ export function UserManagement({ isLoading }: UserManagementProps) {
       }
       
       setIsEditUserOpen(false);
-    } catch (error) {
+      toast.success(`User ${currentUser.name} updated successfully`);
+    } catch (error: any) {
       console.error("Failed to update user:", error);
+      toast.error(error.message || "Failed to update user");
       // Simulate successful update in case of API failure
       setUsers(
         users.map((user) => (user.id === currentUser.id ? currentUser : user))
       );
       setIsEditUserOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!currentUser) return;
+
+    if (resetPassword.newPassword !== resetPassword.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (resetPassword.newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await adminAPI.resetPassword(currentUser.id, resetPassword.newPassword);
+      
+      // Log activity
+      try {
+        const { logActivity } = await import('@/lib/activityLogger');
+        await logActivity({
+          action: 'reset_password',
+          resource: 'user',
+          details: `Reset password for user ${currentUser.name} (${currentUser.email})`,
+          status: 'success'
+        });
+      } catch (error) {
+        console.error('Failed to log activity:', error);
+      }
+      
+      toast.success(`Password reset successfully for ${currentUser.name}`);
+      setResetPassword({ newPassword: "", confirmPassword: "" });
+      setIsResetPasswordOpen(false);
+    } catch (error: any) {
+      console.error("Failed to reset password:", error);
+      toast.error(error.message || "Failed to reset password");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
+    setIsSubmitting(true);
     try {
       // Using adminAPI instead of direct fetch
       await adminAPI.deleteUser(userId);
@@ -224,10 +276,14 @@ export function UserManagement({ isLoading }: UserManagementProps) {
           console.error('Failed to log activity:', error);
         }
       }
-    } catch (error) {
+      toast.success('User deleted successfully');
+    } catch (error: any) {
       console.error("Failed to delete user:", error);
+      toast.error(error.message || "Failed to delete user");
       // Simulate successful deletion in case of API failure
       setUsers(users.filter((user) => user.id !== userId));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -289,21 +345,63 @@ export function UserManagement({ isLoading }: UserManagementProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm font-medium">Total Users</p>
+              <h3 className="text-3xl font-bold mt-1">{users.length}</h3>
+            </div>
+            <UsersIcon className="h-12 w-12 text-blue-200 opacity-80" />
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-emerald-100 text-sm font-medium">Active</p>
+              <h3 className="text-3xl font-bold mt-1">{users.filter(u => u.status === 'active').length}</h3>
+            </div>
+            <div className="h-12 w-12 rounded-full bg-emerald-400/30 flex items-center justify-center">
+              <div className="h-3 w-3 rounded-full bg-white animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-amber-100 text-sm font-medium">Pending</p>
+              <h3 className="text-3xl font-bold mt-1">{users.filter(u => u.status === 'pending').length}</h3>
+            </div>
+            <div className="h-12 w-12 rounded-full bg-amber-400/30 flex items-center justify-center text-2xl">⏳</div>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-100 text-sm font-medium">Inactive</p>
+              <h3 className="text-3xl font-bold mt-1">{users.filter(u => u.status === 'inactive').length}</h3>
+            </div>
+            <div className="h-12 w-12 rounded-full bg-slate-400/30 flex items-center justify-center text-2xl">💤</div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="relative w-full sm:w-80">
-          <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+        <div className="relative w-full sm:w-96">
+          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
           <Input
             placeholder="Search users by name, email, or role..."
-            className="pl-10 h-12 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 focus:bg-white dark:focus:bg-slate-800 transition-all duration-200"
+            className="pl-12 h-14 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-500 rounded-xl shadow-sm transition-all duration-200 text-base"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 h-12 px-6">
-              <PlusIcon className="mr-2 h-4 w-4" />
+            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 h-14 px-8 rounded-xl font-semibold">
+              <PlusIcon className="mr-2 h-5 w-5" />
               Add New User
             </Button>
           </DialogTrigger>
@@ -382,25 +480,27 @@ export function UserManagement({ isLoading }: UserManagementProps) {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddUserOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveUser}>Create User</Button>
+              <Button onClick={handleSaveUser} disabled={isSubmitting}>
+                {isSubmitting ? 'Creating...' : 'Create User'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="rounded-2xl border-0 shadow-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl bg-white dark:bg-slate-800 overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 border-b border-slate-200/50 dark:border-slate-700/50">
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">Name</TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">Email</TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">Role</TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">Status</TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 py-4">Last Login</TableHead>
-              <TableHead className="text-right font-semibold text-slate-700 dark:text-slate-300 py-4">Actions</TableHead>
+            <TableRow className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-900 dark:to-slate-800 border-b-2 border-slate-200 dark:border-slate-700">
+              <TableHead className="font-bold text-slate-800 dark:text-slate-200 py-5 text-sm uppercase tracking-wider">Name</TableHead>
+              <TableHead className="font-bold text-slate-800 dark:text-slate-200 py-5 text-sm uppercase tracking-wider">Email</TableHead>
+              <TableHead className="font-bold text-slate-800 dark:text-slate-200 py-5 text-sm uppercase tracking-wider">Role</TableHead>
+              <TableHead className="font-bold text-slate-800 dark:text-slate-200 py-5 text-sm uppercase tracking-wider">Status</TableHead>
+              <TableHead className="font-bold text-slate-800 dark:text-slate-200 py-5 text-sm uppercase tracking-wider">Last Login</TableHead>
+              <TableHead className="text-right font-bold text-slate-800 dark:text-slate-200 py-5 text-sm uppercase tracking-wider">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -419,49 +519,62 @@ export function UserManagement({ isLoading }: UserManagementProps) {
             ) : (
               filteredUsers.map((user, index) => (
                 <TableRow 
-                  key={user._id || user.id} 
-                  className="group hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-200 border-b border-slate-100/50 dark:border-slate-700/50"
+                  key={user.id || `user-${index}`} 
+                  className="group hover:bg-blue-50/50 dark:hover:bg-slate-700/50 transition-all duration-200 border-b border-slate-100 dark:border-slate-700 cursor-pointer"
                   style={{
                     animationDelay: `${index * 50}ms`,
                     animation: 'fadeInUp 0.5s ease-out forwards'
                   }}
                 >
-                  <TableCell className="py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                  <TableCell className="py-5">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-md">
                         {user.name.charAt(0).toUpperCase()}
                       </div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">{user.name}</div>
+                      <div>
+                        <div className="font-bold text-slate-900 dark:text-slate-100 text-base">{user.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">ID: {user.id?.slice(0, 8) || 'N/A'}</div>
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="py-4 text-slate-600 dark:text-slate-400">{user.email}</TableCell>
-                  <TableCell className="py-4">
-                    <Badge className={`capitalize ${
-                      user.role === 'admin' ? 'bg-gradient-to-r from-purple-500 to-violet-500 text-white' :
-                      user.role === 'manager' ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white' :
+                  <TableCell className="py-5">
+                    <div className="text-slate-700 dark:text-slate-300 font-medium">{user.email}</div>
+                  </TableCell>
+                  <TableCell className="py-5">
+                    <Badge className={`capitalize px-3 py-1.5 text-xs font-bold ${
+                      compareRoles(user.role, 'admin') ? 'bg-gradient-to-r from-purple-500 to-violet-500 text-white' :
+                      compareRoles(user.role, 'manager') ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white' :
                       'bg-gradient-to-r from-slate-500 to-slate-600 text-white'
-                    } border-0 shadow-md`}>
-                      {user.role}
+                    } border-0 shadow-md rounded-lg`}>
+                      {getRoleDisplayName(user.role)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="py-4">{getStatusBadge(user.status)}</TableCell>
-                  <TableCell className="py-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{formatDate(user.lastLogin)}</TableCell>
-                  <TableCell className="text-right py-4">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <TableCell className="py-5">{getStatusBadge(user.status)}</TableCell>
+                  <TableCell className="py-5 text-slate-600 dark:text-slate-400 font-mono text-sm">{formatDate(user.lastLogin)}</TableCell>
+                  <TableCell className="text-right py-5">
+                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEditUser(user)}
-                        className="hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+                        className="h-9 w-9 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 rounded-lg hover:scale-110"
                       >
                         <EditIcon className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => { setCurrentUser(user); setIsResetPasswordOpen(true); }}
+                        className="h-9 w-9 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-600 dark:hover:text-amber-400 transition-all duration-200 rounded-lg hover:scale-110"
+                      >
+                        <KeyRoundIcon className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            className="hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200"
+                            className="h-9 w-9 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 rounded-lg hover:scale-110"
                           >
                             <TrashIcon className="h-4 w-4" />
                           </Button>
@@ -492,6 +605,52 @@ export function UserManagement({ isLoading }: UserManagementProps) {
           </TableBody>
         </Table>
       </div>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset User Password</DialogTitle>
+            <DialogDescription>
+              Set a new password for {currentUser?.name}. The user will be able to login with this new password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="new-password" className="text-right">
+                New Password
+              </Label>
+              <Input
+                id="new-password"
+                type="password"
+                className="col-span-3"
+                value={resetPassword.newPassword}
+                onChange={(e) => setResetPassword({ ...resetPassword, newPassword: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="confirm-new-password" className="text-right">
+                Confirm
+              </Label>
+              <Input
+                id="confirm-new-password"
+                type="password"
+                className="col-span-3"
+                value={resetPassword.confirmPassword}
+                onChange={(e) => setResetPassword({ ...resetPassword, confirmPassword: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsResetPasswordOpen(false); setResetPassword({ newPassword: "", confirmPassword: "" }); }} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleResetPassword} className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600" disabled={isSubmitting}>
+              {isSubmitting ? 'Resetting...' : 'Reset Password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit User Dialog */}
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
@@ -566,10 +725,12 @@ export function UserManagement({ isLoading }: UserManagementProps) {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>
+            <Button variant="outline" onClick={() => setIsEditUserOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateUser}>Save Changes</Button>
+            <Button onClick={handleUpdateUser} disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,7 +1,7 @@
 //path: backend/src/middleware/auth.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { IUser, UserRole } from '../models/User';
+import User, { IUser } from '../models/User';
 
 // Extend the Express Request interface
 declare global {
@@ -19,7 +19,7 @@ declare global {
 
 interface JwtPayload {
   id: string;
-  role: UserRole;
+  role: string;
 }
 
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
@@ -53,8 +53,8 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
 
-    // Find user by id
-    const user = await User.findById(decoded.id).select('-password');
+    // Find user by id and populate role
+    const user = await User.findById(decoded.id).populate('role').select('-password');
 
     // Check if user exists
     if (!user) {
