@@ -340,7 +340,7 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>{formatFileSize(file.size)}</span>
                         <span>•</span>
-                        <span>Uploaded by {file.uploadedBy.firstName} {file.uploadedBy.lastName}</span>
+                        <span>Uploaded by {file.uploadedBy?.firstName || 'Unknown'} {file.uploadedBy?.lastName || ''}</span>
                         <span>•</span>
                         <span>{new Date(file.createdAt).toLocaleDateString()}</span>
                       </div>

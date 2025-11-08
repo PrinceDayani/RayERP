@@ -155,7 +155,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Find user by email and include password in the result
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select('+password').populate('role');
 
     // Check if user exists
     if (!user) {
@@ -198,7 +198,7 @@ export const login = async (req: Request, res: Response) => {
       updatedAt: user.updatedAt
     };
 
-    logger.info(`User logged in successfully: ${email} with role: ${user.role}`);
+    logger.info(`User logged in successfully: ${email}`);
 
     return res.status(200).json({
       success: true,

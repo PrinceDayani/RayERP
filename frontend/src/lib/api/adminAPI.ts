@@ -218,10 +218,21 @@ const adminAPI = {
   // Role Management
   getRoles: async (): Promise<any[]> => {
     try {
-      return await apiRequest('/api/rbac/roles');
+      const response = await apiRequest('/api/rbac/roles');
+      console.log('getRoles response:', response);
+      // Handle different response formats
+      if (Array.isArray(response)) {
+        return response;
+      } else if (response?.roles && Array.isArray(response.roles)) {
+        return response.roles;
+      } else if (response?.data && Array.isArray(response.data)) {
+        return response.data;
+      }
+      console.warn('Unexpected roles response format:', response);
+      return [];
     } catch (error) {
       console.error('Error fetching roles:', error);
-      return [];
+      throw error;
     }
   },
 
@@ -238,15 +249,28 @@ const adminAPI = {
     }
   },
 
-  updateUserRole: async (userId: string, role: string): Promise<AdminUser> => {
+  updateUserRole: async (userId: string, roleId: string): Promise<AdminUser> => {
     try {
-      const response = await apiRequest(`/api/auth/users/${userId}/role`, {
-        method: 'PATCH',
-        body: JSON.stringify({ role })
+      const response = await apiRequest(`/api/users/${userId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ roleId })
       });
       return response;
     } catch (error) {
       console.error('Error updating user role:', error);
+      throw error;
+    }
+  },
+
+  bulkUpdateUserRoles: async (userIds: string[], roleId: string): Promise<{ success: boolean; updated: number }> => {
+    try {
+      const response = await apiRequest('/api/users/bulk/role', {
+        method: 'PUT',
+        body: JSON.stringify({ userIds, roleId })
+      });
+      return response;
+    } catch (error) {
+      console.error('Error bulk updating user roles:', error);
       throw error;
     }
   },

@@ -13,7 +13,8 @@ import {
   updateDepartmentPermissions,
   getDepartmentPermissions,
   addDepartmentPermission,
-  removeDepartmentPermission
+  removeDepartmentPermission,
+  getAllEmployeesForDepartment
 } from '../controllers/departmentController';
 import { protect } from '../middleware/auth.middleware';
 
@@ -22,6 +23,7 @@ const router = express.Router();
 router.use(protect);
 
 router.get('/stats', getDepartmentStats);
+router.get('/all-employees', getAllEmployeesForDepartment);
 router.get('/', getDepartments);
 router.get('/:id', getDepartmentById);
 router.get('/:id/employees', getDepartmentEmployees);

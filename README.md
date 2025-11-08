@@ -90,6 +90,7 @@ npm start
 - Kanban-style task boards
 - Project analytics and reporting
 - Team collaboration features
+- **File sharing with departments and users** - Share project files with entire departments, specific users, or both
 
 ### 📋 Task Management
 - Task creation and assignment
@@ -115,6 +116,14 @@ npm start
 - Business intelligence reports
 - Data visualization
 - Export capabilities
+
+### 💬 Chat & Messaging
+- Real-time chat between users
+- Image and document sharing
+- File upload support (images, PDFs, documents)
+- Typing indicators
+- Read receipts
+- Root user monitoring mode
 
 ### 🔄 Real-time Features
 - Live updates via WebSocket
@@ -153,6 +162,14 @@ Base URL: `http://localhost:5000/api`
 - `DELETE /projects/:id` - Delete project
 - `GET /projects/:id/tasks` - Get project tasks
 
+### Project File Sharing
+- `GET /projects/:id/files` - Get all project files
+- `POST /projects/:id/files` - Upload file with sharing settings
+- `PUT /projects/:id/files/:fileId/share` - Update file sharing settings
+- `GET /projects/shared/files` - Get files shared with current user
+- `GET /projects/:id/files/:fileId/download` - Download file
+- `DELETE /projects/:id/files/:fileId` - Delete file
+
 ### Task Management
 - `GET /tasks` - Get all tasks
 - `POST /tasks` - Create new task
@@ -167,6 +184,15 @@ Base URL: `http://localhost:5000/api`
 - `GET /contacts/:id` - Get contact by ID
 - `PUT /contacts/:id` - Update contact
 - `DELETE /contacts/:id` - Delete contact
+
+### Chat & Messaging
+- `GET /chat/chats` - Get all chats
+- `POST /chat/chats` - Create or get chat with user
+- `POST /chat/chats/message` - Send message
+- `POST /chat/chats/upload` - Upload file (image/document)
+- `GET /chat/chats/:chatId/messages` - Get chat messages
+- `PUT /chat/chats/:chatId/read` - Mark messages as read
+- `GET /chat/users` - Get available users for chat
 
 ### Analytics & Reports
 - `GET /analytics/dashboard` - Dashboard statistics
@@ -311,7 +337,9 @@ node test-backend.js
 ## 📚 Documentation
 
 For detailed documentation, see:
-- [Department Permissions Guide](DEPARTMENT_PERMISSIONS.md) - **NEW!** Department-based permissions
+- [Project File Sharing](PROJECT_FILE_SHARING.md) - **NEW!** Share files with departments and specific users
+- [Chat File Upload Feature](CHAT_FILE_UPLOAD.md) - Image and document sharing in chat
+- [Department Permissions Guide](DEPARTMENT_PERMISSIONS.md) - Department-based permissions
 - [Department Permissions Quick Reference](DEPARTMENT_PERMISSIONS_QUICK_GUIDE.md) - Quick start guide
 - [API Fixes Summary](API_FIXES_SUMMARY.md)
 - [Employee & Project Management](EMPLOYEE_PROJECT_MANAGEMENT.md)

@@ -23,7 +23,7 @@ export const getDepartments = async (req: Request, res: Response) => {
     
     // Update employee counts for all departments
     for (const dept of departments) {
-      const count = await Employee.countDocuments({ department: dept.name });
+      const count = await Employee.countDocuments({ departments: dept.name });
       if (dept.employeeCount !== count) {
         dept.employeeCount = count;
         await dept.save();
@@ -99,14 +99,19 @@ export const createDepartment = async (req: Request, res: Response) => {
 
     // Assign all employees (including manager) to department
     if (employeesToAssign.length > 0) {
-      await Employee.updateMany(
-        { _id: { $in: employeesToAssign } },
-        { department: department.name }
-      );
+      for (const empId of employeesToAssign) {
+        const emp = await Employee.findById(empId);
+        const updateData: any = { $addToSet: { departments: department.name } };
+        // Only set primary department if employee doesn't have one
+        if (!emp?.department) {
+          updateData.$set = { department: department.name };
+        }
+        await Employee.findByIdAndUpdate(empId, updateData);
+      }
     }
 
     // Update employee count (includes manager)
-    const count = await Employee.countDocuments({ department: department.name });
+    const count = await Employee.countDocuments({ departments: department.name });
     department.employeeCount = count;
     await department.save();
 
@@ -128,6 +133,7 @@ export const updateDepartment = async (req: Request, res: Response) => {
     }
 
     const oldName = department.name;
+    const newName = name || oldName;
 
     if (name && name !== oldName) {
       const existingDept = await Department.findOne({ name });
@@ -135,6 +141,10 @@ export const updateDepartment = async (req: Request, res: Response) => {
         return res.status(400).json({ success: false, message: 'Department name already exists' });
       }
       // Update all employees with old department name
+      await Employee.updateMany(
+        { departments: oldName },
+        { $set: { departments: { $map: { input: '$departments', as: 'd', in: { $cond: [{ $eq: ['$$d', oldName] }, name, '$$d'] } } } } }
+      );
       await Employee.updateMany(
         { department: oldName },
         { department: name }
@@ -147,6 +157,10 @@ export const updateDepartment = async (req: Request, res: Response) => {
       { new: true, runValidators: true }
     );
 
+    // Get current employees in this department
+    const currentEmployees = await Employee.find({ departments: newName });
+    const currentEmployeeIds = currentEmployees.map(e => e._id.toString());
+
     const employeesToAssign = [];
 
     // Add manager to employees list if provided
@@ -155,20 +169,39 @@ export const updateDepartment = async (req: Request, res: Response) => {
     }
 
     // Add other employees if provided
-    if (employeeIds && employeeIds.length > 0) {
+    if (employeeIds && Array.isArray(employeeIds) && employeeIds.length > 0) {
       employeesToAssign.push(...employeeIds);
     }
 
-    // Assign all employees (including manager) to department
-    if (employeesToAssign.length > 0) {
-      await Employee.updateMany(
-        { _id: { $in: employeesToAssign } },
-        { department: updated!.name }
-      );
+    // Find employees to remove (in current but not in new list)
+    const employeesToRemove = currentEmployeeIds.filter(id => !employeesToAssign.includes(id));
+
+    // Remove department from employees no longer in this department
+    for (const empId of employeesToRemove) {
+      await Employee.findByIdAndUpdate(empId, {
+        $pull: { departments: updated!.name }
+      });
+      // Update primary department if needed
+      const emp = await Employee.findById(empId);
+      if (emp && emp.department === updated!.name) {
+        const newPrimaryDept = emp.departments && emp.departments.length > 0 ? emp.departments[0] : '';
+        await Employee.findByIdAndUpdate(empId, { department: newPrimaryDept });
+      }
+    }
+
+    // Add department to new employees
+    for (const empId of employeesToAssign) {
+      const emp = await Employee.findById(empId);
+      const updateData: any = { $addToSet: { departments: updated!.name } };
+      // Only set primary department if employee doesn't have one
+      if (!emp?.department) {
+        updateData.$set = { department: updated!.name };
+      }
+      await Employee.findByIdAndUpdate(empId, updateData);
     }
 
     // Update employee count (includes manager)
-    const count = await Employee.countDocuments({ department: updated!.name });
+    const count = await Employee.countDocuments({ departments: updated!.name });
     updated!.employeeCount = count;
     await updated!.save();
 
@@ -228,17 +261,15 @@ export const getDepartmentStats = async (req: Request, res: Response) => {
 export const updateEmployeeCount = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const employees = await Employee.countDocuments({ department: id });
-    
-    const department = await Department.findByIdAndUpdate(
-      id,
-      { employeeCount: employees },
-      { new: true }
-    );
-
+    const department = await Department.findById(id);
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
+    
+    const employees = await Employee.countDocuments({ departments: department.name });
+    
+    department.employeeCount = employees;
+    await department.save();
 
     res.json({ success: true, data: department });
   } catch (error: any) {
@@ -252,7 +283,7 @@ export const getDepartmentEmployees = async (req: Request, res: Response) => {
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
-    const employees = await Employee.find({ department: department.name }).select('firstName lastName email position status');
+    const employees = await Employee.find({ departments: department.name }).select('firstName lastName email position status departments');
     res.json({ success: true, data: employees });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -279,12 +310,17 @@ export const assignEmployees = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'One or more employees not found' });
     }
 
-    await Employee.updateMany(
-      { _id: { $in: employeeIds } },
-      { department: department.name }
-    );
+    for (const empId of employeeIds) {
+      const emp = await Employee.findById(empId);
+      const updateData: any = { $addToSet: { departments: department.name } };
+      // Only set primary department if employee doesn't have one
+      if (!emp?.department) {
+        updateData.$set = { department: department.name };
+      }
+      await Employee.findByIdAndUpdate(empId, updateData);
+    }
 
-    const count = await Employee.countDocuments({ department: department.name });
+    const count = await Employee.countDocuments({ departments: department.name });
     department.employeeCount = count;
     await department.save();
 
@@ -308,14 +344,21 @@ export const unassignEmployee = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
 
-    // Only unassign if employee is in this department
-    if (employee.department !== department.name) {
-      return res.status(400).json({ success: false, message: 'Employee is not in this department' });
+    // Remove department from employee's departments array
+    await Employee.findByIdAndUpdate(employeeId, {
+      $pull: { departments: department.name }
+    });
+
+    // Update primary department if it was this one
+    const updatedEmployee = await Employee.findById(employeeId);
+    if (updatedEmployee && updatedEmployee.department === department.name) {
+      const newPrimaryDept = updatedEmployee.departments && updatedEmployee.departments.length > 0 
+        ? updatedEmployee.departments[0] 
+        : '';
+      await Employee.findByIdAndUpdate(employeeId, { department: newPrimaryDept });
     }
 
-    await Employee.findByIdAndUpdate(employeeId, { department: '' });
-
-    const count = await Employee.countDocuments({ department: department.name });
+    const count = await Employee.countDocuments({ departments: department.name });
     department.employeeCount = count;
     await department.save();
 
@@ -416,6 +459,15 @@ export const removeDepartmentPermission = async (req: Request, res: Response) =>
     await department.save();
 
     res.json({ success: true, data: department, message: 'Permission removed successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getAllEmployeesForDepartment = async (req: Request, res: Response) => {
+  try {
+    const employees = await Employee.find().select('firstName lastName email position status department departments phone');
+    res.json({ success: true, data: employees });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

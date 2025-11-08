@@ -100,16 +100,16 @@ export const updateContact = async (req: Request, res: Response) => {
     }
 
     // Update fields
-    contact.name = name || contact.name;
-    contact.email = email || contact.email;
-    contact.phone = phone || contact.phone;
-    contact.company = company || contact.company;
-    contact.position = position || contact.position;
-    contact.address = address || contact.address;
-    contact.notes = notes || contact.notes;
-    contact.tags = tags || contact.tags;
-    contact.reference = reference || contact.reference;
-    contact.alternativePhone = alternativePhone || contact.alternativePhone;
+    if (name !== undefined) contact.name = name;
+    if (email !== undefined) contact.email = email;
+    if (phone !== undefined) contact.phone = phone;
+    if (company !== undefined) contact.company = company;
+    if (position !== undefined) contact.position = position;
+    if (address !== undefined) contact.address = address;
+    if (notes !== undefined) contact.notes = notes;
+    if (tags !== undefined) contact.tags = tags;
+    if (reference !== undefined) contact.reference = reference;
+    if (alternativePhone !== undefined) contact.alternativePhone = alternativePhone;
 
     const updatedContact = await contact.save();
     return res.status(200).json(updatedContact);

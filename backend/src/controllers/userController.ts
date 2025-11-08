@@ -91,6 +91,91 @@ export const resetUserPassword = async (req: Request, res: Response) => {
   }
 };
 
+// Bulk update user roles
+export const bulkUpdateUserRoles = async (req: Request, res: Response) => {
+  try {
+    const { userIds, roleId } = req.body;
+    
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'User IDs array is required'
+      });
+    }
+    
+    if (!roleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Role ID is required'
+      });
+    }
+    
+    const newRole = await Role.findById(roleId);
+    if (!newRole) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role'
+      });
+    }
+    
+    if (newRole.name?.toLowerCase() === 'root') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot assign Root role to users'
+      });
+    }
+    
+    if (req.user) {
+      const currentUserRole = (req.user.role as any);
+      
+      if (newRole.level >= currentUserRole.level) {
+        return res.status(403).json({
+          success: false,
+          message: 'You cannot assign a role equal to or higher than your own'
+        });
+      }
+    }
+    
+    let updated = 0;
+    for (const userId of userIds) {
+      const userToUpdate = await User.findById(userId).populate('role');
+      if (!userToUpdate) continue;
+      
+      const targetUserCurrentRole = (userToUpdate.role as any);
+      
+      if (targetUserCurrentRole.name?.toLowerCase() === 'root') continue;
+      
+      if (req.user) {
+        const currentUserRole = (req.user.role as any);
+        if (targetUserCurrentRole.level >= currentUserRole.level) continue;
+      }
+      
+      await User.findByIdAndUpdate(userId, { role: roleId });
+      
+      emitToUser(userId, 'roleUpdated', {
+        userId: userId,
+        newRole: newRole
+      });
+      
+      updated++;
+    }
+    
+    logger.info(`Bulk updated ${updated} user roles to ${newRole.name}`);
+    
+    res.status(200).json({
+      success: true,
+      message: `Successfully updated ${updated} user(s)`,
+      updated
+    });
+  } catch (error: any) {
+    logger.error(`Bulk update user roles error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error bulk updating user roles'
+    });
+  }
+};
+
 // Update user role
 export const updateUserRole = async (req: Request, res: Response) => {
   try {

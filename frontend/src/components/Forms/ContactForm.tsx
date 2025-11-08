@@ -129,10 +129,10 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
                 className={errors.name ? 'border-red-500' : ''}
               />
               {errors.name && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>{errors.name}</AlertDescription>
-                </Alert>
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.name}
+                </p>
               )}
             </div>
 
@@ -151,10 +151,10 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
                 className={errors.phone ? 'border-red-500' : ''}
               />
               {errors.phone && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>{errors.phone}</AlertDescription>
-                </Alert>
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.phone}
+                </p>
               )}
             </div>
           </div>
@@ -174,10 +174,10 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
               className={errors.email ? 'border-red-500' : ''}
             />
             {errors.email && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{errors.email}</AlertDescription>
-              </Alert>
+              <p className="text-sm text-red-500 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {errors.email}
+              </p>
             )}
           </div>
 

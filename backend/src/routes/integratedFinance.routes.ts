@@ -10,11 +10,13 @@ import {
   getBudgetMonitoringStatus
 } from '../controllers/integratedFinanceController';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { requirePermission } from '../middleware/rbac.middleware';
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
+router.use(requirePermission('finance.view'));
 
 // Record project expense with real-time sync
 router.post('/projects/:projectId/expenses', recordProjectExpense);

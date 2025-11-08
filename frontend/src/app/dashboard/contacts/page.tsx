@@ -134,22 +134,9 @@ export default function ContactsPage() {
     setIsRefreshing(false);
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      try {
-        setIsLoading(true);
-        const results = await searchContacts(searchQuery);
-        setContacts(results);
-      } catch (err) {
-        setError('Search failed. Please try again.');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      applyFilters(allContacts);
-    }
+    // Search is now handled by useEffect
   };
 
   const handleDelete = async (id: string) => {
@@ -170,7 +157,7 @@ export default function ContactsPage() {
     }
   };
 
-  const applyFilters = (contactsToFilter: Contact[]) => {
+  const applyFilters = React.useCallback((contactsToFilter: Contact[]) => {
     if (activeFilters.tags.length === 0 && activeFilters.company.length === 0) {
       setContacts(contactsToFilter);
       return;
@@ -187,7 +174,7 @@ export default function ContactsPage() {
     });
     
     setContacts(filtered);
-  };
+  }, [activeFilters]);
 
   const toggleFilter = (type: 'tags' | 'company', value: string) => {
     setActiveFilters(prev => {
@@ -200,32 +187,39 @@ export default function ContactsPage() {
         currentFilters.splice(index, 1);
       }
       
-      const newFilters = {
+      return {
         ...prev,
         [type]: currentFilters
       };
-      
-      // Apply the updated filters
-      applyFilters(searchQuery ? allContacts.filter(c => {
+    });
+  };
+
+  useEffect(() => {
+    let filtered = allContacts;
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(c => {
         const name = c.name?.toLowerCase() || '';
         const email = c.email?.toLowerCase() || '';
         const phone = c.phone?.toLowerCase() || '';
         const company = c.company?.toLowerCase() || '';
-        const query = searchQuery.toLowerCase();
         
         return name.includes(query) || 
                email.includes(query) || 
                phone.includes(query) || 
                company.includes(query);
-      }) : allContacts);
-      
-      return newFilters;
-    });
-  };
+      });
+    }
+    
+    // Apply active filters
+    applyFilters(filtered);
+  }, [activeFilters, searchQuery, allContacts]);
 
   const clearFilters = () => {
     setActiveFilters({ tags: [], company: [] });
-    setContacts(allContacts);
+    setSearchQuery('');
   };
 
   const exportContacts = () => {

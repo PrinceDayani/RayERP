@@ -24,7 +24,8 @@ import {
   BarChart3,
   FileText,
   CheckCircle,
-  XCircle
+  XCircle,
+  User
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
@@ -434,7 +435,11 @@ const EmployeeManagementDashboard = () => {
                       </thead>
                       <tbody>
                         {filteredEmployees.map((employee) => (
-                          <tr key={employee._id} className="table-row-hover border-b border-border/50">
+                          <tr 
+                            key={employee._id} 
+                            className="table-row-hover border-b border-border/50 cursor-pointer"
+                            onClick={() => router.push(`/dashboard/employees/${employee._id}`)}
+                          >
                             <td className="p-4">
                               <span className="font-mono text-sm bg-muted/50 px-2 py-1 rounded">{employee.employeeId}</span>
                             </td>
@@ -473,13 +478,23 @@ const EmployeeManagementDashboard = () => {
                               </Badge>
                             </td>
                             <td className="p-4 text-muted-foreground">{new Date(employee.hireDate).toLocaleDateString()}</td>
-                            <td className="p-4">
+                            <td className="p-4" onClick={(e) => e.stopPropagation()}>
                               <div className="flex gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => router.push(`/dashboard/employees/${employee._id}`)}
+                                  className="hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                                  title="View Details"
+                                >
+                                  <User className="w-4 h-4" />
+                                </Button>
                                 <Button 
                                   variant="outline" 
                                   size="sm"
                                   onClick={() => router.push(`/dashboard/employees/${employee._id}/edit`)}
                                   className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                                  title="Edit Employee"
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
@@ -488,6 +503,7 @@ const EmployeeManagementDashboard = () => {
                                   size="sm" 
                                   onClick={() => handleDeleteEmployee(employee._id, `${employee.firstName} ${employee.lastName}`)}
                                   className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                  title="Delete Employee"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -623,7 +639,7 @@ const LeaveManagement = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-medium">
-                    {leave.employee.firstName} {leave.employee.lastName}
+                    {leave.employee?.firstName || 'N/A'} {leave.employee?.lastName || ''}
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {leave.leaveType} - {leave.totalDays} days

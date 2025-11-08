@@ -31,6 +31,8 @@ import {
   uploadProjectFile,
   downloadProjectFile,
   deleteProjectFile,
+  shareProjectFile,
+  getSharedFiles,
   upload
 } from '../controllers/projectFileController';
 import {
@@ -151,6 +153,12 @@ router.use('/:id/budget', budgetRoutes);
 // --- File Management Routes ---
 router.get('/:id/files', validateObjectId(), checkProjectAccess, getProjectFiles);
 router.post('/:id/files', validateObjectId(), checkProjectAccess, upload.single('file'), uploadProjectFile);
+router.put('/:id/files/:fileId/share',
+  validateObjectId('id'),
+  validateObjectId('fileId'),
+  checkProjectAccess,
+  shareProjectFile
+);
 router.get('/:id/files/:fileId/download',
   validateObjectId('id'),
   validateObjectId('fileId'),
@@ -163,5 +171,8 @@ router.delete('/:id/files/:fileId',
   checkProjectAccess,
   deleteProjectFile
 );
+
+// --- Shared Files Route ---
+router.get('/shared/files', getSharedFiles);
 
 export default router;

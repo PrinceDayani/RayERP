@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { initializeSocket, getSocket } from "@/lib/socket";
-import { compareRoles, getRoleDisplayName } from "@/lib/roleUtils";
+import { hasPermission, hasMinimumLevel, PERMISSIONS, ROLE_LEVELS } from "@/lib/permissions";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { EmployeeList } from "@/components/employee";
 import { employeesAPI } from "@/lib/api/employeesAPI";
@@ -242,37 +242,9 @@ const Dashboard = () => {
     </Card>
   );
 
-  // Helper function to check role
-  const hasMinimumRole = (requiredRole: UserRole): boolean => {
-    if (!user || !user.role) return false;
-    const userRoleObj = typeof user.role === 'string' ? null : user.role;
-    
-    // Use role level if available (from database)
-    if (userRoleObj && userRoleObj.level !== undefined) {
-      const requiredLevels: { [key: string]: number } = {
-        [UserRole.ROOT]: 100,
-        [UserRole.SUPER_ADMIN]: 90,
-        [UserRole.ADMIN]: 80,
-        [UserRole.MANAGER]: 70,
-        [UserRole.EMPLOYEE]: 60,
-        [UserRole.NORMAL]: 50
-      };
-      return userRoleObj.level >= (requiredLevels[requiredRole] || 0);
-    }
-    
-    // Fallback to name comparison
-    const roleName = typeof user.role === 'string' ? user.role : user.role.name;
-    const roleHierarchy: { [key: string]: number } = {
-      'root': 6,
-      'super admin': 5,
-      'superadmin': 5,
-      'admin': 4,
-      'manager': 3,
-      'employee': 2,
-      'normal': 1
-    };
-    
-    return (roleHierarchy[roleName.toLowerCase()] || 0) >= (roleHierarchy[requiredRole.toLowerCase()] || 0);
+  // Helper function to check minimum level
+  const checkMinimumLevel = (minLevel: number): boolean => {
+    return hasMinimumLevel(user, minLevel);
   };
 
   // Loading state
@@ -470,7 +442,7 @@ const Dashboard = () => {
             >
               Tasks
             </TabsTrigger>
-            {hasMinimumRole(UserRole.ADMIN) && (
+            {checkMinimumLevel(ROLE_LEVELS.ADMIN) && (
               <TabsTrigger 
                 value="analytics"
                 className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -478,7 +450,7 @@ const Dashboard = () => {
                 Analytics
               </TabsTrigger>
             )}
-            {hasMinimumRole(UserRole.SUPER_ADMIN) && (
+            {checkMinimumLevel(ROLE_LEVELS.SUPER_ADMIN) && (
               <TabsTrigger 
                 value="admin"
                 className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -745,7 +717,7 @@ const Dashboard = () => {
           </TabsContent>
 
           {/* Analytics Tab */}
-          {hasMinimumRole(UserRole.ADMIN) && (
+          {checkMinimumLevel(ROLE_LEVELS.ADMIN) && (
             <TabsContent value="analytics" className="space-y-6">
               {isAuthenticated ? (
                 <Card className="theme-card theme-shadow theme-transition">
@@ -800,7 +772,7 @@ const Dashboard = () => {
           )}
           
           {/* Administration Tab */}
-          {hasMinimumRole(UserRole.SUPER_ADMIN) && (
+          {checkMinimumLevel(ROLE_LEVELS.SUPER_ADMIN) && (
             <TabsContent value="admin" className="space-y-6">
               {/* Admin Action Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -851,7 +823,7 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                {hasMinimumRole(UserRole.ROOT) && (
+                {checkMinimumLevel(ROLE_LEVELS.ROOT) && (
                   <Card className="border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-800 theme-card theme-shadow theme-transition">
                     <CardHeader className="theme-compact-padding">
                       <CardTitle className="flex items-center theme-text theme-responsive-text">

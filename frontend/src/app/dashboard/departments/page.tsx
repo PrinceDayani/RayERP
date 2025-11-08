@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, Building, Edit, Trash2, Users, Search, Filter, TrendingUp, Mail, Phone, MapPin, Calendar, BarChart3, Loader2, UserPlus, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Building, Edit, Trash2, Users, Search, Filter, TrendingUp, Mail, Phone, MapPin, Calendar, BarChart3, Loader2, UserPlus, X, CheckCircle2, AlertCircle, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ export default function DepartmentsPage() {
   const [stats, setStats] = useState<DepartmentStats | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,6 +30,7 @@ export default function DepartmentsPage() {
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [deptEmployees, setDeptEmployees] = useState<Employee[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [deptPermissions, setDeptPermissions] = useState<string[]>([]);
   const { toast } = useToast();
   const [formData, setFormData] = useState({ 
     name: "", 
@@ -45,14 +47,13 @@ export default function DepartmentsPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [deptResponse, statsResponse, empResponse] = await Promise.all([
+        const [deptResponse, statsResponse] = await Promise.all([
           departmentApi.getAll(searchQuery, statusFilter),
-          departmentApi.getStats(),
-          employeeApi.getAll()
+          departmentApi.getStats()
         ]);
         setDepartments(deptResponse.data);
         setStats(statsResponse.data);
-        setAllEmployees(Array.isArray(empResponse.data) ? empResponse.data : empResponse.data?.data || []);
+        await fetchAllEmployees();
       } catch (error: any) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -66,6 +67,8 @@ export default function DepartmentsPage() {
   const fetchDepartments = async () => {
     try {
       const response = await departmentApi.getAll(searchQuery, statusFilter);
+      console.log('Fetched departments:', response.data);
+      console.log('First department permissions:', response.data[0]?.permissions);
       setDepartments(response.data);
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.message || "Failed to fetch departments", variant: "destructive" });
@@ -83,10 +86,17 @@ export default function DepartmentsPage() {
 
   const fetchAllEmployees = async () => {
     try {
-      const response = await employeeApi.getAll();
-      setAllEmployees(Array.isArray(response.data) ? response.data : response.data?.data || []);
+      const response = await departmentApi.getAllEmployees();
+      const employees = Array.isArray(response.data) ? response.data : response.data?.data || [];
+      console.log('Fetched employees:', employees.length);
+      console.log('Sample employee:', employees[0]);
+      setAllEmployees(employees);
+      return employees;
     } catch (error: any) {
       console.error('Failed to fetch employees:', error);
+      toast({ title: "Warning", description: "Could not load employees. You may not have permission.", variant: "destructive" });
+      setAllEmployees([]);
+      return [];
     }
   };
 
@@ -103,13 +113,18 @@ export default function DepartmentsPage() {
     e.preventDefault();
     try {
       setSubmitting(true);
-      console.log('Submitting form data:', formData);
+      console.log('=== SUBMITTING FORM DATA ===');
+      console.log('Form data:', JSON.stringify(formData, null, 2));
+      console.log('Employee IDs count:', formData.employeeIds.length);
+      console.log('Manager ID:', formData.managerId);
+      
       if (editingDept) {
-        await departmentApi.update(editingDept._id, formData);
+        const response = await departmentApi.update(editingDept._id, formData);
+        console.log('Update response:', response);
         toast({ title: "Success", description: "Department updated successfully" });
       } else {
         const response = await departmentApi.create(formData as any);
-        console.log('Department created:', response);
+        console.log('Create response:', response);
         toast({ title: "Success", description: "Department created successfully" });
       }
       setIsDialogOpen(false);
@@ -120,25 +135,72 @@ export default function DepartmentsPage() {
       await fetchAllEmployees();
     } catch (error: any) {
       console.error('Submit error:', error);
+      console.error('Error response:', error.response?.data);
       toast({ title: "Error", description: error.response?.data?.message || "Operation failed", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleEdit = (dept: Department) => {
+  const handleEdit = async (dept: Department) => {
     setEditingDept(dept);
-    setFormData({ 
-      name: dept.name, 
-      description: dept.description, 
-      manager: dept.manager,
-      location: dept.location, 
-      budget: dept.budget, 
-      status: dept.status,
-      managerId: "",
-      employeeIds: []
-    });
-    setIsDialogOpen(true);
+    setLoading(true);
+    
+    try {
+      const [allEmpResponse, deptEmpResponse] = await Promise.all([
+        departmentApi.getAllEmployees(),
+        departmentApi.getEmployees(dept._id)
+      ]);
+      
+      const allEmps = Array.isArray(allEmpResponse.data) ? allEmpResponse.data : allEmpResponse.data?.data || [];
+      const currentEmployees = Array.isArray(deptEmpResponse.data) ? deptEmpResponse.data : deptEmpResponse.data?.data || [];
+      
+      console.log('All employees loaded:', allEmps.length);
+      console.log('Current dept employees:', currentEmployees);
+      
+      setAllEmployees(allEmps);
+      
+      const employeeIds = currentEmployees.map((emp: Employee) => emp._id);
+      
+      let managerId = "";
+      if (dept.manager?.email) {
+        const managerEmp = allEmps.find(e => e.email === dept.manager.email);
+        if (managerEmp) {
+          managerId = managerEmp._id;
+        }
+      }
+      
+      const newFormData = { 
+        name: dept.name, 
+        description: dept.description, 
+        manager: dept.manager,
+        location: dept.location, 
+        budget: dept.budget, 
+        status: dept.status,
+        managerId,
+        employeeIds: employeeIds.filter((id: string) => id !== managerId)
+      };
+      
+      console.log('Form data set:', newFormData);
+      console.log('Employee IDs:', employeeIds);
+      setFormData(newFormData);
+      setTimeout(() => setIsDialogOpen(true), 100);
+    } catch (error) {
+      console.error('Failed to load department employees:', error);
+      setFormData({ 
+        name: dept.name, 
+        description: dept.description, 
+        manager: dept.manager,
+        location: dept.location, 
+        budget: dept.budget, 
+        status: dept.status,
+        managerId: "",
+        employeeIds: []
+      });
+      setIsDialogOpen(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -162,9 +224,25 @@ export default function DepartmentsPage() {
 
   const openAssignDialog = async (dept: Department) => {
     setSelectedDept(dept);
-    await fetchDeptEmployees(dept._id);
     setSelectedEmployees([]);
+    await fetchDeptEmployees(dept._id);
+    await fetchAllEmployees();
     setIsAssignDialogOpen(true);
+  };
+
+  const openPermissionDialog = async (dept: Department) => {
+    setSelectedDept(dept);
+    console.log('Opening permissions for department:', dept);
+    console.log('Department permissions from card:', dept.permissions);
+    try {
+      const response = await departmentApi.getPermissions(dept._id);
+      console.log('Permissions API response:', response);
+      setDeptPermissions(response.data.permissions || []);
+      setIsPermissionDialogOpen(true);
+    } catch (error: any) {
+      console.error('Error loading permissions:', error);
+      toast({ title: "Error", description: "Failed to load permissions", variant: "destructive" });
+    }
   };
 
   const handleAssignEmployees = async () => {
@@ -174,8 +252,10 @@ export default function DepartmentsPage() {
       await departmentApi.assignEmployees(selectedDept._id, selectedEmployees);
       toast({ title: "Success", description: "Employees assigned successfully" });
       setIsAssignDialogOpen(false);
-      fetchDepartments();
-      fetchStats();
+      setSelectedEmployees([]);
+      await fetchDepartments();
+      await fetchStats();
+      if (selectedDept) await fetchDeptEmployees(selectedDept._id);
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.message || "Failed to assign employees", variant: "destructive" });
     } finally {
@@ -192,6 +272,27 @@ export default function DepartmentsPage() {
       fetchStats();
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.message || "Failed to unassign employee", variant: "destructive" });
+    }
+  };
+
+  const handleAddPermission = async (permission: string) => {
+    if (!selectedDept) return;
+    try {
+      await departmentApi.addPermission(selectedDept._id, permission);
+      setDeptPermissions([...deptPermissions, permission]);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.response?.data?.message || "Failed to add permission", variant: "destructive" });
+    }
+  };
+
+  const handleRemovePermission = async (permission: string) => {
+    if (!selectedDept) return;
+    try {
+      await departmentApi.removePermission(selectedDept._id, permission);
+      setDeptPermissions(deptPermissions.filter(p => p !== permission));
+      toast({ title: "Success", description: "Permission removed" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.response?.data?.message || "Failed to remove permission", variant: "destructive" });
     }
   };
 
@@ -326,7 +427,7 @@ export default function DepartmentsPage() {
                     <span>{dept.location}</span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t">
                   <div className="text-center p-2 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground">Employees</p>
                     <p className="text-lg font-bold">{dept.employeeCount}</p>
@@ -335,11 +436,18 @@ export default function DepartmentsPage() {
                     <p className="text-xs text-muted-foreground">Budget</p>
                     <p className="text-lg font-bold">${(dept.budget / 1000).toFixed(0)}K</p>
                   </div>
+                  <div className="text-center p-2 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Permissions</p>
+                    <p className="text-lg font-bold">{dept.permissions?.length || 0}</p>
+                  </div>
                 </div>
                 <div className="flex space-x-2 pt-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => openAssignDialog(dept)}>
                     <UserPlus className="w-4 h-4 mr-1" />
                     Assign
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openPermissionDialog(dept)}>
+                    <Shield className="w-4 h-4" />
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => handleEdit(dept)}>
                     <Edit className="w-4 h-4" />
@@ -356,7 +464,7 @@ export default function DepartmentsPage() {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" key={editingDept?._id || 'new'}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building className="w-5 h-5" />
@@ -447,16 +555,18 @@ export default function DepartmentsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="managerId">Department Manager</Label>
                     <Select value={formData.managerId || "none"} onValueChange={(value) => {
+                      console.log('Manager selected:', value);
                       if (value === "none") {
-                        setFormData({ ...formData, managerId: "", manager: { name: "", email: "", phone: "" } });
+                        setFormData(prev => ({ ...prev, managerId: "", manager: { name: "", email: "", phone: "" } }));
                       } else {
                         const emp = allEmployees.find(e => e._id === value);
+                        console.log('Found employee:', emp);
                         if (emp) {
-                          setFormData({ 
-                            ...formData, 
+                          setFormData(prev => ({ 
+                            ...prev, 
                             managerId: value,
                             manager: { name: `${emp.firstName} ${emp.lastName}`, email: emp.email, phone: emp.phone || '' }
-                          });
+                          }));
                         }
                       }
                     }}>
@@ -498,14 +608,20 @@ export default function DepartmentsPage() {
                             <p className="text-sm">Manager selected. Add more employees to assign them.</p>
                           </div>
                         ) : (
-                          allEmployees.filter(e => e._id !== formData.managerId).map((emp) => (
+                          allEmployees.filter(e => e._id !== formData.managerId).map((emp) => {
+                            const isChecked = formData.employeeIds.includes(emp._id);
+                            const isInCurrentDept = emp.departments?.includes(formData.name) || emp.departments?.includes(editingDept?.name || '');
+                            const otherDepts = emp.departments?.filter(d => d !== formData.name && d !== editingDept?.name) || [];
+                            return (
                             <div 
-                              key={emp._id} 
+                              key={emp._id}
                               className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent transition-colors"
                             >
                               <Checkbox
-                                checked={formData.employeeIds.includes(emp._id)}
+                                id={`emp-${emp._id}`}
+                                checked={isChecked}
                                 onCheckedChange={(checked) => {
+                                  console.log('Checkbox changed:', emp.firstName, checked);
                                   setFormData(prev => ({
                                     ...prev,
                                     employeeIds: checked 
@@ -516,11 +632,16 @@ export default function DepartmentsPage() {
                               />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{emp.firstName} {emp.lastName}</p>
-                                <p className="text-xs text-muted-foreground truncate">{emp.position}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {emp.position}
+                                  {otherDepts.length > 0 && ` • Also in: ${otherDepts.join(', ')}`}
+                                  {!emp.departments?.length && ' • No departments'}
+                                </p>
                               </div>
                               <Badge variant="outline" className="text-xs">{emp.status}</Badge>
                             </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     </div>
@@ -566,23 +687,29 @@ export default function DepartmentsPage() {
                 )}
               </div>
               <div className="max-h-[400px] overflow-y-auto space-y-2">
-                {allEmployees.filter(emp => !deptEmployees.find(de => de._id === emp._id)).length === 0 ? (
+                {allEmployees.length === 0 ? (
                   <div className="text-center py-12">
-                    <CheckCircle2 className="w-12 h-12 mx-auto text-green-500 mb-3" />
-                    <p className="text-muted-foreground">All employees are assigned</p>
+                    <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">No employees available</p>
                   </div>
                 ) : (
-                  allEmployees.filter(emp => !deptEmployees.find(de => de._id === emp._id)).map((employee) => (
+                  allEmployees.map((employee) => {
+                    const isInDept = deptEmployees.find(de => de._id === employee._id);
+                    const otherDepts = employee.departments?.filter(d => d !== selectedDept?.name) || [];
+                    return (
                     <div 
                       key={employee._id} 
                       className={`flex items-center space-x-3 p-3 border rounded-lg transition-all ${
                         selectedEmployees.includes(employee._id) 
                           ? 'bg-primary/10 border-primary' 
+                          : isInDept
+                          ? 'bg-green-50 border-green-200'
                           : 'hover:bg-accent'
                       }`}
                     >
                       <Checkbox
-                        checked={selectedEmployees.includes(employee._id)}
+                        checked={selectedEmployees.includes(employee._id) || !!isInDept}
+                        disabled={!!isInDept}
                         onCheckedChange={(checked) => {
                           setSelectedEmployees(prev =>
                             checked ? [...prev, employee._id] : prev.filter(id => id !== employee._id)
@@ -591,13 +718,18 @@ export default function DepartmentsPage() {
                       />
                       <div className="flex-1">
                         <p className="font-medium">{employee.firstName} {employee.lastName}</p>
-                        <p className="text-sm text-muted-foreground">{employee.position} • {employee.email}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {employee.position} • {employee.email}
+                          {isInDept && ' • Already assigned'}
+                          {otherDepts.length > 0 && ` • Also in: ${otherDepts.join(', ')}`}
+                        </p>
                       </div>
                       <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
                         {employee.status}
                       </Badge>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
               <DialogFooter>
@@ -649,6 +781,76 @@ export default function DepartmentsPage() {
               </div>
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPermissionDialogOpen} onOpenChange={setIsPermissionDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Manage Permissions - {selectedDept?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Select permissions for this department. All employees will inherit these permissions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold">Available Permissions</h4>
+              <Badge variant="outline">{deptPermissions.length} selected</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { category: 'Projects', permissions: ['projects.view', 'projects.create', 'projects.update', 'projects.delete'] },
+                { category: 'Tasks', permissions: ['tasks.view', 'tasks.create', 'tasks.update', 'tasks.delete', 'tasks.assign'] },
+                { category: 'Employees', permissions: ['employees.view', 'employees.create', 'employees.update', 'employees.delete', 'employees.manage'] },
+                { category: 'Attendance', permissions: ['attendance.view', 'attendance.manage'] },
+                { category: 'Leave', permissions: ['leave.view', 'leave.approve', 'leave.manage'] },
+                { category: 'Finance', permissions: ['finance.view', 'finance.manage'] },
+                { category: 'Budgets', permissions: ['budgets.view', 'budgets.create', 'budgets.update', 'budgets.delete'] },
+                { category: 'Expenses', permissions: ['expenses.view', 'expenses.approve', 'expenses.manage'] },
+                { category: 'Reports', permissions: ['reports.view', 'reports.export'] },
+                { category: 'Analytics', permissions: ['analytics.view'] },
+                { category: 'Contacts', permissions: ['contacts.view', 'contacts.create', 'contacts.update', 'contacts.delete'] },
+                { category: 'Settings', permissions: ['settings.view', 'settings.manage'] },
+              ].map((group) => (
+                <div key={group.category} className="border rounded-lg p-3">
+                  <h5 className="font-semibold text-sm mb-2">{group.category}</h5>
+                  <div className="space-y-2">
+                    {group.permissions.map((perm) => (
+                      <div key={perm} className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={deptPermissions.includes(perm)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              handleAddPermission(perm);
+                            } else {
+                              handleRemovePermission(perm);
+                            }
+                          }}
+                        />
+                        <label className="text-sm cursor-pointer" onClick={() => {
+                          if (deptPermissions.includes(perm)) {
+                            handleRemovePermission(perm);
+                          } else {
+                            handleAddPermission(perm);
+                          }
+                        }}>
+                          {perm.split('.')[1]}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPermissionDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

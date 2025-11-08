@@ -17,12 +17,13 @@ const RoleGuard: React.FC<RoleGuardProps> = ({
   minimumRole,
   redirectTo = '/login',
 }) => {
-  const { isAuthenticated, loading, hasMinimumLevel } = useAuth();
+  const { isAuthenticated, loading, hasMinimumLevel, user } = useAuth();
   
   const hasPermission = (roles: UserRole[]): boolean => {
     if (!user || !user.role) return false;
     
-    const userRoleName = user.role.name.toLowerCase().trim();
+    const userRole = typeof user.role === 'string' ? user.role : user.role?.name || '';
+    const userRoleName = userRole.toLowerCase().trim();
     
     if (userRoleName === 'root') return true;
     

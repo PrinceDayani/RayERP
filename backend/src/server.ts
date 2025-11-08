@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import http from "http";
+import path from "path";
 import { Server as SocketServer } from "socket.io";
 import { logger } from "./utils/logger";
 import routes from "./routes/index";
@@ -49,6 +50,7 @@ app.options("*", cors(corsOptions));
 app.use(
   helmet({
     contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
   })
 );
 
@@ -56,6 +58,14 @@ app.use(
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Serve static files from uploads directory with CORS
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -182,6 +192,31 @@ io.on("connection", (socket) => {
     } else {
       socket.emit("pong", "pong");
     }
+  });
+
+  // Chat events
+  socket.on("join_chat", (chatId) => {
+    socket.join(chatId);
+    logger.info(`Socket ${socket.id} joined chat ${chatId}`);
+  });
+
+  socket.on("leave_chat", (chatId) => {
+    socket.leave(chatId);
+    logger.info(`Socket ${socket.id} left chat ${chatId}`);
+  });
+
+  socket.on("typing", (data) => {
+    socket.to(data.chatId).emit("user_typing", {
+      userId: data.userId,
+      chatId: data.chatId
+    });
+  });
+
+  socket.on("stop_typing", (data) => {
+    socket.to(data.chatId).emit("user_stop_typing", {
+      userId: data.userId,
+      chatId: data.chatId
+    });
   });
 
   socket.on("disconnect", () => {

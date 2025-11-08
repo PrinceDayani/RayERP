@@ -39,49 +39,92 @@ export const getAllProjects = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    let query = {};
+    let query: any = {};
     
     // Get role name (handle both populated and unpopulated role)
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
     
-    // Root user can see all projects
-    if (roleName === 'Root') {
+    // Root and Super Admin can see all projects
+    if (roleName === 'Root' || roleName === 'Super Admin') {
       query = {};
     }
-    // Super admin can see projects they own
-    else if (roleName === 'Super Admin') {
-      query = { owner: user._id };
-    }
-    // Members can only see projects they're assigned to
+    // All other users can only see projects they're assigned to
     else {
-      query = { members: user._id };
+      // Find employee record linked to this user
+      const Employee = (await import('../models/Employee')).default;
+      const employee = await Employee.findOne({ user: user._id });
+      
+      const conditions: any[] = [
+        { members: user._id },
+        { owner: user._id }
+      ];
+      
+      // If user has an employee record, check team and manager fields
+      if (employee) {
+        conditions.push({ team: employee._id });
+        conditions.push({ manager: employee._id });
+      }
+      
+      query = { $or: conditions };
     }
 
     const projects = await Project.find(query)
-      .populate('manager', 'firstName lastName')
-      .populate('team', 'firstName lastName')
-      .populate('owner', 'name email')
-      .populate('members', 'name email');
+      .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
+      .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
+      .populate({ path: 'owner', select: 'name email', strictPopulate: false })
+      .populate({ path: 'members', select: 'name email', strictPopulate: false })
+      .populate({ path: 'departments', select: 'name description', strictPopulate: false });
     
     res.json(projects);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching projects', error });
+    console.error('Error fetching projects:', error);
+    res.status(500).json({ message: 'Error fetching projects', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
 export const getProjectById = async (req: Request, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
     const project = await Project.findById(req.params.id)
-      .populate('manager', 'firstName lastName')
-      .populate('team', 'firstName lastName')
-      .populate('owner', 'name email')
-      .populate('members', 'name email');
+      .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
+      .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
+      .populate({ path: 'owner', select: 'name email', strictPopulate: false })
+      .populate({ path: 'members', select: 'name email', strictPopulate: false })
+      .populate({ path: 'departments', select: 'name description', strictPopulate: false });
+    
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
+
+    // Check access: Root/Super Admin can see all, others only if they're assigned
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const isMember = project.members.some(m => m && m._id && m._id.toString() === user._id.toString());
+    const isOwner = project.owner && project.owner._id && project.owner._id.toString() === user._id.toString();
+    
+    // Find employee record to check team/manager fields
+    const Employee = (await import('../models/Employee')).default;
+    const employee = await Employee.findOne({ user: user._id });
+    
+    let isTeamMember = false;
+    let isManager = false;
+    
+    if (employee) {
+      isTeamMember = project.team && project.team.some((t: any) => t && t._id && t._id.toString() === employee._id.toString());
+      isManager = project.manager && project.manager._id && project.manager._id.toString() === employee._id.toString();
+    }
+    
+    if (roleName !== 'Root' && roleName !== 'Super Admin' && !isMember && !isOwner && !isTeamMember && !isManager) {
+      return res.status(403).json({ message: 'Access denied: You are not assigned to this project' });
+    }
+
     res.json(project);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching project', error });
+    console.error('Error fetching project by ID:', error);
+    res.status(500).json({ message: 'Error fetching project', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -96,6 +139,7 @@ export const createProject = async (req: Request, res: Response) => {
       ...req.body,
       owner: user._id,
       members: req.body.members || [],
+      departments: req.body.departments || [],
       milestones: req.body.milestones || [],
       risks: req.body.risks || [],
       dependencies: req.body.dependencies || []
@@ -107,6 +151,7 @@ export const createProject = async (req: Request, res: Response) => {
     await project.populate('team', 'firstName lastName');
     await project.populate('owner', 'name email');
     await project.populate('members', 'name email');
+    await project.populate('departments', 'name description');
     await project.populate('dependencies', 'name');
     
     // Safely get manager ID
@@ -153,7 +198,8 @@ export const updateProject = async (req: Request, res: Response) => {
     ).populate('manager', 'firstName lastName')
      .populate('team', 'firstName lastName')
      .populate('owner', 'name email')
-     .populate('members', 'name email');
+     .populate('members', 'name email')
+     .populate('departments', 'name description');
     
     if (!project) {
       return res.status(404).json({ message: 'Project not found after update' });
@@ -227,6 +273,7 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     await project.populate('team', 'firstName lastName');
     await project.populate('owner', 'name email');
     await project.populate('members', 'name email');
+    await project.populate('departments', 'name description');
     
     // Safely get user ID
     const userId = user || (project.manager ? 
@@ -294,6 +341,37 @@ export const deleteProject = async (req: Request, res: Response) => {
 
 export const getProjectTasks = async (req: Request, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    // Verify user has access to the project
+    const project = await Project.findById(req.params.id);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const isMember = project.members.some(m => m.toString() === user._id.toString());
+    const isOwner = project.owner.toString() === user._id.toString();
+    
+    // Find employee record to check team/manager fields
+    const Employee = (await import('../models/Employee')).default;
+    const employee = await Employee.findOne({ user: user._id });
+    
+    let isTeamMember = false;
+    let isManager = false;
+    
+    if (employee) {
+      isTeamMember = project.team && project.team.some((t: any) => t.toString() === employee._id.toString());
+      isManager = project.manager && project.manager.toString() === employee._id.toString();
+    }
+    
+    if (roleName !== 'Root' && roleName !== 'Super Admin' && !isMember && !isOwner && !isTeamMember && !isManager) {
+      return res.status(403).json({ message: 'Access denied: You are not assigned to this project' });
+    }
+
     const tasks = await Task.find({ project: req.params.id })
       .populate('assignedTo', 'firstName lastName')
       .populate('assignedBy', 'firstName lastName');
@@ -367,10 +445,42 @@ export const createProjectTask = async (req: Request, res: Response) => {
 
 export const getProjectStats = async (req: Request, res: Response) => {
   try {
-    const totalProjects = await Project.countDocuments();
-    const activeProjects = await Project.countDocuments({ status: 'active' });
-    const completedProjects = await Project.countDocuments({ status: 'completed' });
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    let query: any = {};
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    
+    // Root and Super Admin can see all project stats
+    if (roleName !== 'Root' && roleName !== 'Super Admin') {
+      const Employee = (await import('../models/Employee')).default;
+      const employee = await Employee.findOne({ user: user._id });
+      
+      const conditions: any[] = [
+        { members: user._id },
+        { owner: user._id }
+      ];
+      
+      if (employee) {
+        conditions.push({ team: employee._id });
+        conditions.push({ manager: employee._id });
+      }
+      
+      query = { $or: conditions };
+    }
+
+    const totalProjects = await Project.countDocuments(query);
+    const activeProjects = await Project.countDocuments({ ...query, status: 'active' });
+    const completedProjects = await Project.countDocuments({ ...query, status: 'completed' });
+    
+    // Get project IDs for task stats
+    const projects = await Project.find(query).select('_id');
+    const projectIds = projects.map(p => p._id);
+    
     const overdueTasks = await Task.countDocuments({ 
+      project: { $in: projectIds },
       dueDate: { $lt: new Date() }, 
       status: { $ne: 'completed' } 
     });
@@ -380,10 +490,10 @@ export const getProjectStats = async (req: Request, res: Response) => {
       activeProjects,
       completedProjects,
       overdueTasks,
-      totalTasks: await Task.countDocuments(),
-      completedTasks: await Task.countDocuments({ status: 'completed' }),
-      atRiskProjects: await Project.countDocuments({ 'risks.severity': { $in: ['high', 'critical'] } }),
-      overdueProjects: await Project.countDocuments({ endDate: { $lt: new Date() }, status: { $ne: 'completed' } })
+      totalTasks: await Task.countDocuments({ project: { $in: projectIds } }),
+      completedTasks: await Task.countDocuments({ project: { $in: projectIds }, status: 'completed' }),
+      atRiskProjects: await Project.countDocuments({ ...query, 'risks.severity': { $in: ['high', 'critical'] } }),
+      overdueProjects: await Project.countDocuments({ ...query, endDate: { $lt: new Date() }, status: { $ne: 'completed' } })
     };
     
     res.json(stats);
@@ -421,6 +531,7 @@ export const cloneProject = async (req: Request, res: Response) => {
     await clonedProject.populate('manager', 'firstName lastName');
     await clonedProject.populate('team', 'firstName lastName');
     await clonedProject.populate('owner', 'name email');
+    await clonedProject.populate('departments', 'name description');
     
     const { io } = await import('../server');
     io.emit('project:created', clonedProject);
@@ -554,21 +665,37 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    let query = {};
+    let query: any = {};
     
     // Get role name (handle both populated and unpopulated role)
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
     
-    if (roleName === 'Root') {
+    if (roleName === 'Root' || roleName === 'Super Admin') {
       query = {};
-    } else if (roleName === 'Super Admin') {
-      query = { owner: user._id };
     } else {
-      query = { members: user._id };
+      // Find employee record linked to this user
+      const Employee = (await import('../models/Employee')).default;
+      const employee = await Employee.findOne({ user: user._id });
+      
+      const conditions: any[] = [
+        { members: user._id },
+        { owner: user._id }
+      ];
+      
+      // If user has an employee record, check team and manager fields
+      if (employee) {
+        conditions.push({ team: employee._id });
+        conditions.push({ manager: employee._id });
+      }
+      
+      query = { $or: conditions };
     }
 
     const projects = await Project.find(query).select('name startDate endDate status');
-    const allTasks = await Task.find()
+    const projectIds = projects.map(p => p._id);
+    
+    // Only fetch tasks from projects the user has access to
+    const allTasks = await Task.find({ project: { $in: projectIds } })
       .populate('assignedTo', 'firstName lastName')
       .select('title status priority dueDate createdAt project');
     
@@ -779,7 +906,7 @@ export const getProjectMembers = async (req: Request, res: Response) => {
 export const getProjectActivity = async (req: Request, res: Response) => {
   try {
     const projectId = req.params.id;
-    const { type } = req.query;
+    const { resourceType, page = 1, limit = 50 } = req.query;
     
     // Validate that the project exists
     const project = await Project.findById(projectId);
@@ -787,29 +914,34 @@ export const getProjectActivity = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Project not found' });
     }
     
-    // Mock activity data for now - replace with actual activity model later
-    const activities = [
-      {
-        _id: '1',
-        type: 'project_updated',
-        title: 'Project Updated',
-        description: `Project "${project.name}" was updated`,
-        user: {
-          _id: project.manager?.toString() || 'unknown',
-          firstName: 'Project',
-          lastName: 'Manager'
-        },
-        project: projectId,
-        createdAt: new Date().toISOString()
+    // Import ActivityLog
+    const ActivityLog = (await import('../models/ActivityLog')).default;
+    
+    // Build query
+    const query: any = { projectId };
+    if (resourceType) query.resourceType = resourceType;
+    
+    const skip = (Number(page) - 1) * Number(limit);
+    
+    const activities = await ActivityLog.find(query)
+      .populate('user', 'name email')
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(Number(limit))
+      .lean();
+    
+    const total = await ActivityLog.countDocuments(query);
+    
+    res.json({
+      success: true,
+      data: activities,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(total / Number(limit))
       }
-    ];
-    
-    // Filter by type if provided
-    const filteredActivities = type ? 
-      activities.filter(activity => activity.type === type) : 
-      activities;
-    
-    res.json(filteredActivities);
+    });
   } catch (error) {
     console.error('Error fetching project activity:', error);
     res.status(500).json({ message: 'Error fetching project activity', error: error instanceof Error ? error.message : 'Unknown error' });

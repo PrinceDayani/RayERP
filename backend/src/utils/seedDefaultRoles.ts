@@ -17,6 +17,14 @@ export const seedDefaultRoles = async () => {
       isDefault: true,
       isActive: true,
       level: 80
+    },
+    {
+      name: 'Normal',
+      description: 'Standard employee with basic access',
+      permissions: [],
+      isDefault: true,
+      isActive: true,
+      level: 10
     }
   ];
 

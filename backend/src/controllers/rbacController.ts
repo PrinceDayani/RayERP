@@ -197,6 +197,58 @@ export const deleteRole = async (req: Request, res: Response) => {
   }
 };
 
+export const bulkDeleteRoles = async (req: Request, res: Response) => {
+  try {
+    const { roleIds } = req.body;
+    
+    const currentUser = await User.findById(req.user?.id).populate('role');
+    const currentUserRole = currentUser?.role as any;
+    
+    if (currentUserRole?.name?.toLowerCase() !== 'root') {
+      return res.status(403).json({ 
+        message: 'Only Root user can delete roles' 
+      });
+    }
+    
+    if (!roleIds || !Array.isArray(roleIds) || roleIds.length === 0) {
+      return res.status(400).json({ message: 'Role IDs array is required' });
+    }
+    
+    let deleted = 0;
+    const errors: string[] = [];
+    
+    for (const roleId of roleIds) {
+      const role = await Role.findById(roleId);
+      if (!role) {
+        errors.push(`Role ${roleId} not found`);
+        continue;
+      }
+      
+      if (role.name?.toLowerCase() === 'root' || role.isDefault) {
+        errors.push(`Cannot delete ${role.name} role`);
+        continue;
+      }
+      
+      const usersWithRole = await User.find({ role: roleId });
+      if (usersWithRole.length > 0) {
+        errors.push(`${role.name} is assigned to ${usersWithRole.length} user(s)`);
+        continue;
+      }
+      
+      await Role.findByIdAndDelete(roleId);
+      deleted++;
+    }
+    
+    res.json({ 
+      message: `Successfully deleted ${deleted} role(s)`,
+      deleted,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error bulk deleting roles', error });
+  }
+};
+
 export const toggleRoleStatus = async (req: Request, res: Response) => {
   try {
     const { roleId } = req.params;

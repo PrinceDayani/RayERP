@@ -6,6 +6,11 @@ export const initializeDefaultRoles = async () => {
     // Define default roles with their permissions
     const defaultRoles = [
       {
+        name: 'Normal',
+        description: 'Standard employee with basic access',
+        permissions: []
+      },
+      {
         name: 'Employee',
         description: 'Basic employee access',
         permissions: [

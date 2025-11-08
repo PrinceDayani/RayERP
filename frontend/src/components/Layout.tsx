@@ -26,7 +26,9 @@ import {
   ClipboardList,
   UserCog,
   Boxes,
-  Building
+  Building,
+  Activity,
+  MessageCircle
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -71,11 +73,13 @@ export default function Layout({ children }: LayoutProps) {
       title: "Overview",
       items: [
         { path: "/dashboard", name: "Dashboard", icon: LayoutDashboard, description: "Main dashboard overview" } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/activity", name: "Activity Feed", icon: Activity, description: "Organization activity stream" } as MenuItem & { icon: any; description: string },
       ]
     },
     {
-      title: "Business Relations",
+      title: "Communication",
       items: [
+        { path: "/dashboard/chat", name: "Chat", icon: MessageCircle, description: "Team messaging" } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/contacts", name: "Contacts", icon: Users, description: "Manage business contacts" } as MenuItem & { icon: any; description: string },
       ]
     },

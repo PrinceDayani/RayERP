@@ -9,6 +9,7 @@ import { promisify } from 'util';
 import sharp from 'sharp';
 import ProjectFile from '../models/ProjectFile';
 import Project from '../models/Project';
+import { logActivity } from '../utils/activityLogger';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -66,6 +67,8 @@ export const getProjectFiles = async (req: Request, res: Response) => {
     const files = await ProjectFile.find({ project: projectId })
       .select('-fileData')
       .populate('uploadedBy', 'firstName lastName email')
+      .populate('sharedWithDepartments', 'name description')
+      .populate('sharedWithUsers', 'name email')
       .sort({ createdAt: -1 });
 
     res.json(files);
@@ -79,6 +82,7 @@ export const getProjectFiles = async (req: Request, res: Response) => {
 export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
   try {
     const { id: projectId } = req.params;
+    const { sharedWithDepartments } = req.body;
     const userId = (req as any).user.id;
 
     // Check if project exists
@@ -129,6 +133,8 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
       }
     }
 
+    const { sharedWithUsers, shareType } = req.body;
+    
     const projectFile = new ProjectFile({
       name: req.file.filename,
       originalName: req.file.originalname,
@@ -138,6 +144,9 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
       mimeType: req.file.mimetype,
       project: projectId,
       uploadedBy: userId,
+      sharedWithDepartments: sharedWithDepartments ? JSON.parse(sharedWithDepartments) : [],
+      sharedWithUsers: sharedWithUsers ? JSON.parse(sharedWithUsers) : [],
+      shareType: shareType || 'department',
       fileData: finalData,
       storageType: 'database',
       compressed: isCompressed
@@ -151,6 +160,21 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
     }
 
     await projectFile.populate('uploadedBy', 'firstName lastName email');
+
+    // Log activity
+    const user = (req as any).user;
+    await logActivity({
+      userId: userId,
+      userName: user.name || user.email,
+      action: 'share',
+      resource: `File: ${req.file.originalname}`,
+      resourceType: 'file',
+      resourceId: projectFile._id,
+      projectId: projectId,
+      details: `Shared file "${req.file.originalname}" in project`,
+      visibility: 'management',
+      metadata: { fileName: req.file.originalname, fileSize: finalData.length }
+    });
 
     // Remove fileData from response
     const response = projectFile.toObject();
@@ -203,10 +227,88 @@ export const downloadProjectFile = async (req: Request, res: Response) => {
   }
 };
 
+// Share file with departments/users
+export const shareProjectFile = async (req: Request, res: Response) => {
+  try {
+    const { id: projectId, fileId } = req.params;
+    const { departmentIds, userIds, shareType } = req.body;
+    const userId = (req as any).user.id;
+    const user = (req as any).user;
+
+    const file = await ProjectFile.findOne({ _id: fileId, project: projectId });
+    if (!file) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+
+    if (shareType === 'department' || shareType === 'both') {
+      file.sharedWithDepartments = departmentIds || [];
+    }
+    if (shareType === 'user' || shareType === 'both') {
+      file.sharedWithUsers = userIds || [];
+    }
+    file.shareType = shareType;
+
+    await file.save();
+    await file.populate([
+      { path: 'sharedWithDepartments', select: 'name' },
+      { path: 'sharedWithUsers', select: 'name email' }
+    ]);
+
+    await logActivity({
+      userId,
+      userName: user.name || user.email,
+      action: 'update',
+      resource: `File: ${file.originalName}`,
+      resourceType: 'file',
+      resourceId: fileId,
+      projectId,
+      details: `Updated sharing settings for "${file.originalName}"`,
+      visibility: 'management'
+    });
+
+    const response = file.toObject();
+    delete response.fileData;
+    res.json(response);
+  } catch (error) {
+    console.error('Error sharing file:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get files shared with user
+export const getSharedFiles = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const { departmentId } = req.query;
+
+    const query: any = {
+      $or: [
+        { sharedWithUsers: userId },
+        ...(departmentId ? [{ sharedWithDepartments: departmentId }] : [])
+      ]
+    };
+
+    const files = await ProjectFile.find(query)
+      .select('-fileData')
+      .populate('project', 'name')
+      .populate('uploadedBy', 'name email')
+      .populate('sharedWithDepartments', 'name')
+      .populate('sharedWithUsers', 'name email')
+      .sort({ createdAt: -1 });
+
+    res.json(files);
+  } catch (error) {
+    console.error('Error fetching shared files:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 // Delete project file
 export const deleteProjectFile = async (req: Request, res: Response) => {
   try {
     const { id: projectId, fileId } = req.params;
+    const userId = (req as any).user.id;
+    const user = (req as any).user;
 
     const file = await ProjectFile.findOne({ 
       _id: fileId, 
@@ -217,6 +319,8 @@ export const deleteProjectFile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'File not found' });
     }
 
+    const fileName = file.originalName;
+
     // Delete file from disk if it exists (legacy files)
     if (file.storageType === 'disk' && fs.existsSync(file.path)) {
       fs.unlinkSync(file.path);
@@ -225,9 +329,23 @@ export const deleteProjectFile = async (req: Request, res: Response) => {
     // Delete from database
     await ProjectFile.findByIdAndDelete(fileId);
 
+    // Log activity
+    await logActivity({
+      userId: userId,
+      userName: user.name || user.email,
+      action: 'delete',
+      resource: `File: ${fileName}`,
+      resourceType: 'file',
+      resourceId: fileId,
+      projectId: projectId,
+      details: `Deleted file "${fileName}" from project`,
+      visibility: 'management',
+      metadata: { fileName }
+    });
+
     res.json({ message: 'File deleted successfully' });
   } catch (error) {
     console.error('Error deleting file:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
-};
+}

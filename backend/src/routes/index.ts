@@ -20,6 +20,8 @@ import resourceRoutes from './resourceRoutes';
 import departmentRoutes from './department.routes';
 import onboardingRoutes from './onboarding.routes';
 import fileShareRoutes from './fileShare.routes';
+import chatRoutes from './chat.routes';
+import broadcastRoutes from './broadcast.routes';
 // --- Merged Financial & Ledger Routes ---
 import budgetRoutes from './budgetRoutes';
 import budgetTemplateRoutes from './budgetTemplateRoutes';
@@ -51,6 +53,7 @@ router.use('/admin', adminRoutes);
 router.use('/leaves', leaveRoutes);
 router.use('/employee-reports', employeeReportRoutes);
 router.use('/activities', activityRoutes);
+router.use('/activity', activityRoutes); // Alias for singular form
 router.use('/rbac', rbacRoutes);
 router.use('/project-templates', projectTemplateRoutes);
 router.use('/resources', resourceRoutes);
@@ -58,6 +61,8 @@ router.use('/departments', departmentRoutes);
 router.use('/onboarding', onboardingRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/file-shares', fileShareRoutes);
+router.use('/chat', chatRoutes);
+router.use('/broadcast', broadcastRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);

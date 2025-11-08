@@ -20,7 +20,7 @@ export interface Role {
   isActive: boolean;
 }
 
-interface User {
+export interface User {
   _id: string;
   name: string;
   email: string;

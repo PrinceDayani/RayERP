@@ -35,6 +35,7 @@ export interface Project {
   autoCalculateProgress?: boolean;
   manager: string;
   team: string[];
+  departments?: string[];
   client?: string;
   tags?: string[];
   milestones?: Milestone[];

@@ -15,6 +15,12 @@ import { type Project } from "@/lib/api/projectsAPI";
 import employeesAPI, { type Employee } from "@/lib/api/employeesAPI";
 import { toast } from "@/components/ui/use-toast";
 
+interface Department {
+  _id: string;
+  name: string;
+  description: string;
+}
+
 interface ProjectFormProps {
   project?: Partial<Project>;
   onSubmit: (data: Partial<Project>) => void;
@@ -31,15 +37,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   submitText = "Save Project",
 }) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(true);
   const [formData, setFormData] = useState({
-    name: project?.name || project?.title || "",
+    name: project?.name || "",
     description: project?.description || "",
     status: project?.status || "planning",
     priority: project?.priority || "medium",
     budget: project?.budget?.toString() || "",
     progress: project?.progress?.toString() || "0",
     client: project?.client || "",
-    manager: typeof project?.manager === 'object' ? project.manager._id : project?.manager || "",
+    manager: typeof project?.manager === 'object' && project.manager ? (project.manager as any)._id : project?.manager || "",
   });
   const [startDate, setStartDate] = useState<Date | undefined>(
     project?.startDate ? new Date(project.startDate) : undefined
@@ -49,20 +57,39 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   );
   const [selectedTeam, setSelectedTeam] = useState<string[]>(
     Array.isArray(project?.team) 
-      ? project.team.map(member => typeof member === 'object' ? member._id : member)
+      ? project.team.map(member => typeof member === 'object' ? (member as any)._id : member)
       : []
   );
   const [tags, setTags] = useState<string[]>(project?.tags || []);
   const [newTag, setNewTag] = useState("");
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>(
+    Array.isArray(project?.departments) 
+      ? project.departments.map(dept => typeof dept === 'object' ? (dept as any)._id : dept)
+      : []
+  );
 
   useEffect(() => {
     fetchEmployees();
+    fetchDepartments();
   }, []);
 
+  useEffect(() => {
+    if (project?.departments) {
+      const deptIds = Array.isArray(project.departments) 
+        ? project.departments.map(dept => typeof dept === 'object' && (dept as any)._id ? (dept as any)._id : dept)
+        : [];
+      setSelectedDepartments(deptIds.filter(Boolean));
+    }
+  }, [project?.departments]);
+
   const fetchEmployees = async () => {
+    setLoadingEmployees(true);
     try {
-      const data = await employeesAPI.getAll();
-      setEmployees(Array.isArray(data) ? data : (data.data || []));
+      const response = await employeesAPI.getAll();
+      console.log('Employees API response:', response);
+      const employeeList = response.data || response || [];
+      console.log('Processed employees:', employeeList);
+      setEmployees(Array.isArray(employeeList) ? employeeList : []);
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast({
@@ -70,6 +97,28 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         description: "Failed to load employees",
         variant: "destructive",
       });
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/departments`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        console.error('Departments API error:', response.status, response.statusText);
+        return;
+      }
+      const data = await response.json();
+      console.log('Departments API response:', data);
+      console.log('Project departments:', project?.departments);
+      const deptList = data?.data || data;
+      setDepartments(Array.isArray(deptList) ? deptList : []);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
     }
   };
 
@@ -124,6 +173,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       client: formData.client.trim() || undefined,
       manager: formData.manager || undefined,
       team: selectedTeam.length > 0 ? selectedTeam : [],
+      departments: selectedDepartments.length > 0 ? selectedDepartments : [],
       tags: tags.length > 0 ? tags : [],
     };
 
@@ -139,6 +189,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       prev.includes(employeeId)
         ? prev.filter(id => id !== employeeId)
         : [...prev, employeeId]
+    );
+  };
+
+  const handleDepartmentToggle = (departmentId: string) => {
+    setSelectedDepartments(prev => 
+      prev.includes(departmentId)
+        ? prev.filter(id => id !== departmentId)
+        : [...prev, departmentId]
     );
   };
 
@@ -318,7 +376,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       <div className="space-y-2">
         <Label>Team Members</Label>
         <div className="border rounded-md p-3 max-h-40 overflow-y-auto">
-          {employees.length > 0 ? (
+          {loadingEmployees ? (
+            <p className="text-sm text-muted-foreground">Loading employees...</p>
+          ) : employees.length > 0 ? (
             <div className="space-y-2">
               {employees.map((employee) => (
                 <div key={employee._id} className="flex items-center space-x-2">
@@ -342,6 +402,37 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         {selectedTeam.length > 0 && (
           <p className="text-sm text-muted-foreground">
             {selectedTeam.length} team member{selectedTeam.length !== 1 ? 's' : ''} selected
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Departments</Label>
+        <div className="border rounded-md p-3 max-h-40 overflow-y-auto">
+          {departments.length > 0 ? (
+            <div className="space-y-2">
+              {departments.map((department) => (
+                <div key={department._id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={`dept-${department._id}`}
+                    checked={selectedDepartments.includes(department._id)}
+                    onChange={() => handleDepartmentToggle(department._id)}
+                    className="rounded"
+                  />
+                  <Label htmlFor={`dept-${department._id}`} className="text-sm font-normal cursor-pointer">
+                    {department.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No departments available</p>
+          )}
+        </div>
+        {selectedDepartments.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            {selectedDepartments.length} department{selectedDepartments.length !== 1 ? 's' : ''} selected
           </p>
         )}
       </div>

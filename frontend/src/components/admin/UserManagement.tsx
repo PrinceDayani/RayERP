@@ -21,20 +21,47 @@ interface UserManagementProps {
 
 export function UserManagement({ isLoading }: UserManagementProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [bulkRole, setBulkRole] = useState("");
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [resetPassword, setResetPassword] = useState({ newPassword: "", confirmPassword: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
-    role: "user",
+    role: "",
     password: "",
     confirmPassword: "",
   });
+
+  // Fetch roles from API
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const data = await adminAPI.getRoles();
+        console.log('Fetched roles:', data);
+        if (data && data.length > 0) {
+          setRoles(data);
+        } else {
+          console.warn('No roles returned from API');
+          toast.error('Failed to load roles. Please refresh the page.');
+        }
+      } catch (error) {
+        console.error("Failed to fetch roles:", error);
+        toast.error('Failed to load roles. Please check your connection.');
+      }
+    };
+
+    if (!isLoading) {
+      fetchRoles();
+    }
+  }, [isLoading]);
 
   // Fetch users from API
   useEffect(() => {
@@ -89,18 +116,27 @@ export function UserManagement({ isLoading }: UserManagementProps) {
   }, [isLoading]);
 
   const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
+    (user) => {
+      const roleStr = typeof user.role === 'object' ? (user.role as any).name : user.role;
+      return user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        roleStr.toLowerCase().includes(searchTerm.toLowerCase());
+    }
   );
 
   const handleEditUser = (user: AdminUser) => {
-    setCurrentUser(user);
+    console.log('Editing user:', user);
+    // Create a copy to avoid mutating the original
+    setCurrentUser({ ...user });
     setIsEditUserOpen(true);
   };
 
   const handleSaveUser = async () => {
+    if (!newUser.role) {
+      toast.error("Please select a role");
+      return;
+    }
+
     if (newUser.password !== newUser.confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -131,7 +167,7 @@ export function UserManagement({ isLoading }: UserManagementProps) {
       setNewUser({
         name: "",
         email: "",
-        role: "user",
+        role: "",
         password: "",
         confirmPassword: "",
       });
@@ -158,7 +194,7 @@ export function UserManagement({ isLoading }: UserManagementProps) {
       setNewUser({
         name: "",
         email: "",
-        role: "user",
+        role: "",
         password: "",
         confirmPassword: "",
       });
@@ -173,8 +209,12 @@ export function UserManagement({ isLoading }: UserManagementProps) {
 
     setIsSubmitting(true);
     try {
-      // Using adminAPI instead of direct fetch
-      await adminAPI.updateUser(currentUser.id, currentUser);
+      // Extract roleId properly - handle both object and string cases
+      const roleId = typeof currentUser.role === 'object' ? (currentUser.role as any)._id : currentUser.role;
+      console.log('Updating user role:', { userId: currentUser.id, roleId, originalRole: currentUser.role });
+      
+      // Update user role using the role endpoint
+      await adminAPI.updateUserRole(currentUser.id, roleId);
       
       // Update user in the list
       setUsers(
@@ -245,6 +285,37 @@ export function UserManagement({ isLoading }: UserManagementProps) {
     } catch (error: any) {
       console.error("Failed to reset password:", error);
       toast.error(error.message || "Failed to reset password");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBulkUpdateRoles = async () => {
+    if (selectedUsers.length === 0) {
+      toast.error("Please select at least one user");
+      return;
+    }
+
+    if (!bulkRole) {
+      toast.error("Please select a role");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await adminAPI.bulkUpdateUserRoles(selectedUsers, bulkRole);
+      
+      // Refresh users list
+      const data = await adminAPI.getUsers();
+      setUsers(data);
+      
+      toast.success(`Successfully updated ${result.updated} user(s)`);
+      setSelectedUsers([]);
+      setBulkRole("");
+      setIsBulkEditOpen(false);
+    } catch (error: any) {
+      console.error("Failed to bulk update roles:", error);
+      toast.error(error.message || "Failed to bulk update roles");
     } finally {
       setIsSubmitting(false);
     }
@@ -398,6 +469,16 @@ export function UserManagement({ isLoading }: UserManagementProps) {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <div className="flex gap-2">
+          {selectedUsers.length > 0 && (
+            <Button 
+              onClick={() => setIsBulkEditOpen(true)}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 h-14 px-8 rounded-xl font-semibold"
+            >
+              <EditIcon className="mr-2 h-5 w-5" />
+              Edit {selectedUsers.length} Selected
+            </Button>
+          )}
         <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
           <DialogTrigger asChild>
             <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 h-14 px-8 rounded-xl font-semibold">
@@ -448,9 +529,15 @@ export function UserManagement({ isLoading }: UserManagementProps) {
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Administrator</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
+                    {roles.length === 0 ? (
+                      <div className="p-2 text-sm text-slate-500">Loading roles...</div>
+                    ) : (
+                      roles.map((role) => (
+                        <SelectItem key={role._id} value={role._id}>
+                          {role.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -489,12 +576,27 @@ export function UserManagement({ isLoading }: UserManagementProps) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl bg-white dark:bg-slate-800 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-900 dark:to-slate-800 border-b-2 border-slate-200 dark:border-slate-700">
+              <TableHead className="w-12">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-slate-300"
+                  checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedUsers(filteredUsers.map(u => u.id));
+                    } else {
+                      setSelectedUsers([]);
+                    }
+                  }}
+                />
+              </TableHead>
               <TableHead className="font-bold text-slate-800 dark:text-slate-200 py-5 text-sm uppercase tracking-wider">Name</TableHead>
               <TableHead className="font-bold text-slate-800 dark:text-slate-200 py-5 text-sm uppercase tracking-wider">Email</TableHead>
               <TableHead className="font-bold text-slate-800 dark:text-slate-200 py-5 text-sm uppercase tracking-wider">Role</TableHead>
@@ -526,6 +628,20 @@ export function UserManagement({ isLoading }: UserManagementProps) {
                     animation: 'fadeInUp 0.5s ease-out forwards'
                   }}
                 >
+                  <TableCell className="py-5">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-slate-300"
+                      checked={selectedUsers.includes(user.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedUsers([...selectedUsers, user.id]);
+                        } else {
+                          setSelectedUsers(selectedUsers.filter(id => id !== user.id));
+                        }
+                      }}
+                    />
+                  </TableCell>
                   <TableCell className="py-5">
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-md">
@@ -652,6 +768,49 @@ export function UserManagement({ isLoading }: UserManagementProps) {
         </DialogContent>
       </Dialog>
 
+      {/* Bulk Edit Dialog */}
+      <Dialog open={isBulkEditOpen} onOpenChange={setIsBulkEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Edit User Roles</DialogTitle>
+            <DialogDescription>
+              Update roles for {selectedUsers.length} selected user(s).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="bulk-role" className="text-right">
+                New Role
+              </Label>
+              <Select value={bulkRole} onValueChange={setBulkRole}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.length === 0 ? (
+                    <div className="p-2 text-sm text-slate-500">Loading roles...</div>
+                  ) : (
+                    roles.map((role) => (
+                      <SelectItem key={role._id} value={role._id}>
+                        {role.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkEditOpen(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkUpdateRoles} disabled={isSubmitting}>
+              {isSubmitting ? 'Updating...' : 'Update Roles'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit User Dialog */}
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
         <DialogContent>
@@ -691,16 +850,22 @@ export function UserManagement({ isLoading }: UserManagementProps) {
                   Role
                 </Label>
                 <Select
-                  value={currentUser.role}
+                  value={typeof currentUser.role === 'object' ? (currentUser.role as any)._id : currentUser.role}
                   onValueChange={(value) => setCurrentUser({ ...currentUser, role: value })}
                 >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Administrator</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
+                    {roles.length === 0 ? (
+                      <div className="p-2 text-sm text-slate-500">Loading roles...</div>
+                    ) : (
+                      roles.map((role) => (
+                        <SelectItem key={role._id} value={role._id}>
+                          {role.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

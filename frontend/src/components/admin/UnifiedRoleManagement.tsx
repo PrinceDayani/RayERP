@@ -169,8 +169,9 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
         details: `Deleted role: ${role?.name}`
       });
       toast({ title: "Success", description: "Role deleted successfully" });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to delete role", variant: "destructive" });
+    } catch (error: any) {
+      const errorMessage = error.message || "Failed to delete role";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     }
   };
 
@@ -435,7 +436,7 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {/* Show primary role first */}
-                        {user.role && (
+                        {user.role && typeof user.role === 'string' && (
                           <Badge variant="default" className="text-xs">
                             {user.role.toUpperCase()}
                           </Badge>

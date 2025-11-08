@@ -13,6 +13,7 @@ export interface Department {
   budget: number;
   status: 'active' | 'inactive';
   employeeCount: number;
+  permissions?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -31,8 +32,11 @@ export interface Employee {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   position: string;
   status: string;
+  department?: string;
+  departments?: string[];
 }
 
 export const departmentApi = {
@@ -41,6 +45,11 @@ export const departmentApi = {
     if (search) params.append('search', search);
     if (status) params.append('status', status);
     const { data } = await api.get(`/departments?${params.toString()}`);
+    return data;
+  },
+
+  getAllEmployees: async () => {
+    const { data } = await api.get('/departments/all-employees');
     return data;
   },
 
@@ -88,11 +97,37 @@ export const departmentApi = {
     const { data } = await api.delete(`/departments/${id}/employees/${employeeId}`);
     return data;
   },
+
+  getPermissions: async (id: string) => {
+    const { data } = await api.get(`/departments/${id}/permissions`);
+    return data;
+  },
+
+  updatePermissions: async (id: string, permissions: string[]) => {
+    const { data } = await api.put(`/departments/${id}/permissions`, { permissions });
+    return data;
+  },
+
+  addPermission: async (id: string, permission: string) => {
+    const { data } = await api.post(`/departments/${id}/permissions/add`, { permission });
+    return data;
+  },
+
+  removePermission: async (id: string, permission: string) => {
+    const { data } = await api.post(`/departments/${id}/permissions/remove`, { permission });
+    return data;
+  },
 };
 
 export const employeeApi = {
   getAll: async () => {
-    const { data } = await api.get('/employees');
-    return data;
+    try {
+      const { data } = await api.get('/employees');
+      console.log('Employee API response:', data);
+      return data;
+    } catch (error: any) {
+      console.error('Employee API error:', error.response?.data || error.message);
+      throw error;
+    }
   },
 };

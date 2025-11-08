@@ -515,30 +515,41 @@ const ProjectDetailPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 border rounded-lg">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Users className="h-4 w-4 text-blue-600" />
+                  {project.manager && (
+                    <div className="flex items-center gap-3 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Users className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">
+                          {typeof project.manager === 'object' && project.manager.firstName && project.manager.lastName
+                            ? `${project.manager.firstName} ${project.manager.lastName}`
+                            : 'Project Manager'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Manager</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">Project Manager</p>
-                      <p className="text-sm text-muted-foreground">Manager</p>
-                    </div>
-                  </div>
+                  )}
+                  
                   
                   {project.team && project.team.length > 0 ? (
-                    project.team.map((memberId, index) => (
+                    project.team.map((member: any, index) => (
                       <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
                         <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
                           <Users className="h-4 w-4 text-gray-600" />
                         </div>
                         <div>
-                          <p className="font-medium">Team Member {index + 1}</p>
-                          <p className="text-sm text-muted-foreground">Developer</p>
+                          <p className="font-medium">
+                            {typeof member === 'object' && member.firstName && member.lastName 
+                              ? `${member.firstName} ${member.lastName}` 
+                              : `Team Member ${index + 1}`}
+                          </p>
+                          <p className="text-sm text-muted-foreground">Team Member</p>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground text-center py-4">No team members assigned</p>
+                    !project.manager && <p className="text-muted-foreground text-center py-4">No team members assigned</p>
                   )}
                 </div>
               </CardContent>

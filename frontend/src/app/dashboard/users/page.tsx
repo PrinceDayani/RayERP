@@ -177,11 +177,17 @@ const UserManagement = () => {
   };
 
   // Update user role
-  const handleRoleChange = async (userId: string, newRole: UserRole) => {
+  const handleRoleChange = async (userId: string, newRoleName: UserRole) => {
     try {
       setError(null);
+      // Find the role ID from the role name
+      const roleObj = roles.find(r => r.name === newRoleName);
+      if (!roleObj) {
+        throw new Error('Role not found');
+      }
+      
       const { default: adminAPI } = await import('@/lib/api/adminAPI');
-      await adminAPI.updateUserRole(userId, newRole);
+      await adminAPI.updateUserRole(userId, roleObj._id);
       
       fetchUsers();
       toast({
@@ -461,7 +467,7 @@ const UserManagement = () => {
                           <TableCell>
                             {hasMinimumRole(UserRole.SUPER_ADMIN) && user._id !== currentUser?._id ? (
                               <Select
-                                value={user.role}
+                                value={getRoleName(user.role)}
                                 onValueChange={(value) => handleRoleChange(user._id, value as UserRole)}
                                 disabled={
                                   // Disable if current user can't modify this role
@@ -473,36 +479,22 @@ const UserManagement = () => {
                                   <SelectValue>{getRoleName(user.role)}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {hasMinimumRole(UserRole.ROOT) && (
-                                    <SelectItem value={UserRole.ROOT}>
-                                      <div className="flex items-center">
-                                        <Shield className="h-4 w-4 mr-2 text-red-500" />
-                                        Root
-                                      </div>
-                                    </SelectItem>
-                                  )}
-                                  {hasMinimumRole(UserRole.ROOT) && (
-                                    <SelectItem value={UserRole.SUPER_ADMIN}>
-                                      <div className="flex items-center">
-                                        <Shield className="h-4 w-4 mr-2 text-purple-500" />
-                                        Super Admin
-                                      </div>
-                                    </SelectItem>
-                                  )}
-                                  {hasMinimumRole(UserRole.SUPER_ADMIN) && (
-                                    <SelectItem value={UserRole.ADMIN}>
-                                      <div className="flex items-center">
-                                        <UserCog className="h-4 w-4 mr-2 text-blue-500" />
-                                        Admin
-                                      </div>
-                                    </SelectItem>
-                                  )}
-                                  <SelectItem value={UserRole.NORMAL}>
-                                    <div className="flex items-center">
-                                      <UserCog className="h-4 w-4 mr-2 text-green-500" />
-                                      Normal
-                                    </div>
-                                  </SelectItem>
+                                  {roles.map((role) => {
+                                    const roleName = role.name;
+                                    // Filter roles based on permissions
+                                    if (roleName === 'Root' && !hasMinimumRole(UserRole.ROOT)) return null;
+                                    if (roleName === 'Superadmin' && !hasMinimumRole(UserRole.ROOT)) return null;
+                                    if (roleName === 'Admin' && !hasMinimumRole(UserRole.SUPER_ADMIN)) return null;
+                                    
+                                    return (
+                                      <SelectItem key={role._id} value={roleName}>
+                                        <div className="flex items-center">
+                                          <Shield className="h-4 w-4 mr-2" />
+                                          {roleName}
+                                        </div>
+                                      </SelectItem>
+                                    );
+                                  })}
                                 </SelectContent>
                               </Select>
                             ) : (

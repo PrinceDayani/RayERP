@@ -156,7 +156,7 @@ class RealTimeAdminEmitter {
       return logs.map(log => ({
         id: log._id.toString(),
         userId: (log as any).userId || 'system',
-        userName: log.user,
+        userName: log.user?.toString() || 'Unknown',
         action: log.action,
         resource: log.resource,
         timestamp: log.timestamp.toISOString(),

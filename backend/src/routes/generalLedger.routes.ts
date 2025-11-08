@@ -12,11 +12,13 @@ import {
   createTransactionJournal
 } from '../controllers/generalLedgerController';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { requirePermission } from '../middleware/rbac.middleware';
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
+router.use(requirePermission('finance.view'));
 
 // Account routes
 router.get('/accounts', getAccounts);
