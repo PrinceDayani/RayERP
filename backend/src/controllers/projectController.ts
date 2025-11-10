@@ -177,6 +177,11 @@ export const createProject = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('project:created', project);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.status(201).json(project);
   } catch (error) {
     console.error('Error creating project:', error);
@@ -245,6 +250,11 @@ export const updateProject = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('project:updated', project);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json(project);
   } catch (error) {
     console.error('Error updating project:', error);
@@ -297,6 +307,11 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('project:status:updated', project);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json(project);
   } catch (error) {
     console.error('Error updating project status:', error);
@@ -332,6 +347,11 @@ export const deleteProject = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('project:deleted', { id: req.params.id });
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json({ message: 'Project deleted successfully' });
   } catch (error) {
     console.error('Error deleting project:', error);
@@ -436,6 +456,11 @@ export const createProjectTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:created', transformedTask);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.status(201).json(transformedTask);
   } catch (error) {
     console.error('Error creating project task:', error);
@@ -536,6 +561,10 @@ export const cloneProject = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('project:created', clonedProject);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
     
     res.status(201).json(clonedProject);
   } catch (error) {
@@ -770,6 +799,11 @@ export const updateProjectTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:updated', transformedTask);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json(transformedTask);
   } catch (error) {
     console.error('Error updating project task:', error);
@@ -813,6 +847,11 @@ export const deleteProjectTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:deleted', { id: taskId });
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
     console.error('Error deleting project task:', error);

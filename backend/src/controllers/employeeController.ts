@@ -65,6 +65,11 @@ export const createEmployee = async (req: Request, res: Response) => {
     // Emit socket event
     const { io } = await import('../server');
     io.emit('employee:created', employee);
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.status(201).json(employee);
   } catch (error) {
     res.status(400).json({ message: 'Error creating employee', error });
@@ -98,6 +103,11 @@ export const updateEmployee = async (req: Request, res: Response) => {
     // Emit socket event
     const { io } = await import('../server');
     io.emit('employee:updated', employee);
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json(employee);
   } catch (error) {
     res.status(400).json({ message: 'Error updating employee', error });
@@ -121,6 +131,11 @@ export const deleteEmployee = async (req: Request, res: Response) => {
     // Emit socket event
     const { io } = await import('../server');
     io.emit('employee:deleted', { id: req.params.id });
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json({ message: 'Employee and associated user deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting employee', error });

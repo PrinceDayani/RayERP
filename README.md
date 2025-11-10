@@ -337,7 +337,10 @@ node test-backend.js
 ## 📚 Documentation
 
 For detailed documentation, see:
-- [Project File Sharing](PROJECT_FILE_SHARING.md) - **NEW!** Share files with departments and specific users
+- [Socket Connection Fixes](SOCKET_FIXES_SUMMARY.md) - **NEW!** Fixed socket disconnection issues
+- [Real-Time Dashboard](REALTIME_DASHBOARD_QUICK_START.md) - Live dashboard with instant updates
+- [Real-Time Dashboard Technical Details](REALTIME_DASHBOARD_FIX.md) - Implementation details
+- [Project File Sharing](PROJECT_FILE_SHARING.md) - Share files with departments and specific users
 - [Chat File Upload Feature](CHAT_FILE_UPLOAD.md) - Image and document sharing in chat
 - [Department Permissions Guide](DEPARTMENT_PERMISSIONS.md) - Department-based permissions
 - [Department Permissions Quick Reference](DEPARTMENT_PERMISSIONS_QUICK_GUIDE.md) - Quick start guide

@@ -177,6 +177,11 @@ export const createTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:created', task);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.status(201).json(task);
   } catch (error) {
     console.error('Error creating task:', error);
@@ -239,6 +244,11 @@ export const updateTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:updated', task);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json(task);
   } catch (error) {
     console.error('Error updating task:', error);
@@ -270,6 +280,11 @@ export const deleteTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:deleted', { id: req.params.id });
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
     console.error('Error deleting task:', error);
@@ -449,6 +464,11 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:status:updated', task);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json(task);
   } catch (error) {
     console.error('Error updating task status:', error);
