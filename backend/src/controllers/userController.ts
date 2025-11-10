@@ -272,3 +272,109 @@ export const updateUserRole = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+// Get current user profile
+export const getProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const user = await User.findById(userId).populate('role').select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    const Employee = (await import('../models/Employee')).default;
+    const employee = await Employee.findOne({ user: userId });
+    
+    res.status(200).json({
+      success: true,
+      profile: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        employee: employee ? {
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          phone: employee.phone,
+          position: employee.position,
+          department: employee.department,
+          departments: employee.departments
+        } : null
+      }
+    });
+  } catch (error: any) {
+    logger.error(`Get profile error: ${error.message}`);
+    res.status(500).json({ success: false, message: 'Error retrieving profile' });
+  }
+};
+
+// Update current user profile
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { name, phone } = req.body;
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    if (name) user.name = name;
+    await user.save();
+    
+    const Employee = (await import('../models/Employee')).default;
+    const employee = await Employee.findOne({ user: userId });
+    if (employee && phone) {
+      employee.phone = phone;
+      await employee.save();
+    }
+    
+    const updatedUser = await User.findById(userId).populate('role').select('-password');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: updatedUser
+    });
+  } catch (error: any) {
+    logger.error(`Update profile error: ${error.message}`);
+    res.status(500).json({ success: false, message: 'Error updating profile' });
+  }
+};
+
+// Change password
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current and new password required' });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    }
+    
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+    }
+    
+    user.password = newPassword;
+    await user.save();
+    
+    res.status(200).json({ success: true, message: 'Password changed successfully' });
+  } catch (error: any) {
+    logger.error(`Change password error: ${error.message}`);
+    res.status(500).json({ success: false, message: 'Error changing password' });
+  }
+};
