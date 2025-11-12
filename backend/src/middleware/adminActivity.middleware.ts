@@ -203,19 +203,15 @@ function getActivityDetails(
 async function logToDatabase(activity: any) {
   try {
     await ActivityLog.create({
-      user: activity.userName,
-      userId: activity.userId,
+      user: activity.userId,
+      userName: activity.userName,
       action: activity.action,
       resource: activity.resource,
-      method: activity.method,
-      path: activity.path,
+      resourceType: 'other',
       status: activity.success ? 'success' : 'error',
-      statusCode: activity.statusCode,
-      duration: activity.duration,
-      ipAddress: activity.ipAddress,
-      userAgent: activity.userAgent,
       details: activity.details,
-      timestamp: new Date(activity.timestamp)
+      ipAddress: activity.ipAddress,
+      visibility: 'all'
     });
   } catch (error) {
     logger.error('Failed to save activity to database:', error);

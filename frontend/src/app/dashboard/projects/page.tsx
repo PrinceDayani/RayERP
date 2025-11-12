@@ -93,7 +93,7 @@ const ProjectManagementDashboard: React.FC = () => {
     }
   };
 
-  const handleQuickStatusUpdate = async (projectId: string, newStatus: string) => {
+  const handleQuickStatusUpdate = async (projectId: string, newStatus: Project['status']) => {
     try {
       await updateProject(projectId, { status: newStatus });
       setProjects(prev => prev.map(p => p._id === projectId ? { ...p, status: newStatus } : p));
@@ -284,7 +284,7 @@ const ProjectManagementDashboard: React.FC = () => {
 
       {/* Main Content */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-white shadow-sm border">
+        <TabsList className="bg-card dark:bg-card shadow-sm border border-border">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="projects">All Projects</TabsTrigger>
           <TabsTrigger value="budgets">Budgets</TabsTrigger>
@@ -508,13 +508,14 @@ const ProjectManagementDashboard: React.FC = () => {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
-                  { icon: TrendingUp, title: "Performance Report", desc: "Project completion rates", color: "text-green-600" },
-                  { icon: DollarSign, title: "Budget Analysis", desc: "Financial performance", color: "text-blue-600" },
-                  { icon: Calendar, title: "Timeline Report", desc: "Project schedules", color: "text-purple-600" },
+                  { icon: TrendingUp, title: "Performance Report", desc: "Project completion rates", color: "text-green-600", route: "/dashboard/projects/reports/performance" },
+                  { icon: DollarSign, title: "Budget Analysis", desc: "Financial performance", color: "text-blue-600", route: "/dashboard/projects/reports/budget" },
+                  { icon: Calendar, title: "Timeline Report", desc: "Project schedules", color: "text-purple-600", route: "/dashboard/projects/reports/timeline" },
                 ].map((report, idx) => (
-                  <Card key={idx} className="cursor-pointer hover:shadow-md transition-shadow">
+                  <Card key={idx} className="cursor-pointer hover:shadow-xl hover:scale-105 hover:border-primary/50 transition-all duration-300 group"
+                        onClick={() => router.push(report.route)}>
                     <CardContent className="p-6 text-center">
-                      <report.icon className={`h-8 w-8 mx-auto mb-2 ${report.color}`} />
+                      <report.icon className={`h-8 w-8 mx-auto mb-2 ${report.color} group-hover:scale-110 transition-transform duration-300`} />
                       <h3 className="font-medium">{report.title}</h3>
                       <p className="text-sm text-muted-foreground">{report.desc}</p>
                     </CardContent>
@@ -622,7 +623,7 @@ const MyTasksContent: React.FC = () => {
             <div className="space-y-3">
               {tasks.map((task) => (
                 <Card key={task._id} className="hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => router.push(`/dashboard/projects/${task.projectId}/tasks/${task._id}`)}>
+                      onClick={() => router.push(`/dashboard/projects/${typeof task.project === 'object' ? task.project._id : task.project}/tasks/${task._id}`)}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
@@ -643,10 +644,10 @@ const MyTasksContent: React.FC = () => {
                             <Calendar className="h-3 w-3" />
                             Due: {new Date(task.dueDate).toLocaleDateString()}
                           </span>
-                          {task.projectId && typeof task.projectId === 'object' && (
+                          {task.project && typeof task.project === 'object' && (
                             <span className="flex items-center gap-1">
                               <Briefcase className="h-3 w-3" />
-                              {(task.projectId as any).name}
+                              {task.project.name}
                             </span>
                           )}
                         </div>
@@ -763,7 +764,7 @@ const TaskManagementContent: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredTasks.map((task) => (
                 <Card key={task._id} className="hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => router.push(`/dashboard/projects/${task.projectId}?tab=tasks`)}>
+                      onClick={() => router.push(`/dashboard/projects/${typeof task.project === 'object' ? task.project._id : task.project}?tab=tasks`)}>
                   <CardContent className="p-4">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">

@@ -7,9 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SearchIcon, FilterIcon, DownloadIcon, Activity } from "lucide-react";
+import { SearchIcon, FilterIcon, DownloadIcon, Activity, ChevronDownIcon } from "lucide-react";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getActivityLogs, ActivityLog } from "@/lib/api/activityAPI";
+import adminAPI from "@/lib/api/adminAPI";
 
   interface ActivityLogsProps {
   isLoading: boolean;
@@ -95,11 +97,7 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
         action,
         resource,
         details: `${action} ${resource} operation completed`,
-        user: {
-          _id: `user-${i}`,
-          name: userName.split('@')[0],
-          email: userName
-        },
+        user: userName.split('@')[0],
         timestamp: date.toISOString(),
         ipAddress,
       };
@@ -113,7 +111,7 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
     if (searchTerm) {
       filtered = filtered.filter(
         (log) =>
-          log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (typeof log.user === 'string' ? log.user : log.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.resource.toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -208,31 +206,21 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
     }
   };
 
-  const exportLogs = () => {
-    // Convert logs to CSV
-    const headers = ["Timestamp", "User", "Action", "Resource", "Status", "Details", "IP Address"];
-    const csvContent = [
-      headers.join(","),
-      ...filteredLogs.map((log) => [
-        formatDate(log.timestamp),
-        log.user,
-        log.action,
-        log.resource,
-        log.status || 'success',
-        `"${log.details.replace(/"/g, '""')}"`, // Escape quotes
-        log.ipAddress || 'N/A',
-      ].join(",")),
-    ].join("\n");
-
-    // Create and download the file
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `activity-logs-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const exportLogs = async (format: 'text' | 'pdf' | 'excel') => {
+    try {
+      const blob = await adminAPI.exportLogs(format);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `activity-logs-${new Date().toISOString().slice(0, 10)}.${format === 'excel' ? 'csv' : format === 'pdf' ? 'pdf' : 'txt'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
   };
 
   if (isLoading) {
@@ -318,14 +306,32 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
             }`} />
             {autoRefresh ? "Live" : "Paused"}
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={exportLogs} 
-            className="h-12 px-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 transition-all duration-200"
-          >
-            <DownloadIcon className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="h-12 px-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 transition-all duration-200"
+              >
+                <DownloadIcon className="mr-2 h-4 w-4" />
+                Export Logs
+                <ChevronDownIcon className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => exportLogs('text')}>
+                <DownloadIcon className="mr-2 h-4 w-4" />
+                Export as Text
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportLogs('pdf')}>
+                <DownloadIcon className="mr-2 h-4 w-4" />
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportLogs('excel')}>
+                <DownloadIcon className="mr-2 h-4 w-4" />
+                Export as Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -380,10 +386,9 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
               getCurrentPageLogs().map((log, index) => (
                 <TableRow 
                   key={log._id} 
-                  className="group hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-200 border-b border-slate-100/50 dark:border-slate-700/50"
+                  className="group hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-200 border-b border-slate-100/50 dark:border-slate-700/50 fade-in-up"
                   style={{
-                    animationDelay: `${index * 30}ms`,
-                    animation: 'fadeInUp 0.4s ease-out forwards'
+                    animationDelay: `${index * 30}ms`
                   }}
                 >
                   <TableCell className="font-mono text-xs text-slate-600 dark:text-slate-400 py-4">
@@ -392,9 +397,9 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
                   <TableCell className="py-4">
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-xs">
-                        {log.user.charAt(0).toUpperCase()}
+                        {(typeof log.user === 'string' ? log.user : log.user?.name || 'U').charAt(0).toUpperCase()}
                       </div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">{log.user}</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{typeof log.user === 'string' ? log.user : log.user?.name || 'Unknown'}</div>
                     </div>
                   </TableCell>
                   <TableCell className="py-4">{getActionBadge(log.action)}</TableCell>

@@ -11,7 +11,8 @@ import {
   updateSecuritySettings,
   updateNotificationSettings,
   updateBackupSettings,
-  triggerManualBackup
+  triggerManualBackup,
+  exportLogs
 } from '../controllers/adminController';
 import {
   getRoles,
@@ -48,6 +49,14 @@ router.delete('/users/:userId', logUserManagement('delete_user'), deleteAdminUse
 
 // Activity logs
 router.get('/logs', logAdminActivity({ action: 'view_logs', resource: 'activity_logs' }), getActivityLogs);
+router.get('/export-logs', logAdminActivity({ action: 'export_logs', resource: 'activity_logs' }), exportLogs);
+router.options('/export-logs', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.status(200).end();
+});
 
 // Settings
 router.get('/settings', logAdminActivity({ action: 'view_settings', resource: 'system_settings' }), getAdminSettings);

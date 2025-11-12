@@ -3,20 +3,13 @@ export const getSocketConfig = () => {
   const isDevelopment = process.env.NODE_ENV === 'development';
   
   return {
-    // Use polling first in development to avoid websocket issues
-    transports: isDevelopment ? ['polling'] : ['polling', 'websocket'],
-    
-    // More conservative settings for development
+    transports: ['polling', 'websocket'],
     reconnection: true,
-    reconnectionAttempts: isDevelopment ? 2 : 5,
-    reconnectionDelay: isDevelopment ? 3000 : 1000,
-    reconnectionDelayMax: isDevelopment ? 10000 : 5000,
-    timeout: isDevelopment ? 15000 : 10000,
-    
-    // Disable upgrade in development to prevent websocket errors
-    upgrade: !isDevelopment,
-    
-    // Other settings
+    reconnectionAttempts: 3,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    timeout: 5000,
+    upgrade: true,
     autoConnect: true,
     withCredentials: true,
     forceNew: false

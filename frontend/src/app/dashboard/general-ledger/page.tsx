@@ -524,7 +524,7 @@ export default function GeneralLedgerPage() {
         
         <div className="space-y-3">
           <Label>Journal Lines</Label>
-          <div className="bg-gray-50 p-2 rounded text-sm font-medium grid grid-cols-6 gap-2">
+          <div className="bg-muted p-2 rounded text-sm font-medium grid grid-cols-6 gap-2">
             <div>Ledger</div>
             <div>Dr/Cr</div>
             <div>Amount</div>
@@ -571,7 +571,7 @@ export default function GeneralLedgerPage() {
           </Button>
         </div>
 
-        <div className="bg-blue-50 p-4 rounded-lg">
+        <div className="bg-primary/5 p-4 rounded-lg">
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div><strong>Total Debits:</strong> ₹{totalDebits.toFixed(2)}</div>
             <div><strong>Total Credits:</strong> ₹{totalCredits.toFixed(2)}</div>
@@ -593,11 +593,11 @@ export default function GeneralLedgerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 space-y-6">
-      <div className="flex justify-between items-center bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-6 space-y-6">
+      <div className="flex justify-between items-center bg-card rounded-xl shadow-sm p-6 border border-border">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">General Ledger</h1>
-          <p className="text-gray-600 mt-1 flex items-center gap-2">
+          <p className="text-muted-foreground mt-1 flex items-center gap-2">
             <Calculator className="w-4 h-4" />
             Complete accounting and financial management
           </p>
@@ -661,9 +661,9 @@ export default function GeneralLedgerPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2 text-gray-800">Chart of Accounts</h3>
             <p className="text-sm text-gray-600 mb-4">Manage account structure and hierarchy</p>
-            <div className="mt-4 flex items-center justify-between bg-white rounded-lg p-3">
+            <div className="mt-4 flex items-center justify-between bg-card rounded-lg p-3">
               <span className="text-3xl font-bold text-blue-600">{accounts.filter(a => a.isGroup).length}</span>
-              <span className="text-xs text-gray-500 font-medium">Groups</span>
+              <span className="text-xs text-muted-foreground font-medium">Groups</span>
             </div>
           </CardContent>
         </Card>
@@ -676,11 +676,11 @@ export default function GeneralLedgerPage() {
               </div>
               <ChevronRight className="w-6 h-6 text-green-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2 text-gray-800">Ledger Accounts</h3>
-            <p className="text-sm text-gray-600 mb-4">View and manage all ledger accounts</p>
-            <div className="mt-4 flex items-center justify-between bg-white rounded-lg p-3">
+            <h3 className="text-lg font-semibold mb-2 text-foreground">Ledger Accounts</h3>
+            <p className="text-sm text-muted-foreground mb-4">View and manage all ledger accounts</p>
+            <div className="mt-4 flex items-center justify-between bg-card rounded-lg p-3">
               <span className="text-3xl font-bold text-green-600">{accounts.filter(a => !a.isGroup).length}</span>
-              <span className="text-xs text-gray-500 font-medium">Ledgers</span>
+              <span className="text-xs text-muted-foreground font-medium">Ledgers</span>
             </div>
           </CardContent>
         </Card>
@@ -693,11 +693,11 @@ export default function GeneralLedgerPage() {
               </div>
               <ChevronRight className="w-6 h-6 text-purple-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2 text-gray-800">Journal Entries</h3>
-            <p className="text-sm text-gray-600 mb-4">Create and manage journal vouchers</p>
-            <div className="mt-4 flex items-center justify-between bg-white rounded-lg p-3">
+            <h3 className="text-lg font-semibold mb-2 text-foreground">Journal Entries</h3>
+            <p className="text-sm text-muted-foreground mb-4">Create and manage journal vouchers</p>
+            <div className="mt-4 flex items-center justify-between bg-card rounded-lg p-3">
               <span className="text-3xl font-bold text-purple-600">{journalEntries.length}</span>
-              <span className="text-xs text-gray-500 font-medium">Entries</span>
+              <span className="text-xs text-muted-foreground font-medium">Entries</span>
             </div>
           </CardContent>
         </Card>
@@ -710,28 +710,28 @@ export default function GeneralLedgerPage() {
               </div>
               <ChevronRight className="w-6 h-6 text-orange-600" />
             </div>
-            <h3 className="text-lg font-semibold mb-2 text-gray-800">Reports</h3>
-            <p className="text-sm text-gray-600 mb-4">Trial balance and financial reports</p>
-            <div className="mt-4 flex items-center justify-between bg-white rounded-lg p-3">
+            <h3 className="text-lg font-semibold mb-2 text-foreground">Reports</h3>
+            <p className="text-sm text-muted-foreground mb-4">Trial balance and financial reports</p>
+            <div className="mt-4 flex items-center justify-between bg-card rounded-lg p-3">
               <span className="text-3xl font-bold text-orange-600">5</span>
-              <span className="text-xs text-gray-500 font-medium">Reports</span>
+              <span className="text-xs text-muted-foreground font-medium">Reports</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-        <TabsList className="bg-gray-100 p-1 rounded-lg">
-          <TabsTrigger value="groups" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Account Groups</TabsTrigger>
-          <TabsTrigger value="ledgers" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Ledgers</TabsTrigger>
-          <TabsTrigger value="vouchers" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Vouchers</TabsTrigger>
-          <TabsTrigger value="reports" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Reports</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-card rounded-xl shadow-sm p-6 border border-border">
+        <TabsList className="bg-muted p-1 rounded-lg">
+          <TabsTrigger value="groups" className="data-[state=active]:bg-card data-[state=active]:shadow-sm">Account Groups</TabsTrigger>
+          <TabsTrigger value="ledgers" className="data-[state=active]:bg-card data-[state=active]:shadow-sm">Ledgers</TabsTrigger>
+          <TabsTrigger value="vouchers" className="data-[state=active]:bg-card data-[state=active]:shadow-sm">Vouchers</TabsTrigger>
+          <TabsTrigger value="reports" className="data-[state=active]:bg-card data-[state=active]:shadow-sm">Reports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="groups" className="mt-6">
           <Card className="border-0 shadow-md">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
-              <CardTitle className="flex items-center text-gray-800">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
+              <CardTitle className="flex items-center text-foreground">
                 <FolderOpen className="w-5 h-5 mr-2 text-blue-600" />Account Groups ({accounts.filter(a => a.isGroup).length} groups)
               </CardTitle>
             </CardHeader>
@@ -917,8 +917,8 @@ export default function GeneralLedgerPage() {
                 
                 {trialBalance && (
                   <div>
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-600">
+                    <div className="mb-4 p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">
                         <strong>As of Date:</strong> {new Date(trialBalance.asOfDate).toLocaleDateString('en-IN')} | 
                         <strong>Accounts with Balances:</strong> {trialBalance.accounts.length}
                       </p>
@@ -948,7 +948,7 @@ export default function GeneralLedgerPage() {
                             </TableCell>
                           </TableRow>
                         ))}
-                        <TableRow className="border-t-2 font-bold bg-gray-50">
+                        <TableRow className="border-t-2 font-bold bg-muted">
                           <TableCell colSpan={3}>Total</TableCell>
                           <TableCell className="text-right">
                             ₹{trialBalance.totals?.debits.toLocaleString('en-IN', { minimumFractionDigits: 2 })}

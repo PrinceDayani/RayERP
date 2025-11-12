@@ -11,6 +11,7 @@ import { logger } from "./utils/logger";
 import routes from "./routes/index";
 import authRoutes from "./routes/auth.routes";
 import assignmentRoutes from "./routes/assignment.routes";
+import backupRoutes from "./routes/backupRoutes";
 import errorMiddleware from "./middleware/error.middleware";
 
 dotenv.config();
@@ -80,6 +81,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use("/api", routes);
 app.use("/api", assignmentRoutes);
+app.use("/api/backup", backupRoutes);
 
 // Catch-all for undefined routes
 app.all('*', (req, res) => {
@@ -103,9 +105,9 @@ const io = new SocketServer(server, {
   transports: ["polling", "websocket"],
   allowEIO3: true,
   path: "/socket.io/",
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  upgradeTimeout: 30000,
+  pingTimeout: 20000,
+  pingInterval: 10000,
+  upgradeTimeout: 10000,
   maxHttpBufferSize: 1e6
 });
 
@@ -270,8 +272,7 @@ mongoose
             'manage_roles', 'view_users', 'create_user', 'update_user', 'delete_user',
             'view_employees', 'create_employee', 'update_employee', 'delete_employee',
             'view_products', 'create_product', 'update_product', 'delete_product',
-            'view_orders', 'create_order', 'update_order', 'delete_order',
-            'view_inventory', 'manage_inventory', 'view_customers', 'create_customer',
+            'view_customers', 'create_customer',
             'update_customer', 'delete_customer', 'view_reports', 'export_data',
             'system_settings', 'view_logs'
           ]
@@ -283,8 +284,7 @@ mongoose
             'view_users', 'create_user', 'update_user',
             'view_employees', 'create_employee', 'update_employee',
             'view_products', 'create_product', 'update_product',
-            'view_orders', 'create_order', 'update_order',
-            'view_inventory', 'manage_inventory', 'view_customers',
+            'view_customers',
             'create_customer', 'update_customer', 'view_reports'
           ]
         },
@@ -294,16 +294,14 @@ mongoose
           permissions: [
             'view_users', 'view_employees',
             'view_products', 'create_product', 'update_product',
-            'view_orders', 'create_order', 'update_order',
-            'view_inventory', 'view_customers', 'create_customer', 'update_customer'
+            'view_customers', 'create_customer', 'update_customer'
           ]
         },
         {
           name: 'employee',
           description: 'Employee with basic access',
           permissions: [
-            'view_employees', 'view_products', 'view_orders', 'create_order',
-            'view_inventory', 'view_customers'
+            'view_employees', 'view_products', 'view_customers'
           ]
         }
       ];

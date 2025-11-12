@@ -266,6 +266,7 @@ const Dashboard = () => {
           user={user} 
           isAuthenticated={isAuthenticated}
           socketConnected={socketConnected}
+          refreshData={refresh}
         />
 
         {/* Role-specific welcome messages with live status */}

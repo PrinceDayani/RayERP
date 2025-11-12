@@ -62,9 +62,11 @@ export const createAdminUser = async (req: Request, res: Response) => {
     
     // Log activity
     await ActivityLog.create({
-      user: req.user?.name || 'Admin',
+      user: req.user?._id,
+      userName: req.user?.name || 'Admin',
       action: 'create',
       resource: 'user',
+      resourceType: 'other',
       status: 'success',
       details: `Created user: ${email}`,
       ipAddress: req.ip || 'unknown'
@@ -98,9 +100,11 @@ export const updateAdminUser = async (req: Request, res: Response) => {
 
     // Log activity
     await ActivityLog.create({
-      user: req.user?.name || 'Admin',
+      user: req.user?._id,
+      userName: req.user?.name || 'Admin',
       action: 'update',
       resource: 'user',
+      resourceType: 'other',
       status: 'success',
       details: `Updated user: ${user.email}`,
       ipAddress: req.ip || 'unknown'
@@ -142,9 +146,11 @@ export const deleteAdminUser = async (req: Request, res: Response) => {
 
     // Log activity
     await ActivityLog.create({
-      user: req.user?.name || 'Admin',
+      user: req.user?._id,
+      userName: req.user?.name || 'Admin',
       action: 'delete',
       resource: 'user',
+      resourceType: 'other',
       status: 'success',
       details: `Deleted user: ${user.email}${employee ? ' and associated employee' : ''}`,
       ipAddress: req.ip || 'unknown'
@@ -215,9 +221,11 @@ export const updateGeneralSettings = async (req: Request, res: Response) => {
     );
 
     await ActivityLog.create({
-      user: req.user?.name || 'Admin',
+      user: req.user?._id,
+      userName: req.user?.name || 'Admin',
       action: 'update',
       resource: 'settings',
+      resourceType: 'other',
       status: 'success',
       details: 'Updated general settings',
       ipAddress: req.ip || 'unknown'
@@ -240,9 +248,11 @@ export const updateSecuritySettings = async (req: Request, res: Response) => {
     );
 
     await ActivityLog.create({
-      user: req.user?.name || 'Admin',
+      user: req.user?._id,
+      userName: req.user?.name || 'Admin',
       action: 'update',
       resource: 'settings',
+      resourceType: 'other',
       status: 'success',
       details: 'Updated security settings',
       ipAddress: req.ip || 'unknown'
@@ -265,9 +275,11 @@ export const updateNotificationSettings = async (req: Request, res: Response) =>
     );
 
     await ActivityLog.create({
-      user: req.user?.name || 'Admin',
+      user: req.user?._id,
+      userName: req.user?.name || 'Admin',
       action: 'update',
       resource: 'settings',
+      resourceType: 'other',
       status: 'success',
       details: 'Updated notification settings',
       ipAddress: req.ip || 'unknown'
@@ -290,9 +302,11 @@ export const updateBackupSettings = async (req: Request, res: Response) => {
     );
 
     await ActivityLog.create({
-      user: req.user?.name || 'Admin',
+      user: req.user?._id,
+      userName: req.user?.name || 'Admin',
       action: 'update',
       resource: 'settings',
+      resourceType: 'other',
       status: 'success',
       details: 'Updated backup settings',
       ipAddress: req.ip || 'unknown'
@@ -319,9 +333,11 @@ export const triggerManualBackup = async (req: Request, res: Response) => {
     );
 
     await ActivityLog.create({
-      user: req.user?.name || 'Admin',
+      user: req.user?._id,
+      userName: req.user?.name || 'Admin',
       action: 'create',
       resource: 'backup',
+      resourceType: 'other',
       status: 'success',
       details: 'Manual backup triggered',
       ipAddress: req.ip || 'unknown'
@@ -330,6 +346,111 @@ export const triggerManualBackup = async (req: Request, res: Response) => {
     res.json({ success: true, timestamp });
   } catch (error: any) {
     logger.error(`Trigger manual backup error: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Export logs
+export const exportLogs = async (req: Request, res: Response) => {
+  try {
+    logger.info('Export logs request received', { 
+      format: req.query.format, 
+      user: req.user?.name,
+      headers: req.headers.authorization ? 'Bearer token present' : 'No auth header'
+    });
+    
+    const { format } = req.query;
+    
+    if (!format || !['text', 'pdf', 'excel', 'csv'].includes(format as string)) {
+      return res.status(400).json({ error: 'Invalid format. Use text, pdf, excel, or csv' });
+    }
+    
+    const logs = await ActivityLog.find().populate('user', 'name email').sort({ timestamp: -1 }).limit(1000);
+    logger.info(`Found ${logs.length} logs to export`);
+
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || 'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+    // Log the export activity first
+    await ActivityLog.create({
+      user: req.user?._id,
+      userName: req.user?.name || 'Admin',
+      action: 'export',
+      resource: 'logs',
+      status: 'success',
+      details: `Exported logs as ${format}`,
+      ipAddress: req.ip || 'unknown'
+    });
+
+    if (format === 'text') {
+      const textContent = logs.map(log => 
+        `${log.timestamp.toISOString()} | ${log.userName || (log.user as any)?.name || 'Unknown'} | ${log.action} | ${log.resource} | ${log.status || 'success'} | ${log.details || ''}`
+      ).join('\n');
+      
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="activity-logs.txt"');
+      res.send(textContent);
+    } else if (format === 'pdf') {
+      // Generate actual PDF content
+      const jsPDF = require('jspdf').jsPDF;
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(16);
+      doc.text('ACTIVITY LOGS REPORT', 20, 20);
+      
+      // Add logs
+      let yPosition = 40;
+      doc.setFontSize(10);
+      
+      logs.slice(0, 50).forEach((log, index) => {
+        if (yPosition > 280) {
+          doc.addPage();
+          yPosition = 20;
+        }
+        
+        const logText = `${log.timestamp.toISOString()} | ${log.userName || (log.user as any)?.name || 'Unknown'} | ${log.action} | ${log.resource} | ${log.status || 'success'}`;
+        doc.text(logText, 20, yPosition);
+        yPosition += 5;
+      });
+      
+      const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="activity-logs.pdf"');
+      res.send(pdfBuffer);
+    } else if (format === 'excel') {
+      // CSV format for Excel compatibility
+      const csvContent = [
+        'Timestamp,User,Action,Resource,Status,Details,IP Address',
+        ...logs.map(log => 
+          `"${log.timestamp.toISOString()}","${log.userName || (log.user as any)?.name || 'Unknown'}","${log.action}","${log.resource}","${log.status || 'success'}","${(log.details || '').replace(/"/g, '""')}","${log.ipAddress || 'N/A'}"`
+        )
+      ].join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="activity-logs.csv"');
+      res.send(csvContent);
+    } else if (format === 'csv') {
+      // Pure CSV format
+      const csvContent = [
+        'Timestamp,User,Action,Resource,Status,Details,IP Address',
+        ...logs.map(log => 
+          `"${log.timestamp.toISOString()}","${log.userName || (log.user as any)?.name || 'Unknown'}","${log.action}","${log.resource}","${log.status || 'success'}","${(log.details || '').replace(/"/g, '""')}","${log.ipAddress || 'N/A'}"`
+        )
+      ].join('\n');
+      
+      res.setHeader('Content-Type', 'application/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="activity-logs.csv"');
+      res.send(csvContent);
+    }
+    
+    logger.info('Export logs completed successfully', { format, user: req.user?.name });
+  } catch (error: any) {
+    logger.error(`Export logs error: ${error.message}`, { stack: error.stack });
     res.status(500).json({ error: error.message });
   }
 };

@@ -119,6 +119,7 @@ export default function Layout({ children }: LayoutProps) {
       title: "System Administration",
       items: [
         { path: "/dashboard/settings", name: "Settings", icon: Settings, description: "System configuration" } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/backup", name: "System Backup", icon: Receipt, description: "Download system backup", access: isAdmin || isSuperAdmin || isRoot } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/admin", name: "Admin Panel", icon: Shield, description: "Advanced system controls", access: isAdmin || isSuperAdmin || isRoot } as MenuItem & { icon: any; description: string },
       ]
     }
@@ -295,9 +296,9 @@ export default function Layout({ children }: LayoutProps) {
                               )}
                             </button>
                           ) : (
-                            <Link href={item.path}>
+                            <Link href={item.path} className="block">
                               <div
-                                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 group ${
+                                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 group cursor-pointer ${
                                   isActive
                                     ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg"
                                     : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white hover:shadow-md"
