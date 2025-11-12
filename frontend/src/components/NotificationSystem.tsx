@@ -1,231 +1,299 @@
-// project\frontend\src\components\NotificationSystem.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import io from 'socket.io-client';
+import React, { useEffect, useState, useRef } from 'react';
+import { Bell, X, Check, CheckCheck, Trash2, Settings, Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { useSocket } from '@/hooks/useSocket';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useRealTimeSetting } from '@/lib/realTimeSettings';
+import toast from 'react-hot-toast';
 
 interface NotificationProps {
   isAuthenticated: boolean;
 }
 
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  read: boolean;
-  createdAt: Date;
-}
-
 const NotificationSystem: React.FC<NotificationProps> = ({ isAuthenticated }) => {
-  const [socket, setSocket] = useState<any>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const socket = useSocket();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAllNotifications,
+    sendTestNotification
+  } = useNotifications();
+  
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
+  const [filter, setFilter] = useState<string>('all');
+  const [isConnected, setIsConnected] = useState(false);
 
-  // Set up socket connection when component mounts and user is authenticated
+  // Real-time settings
+  const [pushNotifications] = useRealTimeSetting('pushNotifications', true);
+
+  // Socket connection status
   useEffect(() => {
-    if (isAuthenticated) {
-      // Connect to the socket server
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) {
-        console.error('API URL is not defined');
-        return;
-      }
-      const socketInstance = io(apiUrl);
-      setSocket(socketInstance);
+    if (!socket || !isAuthenticated) return;
 
-      // Clean up socket connection when component unmounts
-      return () => {
-        if (socketInstance) {
-          socketInstance.disconnect();
-        }
-      };
+    const handleConnect = () => {
+      setIsConnected(true);
+      console.log('✅ Notification system connected');
+    };
+
+    const handleDisconnect = () => {
+      setIsConnected(false);
+      console.log('⚠️ Notification system disconnected');
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+
+    if (socket.connected) {
+      setIsConnected(true);
     }
-  }, [isAuthenticated]);
-
-  // Set up socket event listeners
-  useEffect(() => {
-    if (!socket) return;
-
-    // Listen for new order notifications
-    socket.on('order:new', (order: any) => {
-      const newNotification = {
-        id: `order-${Date.now()}`,
-        type: 'order',
-        title: 'New Order Created',
-        message: `Order #${order.orderNumber} has been created successfully.`,
-        read: false,
-        createdAt: new Date()
-      };
-      
-      addNotification(newNotification);
-      toast.success(`Order #${order.orderNumber} created successfully`);
-    });
-
-    // Listen for inventory low stock alerts
-    socket.on('inventory:lowStock', (inventory: any) => {
-      const productName = inventory.productId?.name || 'Unknown product';
-      
-      const newNotification = {
-        id: `inventory-${Date.now()}`,
-        type: 'inventory',
-        title: 'Low Stock Alert',
-        message: `${productName} is now low in stock (${inventory.quantity} remaining).`,
-        read: false,
-        createdAt: new Date()
-      };
-      
-      addNotification(newNotification);
-      toast.warning(`Low stock alert: ${productName}`);
-    });
-
-    // Listen for customer notifications
-    socket.on('customer:notification', (notification: any) => {
-      const newNotification = {
-        id: `customer-${Date.now()}`,
-        type: 'customer',
-        title: notification.title || 'Customer Notification',
-        message: notification.message,
-        read: false,
-        createdAt: new Date()
-      };
-      
-      addNotification(newNotification);
-    });
-
-    // Listen for sales team alerts
-    socket.on('sales:newOrder', (order: any) => {
-      const newNotification = {
-        id: `sales-${Date.now()}`,
-        type: 'sales',
-        title: 'Sales Team Alert',
-        message: `New order #${order.orderNumber} has been placed.`,
-        read: false,
-        createdAt: new Date()
-      };
-      
-      addNotification(newNotification);
-    });
 
     return () => {
-      // Remove event listeners
-      socket.off('order:new');
-      socket.off('inventory:lowStock');
-      socket.off('customer:notification');
-      socket.off('sales:newOrder');
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
     };
-  }, [socket]);
+  }, [socket, isAuthenticated]);
 
-  // Add a new notification
-  const addNotification = (notification: Notification) => {
-    setNotifications(prev => [notification, ...prev]);
-    setUnreadCount(prev => prev + 1);
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getNotificationIcon = (type: string) => {
+    const iconClass = "h-4 w-4";
+    switch (type) {
+      case 'order': return '📦';
+      case 'inventory': return '📊';
+      case 'project': return '🏗️';
+      case 'task': return '✅';
+      case 'budget': return '💰';
+      case 'system': return '⚙️';
+      case 'success': return '✅';
+      case 'warning': return '⚠️';
+      case 'error': return '❌';
+      default: return 'ℹ️';
+    }
   };
 
-  // Mark a notification as read
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 border-red-200';
+      case 'high': return 'bg-orange-100 border-orange-200';
+      case 'medium': return 'bg-blue-100 border-blue-200';
+      case 'low': return 'bg-gray-100 border-gray-200';
+      default: return 'bg-gray-100 border-gray-200';
+    }
   };
 
-  // Mark all notifications as read
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
-    setUnreadCount(0);
-  };
+  const filteredNotifications = notifications.filter(notification => {
+    if (filter === 'all') return true;
+    if (filter === 'unread') return !notification.read;
+    return notification.type === filter;
+  });
 
-  // Toggle notification dropdown
-  const toggleDropdown = () => {
-    setShowDropdown(prev => !prev);
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        toast.success('Browser notifications enabled!');
+      }
+    }
   };
 
   return (
-    <>
-      {/* Notification bell icon with badge */}
-      <div className="relative">
-        <button 
-          onClick={toggleDropdown}
-          className="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <span className="sr-only">View notifications</span>
-          <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-          
-          {/* Notification badge */}
-          {unreadCount > 0 && (
-            <span className="absolute top-0 right-0 -mt-1 -mr-1 px-2 py-1 text-xs font-bold rounded-full bg-red-500 text-white">
-              {unreadCount}
-            </span>
-          )}
-        </button>
+    <div className="relative" ref={dropdownRef}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setShowDropdown(!showDropdown)}
+        className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+      >
+        <Bell className={`h-5 w-5 ${isConnected ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400'}`} />
+        {unreadCount > 0 && (
+          <Badge 
+            variant="destructive" 
+            className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </Badge>
+        )}
+        {!isConnected && (
+          <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-red-500 rounded-full border-2 border-white" />
+        )}
+      </Button>
 
-        {/* Dropdown menu */}
-        {showDropdown && (
-          <div className="origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
-            <div className="py-1 divide-y divide-gray-100">
-              <div className="px-4 py-3 flex justify-between items-center">
-                <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
-                {unreadCount > 0 && (
-                  <button 
-                    onClick={markAllAsRead}
-                    className="text-xs text-blue-600 hover:text-blue-800"
+      {showDropdown && (
+        <Card className="absolute right-0 mt-2 w-96 max-w-sm shadow-lg border z-50">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Notifications
+                {!isConnected && (
+                  <Badge variant="outline" className="text-xs">
+                    Offline
+                  </Badge>
+                )}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {pushNotifications && 'Notification' in window && Notification.permission === 'default' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={requestNotificationPermission}
+                    className="text-xs"
                   >
-                    Mark all as read
-                  </button>
+                    Enable Browser Notifications
+                  </Button>
                 )}
-              </div>
-              
-              <div className="max-h-60 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="px-4 py-3 text-sm text-gray-500">
-                    No notifications
-                  </div>
-                ) : (
-                  notifications.map(notification => (
-                    <div 
-                      key={notification.id}
-                      className={`px-4 py-3 text-sm hover:bg-gray-50 cursor-pointer ${
-                        notification.read ? 'bg-white' : 'bg-blue-50'
-                      }`}
-                      onClick={() => markAsRead(notification.id)}
-                    >
-                      <p className="font-medium text-gray-900">{notification.title}</p>
-                      <p className="text-gray-600">{notification.message}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(notification.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  ))
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDropdown(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Toast container for pop-up notifications */}
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
-    </>
+            
+            {/* Filter buttons */}
+            <div className="flex gap-1 mt-2">
+              {['all', 'unread', 'order', 'inventory', 'project', 'task'].map((filterType) => (
+                <Button
+                  key={filterType}
+                  variant={filter === filterType ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setFilter(filterType)}
+                  className="text-xs capitalize"
+                >
+                  {filterType}
+                </Button>
+              ))}
+            </div>
+          </CardHeader>
+          
+          <Separator />
+          
+          <CardContent className="p-0">
+            {/* Action buttons */}
+            {notifications.length > 0 && (
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 flex justify-between">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={markAllAsRead}
+                  disabled={unreadCount === 0}
+                  className="text-xs"
+                >
+                  <CheckCheck className="h-3 w-3 mr-1" />
+                  Mark all read
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllNotifications}
+                  className="text-xs text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Clear all
+                </Button>
+              </div>
+            )}
+            
+            {/* Notifications list */}
+            <div className="max-h-96 overflow-y-auto">
+              {filteredNotifications.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">
+                  <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">
+                    {filter === 'unread' ? 'No unread notifications' : 'No notifications'}
+                  </p>
+                </div>
+              ) : (
+                filteredNotifications.map((notification, index) => (
+                  <div key={notification.id}>
+                    <div 
+                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
+                        !notification.read ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500' : ''
+                      } ${getPriorityColor(notification.priority)}`}
+                      onClick={() => {
+                        markAsRead(notification.id);
+                        if (notification.actionUrl) {
+                          window.location.href = notification.actionUrl;
+                        }
+                      }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm">{getNotificationIcon(notification.type)}</span>
+                            <p className="font-medium text-sm truncate">{notification.title}</p>
+                            {notification.priority === 'urgent' && (
+                              <Badge variant="destructive" className="text-xs">Urgent</Badge>
+                            )}
+                            {notification.priority === 'high' && (
+                              <Badge variant="secondary" className="text-xs">High</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(notification.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          {!notification.read && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAsRead(notification.id);
+                              }}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Check className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(notification.id);
+                            }}
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    {index < filteredNotifications.length - 1 && <Separator />}
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 };
 

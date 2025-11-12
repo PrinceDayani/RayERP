@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Keep your existing settings
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -8,6 +7,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   output: 'standalone',
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = { fs: false, net: false, tls: false };
+    }
+    return config;
+  },
   
   // Add new settings for environment variables and API handling
   env: {

@@ -1,13 +1,15 @@
 //path: backend/src/controllers/authController.ts
 
 import { Request, Response } from 'express';
-import User, { UserRole } from '../models/User';
+import User from '../models/User';
+import { Role } from '../models/Role';
 import { logger } from '../utils/logger';
+import { seedDefaultRoles, ensureRootRole } from '../utils/seedDefaultRoles';
 
 // Register a new user
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, roleId } = req.body;
 
     // Check if all fields are provided
     if (!name || !email || !password) {
@@ -26,35 +28,64 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    // Role assignment logic
-    let assignedRole = role || UserRole.NORMAL;
+    await seedDefaultRoles();
+
+    let assignedRoleId = roleId;
+    const usersCount = await User.countDocuments();
     
-    // Only ROOT and SUPER_ADMIN can create other ROOT and SUPER_ADMIN users
+    if (usersCount === 0) {
+      // First user is Root
+      const rootRole = await ensureRootRole();
+      if (!rootRole) {
+        return res.status(500).json({
+          success: false,
+          message: 'System error: Root role not found'
+        });
+      }
+      assignedRoleId = rootRole._id;
+    } else {
+      // Check if trying to create another Root user
+      const role = await Role.findById(assignedRoleId || '');
+      if (role?.name === 'Root') {
+        const rootExists = await User.findOne().populate('role');
+        if (rootExists && (rootExists.role as any)?.name === 'Root') {
+          return res.status(403).json({
+            success: false,
+            message: 'Root user already exists. Only one Root user is allowed.'
+          });
+        }
+      }
+      
+      if (!assignedRoleId) {
+        const defaultRole = await Role.findOne({ isDefault: true }).sort({ level: 1 });
+        assignedRoleId = defaultRole?._id;
+      }
+    }
+
+    // Verify role exists
+    const role = await Role.findById(assignedRoleId);
+    if (!role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role specified'
+      });
+    }
+
     if (req.user) {
-      if ((assignedRole === UserRole.ROOT || assignedRole === UserRole.SUPER_ADMIN) && 
-          (req.user.role !== UserRole.ROOT && req.user.role !== UserRole.SUPER_ADMIN)) {
+      const currentUserRole = await Role.findById((req.user as any).role);
+      
+      if (role.name?.toLowerCase() === 'root') {
         return res.status(403).json({
           success: false,
-          message: 'You are not authorized to create users with this role level'
+          message: 'Cannot assign Root role. Only one Root user is allowed.'
         });
       }
       
-      // Only ROOT can create other ROOT users
-      if (assignedRole === UserRole.ROOT && req.user.role !== UserRole.ROOT) {
+      if (currentUserRole && role.level >= currentUserRole.level) {
         return res.status(403).json({
           success: false,
-          message: 'Only ROOT users can create other ROOT users'
+          message: 'You cannot create users with equal or higher role level'
         });
-      }
-    } else {
-      // For the first user registration (no users exist yet), allow ROOT creation
-      const usersCount = await User.countDocuments();
-      if (usersCount === 0) {
-        // First user can be ROOT
-        assignedRole = UserRole.ROOT;
-      } else {
-        // If not authenticated and not first user, default to NORMAL
-        assignedRole = UserRole.NORMAL;
       }
     }
 
@@ -63,18 +94,18 @@ export const register = async (req: Request, res: Response) => {
       name,
       email,
       password,
-      role: assignedRole
+      role: assignedRoleId
     });
 
-    // Remove password from response
-    user.password = undefined as any;
+    // Populate role and remove password
+    const populatedUser = await User.findById(user._id).populate('role').select('-password');
 
-    logger.info(`User registered: ${email} with role: ${assignedRole}`);
+    logger.info(`User registered: ${email} with role: ${role.name}`);
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
-      user,
+      user: populatedUser,
     });
   } catch (error: any) {
     logger.error(`Registration error: ${error.message}`);
@@ -124,7 +155,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Find user by email and include password in the result
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select('+password').populate('role');
 
     // Check if user exists
     if (!user) {
@@ -167,7 +198,7 @@ export const login = async (req: Request, res: Response) => {
       updatedAt: user.updatedAt
     };
 
-    logger.info(`User logged in successfully: ${email} with role: ${user.role}`);
+    logger.info(`User logged in successfully: ${email}`);
 
     return res.status(200).json({
       success: true,
@@ -243,6 +274,60 @@ export const logout = (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Error during logout',
+    });
+  }
+};
+
+// Change password
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = (req.user as any)?._id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide current and new password'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters'
+      });
+    }
+
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    logger.info(`Password changed for user: ${user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error: any) {
+    logger.error(`Change password error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error changing password'
     });
   }
 };

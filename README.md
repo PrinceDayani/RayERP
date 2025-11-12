@@ -1,47 +1,13 @@
-# 🏢 ERP Management System
+# RayERP - Enterprise Resource Planning System
 
-A comprehensive Enterprise Resource Planning (ERP) system built with modern web technologies. This full-stack application manages employees, projects, tasks, contacts, and more with real-time updates and role-based access control.
-
-## 🏗️ Project Structure
-
-```
-erp-main/
-├── frontend/         # Next.js React application
-├── backend/          # Express.js API server
-├── Documentation/    # Project documentation
-└── scripts/         # Database seeding and utility scripts
-```
-
-## 🚀 Technology Stack
-
-### Frontend
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Type-safe JavaScript development
-- **Tailwind CSS** - Utility-first CSS framework
-- **Shadcn/ui** - Modern React component library
-- **Recharts** - Data visualization and charts
-- **Socket.IO Client** - Real-time communication
-- **React Hook Form** - Form handling and validation
-- **Framer Motion** - Animation library
-
-### Backend
-- **Express.js** - Node.js web framework
-- **TypeScript** - Type-safe server development
-- **MongoDB** - NoSQL database with Mongoose ODM
-- **Socket.IO** - Real-time WebSocket communication
-- **JWT** - JSON Web Token authentication
-- **bcryptjs** - Password hashing
-- **Winston** - Logging library
-- **Helmet** - Security middleware
-
-## 🚀 Getting Started
+## Quick Start Guide
 
 ### Prerequisites
-- **Node.js** (v22.x recommended)
-- **npm** (v10.0.0+)
-- **MongoDB** (local or cloud instance)
+- Node.js (v18 or higher)
+- MongoDB (local or cloud)
+- npm or yarn
 
-### Installation
+### Installation & Setup
 
 1. **Clone the repository**
 ```bash
@@ -124,6 +90,7 @@ npm start
 - Kanban-style task boards
 - Project analytics and reporting
 - Team collaboration features
+- **File sharing with departments and users** - Share project files with entire departments, specific users, or both
 
 ### 📋 Task Management
 - Task creation and assignment
@@ -138,6 +105,14 @@ npm start
 - Relationship tracking
 - Contact categorization
 
+### 💰 Department Budget Management
+- Budget allocation per department and fiscal year
+- Category-wise budget tracking
+- Expense monitoring and recording
+- Budget approval workflow
+- Real-time budget utilization tracking
+- Budget summary and analytics
+
 ### 🔐 Authentication & Authorization
 - JWT-based authentication
 - Role-based access control (RBAC)
@@ -149,6 +124,14 @@ npm start
 - Business intelligence reports
 - Data visualization
 - Export capabilities
+
+### 💬 Chat & Messaging
+- Real-time chat between users
+- Image and document sharing
+- File upload support (images, PDFs, documents)
+- Typing indicators
+- Read receipts
+- Root user monitoring mode
 
 ### 🔄 Real-time Features
 - Live updates via WebSocket
@@ -187,6 +170,14 @@ Base URL: `http://localhost:5000/api`
 - `DELETE /projects/:id` - Delete project
 - `GET /projects/:id/tasks` - Get project tasks
 
+### Project File Sharing
+- `GET /projects/:id/files` - Get all project files
+- `POST /projects/:id/files` - Upload file with sharing settings
+- `PUT /projects/:id/files/:fileId/share` - Update file sharing settings
+- `GET /projects/shared/files` - Get files shared with current user
+- `GET /projects/:id/files/:fileId/download` - Download file
+- `DELETE /projects/:id/files/:fileId` - Delete file
+
 ### Task Management
 - `GET /tasks` - Get all tasks
 - `POST /tasks` - Create new task
@@ -201,6 +192,25 @@ Base URL: `http://localhost:5000/api`
 - `GET /contacts/:id` - Get contact by ID
 - `PUT /contacts/:id` - Update contact
 - `DELETE /contacts/:id` - Delete contact
+
+### Chat & Messaging
+- `GET /chat/chats` - Get all chats
+- `POST /chat/chats` - Create or get chat with user
+- `POST /chat/chats/message` - Send message
+- `POST /chat/chats/upload` - Upload file (image/document)
+- `GET /chat/chats/:chatId/messages` - Get chat messages
+- `PUT /chat/chats/:chatId/read` - Mark messages as read
+- `GET /chat/users` - Get available users for chat
+
+### Department Budget Management
+- `GET /department-budgets` - Get all department budgets
+- `POST /department-budgets` - Create new budget
+- `GET /department-budgets/:id` - Get budget by ID
+- `PUT /department-budgets/:id` - Update budget
+- `PUT /department-budgets/:id/approve` - Approve budget
+- `PUT /department-budgets/:id/expense` - Record expense
+- `GET /department-budgets/department/:departmentId/summary` - Get budget summary
+- `DELETE /department-budgets/:id` - Delete budget
 
 ### Analytics & Reports
 - `GET /analytics/dashboard` - Dashboard statistics
@@ -220,9 +230,11 @@ Base URL: `http://localhost:5000/api`
 
 ### Permission System
 - **RBAC (Role-Based Access Control)** implementation
+- **Department-Based Permissions** - Custom permissions per department
 - **Module-level permissions** for different system areas
 - **Action-level permissions** (create, read, update, delete)
 - **Data-level permissions** for sensitive information
+- **Multi-source permissions** - Users inherit permissions from roles AND departments
 
 ## 🧠 Project Architecture
 
@@ -343,10 +355,19 @@ node test-backend.js
 ## 📚 Documentation
 
 For detailed documentation, see:
+- [Department Budget Management](DEPARTMENT_BUDGET.md) - **NEW!** Budget allocation and tracking per department
+- [Socket Connection Fixes](SOCKET_FIXES_SUMMARY.md) - Fixed socket disconnection issues
+- [Real-Time Dashboard](REALTIME_DASHBOARD_QUICK_START.md) - Live dashboard with instant updates
+- [Real-Time Dashboard Technical Details](REALTIME_DASHBOARD_FIX.md) - Implementation details
+- [Project File Sharing](PROJECT_FILE_SHARING.md) - Share files with departments and specific users
+- [Chat File Upload Feature](CHAT_FILE_UPLOAD.md) - Image and document sharing in chat
+- [Department Permissions Guide](DEPARTMENT_PERMISSIONS.md) - Department-based permissions
+- [Department Permissions Quick Reference](DEPARTMENT_PERMISSIONS_QUICK_GUIDE.md) - Quick start guide
 - [API Fixes Summary](API_FIXES_SUMMARY.md)
 - [Employee & Project Management](EMPLOYEE_PROJECT_MANAGEMENT.md)
 - [Task Management System](TASK_MANAGEMENT.md)
 - [Budget & Project Connection](BUDGET_PROJECT_CONNECTION.md)
+- [Multi-Department Employees](MULTI_DEPARTMENT_EMPLOYEES.md)
 - [Attendance System Fix](../ATTENDANCE_FIX_README.md)
 - [Employee Management Fix](../EMPLOYEE_MANAGEMENT_FIX_README.md)
 

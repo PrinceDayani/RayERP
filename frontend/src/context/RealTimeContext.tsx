@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useSocket, useSocketEvent, OrderCreatedEvent, OrderUpdatedEvent, InventoryUpdatedEvent, NotificationEvent } from '@/lib/socket';
+import { useSocketWithStatus, useSocketEvent, OrderCreatedEvent, OrderUpdatedEvent, InventoryUpdatedEvent, NotificationEvent } from '@/lib/socket';
 import { useAuth } from '../contexts/AuthContext';
 
 interface RealTimeContextProps {
@@ -30,7 +30,7 @@ interface RealTimeProviderProps {
 export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) => {
   const { user, isAuthenticated, token } = useAuth();
   
-  const [socket, isConnected, error] = useSocket(token || undefined);
+  const [socket, isConnected, error] = useSocketWithStatus(token || undefined);
   const [notifications, setNotifications] = useState<NotificationEvent[]>([]);
 
   // Connect to socket when user is authenticated

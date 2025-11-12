@@ -534,7 +534,7 @@ export default function TaskManagementPage() {
                     {employees.length > 0 ? (
                       employees.map((employee) => (
                         <SelectItem key={employee._id} value={employee._id}>
-                          {employee.firstName} {employee.lastName}
+                          {`${employee.firstName} ${employee.lastName}`}
                         </SelectItem>
                       ))
                     ) : (

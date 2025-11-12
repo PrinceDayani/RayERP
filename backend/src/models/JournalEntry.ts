@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IJournalLine {
-  accountId: mongoose.Types.ObjectId;
+  ledgerId: mongoose.Types.ObjectId;
   debit: number;
   credit: number;
   description: string;
@@ -10,19 +10,19 @@ export interface IJournalLine {
 export interface IJournalEntry extends Document {
   entryNumber: string;
   date: Date;
-  reference: string;
+  reference?: string;
   description: string;
   lines: IJournalLine[];
   totalDebit: number;
   totalCredit: number;
   isPosted: boolean;
-  createdBy: mongoose.Types.ObjectId;
+  createdBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const JournalLineSchema = new Schema<IJournalLine>({
-  accountId: {
+  ledgerId: {
     type: Schema.Types.ObjectId,
     ref: 'Account',
     required: true
@@ -57,7 +57,7 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
   },
   reference: {
     type: String,
-    required: true,
+    required: false,
     trim: true
   },
   description: {
@@ -68,12 +68,12 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
   lines: [JournalLineSchema],
   totalDebit: {
     type: Number,
-    required: true,
+    default: 0,
     min: 0
   },
   totalCredit: {
     type: Number,
-    required: true,
+    default: 0,
     min: 0
   },
   isPosted: {
@@ -83,7 +83,7 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   }
 }, {
   timestamps: true

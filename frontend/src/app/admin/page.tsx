@@ -1,50 +1,39 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { 
-  Shield, 
-  Users, 
-  Settings, 
-  Database, 
-  Activity, 
-  AlertTriangle,
-  Lock,
-  Key,
-  Server,
-  FileText
-} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { UserManagement } from "@/components/admin/UserManagement";
+import { SystemSettings } from "@/components/admin/SystemSettings";
+import { ActivityLogs } from "@/components/admin/ActivityLogs";
+import { AdminStats } from "@/components/admin/AdminStats";
+import { AdminOverview } from "@/components/admin/AdminOverview";
+import { UnifiedRoleManagement } from "@/components/admin/UnifiedRoleManagement";
+import { ShieldIcon, UsersIcon, SettingsIcon, ActivityIcon, LayoutDashboardIcon, AlertTriangle } from "lucide-react";
 
 const AdminControls = () => {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const isRoot = user?.role === "root";
   const isSuperAdmin = user?.role === "super_admin";
   const isAdmin = user?.role === "admin";
   const hasAdminAccess = isAdmin || isSuperAdmin || isRoot;
 
-  if (!isAuthenticated) {
-    return (
-      <Layout>
-        <div className="flex h-screen items-center justify-center">
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <h2 className="text-xl font-semibold mb-2">Access Required</h2>
-              <p className="text-muted-foreground mb-4">Please log in to access Admin Controls</p>
-              <Button onClick={() => router.push("/login")}>Login</Button>
-            </CardContent>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
 
-  if (!hasAdminAccess) {
+  if (!isAuthenticated || !hasAdminAccess) {
     return (
       <Layout>
         <div className="flex h-screen items-center justify-center">
@@ -53,11 +42,8 @@ const AdminControls = () => {
               <AlertTriangle className="h-16 w-16 mx-auto text-red-500 mb-4" />
               <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
               <p className="text-muted-foreground mb-4">
-                You don't have permission to access Admin Controls
+                Admin access required
               </p>
-              <Button onClick={() => router.push("/dashboard")}>
-                Back to Dashboard
-              </Button>
             </CardContent>
           </Card>
         </div>
@@ -65,175 +51,134 @@ const AdminControls = () => {
     );
   }
 
-  const adminSections = [
-    {
-      title: "User Management",
-      description: "Manage users, roles, and permissions",
-      icon: Users,
-      items: [
-        { name: "User Accounts", path: "/admin/users", description: "View and manage user accounts" },
-        { name: "Role Management", path: "/admin/roles", description: "Configure user roles and permissions" },
-        { name: "Access Control", path: "/admin/access", description: "Manage access permissions" },
-      ]
-    },
-    {
-      title: "System Configuration",
-      description: "Configure system settings and preferences",
-      icon: Settings,
-      items: [
-        { name: "System Settings", path: "/admin/system", description: "Configure global system settings" },
-        { name: "Email Configuration", path: "/admin/email", description: "Setup email server and templates" },
-        { name: "API Settings", path: "/admin/api", description: "Manage API keys and configurations" },
-      ]
-    },
-    {
-      title: "Database Management",
-      description: "Database operations and maintenance",
-      icon: Database,
-      items: [
-        { name: "Database Status", path: "/admin/database", description: "Monitor database health and performance" },
-        { name: "Backup & Restore", path: "/admin/backup", description: "Manage database backups" },
-        { name: "Data Migration", path: "/admin/migration", description: "Handle data migrations" },
-      ]
-    },
-    {
-      title: "Security & Monitoring",
-      description: "Security settings and system monitoring",
-      icon: Shield,
-      items: [
-        { name: "Security Logs", path: "/admin/security", description: "View security events and logs" },
-        { name: "System Monitoring", path: "/admin/monitoring", description: "Monitor system performance" },
-        { name: "Audit Trail", path: "/admin/audit", description: "View system audit logs" },
-      ]
-    }
-  ];
+
 
   return (
     <Layout>
-      <div className="flex-1 space-y-6 p-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Admin Controls</h1>
-            <p className="text-muted-foreground">
-              System administration and configuration
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            <span className="text-sm font-medium capitalize">{user?.role}</span>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="container mx-auto py-8 px-4">
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-red-600 rounded-lg">
+                  <ShieldIcon className="h-6 w-6 text-white" />
+                </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">System Status</p>
-                  <p className="text-2xl font-bold text-green-600">Online</p>
+                  <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+                    Admin Control Panel
+                  </h1>
+                  <p className="text-slate-600 dark:text-slate-400 mt-1">
+                    Manage users, roles, settings, and monitor system activity
+                  </p>
                 </div>
-                <Activity className="h-8 w-8 text-green-600" />
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                  <p className="text-2xl font-bold">24</p>
-                </div>
-                <Users className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Security Level</p>
-                  <p className="text-2xl font-bold text-green-600">High</p>
-                </div>
-                <Lock className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Server Load</p>
-                  <p className="text-2xl font-bold">45%</p>
-                </div>
-                <Server className="h-8 w-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Admin Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {adminSections.map((section) => (
-            <Card key={section.title}>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <section.icon className="h-6 w-6 text-primary" />
-                  <div>
-                    <CardTitle>{section.title}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{section.description}</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {section.items.map((item) => (
-                    <div
-                      key={item.name}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
-                      onClick={() => router.push(item.path)}
-                    >
-                      <div>
-                        <h4 className="font-medium">{item.name}</h4>
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        Configure
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
-                <FileText className="h-6 w-6" />
-                <span>Generate Report</span>
-              </Button>
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
-                <Database className="h-6 w-6" />
-                <span>Backup Database</span>
-              </Button>
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2">
-                <Key className="h-6 w-6" />
-                <span>Reset API Keys</span>
-              </Button>
+              <Badge variant="secondary" className="px-3 py-1">
+                {user?.role}
+              </Badge>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="mb-8">
+            <AdminStats isLoading={isLoading} />
+          </div>
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 mb-6 bg-white dark:bg-slate-800 shadow-sm">
+              <TabsTrigger value="overview" className="flex items-center space-x-2">
+                <LayoutDashboardIcon className="h-4 w-4" />
+                <span>Overview</span>
+              </TabsTrigger>
+              <TabsTrigger value="users" className="flex items-center space-x-2">
+                <UsersIcon className="h-4 w-4" />
+                <span>Users</span>
+              </TabsTrigger>
+              <TabsTrigger value="roles" className="flex items-center space-x-2">
+                <ShieldIcon className="h-4 w-4" />
+                <span>Roles</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center space-x-2">
+                <SettingsIcon className="h-4 w-4" />
+                <span>Settings</span>
+              </TabsTrigger>
+              <TabsTrigger value="logs" className="flex items-center space-x-2">
+                <ActivityIcon className="h-4 w-4" />
+                <span>Activity</span>
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="overview" className="space-y-6">
+              <AdminOverview isLoading={isLoading} />
+            </TabsContent>
+            
+            <TabsContent value="users" className="space-y-6">
+              <Card className="shadow-sm border-0 bg-white dark:bg-slate-800">
+                <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+                  <CardTitle className="flex items-center space-x-2">
+                    <UsersIcon className="h-5 w-5 text-red-600" />
+                    <span>User Management</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Create, edit, and manage user accounts and their permissions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <UserManagement isLoading={isLoading} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="roles" className="space-y-6">
+              <Card className="shadow-sm border-0 bg-white dark:bg-slate-800">
+                <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+                  <CardTitle className="flex items-center space-x-2">
+                    <ShieldIcon className="h-5 w-5 text-green-600" />
+                    <span>Role & Permission Management</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Define roles, set permissions, and assign them to users
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <UnifiedRoleManagement isLoading={isLoading} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="settings" className="space-y-6">
+              <Card className="shadow-sm border-0 bg-white dark:bg-slate-800">
+                <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+                  <CardTitle className="flex items-center space-x-2">
+                    <SettingsIcon className="h-5 w-5 text-purple-600" />
+                    <span>System Configuration</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Configure application settings, security, and system preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <SystemSettings isLoading={isLoading} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="logs" className="space-y-6">
+              <Card className="shadow-sm border-0 bg-white dark:bg-slate-800">
+                <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+                  <CardTitle className="flex items-center space-x-2">
+                    <ActivityIcon className="h-5 w-5 text-orange-600" />
+                    <span>Activity Monitoring</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Track user actions, system events, and security activities
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ActivityLogs isLoading={isLoading} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </Layout>
   );

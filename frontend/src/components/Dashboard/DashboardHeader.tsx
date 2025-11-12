@@ -92,12 +92,28 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 variant="outline" 
                 className="h-9"
                 onClick={() => {
-                  if (refreshData) refreshData();
+                  if (refreshData) {
+                    refreshData();
+                    // Show a brief loading state or toast
+                    const button = document.activeElement as HTMLButtonElement;
+                    if (button) {
+                      const originalText = button.textContent;
+                      button.textContent = 'Refreshing...';
+                      button.disabled = true;
+                      setTimeout(() => {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                      }, 1000);
+                    }
+                  }
                 }}
               >
                 Refresh Dashboard
               </Button>
-              <Button className="h-9">
+              <Button 
+                className="h-9"
+                onClick={() => window.location.href = '/dashboard/orders/new'}
+              >
                 <Plus className="mr-1 h-4 w-4" />
                 <span>New Order</span>
               </Button>

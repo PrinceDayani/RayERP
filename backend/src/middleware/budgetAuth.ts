@@ -3,7 +3,8 @@ import Budget from '../models/Budget';
 
 export const canManageBudgets = (req: Request, res: Response, next: NextFunction) => {
   const user = (req as any).user;
-  const userRole = user?.role?.toLowerCase();
+  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
+  const userRole = roleName.toLowerCase();
   const allowedRoles = ['root', 'super_admin', 'admin', 'manager', 'superadmin'];
   
   console.log('Budget manage check - User:', user?.email, 'Role:', userRole);
@@ -17,7 +18,8 @@ export const canManageBudgets = (req: Request, res: Response, next: NextFunction
 
 export const canApproveBudgets = (req: Request, res: Response, next: NextFunction) => {
   const user = (req as any).user;
-  const userRole = user?.role?.toLowerCase();
+  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
+  const userRole = roleName.toLowerCase();
   const allowedRoles = ['root', 'super_admin', 'admin', 'manager', 'superadmin'];
   
   console.log('Budget approval check - User:', user?.email, 'Role:', userRole, 'Original:', user?.role);
@@ -36,7 +38,8 @@ export const canApproveBudgets = (req: Request, res: Response, next: NextFunctio
 
 export const canViewBudgets = (req: Request, res: Response, next: NextFunction) => {
   const user = (req as any).user;
-  const userRole = user?.role?.toLowerCase();
+  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
+  const userRole = roleName.toLowerCase();
   const allowedRoles = ['root', 'super_admin', 'admin', 'manager', 'employee', 'superadmin', 'normal'];
   
   console.log('Budget view check - User:', user?.email, 'Role:', userRole, 'Original:', user?.role);

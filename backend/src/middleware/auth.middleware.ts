@@ -1,20 +1,25 @@
 //path: backend/src/middleware/auth.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { IUser, UserRole } from '../models/User';
+import User, { IUser } from '../models/User';
 
 // Extend the Express Request interface
 declare global {
   namespace Express {
     interface Request {
       user?: IUser;
+      projectAccess?: {
+        projectId: string;
+        accessLevel: 'read' | 'write' | 'admin';
+        assignedAt: Date;
+      };
     }
   }
 }
 
 interface JwtPayload {
   id: string;
-  role: UserRole;
+  role: string;
 }
 
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
@@ -48,8 +53,8 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
 
-    // Find user by id
-    const user = await User.findById(decoded.id).select('-password');
+    // Find user by id and populate role
+    const user = await User.findById(decoded.id).populate('role').select('-password');
 
     // Check if user exists
     if (!user) {
@@ -66,20 +71,30 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     console.error('Auth middleware error:', error.message);
     
     if (error.name === 'JsonWebTokenError') {
+      if (error.message === 'invalid signature') {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Invalid token - please login again',
+          code: 'INVALID_TOKEN_SIGNATURE'
+        });
+      }
       return res.status(401).json({ 
         success: false,
-        message: 'Invalid token format' 
+        message: 'Invalid token format',
+        code: 'INVALID_TOKEN_FORMAT'
       });
     } else if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ 
         success: false,
-        message: 'Token has expired' 
+        message: 'Token has expired - please login again',
+        code: 'TOKEN_EXPIRED'
       });
     }
     
     return res.status(401).json({ 
       success: false,
-      message: 'Authentication failed' 
+      message: 'Authentication failed',
+      code: 'AUTH_FAILED'
     });
   }
 };

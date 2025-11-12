@@ -220,24 +220,48 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
 
   return (
     <Tabs defaultValue="general" className="w-full">
-      <TabsList className="mb-4">
-        <TabsTrigger value="general">General</TabsTrigger>
-        <TabsTrigger value="security">Security</TabsTrigger>
-        <TabsTrigger value="notifications">Notifications</TabsTrigger>
-        <TabsTrigger value="backup">Backup & Restore</TabsTrigger>
-      </TabsList>
+      <div className="relative mb-8">
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-200/30 to-slate-300/30 dark:from-slate-700/30 dark:to-slate-600/30 rounded-2xl blur-sm" />
+        <TabsList className="relative grid w-full grid-cols-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-lg rounded-2xl p-2">
+          <TabsTrigger 
+            value="general" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 rounded-xl font-medium"
+          >
+            General
+          </TabsTrigger>
+          <TabsTrigger 
+            value="security" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-rose-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 rounded-xl font-medium"
+          >
+            Security
+          </TabsTrigger>
+          <TabsTrigger 
+            value="notifications" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 rounded-xl font-medium"
+          >
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger 
+            value="backup" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 rounded-xl font-medium"
+          >
+            Backup & Restore
+          </TabsTrigger>
+        </TabsList>
+      </div>
       
       {/* Rest of the component remains the same */}
-      {/* General Settings Tab Content */}
-      <TabsContent value="general">
-        <Card>
-          <CardHeader>
-            <CardTitle>General Settings</CardTitle>
-            <CardDescription>
-              Configure basic application settings
+      {/* Enhanced General Settings Tab Content */}
+      <TabsContent value="general" className="animate-in fade-in-50 duration-500">
+        <Card className="shadow-xl border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5" />
+          <CardHeader className="relative bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-b border-slate-200/50 dark:border-slate-700/50">
+            <CardTitle className="text-2xl font-semibold text-slate-900 dark:text-slate-100">General Settings</CardTitle>
+            <CardDescription className="text-base text-slate-600 dark:text-slate-400">
+              Configure basic application settings and preferences
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="relative space-y-6 p-8">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="companyName">Company Name</Label>
@@ -370,8 +394,11 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
               </div>
             </div>
             
-            <div className="flex justify-end">
-              <Button onClick={handleSaveGeneralSettings}>
+            <div className="flex justify-end pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
+              <Button 
+                onClick={handleSaveGeneralSettings}
+                className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-8 py-3"
+              >
                 Save Changes
               </Button>
             </div>
@@ -379,16 +406,17 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
         </Card>
       </TabsContent>
       
-      {/* Security Settings Tab Content */}
-      <TabsContent value="security">
-        <Card>
-          <CardHeader>
-            <CardTitle>Security Settings</CardTitle>
-            <CardDescription>
+      {/* Enhanced Security Settings Tab Content */}
+      <TabsContent value="security" className="animate-in fade-in-50 duration-500">
+        <Card className="shadow-xl border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-rose-500/5" />
+          <CardHeader className="relative bg-gradient-to-r from-red-50/50 to-rose-50/50 dark:from-red-950/20 dark:to-rose-950/20 border-b border-slate-200/50 dark:border-slate-700/50">
+            <CardTitle className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Security Settings</CardTitle>
+            <CardDescription className="text-base text-slate-600 dark:text-slate-400">
               Configure security policies and authentication requirements
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="relative space-y-6 p-8">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="requireMfa">Require Multi-Factor Authentication</Label>
@@ -481,8 +509,11 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
               />
             </div>
             
-            <div className="flex justify-end">
-              <Button onClick={handleSaveSecuritySettings}>
+            <div className="flex justify-end pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
+              <Button 
+                onClick={handleSaveSecuritySettings}
+                className="bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-8 py-3"
+              >
                 Save Changes
               </Button>
             </div>
@@ -490,16 +521,17 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
         </Card>
       </TabsContent>
       
-      {/* Notification Settings Tab Content */}
-      <TabsContent value="notifications">
-        <Card>
-          <CardHeader>
-            <CardTitle>Notification Settings</CardTitle>
-            <CardDescription>
+      {/* Enhanced Notification Settings Tab Content */}
+      <TabsContent value="notifications" className="animate-in fade-in-50 duration-500">
+        <Card className="shadow-xl border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-green-500/5" />
+          <CardHeader className="relative bg-gradient-to-r from-emerald-50/50 to-green-50/50 dark:from-emerald-950/20 dark:to-green-950/20 border-b border-slate-200/50 dark:border-slate-700/50">
+            <CardTitle className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Notification Settings</CardTitle>
+            <CardDescription className="text-base text-slate-600 dark:text-slate-400">
               Configure system and user notifications
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="relative space-y-6 p-8">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="emailNotifications">Email Notifications</Label>
@@ -576,8 +608,11 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
               />
             </div>
             
-            <div className="flex justify-end">
-              <Button onClick={handleSaveNotificationSettings}>
+            <div className="flex justify-end pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
+              <Button 
+                onClick={handleSaveNotificationSettings}
+                className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-8 py-3"
+              >
                 Save Changes
               </Button>
             </div>
@@ -585,24 +620,30 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
         </Card>
       </TabsContent>
       
-      {/* Backup Settings Tab Content */}
-      <TabsContent value="backup">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Backup & Restore</CardTitle>
-              <CardDescription>
-                Configure automated backups and data retention
-              </CardDescription>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button onClick={triggerManualBackup} variant="outline" className="flex items-center">
-                <RefreshCwIcon className="mr-2 h-4 w-4" />
-                Manual Backup
-              </Button>
+      {/* Enhanced Backup Settings Tab Content */}
+      <TabsContent value="backup" className="animate-in fade-in-50 duration-500">
+        <Card className="shadow-xl border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-violet-500/5" />
+          <CardHeader className="relative bg-gradient-to-r from-purple-50/50 to-violet-50/50 dark:from-purple-950/20 dark:to-violet-950/20 border-b border-slate-200/50 dark:border-slate-700/50">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Backup & Restore</CardTitle>
+                <CardDescription className="text-base text-slate-600 dark:text-slate-400">
+                  Configure automated backups and data retention policies
+                </CardDescription>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  onClick={triggerManualBackup} 
+                  className="bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-3"
+                >
+                  <RefreshCwIcon className="mr-2 h-4 w-4" />
+                  Manual Backup
+                </Button>
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="relative space-y-6 p-8">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="autoBackup">Automated Backups</Label>
@@ -704,8 +745,11 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
               </div>
             </div>
             
-            <div className="flex justify-end">
-              <Button onClick={handleSaveBackupSettings}>
+            <div className="flex justify-end pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
+              <Button 
+                onClick={handleSaveBackupSettings}
+                className="bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-8 py-3"
+              >
                 Save Changes
               </Button>
             </div>

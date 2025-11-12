@@ -55,12 +55,25 @@ interface User {
   _id: string;
   name: string;
   email: string;
-  role: UserRole;
+  role: any; // Can be string or object with name property
   createdAt: string;
 }
 
 const UserManagement = () => {
-  const { user: currentUser, hasMinimumRole } = useAuth();
+  const { user: currentUser, hasMinimumLevel, roles } = useAuth();
+  
+  const hasMinimumRole = (role: UserRole) => {
+    if (!hasMinimumLevel) return false;
+    const levels: Record<UserRole, number> = {
+      [UserRole.ROOT]: 100,
+      [UserRole.SUPER_ADMIN]: 90,
+      [UserRole.ADMIN]: 80,
+      [UserRole.MANAGER]: 70,
+      [UserRole.EMPLOYEE]: 60,
+      [UserRole.NORMAL]: 50
+    };
+    return hasMinimumLevel(levels[role] || 0);
+  };
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +85,7 @@ const UserManagement = () => {
     name: '',
     email: '',
     password: '',
-    role: UserRole.NORMAL
+    roleId: ''
   });
 
   // Fetch all users
@@ -113,6 +126,16 @@ const UserManagement = () => {
     e.preventDefault();
     try {
       setError(null);
+      
+      if (!newUser.roleId) {
+        toast({
+          title: "Error",
+          description: "Please select a role",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -135,7 +158,7 @@ const UserManagement = () => {
           name: '',
           email: '',
           password: '',
-          role: UserRole.NORMAL
+          roleId: ''
         });
         toast({
           title: "Success",
@@ -154,32 +177,24 @@ const UserManagement = () => {
   };
 
   // Update user role
-  const handleRoleChange = async (userId: string, newRole: UserRole) => {
+  const handleRoleChange = async (userId: string, newRoleName: UserRole) => {
     try {
       setError(null);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/users/${userId}/role`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
-        },
-        body: JSON.stringify({ role: newRole })
+      // Find the role ID from the role name
+      const roleObj = roles.find(r => r.name === newRoleName);
+      if (!roleObj) {
+        throw new Error('Role not found');
+      }
+      
+      const { default: adminAPI } = await import('@/lib/api/adminAPI');
+      await adminAPI.updateUserRole(userId, roleObj._id);
+      
+      fetchUsers();
+      toast({
+        title: "Success",
+        description: "User role updated successfully",
+        variant: "default"
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update user role');
-      }
-      
-      const data = await response.json();
-      if (data.success) {
-        fetchUsers();
-        toast({
-          title: "Success",
-          description: "User role updated successfully",
-          variant: "default"
-        });
-      }
     } catch (err: any) {
       setError(err.message || 'Failed to update user role');
       toast({
@@ -204,7 +219,7 @@ const UserManagement = () => {
     
     // Filter by role tab
     if (activeTab !== 'all') {
-      result = result.filter(user => user.role === activeTab);
+      result = result.filter(user => getRoleName(user.role) === activeTab);
     }
     
     setFilteredUsers(result);
@@ -215,14 +230,23 @@ const UserManagement = () => {
     fetchUsers();
   }, []);
 
+  // Get role name from role object or string
+  const getRoleName = (role: any): string => {
+    return typeof role === 'string' ? role : role?.name || '';
+  };
+  
   // Get role color for badge
-  const getRoleBadgeColor = (role: UserRole) => {
-    switch(role) {
+  const getRoleBadgeColor = (role: any) => {
+    const roleName = getRoleName(role);
+    switch(roleName) {
       case UserRole.ROOT:
+      case 'Root':
         return "bg-red-100 text-red-800 border-red-200";
       case UserRole.SUPER_ADMIN:
+      case 'Superadmin':
         return "bg-purple-100 text-purple-800 border-purple-200";
       case UserRole.ADMIN:
+      case 'Admin':
         return "bg-blue-100 text-blue-800 border-blue-200";
       case UserRole.NORMAL:
       default:
@@ -316,43 +340,29 @@ const UserManagement = () => {
                           <div className="grid gap-2">
                             <Label htmlFor="role">Role</Label>
                             <Select
-                              value={newUser.role}
-                              onValueChange={(value) => setNewUser({...newUser, role: value as UserRole})}
+                              value={newUser.roleId}
+                              onValueChange={(value) => setNewUser({...newUser, roleId: value})}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a role" />
                               </SelectTrigger>
                               <SelectContent>
-                                {hasMinimumRole(UserRole.ROOT) && (
-                                  <SelectItem value={UserRole.ROOT}>
-                                    <div className="flex items-center">
-                                      <Shield className="h-4 w-4 mr-2 text-red-500" />
-                                      Root (System Owner)
-                                    </div>
-                                  </SelectItem>
-                                )}
-                                {hasMinimumRole(UserRole.ROOT) && (
-                                  <SelectItem value={UserRole.SUPER_ADMIN}>
-                                    <div className="flex items-center">
-                                      <Shield className="h-4 w-4 mr-2 text-purple-500" />
-                                      Super Admin (Director/CEO)
-                                    </div>
-                                  </SelectItem>
-                                )}
-                                {hasMinimumRole(UserRole.SUPER_ADMIN) && (
-                                  <SelectItem value={UserRole.ADMIN}>
-                                    <div className="flex items-center">
-                                      <UserCog className="h-4 w-4 mr-2 text-blue-500" />
-                                      Admin (Manager)
-                                    </div>
-                                  </SelectItem>
-                                )}
-                                <SelectItem value={UserRole.NORMAL}>
-                                  <div className="flex items-center">
-                                    <UserCog className="h-4 w-4 mr-2 text-green-500" />
-                                    Normal (Employee)
-                                  </div>
-                                </SelectItem>
+                                {roles.map((role) => {
+                                  const roleName = role.name;
+                                  // Filter roles based on permissions
+                                  if (roleName === 'Root' && !hasMinimumRole(UserRole.ROOT)) return null;
+                                  if (roleName === 'Superadmin' && !hasMinimumRole(UserRole.ROOT)) return null;
+                                  if (roleName === 'Admin' && !hasMinimumRole(UserRole.SUPER_ADMIN)) return null;
+                                  
+                                  return (
+                                    <SelectItem key={role._id} value={role._id}>
+                                      <div className="flex items-center">
+                                        <Shield className="h-4 w-4 mr-2" />
+                                        {roleName}
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })}
                               </SelectContent>
                             </Select>
                           </div>
@@ -457,53 +467,39 @@ const UserManagement = () => {
                           <TableCell>
                             {hasMinimumRole(UserRole.SUPER_ADMIN) && user._id !== currentUser?._id ? (
                               <Select
-                                value={user.role}
+                                value={getRoleName(user.role)}
                                 onValueChange={(value) => handleRoleChange(user._id, value as UserRole)}
                                 disabled={
                                   // Disable if current user can't modify this role
-                                  (user.role === UserRole.ROOT && currentUser?.role !== UserRole.ROOT) ||
-                                  (user.role === UserRole.SUPER_ADMIN && currentUser?.role !== UserRole.ROOT)
+                                  (getRoleName(user.role) === UserRole.ROOT && getRoleName(currentUser?.role) !== UserRole.ROOT) ||
+                                  (getRoleName(user.role) === UserRole.SUPER_ADMIN && getRoleName(currentUser?.role) !== UserRole.ROOT)
                                 }
                               >
                                 <SelectTrigger className={`w-[140px] ${getRoleBadgeColor(user.role)}`}>
-                                  <SelectValue />
+                                  <SelectValue>{getRoleName(user.role)}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {hasMinimumRole(UserRole.ROOT) && (
-                                    <SelectItem value={UserRole.ROOT}>
-                                      <div className="flex items-center">
-                                        <Shield className="h-4 w-4 mr-2 text-red-500" />
-                                        Root
-                                      </div>
-                                    </SelectItem>
-                                  )}
-                                  {hasMinimumRole(UserRole.ROOT) && (
-                                    <SelectItem value={UserRole.SUPER_ADMIN}>
-                                      <div className="flex items-center">
-                                        <Shield className="h-4 w-4 mr-2 text-purple-500" />
-                                        Super Admin
-                                      </div>
-                                    </SelectItem>
-                                  )}
-                                  {hasMinimumRole(UserRole.SUPER_ADMIN) && (
-                                    <SelectItem value={UserRole.ADMIN}>
-                                      <div className="flex items-center">
-                                        <UserCog className="h-4 w-4 mr-2 text-blue-500" />
-                                        Admin
-                                      </div>
-                                    </SelectItem>
-                                  )}
-                                  <SelectItem value={UserRole.NORMAL}>
-                                    <div className="flex items-center">
-                                      <UserCog className="h-4 w-4 mr-2 text-green-500" />
-                                      Normal
-                                    </div>
-                                  </SelectItem>
+                                  {roles.map((role) => {
+                                    const roleName = role.name;
+                                    // Filter roles based on permissions
+                                    if (roleName === 'Root' && !hasMinimumRole(UserRole.ROOT)) return null;
+                                    if (roleName === 'Superadmin' && !hasMinimumRole(UserRole.ROOT)) return null;
+                                    if (roleName === 'Admin' && !hasMinimumRole(UserRole.SUPER_ADMIN)) return null;
+                                    
+                                    return (
+                                      <SelectItem key={role._id} value={roleName}>
+                                        <div className="flex items-center">
+                                          <Shield className="h-4 w-4 mr-2" />
+                                          {roleName}
+                                        </div>
+                                      </SelectItem>
+                                    );
+                                  })}
                                 </SelectContent>
                               </Select>
                             ) : (
                               <Badge className={getRoleBadgeColor(user.role)}>
-                                {user.role}
+                                {getRoleName(user.role)}
                               </Badge>
                             )}
                           </TableCell>

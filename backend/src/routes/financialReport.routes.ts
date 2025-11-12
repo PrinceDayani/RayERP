@@ -4,7 +4,8 @@ import {
   getProfitLoss,
   getBalanceSheet,
   getCashFlow,
-  getFinancialSummary
+  getFinancialSummary,
+  exportReport
 } from '../controllers/financialReportController';
 
 const router = express.Router();
@@ -19,5 +20,6 @@ router.get('/project/:projectId/profit-loss', getProfitLoss);
 router.get('/project/:projectId/balance-sheet', getBalanceSheet);
 router.get('/project/:projectId/cash-flow', getCashFlow);
 router.get('/project/:projectId/summary', getFinancialSummary);
+router.get('/export', exportReport);
 
 export default router;

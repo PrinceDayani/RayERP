@@ -13,6 +13,7 @@ interface Employee {
   email: string;
   phone: string;
   department: string;
+  departments?: string[];
   position: string;
   salary: number;
   status: 'active' | 'inactive' | 'terminated';
@@ -66,10 +67,20 @@ export default function EmployeeCard({ employee, onEdit, onDelete }: EmployeeCar
         </div>
 
         <div className="border-t pt-4 mb-4">
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="space-y-3 text-sm">
             <div>
-              <p className="text-muted-foreground">Department</p>
-              <p className="font-medium">{employee.department}</p>
+              <p className="text-muted-foreground mb-1">Department{employee.departments && employee.departments.length > 1 ? 's' : ''}</p>
+              {employee.departments && employee.departments.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {employee.departments.map((dept, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs">
+                      {dept}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="font-medium">{employee.department || 'N/A'}</p>
+              )}
             </div>
             <div>
               <p className="text-muted-foreground">Position</p>

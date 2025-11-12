@@ -287,9 +287,9 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
               </div>
               <Progress value={timeProgress} className="h-3" />
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
+            <div className="p-4 bg-muted/50 rounded-lg">
               <p className="text-sm font-medium mb-2">Analysis</p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 {utilization < timeProgress 
                   ? `Budget is being used slower than time (${(timeProgress - utilization).toFixed(1)}% difference). Good pacing.`
                   : utilization > timeProgress
@@ -307,29 +307,29 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-gray-600 mb-1">Efficiency</p>
-              <p className="text-2xl font-bold text-blue-600">{costEfficiency}%</p>
+            <div className="text-center p-3 bg-blue-500/10 rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Efficiency</p>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{costEfficiency}%</p>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <p className="text-xs text-gray-600 mb-1">ROI</p>
-              <p className="text-2xl font-bold text-green-600">{roi}%</p>
+            <div className="text-center p-3 bg-green-500/10 rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">ROI</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{roi}%</p>
             </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <p className="text-xs text-gray-600 mb-1">Performance</p>
-              <p className="text-2xl font-bold text-purple-600">{performanceScore}</p>
+            <div className="text-center p-3 bg-purple-500/10 rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Performance</p>
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{performanceScore}</p>
             </div>
-            <div className="text-center p-3 bg-orange-50 rounded-lg">
-              <p className="text-xs text-gray-600 mb-1">Burn Rate</p>
-              <p className="text-2xl font-bold text-orange-600">₹{burnRate.toFixed(0)}</p>
+            <div className="text-center p-3 bg-orange-500/10 rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Burn Rate</p>
+              <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">₹{burnRate.toFixed(0)}</p>
             </div>
-            <div className="text-center p-3 bg-red-50 rounded-lg">
-              <p className="text-xs text-gray-600 mb-1">Variance</p>
-              <p className="text-2xl font-bold text-red-600">₹{Math.abs(variance).toFixed(0)}</p>
+            <div className="text-center p-3 bg-red-500/10 rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Variance</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">₹{Math.abs(variance).toFixed(0)}</p>
             </div>
-            <div className="text-center p-3 bg-yellow-50 rounded-lg">
-              <p className="text-xs text-gray-600 mb-1">Days Left</p>
-              <p className="text-2xl font-bold text-yellow-600">{daysRemaining}</p>
+            <div className="text-center p-3 bg-yellow-500/10 rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Days Left</p>
+              <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{daysRemaining}</p>
             </div>
           </div>
         </CardContent>
@@ -346,7 +346,7 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
                 <div className="flex justify-between items-center">
                   <span className="font-medium capitalize">{category.name}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-muted-foreground">
                       ₹{category.spent.toLocaleString()} / ₹{category.allocated.toLocaleString()}
                     </span>
                     <Badge 
@@ -381,35 +381,35 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
           <CardContent>
             <div className="space-y-3">
               {utilization > 90 && (
-                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                  <p className="font-medium text-red-800">High Utilization</p>
-                  <p className="text-sm text-red-600">Budget is {utilization.toFixed(1)}% utilized</p>
+                <div className="p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                  <p className="font-medium text-red-600 dark:text-red-400">High Utilization</p>
+                  <p className="text-sm text-red-600/80 dark:text-red-400/80">Budget is {utilization.toFixed(1)}% utilized</p>
                 </div>
               )}
               {variance < 0 && (
-                <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                  <p className="font-medium text-orange-800">Projected Overspend</p>
-                  <p className="text-sm text-orange-600">Expected to exceed by ₹{Math.abs(variance).toFixed(0)}</p>
+                <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                  <p className="font-medium text-orange-600 dark:text-orange-400">Projected Overspend</p>
+                  <p className="text-sm text-orange-600/80 dark:text-orange-400/80">Expected to exceed by ₹{Math.abs(variance).toFixed(0)}</p>
                 </div>
               )}
               {categoryData.some(c => Number(c.utilization) > 100) && (
-                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                  <p className="font-medium text-red-800">Category Over Budget</p>
-                  <p className="text-sm text-red-600">
+                <div className="p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                  <p className="font-medium text-red-600 dark:text-red-400">Category Over Budget</p>
+                  <p className="text-sm text-red-600/80 dark:text-red-400/80">
                     {categoryData.filter(c => Number(c.utilization) > 100).map(c => c.name).join(', ')} exceeded allocation
                   </p>
                 </div>
               )}
               {utilization < 50 && daysRemaining < 30 && (
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="font-medium text-blue-800">Low Utilization</p>
-                  <p className="text-sm text-blue-600">Only {utilization.toFixed(1)}% used with {daysRemaining} days left</p>
+                <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <p className="font-medium text-blue-600 dark:text-blue-400">Low Utilization</p>
+                  <p className="text-sm text-blue-600/80 dark:text-blue-400/80">Only {utilization.toFixed(1)}% used with {daysRemaining} days left</p>
                 </div>
               )}
               {utilization < 90 && variance >= 0 && categoryData.every(c => Number(c.utilization) <= 100) && (
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                  <p className="font-medium text-green-800">On Track</p>
-                  <p className="text-sm text-green-600">Budget is healthy and within limits</p>
+                <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                  <p className="font-medium text-green-600 dark:text-green-400">On Track</p>
+                  <p className="text-sm text-green-600/80 dark:text-green-400/80">Budget is healthy and within limits</p>
                 </div>
               )}
             </div>
@@ -426,25 +426,25 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
           <CardContent>
             <div className="space-y-3">
               {burnRate * daysRemaining > remaining && (
-                <div className="p-3 bg-yellow-50 rounded-lg">
-                  <p className="font-medium text-yellow-800">Reduce Spending</p>
-                  <p className="text-sm text-yellow-600">
+                <div className="p-3 bg-yellow-500/10 rounded-lg">
+                  <p className="font-medium text-yellow-600 dark:text-yellow-400">Reduce Spending</p>
+                  <p className="text-sm text-yellow-600/80 dark:text-yellow-400/80">
                     Current burn rate will exceed budget. Reduce daily spend to ₹{(remaining / daysRemaining).toFixed(0)}
                   </p>
                 </div>
               )}
               {categoryData.some(c => Number(c.utilization) > 90) && (
-                <div className="p-3 bg-orange-50 rounded-lg">
-                  <p className="font-medium text-orange-800">Reallocate Funds</p>
-                  <p className="text-sm text-orange-600">
+                <div className="p-3 bg-orange-500/10 rounded-lg">
+                  <p className="font-medium text-orange-600 dark:text-orange-400">Reallocate Funds</p>
+                  <p className="text-sm text-orange-600/80 dark:text-orange-400/80">
                     Consider reallocating from under-utilized categories
                   </p>
                 </div>
               )}
               {utilization < 50 && daysRemaining < 60 && (
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <p className="font-medium text-blue-800">Accelerate Spending</p>
-                  <p className="text-sm text-blue-600">
+                <div className="p-3 bg-blue-500/10 rounded-lg">
+                  <p className="font-medium text-blue-600 dark:text-blue-400">Accelerate Spending</p>
+                  <p className="text-sm text-blue-600/80 dark:text-blue-400/80">
                     Budget utilization is low. Consider accelerating planned activities
                   </p>
                 </div>
@@ -461,23 +461,23 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-blue-500/10 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-blue-600" />
+                  <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   <span className="text-sm font-medium">Total Budget</span>
                 </div>
                 <span className="text-lg font-bold">₹{budget.totalBudget.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-red-500/10 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-red-600" />
+                  <TrendingUp className="h-5 w-5 text-red-600 dark:text-red-400" />
                   <span className="text-sm font-medium">Total Spent</span>
                 </div>
                 <span className="text-lg font-bold">₹{totalSpent.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-green-500/10 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-green-600" />
+                  <Target className="h-5 w-5 text-green-600 dark:text-green-400" />
                   <span className="text-sm font-medium">Remaining</span>
                 </div>
                 <span className="text-lg font-bold">₹{remaining.toLocaleString()}</span>
@@ -492,15 +492,15 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-purple-500/10 rounded-lg">
                 <span className="text-sm font-medium">Days Elapsed</span>
                 <span className="text-lg font-bold">{daysElapsed}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-orange-500/10 rounded-lg">
                 <span className="text-sm font-medium">Days Remaining</span>
                 <span className="text-lg font-bold">{daysRemaining}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-yellow-500/10 rounded-lg">
                 <span className="text-sm font-medium">Total Duration</span>
                 <span className="text-lg font-bold">{totalDays} days</span>
               </div>
@@ -514,15 +514,15 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-indigo-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-indigo-500/10 rounded-lg">
                 <span className="text-sm font-medium">Cost/Day</span>
                 <span className="text-lg font-bold">₹{costPerDay.toFixed(0)}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-pink-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-pink-500/10 rounded-lg">
                 <span className="text-sm font-medium">Projected Total</span>
                 <span className="text-lg font-bold">₹{projectedSpend.toFixed(0)}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-teal-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-teal-500/10 rounded-lg">
                 <span className="text-sm font-medium">Savings Rate</span>
                 <span className="text-lg font-bold">₹{savingsRate.toFixed(0)}/day</span>
               </div>

@@ -15,8 +15,10 @@ const handleResponse = async (response: Response) => {
     try {
       const errorJson = JSON.parse(errorText);
       errorMessage = errorJson.message || `HTTP error! status: ${response.status}`;
+      console.error('API Error Response:', errorJson);
     } catch {
       errorMessage = `HTTP error! status: ${response.status}`;
+      console.error('API Error Text:', errorText);
     }
     throw new Error(errorMessage);
   }
@@ -73,12 +75,15 @@ export const generalLedgerApi = {
   },
 
   createJournalEntry: async (data: any) => {
+    console.log('Creating journal entry with data:', data);
     const response = await fetch(`${API_BASE}/api/general-ledger/journal-entries`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
-    return handleResponse(response);
+    const result = await handleResponse(response);
+    console.log('Journal entry created:', result);
+    return result;
   },
 
   postJournalEntry: async (id: string) => {

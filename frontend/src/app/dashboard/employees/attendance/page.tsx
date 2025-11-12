@@ -509,7 +509,7 @@ const AttendanceManagement = () => {
                         <SelectItem value="all">All employees</SelectItem>
                         {employees.map((emp) => (
                           <SelectItem key={emp._id} value={emp._id}>
-                            {emp.firstName} {emp.lastName}
+                            {`${emp.firstName} ${emp.lastName}`}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -645,7 +645,7 @@ const AttendanceManagement = () => {
                   <SelectContent>
                     {employees.map((emp) => (
                       <SelectItem key={emp._id} value={emp._id}>
-                        {emp.firstName} {emp.lastName}
+                        {`${emp.firstName} ${emp.lastName}`}
                       </SelectItem>
                     ))}
                   </SelectContent>

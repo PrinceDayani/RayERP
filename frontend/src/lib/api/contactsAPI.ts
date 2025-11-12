@@ -11,6 +11,8 @@ export interface Contact {
   address?: string;
   notes?: string;
   tags?: string[];
+  reference?: string;
+  alternativePhone?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -4,7 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ContactForm from '@/components/Forms/ContactForm';
 import { getContact, updateContact, Contact } from '@/lib/api/index';
-import Layout from '@/components/Layout';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 export default function EditContactPage() {
   const [contact, setContact] = useState<Contact | null>(null);
@@ -43,57 +45,74 @@ export default function EditContactPage() {
     } catch (err) {
       console.error('Error updating contact:', err);
       setError('Failed to update contact. Please try again.');
-      throw err; // Rethrow to prevent navigation in the form component
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
   if (isFetching) {
-    return (<Layout>
-      <div className="container mx-auto px-4 py-8 flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div></Layout>
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">Loading contact details...</p>
+        </div>
+      </div>
     );
   }
 
   if (error && !contact) {
-    return (<Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-          {error}
-          <div className="mt-3">
-            <button
-              onClick={() => router.push('/contacts')}
-              className="text-blue-600 hover:underline"
-            >
-              Back to Contacts
-            </button>
-          </div>
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/dashboard/contacts')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Contacts
+          </Button>
         </div>
-      </div></Layout>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
-  return (<Layout>
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <h1 className="text-2xl font-bold mb-6">Edit Contact</h1>
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/dashboard/contacts')}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Contacts
+        </Button>
+      </div>
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
       
-      <div className="bg-white shadow-md rounded-lg p-6">
-        {contact && (
-          <ContactForm 
-            initialData={contact} 
-            onSubmit={handleSubmit} 
-            isLoading={isLoading}
-          />
-        )}
-      </div>
-    </div></Layout>
+      {contact && (
+        <ContactForm 
+          initialData={contact} 
+          onSubmit={handleSubmit} 
+          isLoading={isLoading}
+        />
+      )}
+    </div>
   );
 }

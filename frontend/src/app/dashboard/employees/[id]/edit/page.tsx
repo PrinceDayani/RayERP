@@ -11,6 +11,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { employeesAPI } from '@/lib/api';
 import { toast } from '@/components/ui/use-toast';
+import { departmentApi } from '@/lib/api/departments';
 
 export default function EditEmployeePage() {
   const router = useRouter();
@@ -18,12 +19,14 @@ export default function EditEmployeePage() {
   const employeeId = params?.id as string;
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
+  const [departments, setDepartments] = useState<Array<{ _id: string; name: string }>>([]);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     department: '',
+    departments: [] as string[],
     position: '',
     salary: '',
     hireDate: '',
@@ -44,10 +47,20 @@ export default function EditEmployeePage() {
   });
 
   useEffect(() => {
+    fetchDepartments();
     if (employeeId) {
       fetchEmployee();
     }
   }, [employeeId]);
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await departmentApi.getAll();
+      setDepartments(response.data || []);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
 
   const fetchEmployee = async () => {
     try {
@@ -60,6 +73,7 @@ export default function EditEmployeePage() {
         email: employee.email || '',
         phone: employee.phone || '',
         department: employee.department || '',
+        departments: employee.departments || [],
         position: employee.position || '',
         salary: employee.salary?.toString() || '',
         hireDate: employee.hireDate ? new Date(employee.hireDate).toISOString().split('T')[0] : '',
@@ -222,21 +236,46 @@ export default function EditEmployeePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="department">Department</Label>
-                  <Select onValueChange={(value) => handleInputChange('department', value)} value={formData.department}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="IT">IT</SelectItem>
-                      <SelectItem value="HR">HR</SelectItem>
-                      <SelectItem value="Finance">Finance</SelectItem>
-                      <SelectItem value="Marketing">Marketing</SelectItem>
-                      <SelectItem value="Operations">Operations</SelectItem>
-                      <SelectItem value="Sales">Sales</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="md:col-span-2">
+                  <Label htmlFor="departments">Departments (Optional - Select multiple if overseeing multiple departments)</Label>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.departments.map((dept, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-sm">
+                          {dept}
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({
+                              ...prev,
+                              departments: prev.departments.filter((_, i) => i !== idx)
+                            }))}
+                            className="hover:text-red-600"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <Select onValueChange={(value) => {
+                      if (!formData.departments.includes(value)) {
+                        setFormData(prev => ({
+                          ...prev,
+                          departments: [...prev.departments, value]
+                        }));
+                      }
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Add department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.filter(dept => !formData.departments.includes(dept.name)).map((dept) => (
+                          <SelectItem key={dept._id} value={dept.name}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="position">Position</Label>

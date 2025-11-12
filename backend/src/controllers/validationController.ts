@@ -30,7 +30,6 @@ export const validateCustomerCredit = async (req: Request, res: Response) => {
     message: 'Customer credit validation not implemented - missing Customer model'
   });
 };
-*/
 
 // Pre-validate an entire order before submission
 // Commented out until required models are created

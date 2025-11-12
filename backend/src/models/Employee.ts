@@ -6,7 +6,8 @@ export interface IEmployee extends Document {
   lastName: string;
   email: string;
   phone: string;
-  department: string;
+  department?: string;
+  departments?: string[];
   position: string;
   salary: number;
   hireDate: Date;
@@ -25,6 +26,7 @@ export interface IEmployee extends Document {
   };
   skills: string[];
   manager?: mongoose.Types.ObjectId;
+  user?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,7 +37,8 @@ const employeeSchema = new Schema<IEmployee>({
   lastName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   phone: { type: String, required: true },
-  department: { type: String, required: true },
+  department: { type: String, required: false },
+  departments: { type: [String], default: [] },
   position: { type: String, required: true },
   salary: { type: Number, required: true },
   hireDate: { type: Date, required: true },
@@ -53,7 +56,8 @@ const employeeSchema = new Schema<IEmployee>({
     phone: String
   },
   skills: [String],
-  manager: { type: Schema.Types.ObjectId, ref: 'Employee' }
+  manager: { type: Schema.Types.ObjectId, ref: 'Employee' },
+  user: { type: Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
 export default mongoose.model<IEmployee>('Employee', employeeSchema);

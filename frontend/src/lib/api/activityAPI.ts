@@ -12,7 +12,7 @@ export interface ActivityLog {
   action: string;
   resource: string;
   details: string;
-  user: string;
+  user: string | { _id: string; name: string; email: string };
   timestamp: string;
   ipAddress?: string;
   status?: string;

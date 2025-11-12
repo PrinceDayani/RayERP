@@ -10,6 +10,8 @@ export interface IContact extends Document {
   address?: string;
   notes?: string;
   tags?: string[];
+  reference?: string;
+  alternativePhone?: string;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -25,6 +27,8 @@ const ContactSchema: Schema = new Schema(
     address: { type: String, required: false },
     notes: { type: String, required: false },
     tags: [{ type: String, required: false }],
+    reference: { type: String, required: false },
+    alternativePhone: { type: String, required: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   },
   {

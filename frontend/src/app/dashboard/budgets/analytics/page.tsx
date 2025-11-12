@@ -9,6 +9,7 @@ import BudgetAnalytics from "@/components/budget/BudgetAnalytics";
 import { RefreshCw, TrendingUp, Calendar, DollarSign, Target } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from "recharts";
+import { checkBackendHealth, checkAuthToken } from "@/utils/healthCheck";
 
 export default function BudgetAnalyticsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -19,7 +20,26 @@ export default function BudgetAnalyticsPage() {
   const [projects, setProjects] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchBudgets();
+    const initializeData = async () => {
+      // Check backend health first
+      const isHealthy = await checkBackendHealth();
+      if (!isHealthy) {
+        alert('Backend server is not responding. Please make sure the server is running on port 5000.');
+        return;
+      }
+      
+      // Check authentication
+      const { hasToken } = checkAuthToken();
+      if (!hasToken) {
+        alert('No authentication token found. Please log in first.');
+        return;
+      }
+      
+      // Proceed with fetching data
+      fetchBudgets();
+    };
+    
+    initializeData();
   }, []);
 
   useEffect(() => {
@@ -30,25 +50,54 @@ export default function BudgetAnalyticsPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('auth-token');
+      
+      if (!token) {
+        console.error('No authentication token found');
+        alert('Please log in to access budgets');
+        return;
+      }
+
+      console.log('Fetching budgets with token:', token ? 'Token exists' : 'No token');
+      
       const [budgetRes, projectRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets/all`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         })
       ]);
+      
+      console.log('Budget response status:', budgetRes.status);
+      console.log('Project response status:', projectRes.status);
       
       if (budgetRes.ok) {
         const data = await budgetRes.json();
         setBudgets(data);
+        console.log('Budgets loaded:', data.length);
+      } else {
+        const errorText = await budgetRes.text();
+        console.error('Budget fetch failed:', budgetRes.status, errorText);
+        alert(`Failed to fetch budgets: ${budgetRes.status} - ${errorText}`);
       }
+      
       if (projectRes.ok) {
         const projectData = await projectRes.json();
         setProjects(projectData.data || projectData);
+        console.log('Projects loaded:', (projectData.data || projectData).length);
+      } else {
+        const errorText = await projectRes.text();
+        console.error('Project fetch failed:', projectRes.status, errorText);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
+      alert(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -113,7 +162,12 @@ export default function BudgetAnalyticsPage() {
   }));
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return (
+      <div className="flex flex-col justify-center items-center h-64 space-y-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p>Loading budget analytics...</p>
+      </div>
+    );
   }
 
   return (

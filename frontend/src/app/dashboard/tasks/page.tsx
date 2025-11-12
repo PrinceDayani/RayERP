@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Calendar, User, MessageSquare, Clock } from 'lucide-react';
+import { Plus, Search, Calendar, User, MessageSquare, Clock, Eye } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +36,7 @@ interface Project {
 
 export default function TaskManagementPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const socket = useSocket();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -291,7 +293,7 @@ export default function TaskManagementPage() {
                       {employees.length > 0 ? (
                         employees.map((employee) => (
                           <SelectItem key={employee._id} value={employee._id}>
-                            {employee.firstName} {employee.lastName}
+                            {`${employee.firstName} ${employee.lastName}`}
                           </SelectItem>
                         ))
                       ) : (
@@ -438,17 +440,28 @@ export default function TaskManagementPage() {
                         </div>
                       </div>
                       
-                      <Select onValueChange={(value) => updateTaskStatus(task._id, value)} defaultValue={task.status}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="todo">To Do</SelectItem>
-                          <SelectItem value="in-progress">In Progress</SelectItem>
-                          <SelectItem value="review">Review</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-7 text-xs flex-1"
+                          onClick={() => router.push(`/dashboard/tasks/${task._id}`)}
+                        >
+                          <Eye className="w-3 h-3 mr-1" />
+                          View
+                        </Button>
+                        <Select onValueChange={(value) => updateTaskStatus(task._id, value)} defaultValue={task.status}>
+                          <SelectTrigger className="h-7 text-xs flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todo">To Do</SelectItem>
+                            <SelectItem value="in-progress">In Progress</SelectItem>
+                            <SelectItem value="review">Review</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </Card>
                 ))}

@@ -1,0 +1,205 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { getSocket, initializeSocket } from '@/lib/socket';
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+interface DashboardStats {
+  totalEmployees: number;
+  activeEmployees: number;
+  totalProjects: number;
+  activeProjects: number;
+  completedProjects: number;
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  pendingTasks: number;
+  revenue: number;
+  expenses: number;
+  profit: number;
+  timestamp?: string;
+}
+
+interface UseDashboardDataReturn {
+  stats: DashboardStats;
+  loading: boolean;
+  error: string | null;
+  socketConnected: boolean;
+  refresh: () => Promise<void>;
+}
+
+export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataReturn => {
+  const [stats, setStats] = useState<DashboardStats>({
+    totalEmployees: 0,
+    activeEmployees: 0,
+    totalProjects: 0,
+    activeProjects: 0,
+    completedProjects: 0,
+    totalTasks: 0,
+    completedTasks: 0,
+    inProgressTasks: 0,
+    pendingTasks: 0,
+    revenue: 0,
+    expenses: 0,
+    profit: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const socketRef = useRef<any>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchStats = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found');
+        setLoading(false);
+        return;
+      }
+
+      const response = await axios.get(`${API_URL}/api/dashboard/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success) {
+        setStats(response.data.data);
+        setError(null);
+      }
+    } catch (err: any) {
+      console.error('Error fetching dashboard stats:', err);
+      if (err.response?.status === 401) {
+        setError('Authentication failed. Please log in again.');
+        localStorage.removeItem('token');
+      } else {
+        setError('Failed to fetch dashboard data');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  // Initial fetch
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchStats();
+    }
+  }, [isAuthenticated, fetchStats]);
+
+  // Socket connection for real-time updates
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let mounted = true;
+
+    const initSocket = async () => {
+      try {
+        const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+        const socket = await initializeSocket(token || undefined);
+        if (!mounted || !socket) {
+          // Fallback to polling if socket fails
+          if (!pollingIntervalRef.current) {
+            pollingIntervalRef.current = setInterval(fetchStats, 15000);
+          }
+          return;
+        }
+
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+          if (mounted) {
+            console.log('Dashboard socket connected');
+            setSocketConnected(true);
+            // Authenticate socket
+            if (token) {
+              socket.emit('authenticate', token);
+            }
+            // Fetch stats immediately on connect
+            fetchStats();
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+          }
+        });
+
+        socket.on('disconnect', () => {
+          if (mounted) {
+            console.log('Dashboard socket disconnected');
+            setSocketConnected(false);
+            if (!pollingIntervalRef.current) {
+              pollingIntervalRef.current = setInterval(fetchStats, 15000);
+            }
+          }
+        });
+
+        socket.on('dashboard:stats', (newStats: DashboardStats) => {
+          if (mounted) {
+            setStats(newStats);
+          }
+        });
+
+        socket.on('employee:created', fetchStats);
+        socket.on('employee:updated', fetchStats);
+        socket.on('employee:deleted', fetchStats);
+        socket.on('project:created', fetchStats);
+        socket.on('project:updated', fetchStats);
+        socket.on('project:deleted', fetchStats);
+        socket.on('task:created', fetchStats);
+        socket.on('task:updated', fetchStats);
+        socket.on('task:deleted', fetchStats);
+
+        // Set initial connection state
+        if (socket.connected) {
+          setSocketConnected(true);
+          if (token) {
+            socket.emit('authenticate', token);
+          }
+        }
+
+      } catch (err) {
+        console.warn('Socket initialization failed, using polling:', err);
+        if (mounted && !pollingIntervalRef.current) {
+          pollingIntervalRef.current = setInterval(fetchStats, 15000);
+        }
+      }
+    };
+
+    initSocket();
+
+    return () => {
+      mounted = false;
+      if (socketRef.current) {
+        socketRef.current.off('connect');
+        socketRef.current.off('disconnect');
+        socketRef.current.off('dashboard:stats');
+        socketRef.current.off('employee:created');
+        socketRef.current.off('employee:updated');
+        socketRef.current.off('employee:deleted');
+        socketRef.current.off('project:created');
+        socketRef.current.off('project:updated');
+        socketRef.current.off('project:deleted');
+        socketRef.current.off('task:created');
+        socketRef.current.off('task:updated');
+        socketRef.current.off('task:deleted');
+      }
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [isAuthenticated, fetchStats]);
+
+  return {
+    stats,
+    loading,
+    error,
+    socketConnected,
+    refresh: fetchStats
+  };
+};

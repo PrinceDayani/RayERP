@@ -9,7 +9,13 @@ import {
   addTaskComment,
   getTaskTimeline,
   addTimelineEntry,
-  updateTaskStatus
+  updateTaskStatus,
+  cloneTask,
+  bulkUpdateTasks,
+  addWatcher,
+  removeWatcher,
+  getTaskTemplates,
+  createFromTemplate
 } from '../controllers/taskController';
 import { authenticateToken } from '../middleware/auth.middleware';
 import {
@@ -67,6 +73,11 @@ router.patch('/:id/status',
   updateTaskStatus
 );
 
-
+router.post('/:id/clone', validateObjectId(), cloneTask);
+router.patch('/bulk', validateRequiredFields(['taskIds', 'updates']), bulkUpdateTasks);
+router.post('/:id/watchers', validateObjectId(), validateRequiredFields(['userId']), addWatcher);
+router.delete('/:id/watchers', validateObjectId(), validateRequiredFields(['userId']), removeWatcher);
+router.get('/templates/all', getTaskTemplates);
+router.post('/templates/:id/create', validateObjectId(), createFromTemplate);
 
 export default router;

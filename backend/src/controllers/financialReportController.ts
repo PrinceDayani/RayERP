@@ -122,6 +122,7 @@ export const getFinancialSummary = async (req: Request, res: Response) => {
         pendingInvoices,
         totalRevenue: totalRevenue[0]?.total || 0,
         totalExpenseAmount: totalExpenseAmount[0]?.total || 0,
+        netIncome: (totalRevenue[0]?.total || 0) - (totalExpenseAmount[0]?.total || 0),
         projectId
       }
     });
@@ -129,3 +130,62 @@ export const getFinancialSummary = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const exportReport = async (req: Request, res: Response) => {
+  try {
+    const { reportType, format = 'json', startDate, endDate, projectId } = req.query;
+
+    let reportData: any;
+
+    switch (reportType) {
+      case 'profit-loss':
+        const plReq = { query: { startDate, endDate, projectId } } as unknown as Request;
+        const plRes = { json: (data: any) => { reportData = data; } } as any;
+        await getProfitLoss(plReq, plRes);
+        break;
+      case 'balance-sheet':
+        const bsReq = { query: { projectId } } as unknown as Request;
+        const bsRes = { json: (data: any) => { reportData = data; } } as any;
+        await getBalanceSheet(bsReq, bsRes);
+        break;
+      case 'cash-flow':
+        const cfReq = { query: { startDate, endDate, projectId } } as unknown as Request;
+        const cfRes = { json: (data: any) => { reportData = data; } } as any;
+        await getCashFlow(cfReq, cfRes);
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid report type' });
+    }
+
+    if (format === 'csv') {
+      const csv = convertToCSV(reportData.data);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=${reportType}-${Date.now()}.csv`);
+      return res.send(csv);
+    }
+
+    res.json({ success: true, data: reportData.data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+function convertToCSV(data: any): string {
+  const rows: string[] = [];
+  
+  if (data.revenue && data.expenses) {
+    rows.push('Type,Account,Amount');
+    data.revenue.accounts.forEach((acc: any) => {
+      rows.push(`Revenue,${acc.name},${acc.balance}`);
+    });
+    data.expenses.accounts.forEach((acc: any) => {
+      rows.push(`Expense,${acc.name},${acc.balance}`);
+    });
+    rows.push(`,,`);
+    rows.push(`Total Revenue,,${data.revenue.total}`);
+    rows.push(`Total Expenses,,${data.expenses.total}`);
+    rows.push(`Net Income,,${data.netIncome}`);
+  }
+  
+  return rows.join('\n');
+}
