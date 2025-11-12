@@ -15,7 +15,11 @@ export const useGeneralLedger = () => {
     try {
       const data = await generalLedgerApi.getAccounts();
       const accountsData = data?.accounts || data || [];
-      setAccounts(Array.isArray(accountsData) ? accountsData : []);
+      // Map _id to id for frontend compatibility
+      const mappedAccounts = Array.isArray(accountsData) 
+        ? accountsData.map((acc: any) => ({ ...acc, id: acc._id || acc.id }))
+        : [];
+      setAccounts(mappedAccounts);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error fetching accounts';
       setError(errorMessage);

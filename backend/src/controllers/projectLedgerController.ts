@@ -240,12 +240,14 @@ export const deleteJournalEntry = async (req: Request, res: Response) => {
 export const getProjectLedgerEntries = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { accountCode, startDate, endDate } = req.query;
+    const { accountCode, startDate, endDate, includeAll } = req.query;
 
-    let query: any = { 
-      projectId,
-      status: { $in: ['posted', 'approved'] }
-    };
+    let query: any = { projectId };
+    
+    // Only show posted/approved entries unless includeAll is true
+    if (includeAll !== 'true') {
+      query.status = { $in: ['posted', 'approved'] };
+    }
 
     if (startDate && endDate) {
       query.date = {

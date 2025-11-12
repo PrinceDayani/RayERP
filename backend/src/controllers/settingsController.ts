@@ -1,6 +1,7 @@
 // backend/src/controllers/settingsController.ts
 import { Request, Response } from 'express';
 import Setting, { SettingScope } from '../models/Settings';
+import AdminSettings from '../models/AdminSettings';
 import mongoose from 'mongoose';
 import { io } from '../server';
 
@@ -12,24 +13,15 @@ export const getSettings = async (req: Request, res: Response) => {
     
     const query: any = {};
     
-    // Apply filters based on provided parameters
-    if (scope) {
-      query.scope = scope;
-    }
+    if (scope) query.scope = scope;
+    if (key) query.key = key;
     
-    if (key) {
-      query.key = key;
-    }
-    
-    // For user scope, ensure we're querying the current user's settings
     if (scope === SettingScope.USER && userId) {
       query.userId = userId;
     }
     
-    // Execute the query
     const settings = await Setting.find(query);
     
-    // Transform into key-value pairs if requested
     if (req.query.format === 'keyValue') {
       const keyValueSettings = settings.reduce((acc, setting) => {
         acc[setting.key] = setting.value;
@@ -39,7 +31,6 @@ export const getSettings = async (req: Request, res: Response) => {
       return res.status(200).json(keyValueSettings);
     }
     
-    // Return as array by default
     return res.status(200).json(settings);
   } catch (error) {
     console.error('Error fetching settings:', error);
@@ -58,26 +49,19 @@ export const updateSetting = async (req: Request, res: Response) => {
     
     const userId = req.user?.id;
     
-    // For user settings, ensure we're updating the current user's settings
     if (scope === SettingScope.USER && !userId) {
       return res.status(401).json({ message: 'User ID is required for user settings' });
     }
     
-    // Prepare the query to find the existing setting
     const query: any = { key, scope };
+    if (scope === SettingScope.USER) query.userId = userId;
     
-    if (scope === SettingScope.USER) {
-      query.userId = userId;
-    }
-    
-    // Update or create the setting
     const updatedSetting = await Setting.findOneAndUpdate(
       query,
       { value, ...query },
       { new: true, upsert: true }
     );
     
-    // Emit real-time update for settings sync
     if (scope === SettingScope.USER && userId) {
       io.to(`user-${userId}`).emit('settings:updated', {
         key,
@@ -105,12 +89,10 @@ export const bulkUpdateSettings = async (req: Request, res: Response) => {
     
     const userId = req.user?.id;
     
-    // For user settings, ensure we're updating the current user's settings
     if (scope === SettingScope.USER && !userId) {
       return res.status(401).json({ message: 'User ID is required for user settings' });
     }
     
-    // Start a session for transaction
     const session = await mongoose.startSession();
     session.startTransaction();
     
@@ -118,14 +100,9 @@ export const bulkUpdateSettings = async (req: Request, res: Response) => {
       const results = [];
       
       for (const { key, value } of settings) {
-        // Prepare the query to find the existing setting
         const query: any = { key, scope };
+        if (scope === SettingScope.USER) query.userId = userId;
         
-        if (scope === SettingScope.USER) {
-          query.userId = userId;
-        }
-        
-        // Update or create the setting
         const updatedSetting = await Setting.findOneAndUpdate(
           query,
           { value, ...query },
@@ -135,16 +112,20 @@ export const bulkUpdateSettings = async (req: Request, res: Response) => {
         results.push(updatedSetting);
       }
       
-      // Commit the transaction
       await session.commitTransaction();
+      
+      if (scope === SettingScope.USER && userId) {
+        io.to(`user-${userId}`).emit('settings:bulk_updated', {
+          settings: results,
+          timestamp: new Date()
+        });
+      }
       
       return res.status(200).json(results);
     } catch (error) {
-      // Abort the transaction on error
       await session.abortTransaction();
       throw error;
     } finally {
-      // End the session
       session.endSession();
     }
   } catch (error) {
@@ -165,7 +146,6 @@ export const deleteSetting = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Setting not found' });
     }
     
-    // Ensure users can only delete their own settings
     if (setting.scope === SettingScope.USER && setting.userId?.toString() !== userId) {
       return res.status(403).json({ message: 'Not authorized to delete this setting' });
     }
@@ -176,5 +156,81 @@ export const deleteSetting = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error deleting setting:', error);
     return res.status(500).json({ message: 'Failed to delete setting' });
+  }
+};
+
+// Get admin settings
+export const getAdminSettings = async (req: Request, res: Response) => {
+  try {
+    let settings = await AdminSettings.findOne();
+    
+    if (!settings) {
+      settings = await AdminSettings.create({});
+    }
+    
+    return res.status(200).json(settings);
+  } catch (error) {
+    console.error('Error fetching admin settings:', error);
+    return res.status(500).json({ message: 'Failed to fetch admin settings' });
+  }
+};
+
+// Update admin settings
+export const updateAdminSettings = async (req: Request, res: Response) => {
+  try {
+    const { section, data } = req.body;
+    
+    if (!section || !data) {
+      return res.status(400).json({ message: 'Section and data are required' });
+    }
+    
+    const validSections = ['general', 'security', 'notifications', 'backup'];
+    if (!validSections.includes(section)) {
+      return res.status(400).json({ message: 'Invalid section' });
+    }
+    
+    let settings = await AdminSettings.findOne();
+    
+    if (!settings) {
+      settings = await AdminSettings.create({ [section]: data });
+    } else {
+      (settings as any)[section] = { ...(settings as any)[section], ...data };
+      await settings.save();
+    }
+    
+    io.emit('admin:settings_updated', { section, data, timestamp: new Date() });
+    
+    return res.status(200).json(settings);
+  } catch (error) {
+    console.error('Error updating admin settings:', error);
+    return res.status(500).json({ message: 'Failed to update admin settings' });
+  }
+};
+
+// Reset settings to defaults
+export const resetSettings = async (req: Request, res: Response) => {
+  try {
+    const { scope } = req.body;
+    const userId = req.user?.id;
+    
+    if (!scope) {
+      return res.status(400).json({ message: 'Scope is required' });
+    }
+    
+    const query: any = { scope };
+    if (scope === SettingScope.USER && userId) {
+      query.userId = userId;
+    }
+    
+    await Setting.deleteMany(query);
+    
+    if (scope === SettingScope.USER && userId) {
+      io.to(`user-${userId}`).emit('settings:reset', { timestamp: new Date() });
+    }
+    
+    return res.status(200).json({ message: 'Settings reset successfully' });
+  } catch (error) {
+    console.error('Error resetting settings:', error);
+    return res.status(500).json({ message: 'Failed to reset settings' });
   }
 };

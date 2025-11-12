@@ -99,7 +99,8 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
 
     const initSocket = async () => {
       try {
-        const socket = await initializeSocket();
+        const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+        const socket = await initializeSocket(token || undefined);
         if (!mounted || !socket) {
           // Fallback to polling if socket fails
           if (!pollingIntervalRef.current) {
@@ -112,7 +113,14 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
 
         socket.on('connect', () => {
           if (mounted) {
+            console.log('Dashboard socket connected');
             setSocketConnected(true);
+            // Authenticate socket
+            if (token) {
+              socket.emit('authenticate', token);
+            }
+            // Fetch stats immediately on connect
+            fetchStats();
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
@@ -122,6 +130,7 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
 
         socket.on('disconnect', () => {
           if (mounted) {
+            console.log('Dashboard socket disconnected');
             setSocketConnected(false);
             if (!pollingIntervalRef.current) {
               pollingIntervalRef.current = setInterval(fetchStats, 15000);
@@ -144,6 +153,14 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
         socket.on('task:created', fetchStats);
         socket.on('task:updated', fetchStats);
         socket.on('task:deleted', fetchStats);
+
+        // Set initial connection state
+        if (socket.connected) {
+          setSocketConnected(true);
+          if (token) {
+            socket.emit('authenticate', token);
+          }
+        }
 
       } catch (err) {
         console.warn('Socket initialization failed, using polling:', err);

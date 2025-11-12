@@ -58,8 +58,28 @@ const JournalEntry = () => {
       alert('Debits must equal credits');
       return;
     }
+
+    // Filter out lines with no account or amount
+    const validLines = formData.lines.filter(line => 
+      line.accountId && 
+      line.description && 
+      (line.debit > 0 || line.credit > 0)
+    );
+
+    if (validLines.length < 2) {
+      alert('At least 2 valid lines with account, description, and amount are required');
+      return;
+    }
+
+    const submitData = {
+      ...formData,
+      lines: validLines
+    };
+
+    console.log('Submitting journal entry:', submitData);
     try {
-      await createJournalEntry(formData);
+      await createJournalEntry(submitData);
+      alert('Journal entry created successfully!');
       setFormData({
         date: new Date().toISOString().split('T')[0],
         reference: '',
@@ -69,8 +89,9 @@ const JournalEntry = () => {
           { accountId: '', debit: 0, credit: 0, description: '' }
         ]
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating journal entry:', error);
+      alert(error?.message || 'Failed to create journal entry');
     }
   };
 
@@ -171,7 +192,7 @@ const JournalEntry = () => {
                         </SelectTrigger>
                         <SelectContent className="bg-white">
                           {accounts.map((account) => (
-                            <SelectItem key={account.id} value={account.id}>
+                            <SelectItem key={account._id || account.id} value={account._id || account.id}>
                               {`${account.code} - ${account.name}`}
                             </SelectItem>
                           ))}

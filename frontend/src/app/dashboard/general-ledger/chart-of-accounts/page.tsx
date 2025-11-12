@@ -19,6 +19,8 @@ export default function ChartOfAccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
   useEffect(() => {
     fetchAccounts();
@@ -155,6 +157,117 @@ export default function ChartOfAccountsPage() {
     );
   };
 
+  const EditAccountForm = () => {
+    const [formData, setFormData] = useState({
+      name: selectedAccount?.name || '',
+      code: selectedAccount?.code || '',
+      type: (selectedAccount?.type || 'asset') as const,
+      parentId: selectedAccount?.parentId || '',
+      isGroup: selectedAccount?.isGroup || false,
+      description: selectedAccount?.description || ''
+    });
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!selectedAccount) return;
+      
+      try {
+        await generalLedgerAPI.updateAccount(selectedAccount._id, formData);
+
+        toast({
+          title: 'Success',
+          description: 'Account updated successfully'
+        });
+
+        setShowEditDialog(false);
+        fetchAccounts();
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to update account',
+          variant: 'destructive'
+        });
+      }
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>Account Name *</Label>
+            <Input 
+              value={formData.name} 
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+              required 
+            />
+          </div>
+          <div>
+            <Label>Account Code *</Label>
+            <Input 
+              value={formData.code} 
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })} 
+              required 
+            />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>Account Type *</Label>
+            <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asset">Asset</SelectItem>
+                <SelectItem value="liability">Liability</SelectItem>
+                <SelectItem value="equity">Equity</SelectItem>
+                <SelectItem value="revenue">Revenue</SelectItem>
+                <SelectItem value="expense">Expense</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Parent Account</Label>
+            <Select value={formData.parentId} onValueChange={(value) => setFormData({ ...formData, parentId: value })}>
+              <SelectTrigger><SelectValue placeholder="Select parent (optional)" /></SelectTrigger>
+              <SelectContent>
+                {accounts.filter(a => a.isGroup && a._id !== selectedAccount?._id).map(account => (
+                  <SelectItem key={account._id} value={account._id}>{account.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div>
+          <label className="flex items-center space-x-2">
+            <input 
+              type="checkbox" 
+              checked={formData.isGroup} 
+              onChange={(e) => setFormData({ ...formData, isGroup: e.target.checked })} 
+            />
+            <span>Is Group Account</span>
+          </label>
+        </div>
+
+        <div>
+          <Label>Description</Label>
+          <Input 
+            value={formData.description} 
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
+            placeholder="Optional description"
+          />
+        </div>
+
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
+            Cancel
+          </Button>
+          <Button type="submit">Update Account</Button>
+        </div>
+      </form>
+    );
+  };
+
   const renderAccountTree = (accounts: Account[], level = 0) => {
     return accounts.map(account => (
       <React.Fragment key={account._id}>
@@ -179,10 +292,32 @@ export default function ChartOfAccountsPage() {
           </TableCell>
           <TableCell>
             <div className="flex space-x-2">
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => {
+                  setSelectedAccount(account);
+                  setShowEditDialog(true);
+                }}
+              >
                 <Edit className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={async () => {
+                  if (confirm(`Delete account "${account.name}"?`)) {
+                    try {
+                      await generalLedgerAPI.deleteAccount(account._id);
+                      toast({ title: 'Success', description: 'Account deleted' });
+                      fetchAccounts();
+                    } catch (error) {
+                      toast({ title: 'Error', description: 'Failed to delete account', variant: 'destructive' });
+                    }
+                  }
+                }}
+                className="text-red-600 hover:text-red-700"
+              >
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
@@ -256,6 +391,16 @@ export default function ChartOfAccountsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Account</DialogTitle>
+          </DialogHeader>
+          <EditAccountForm />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

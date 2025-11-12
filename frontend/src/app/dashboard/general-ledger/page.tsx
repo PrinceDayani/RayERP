@@ -13,7 +13,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, FileText, Calculator, DollarSign, Trash2, AlertCircle, FolderOpen, Building2, Users, Package, CreditCard, Banknote, Receipt, FileSpreadsheet, ChevronRight } from 'lucide-react';
-import { generalLedgerAPI, type Account, type JournalEntry, type TrialBalance } from '@/lib/api/generalLedgerAPI';
+import { generalLedgerAPI, type Account, type JournalEntry } from '@/lib/api/generalLedgerAPI';
+
+interface TrialBalance {
+  accounts: any[];
+  totals: { debits: number; credits: number; balanced: boolean };
+  asOfDate: string;
+}
 import { toast } from '@/components/ui/use-toast';
 
 interface AccountGroup {
@@ -115,7 +121,7 @@ export default function GeneralLedgerPage() {
       setLoading(true);
       const [accountsData, journalData] = await Promise.all([
         generalLedgerAPI.getAccounts({}),
-        generalLedgerAPI.getJournalEntries({ limit: 50 })
+        generalLedgerAPI.getJournalEntries({ limit: 50, page: 1 })
       ]);
       
       console.log('Fetched accounts:', accountsData.accounts);
@@ -123,11 +129,11 @@ export default function GeneralLedgerPage() {
       console.log('Ledgers:', accountsData.accounts?.filter((a: Account) => !a.isGroup));
       setAccounts(accountsData.accounts || []);
       setJournalEntries(journalData.journalEntries || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching data:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load data',
+        description: error?.response?.data?.message || 'Failed to load data',
         variant: 'destructive'
       });
     } finally {
@@ -524,7 +530,11 @@ export default function GeneralLedgerPage() {
         
         <div className="space-y-3">
           <Label>Journal Lines</Label>
+<<<<<<< HEAD
           <div className="bg-muted p-2 rounded text-sm font-medium grid grid-cols-6 gap-2">
+=======
+          <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-sm font-medium grid grid-cols-6 gap-2">
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
             <div>Ledger</div>
             <div>Dr/Cr</div>
             <div>Amount</div>
@@ -571,7 +581,11 @@ export default function GeneralLedgerPage() {
           </Button>
         </div>
 
+<<<<<<< HEAD
         <div className="bg-primary/5 p-4 rounded-lg">
+=======
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div><strong>Total Debits:</strong> ₹{totalDebits.toFixed(2)}</div>
             <div><strong>Total Credits:</strong> ₹{totalCredits.toFixed(2)}</div>
@@ -593,11 +607,19 @@ export default function GeneralLedgerPage() {
   };
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-6 space-y-6">
       <div className="flex justify-between items-center bg-card rounded-xl shadow-sm p-6 border border-border">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">General Ledger</h1>
           <p className="text-muted-foreground mt-1 flex items-center gap-2">
+=======
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6 space-y-6">
+      <div className="flex justify-between items-center bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">General Ledger</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-2">
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
             <Calculator className="w-4 h-4" />
             Complete accounting and financial management
           </p>
@@ -651,88 +673,152 @@ export default function GeneralLedgerPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-blue-50 to-blue-100" onClick={() => router.push('/dashboard/general-ledger/chart-of-accounts')}>
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20" onClick={() => router.push('/dashboard/general-ledger/chart-of-accounts')}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-blue-600 rounded-xl shadow-lg">
                 <FolderOpen className="w-8 h-8 text-white" />
               </div>
-              <ChevronRight className="w-6 h-6 text-blue-600" />
+              <ChevronRight className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
+<<<<<<< HEAD
             <h3 className="text-lg font-semibold mb-2 text-gray-800">Chart of Accounts</h3>
             <p className="text-sm text-gray-600 mb-4">Manage account structure and hierarchy</p>
             <div className="mt-4 flex items-center justify-between bg-card rounded-lg p-3">
               <span className="text-3xl font-bold text-blue-600">{accounts.filter(a => a.isGroup).length}</span>
               <span className="text-xs text-muted-foreground font-medium">Groups</span>
+=======
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Chart of Accounts</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Manage account structure and hierarchy</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">{accounts.filter(a => a.isGroup).length}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Groups</span>
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
             </div>
           </CardContent>
         </Card>
         
-        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-green-50 to-green-100" onClick={() => setActiveTab('ledgers')}>
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20" onClick={() => setActiveTab('ledgers')}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-green-600 rounded-xl shadow-lg">
                 <Building2 className="w-8 h-8 text-white" />
               </div>
-              <ChevronRight className="w-6 h-6 text-green-600" />
+              <ChevronRight className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
+<<<<<<< HEAD
             <h3 className="text-lg font-semibold mb-2 text-foreground">Ledger Accounts</h3>
             <p className="text-sm text-muted-foreground mb-4">View and manage all ledger accounts</p>
             <div className="mt-4 flex items-center justify-between bg-card rounded-lg p-3">
               <span className="text-3xl font-bold text-green-600">{accounts.filter(a => !a.isGroup).length}</span>
               <span className="text-xs text-muted-foreground font-medium">Ledgers</span>
+=======
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Ledger Accounts</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">View and manage all ledger accounts</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-green-600 dark:text-green-400">{accounts.filter(a => !a.isGroup).length}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Ledgers</span>
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
             </div>
           </CardContent>
         </Card>
         
-        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-purple-50 to-purple-100" onClick={() => router.push('/dashboard/general-ledger/journal-entries')}>
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20" onClick={() => router.push('/dashboard/general-ledger/journal-entries')}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-purple-600 rounded-xl shadow-lg">
                 <Receipt className="w-8 h-8 text-white" />
               </div>
-              <ChevronRight className="w-6 h-6 text-purple-600" />
+              <ChevronRight className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
+<<<<<<< HEAD
             <h3 className="text-lg font-semibold mb-2 text-foreground">Journal Entries</h3>
             <p className="text-sm text-muted-foreground mb-4">Create and manage journal vouchers</p>
             <div className="mt-4 flex items-center justify-between bg-card rounded-lg p-3">
               <span className="text-3xl font-bold text-purple-600">{journalEntries.length}</span>
               <span className="text-xs text-muted-foreground font-medium">Entries</span>
+=======
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Journal Entries</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Create and manage journal vouchers</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-purple-600 dark:text-purple-400">{journalEntries.length}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Entries</span>
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
             </div>
           </CardContent>
         </Card>
         
-        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-orange-50 to-orange-100" onClick={() => router.push('/dashboard/general-ledger/reports')}>
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20" onClick={() => router.push('/dashboard/general-ledger/reports')}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-orange-600 rounded-xl shadow-lg">
                 <Calculator className="w-8 h-8 text-white" />
               </div>
-              <ChevronRight className="w-6 h-6 text-orange-600" />
+              <ChevronRight className="w-6 h-6 text-orange-600 dark:text-orange-400" />
             </div>
+<<<<<<< HEAD
             <h3 className="text-lg font-semibold mb-2 text-foreground">Reports</h3>
             <p className="text-sm text-muted-foreground mb-4">Trial balance and financial reports</p>
             <div className="mt-4 flex items-center justify-between bg-card rounded-lg p-3">
               <span className="text-3xl font-bold text-orange-600">5</span>
               <span className="text-xs text-muted-foreground font-medium">Reports</span>
+=======
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Reports</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Trial balance and financial reports</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-orange-600 dark:text-orange-400">5</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Reports</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/20 dark:to-cyan-800/20" onClick={() => router.push('/dashboard/general-ledger/ledger')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-cyan-600 rounded-xl shadow-lg">
+                <FileText className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">View Ledger</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Account-wise transaction history</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-cyan-600 dark:text-cyan-400">{accounts.length}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Accounts</span>
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
             </div>
           </CardContent>
         </Card>
       </div>
 
+<<<<<<< HEAD
       <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-card rounded-xl shadow-sm p-6 border border-border">
         <TabsList className="bg-muted p-1 rounded-lg">
           <TabsTrigger value="groups" className="data-[state=active]:bg-card data-[state=active]:shadow-sm">Account Groups</TabsTrigger>
           <TabsTrigger value="ledgers" className="data-[state=active]:bg-card data-[state=active]:shadow-sm">Ledgers</TabsTrigger>
           <TabsTrigger value="vouchers" className="data-[state=active]:bg-card data-[state=active]:shadow-sm">Vouchers</TabsTrigger>
           <TabsTrigger value="reports" className="data-[state=active]:bg-card data-[state=active]:shadow-sm">Reports</TabsTrigger>
+=======
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+        <TabsList className="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+          <TabsTrigger value="groups" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600 data-[state=active]:shadow-sm">Account Groups</TabsTrigger>
+          <TabsTrigger value="ledgers" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600 data-[state=active]:shadow-sm">Ledgers</TabsTrigger>
+          <TabsTrigger value="vouchers" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600 data-[state=active]:shadow-sm">Vouchers</TabsTrigger>
+          <TabsTrigger value="reports" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600 data-[state=active]:shadow-sm">Reports</TabsTrigger>
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
         </TabsList>
 
         <TabsContent value="groups" className="mt-6">
           <Card className="border-0 shadow-md">
+<<<<<<< HEAD
             <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
               <CardTitle className="flex items-center text-foreground">
                 <FolderOpen className="w-5 h-5 mr-2 text-blue-600" />Account Groups ({accounts.filter(a => a.isGroup).length} groups)
+=======
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b dark:border-gray-700">
+              <CardTitle className="flex items-center text-gray-800 dark:text-gray-100">
+                <FolderOpen className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />Account Groups ({accounts.filter(a => a.isGroup).length} groups)
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
@@ -917,8 +1003,13 @@ export default function GeneralLedgerPage() {
                 
                 {trialBalance && (
                   <div>
+<<<<<<< HEAD
                     <div className="mb-4 p-3 bg-muted rounded-lg">
                       <p className="text-sm text-muted-foreground">
+=======
+                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
                         <strong>As of Date:</strong> {new Date(trialBalance.asOfDate).toLocaleDateString('en-IN')} | 
                         <strong>Accounts with Balances:</strong> {trialBalance.accounts.length}
                       </p>
@@ -948,7 +1039,11 @@ export default function GeneralLedgerPage() {
                             </TableCell>
                           </TableRow>
                         ))}
+<<<<<<< HEAD
                         <TableRow className="border-t-2 font-bold bg-muted">
+=======
+                        <TableRow className="border-t-2 font-bold bg-gray-50 dark:bg-gray-800">
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
                           <TableCell colSpan={3}>Total</TableCell>
                           <TableCell className="text-right">
                             ₹{trialBalance.totals?.debits.toLocaleString('en-IN', { minimumFractionDigits: 2 })}

@@ -71,20 +71,30 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     console.error('Auth middleware error:', error.message);
     
     if (error.name === 'JsonWebTokenError') {
+      if (error.message === 'invalid signature') {
+        return res.status(401).json({ 
+          success: false,
+          message: 'Invalid token - please login again',
+          code: 'INVALID_TOKEN_SIGNATURE'
+        });
+      }
       return res.status(401).json({ 
         success: false,
-        message: 'Invalid token format' 
+        message: 'Invalid token format',
+        code: 'INVALID_TOKEN_FORMAT'
       });
     } else if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ 
         success: false,
-        message: 'Token has expired' 
+        message: 'Token has expired - please login again',
+        code: 'TOKEN_EXPIRED'
       });
     }
     
     return res.status(401).json({ 
       success: false,
-      message: 'Authentication failed' 
+      message: 'Authentication failed',
+      code: 'AUTH_FAILED'
     });
   }
 };

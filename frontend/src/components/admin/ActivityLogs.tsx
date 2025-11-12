@@ -110,12 +110,23 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
 
     if (searchTerm) {
       filtered = filtered.filter(
+<<<<<<< HEAD
         (log) =>
           (typeof log.user === 'string' ? log.user : log.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.resource.toLowerCase().includes(searchTerm.toLowerCase()) ||
           log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (log.ipAddress && log.ipAddress.toLowerCase().includes(searchTerm.toLowerCase()))
+=======
+        (log) => {
+          const userName = typeof log.user === 'string' ? log.user : (log.user?.name || log.user?.email || '');
+          return userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.resource.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (log.ipAddress && log.ipAddress.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
       );
     }
 
@@ -206,6 +217,7 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
     }
   };
 
+<<<<<<< HEAD
   const exportLogs = async (format: 'text' | 'pdf' | 'excel') => {
     try {
       const blob = await adminAPI.exportLogs(format);
@@ -221,6 +233,36 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
       console.error('Export failed:', error);
       alert('Export failed. Please try again.');
     }
+=======
+  const exportLogs = () => {
+    // Convert logs to CSV
+    const headers = ["Timestamp", "User", "Action", "Resource", "Status", "Details", "IP Address"];
+    const csvContent = [
+      headers.join(","),
+      ...filteredLogs.map((log) => {
+        const userName = typeof log.user === 'string' ? log.user : (log.user?.name || log.user?.email || 'Unknown');
+        return [
+          formatDate(log.timestamp),
+          userName,
+          log.action,
+          log.resource,
+          log.status || 'success',
+          `"${log.details.replace(/"/g, '""')}"`, // Escape quotes
+          log.ipAddress || 'N/A',
+        ].join(",");
+      }),
+    ].join("\n");
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `activity-logs-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
   };
 
   if (isLoading) {
@@ -397,9 +439,20 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
                   <TableCell className="py-4">
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-xs">
+<<<<<<< HEAD
                         {(typeof log.user === 'string' ? log.user : log.user?.name || 'U').charAt(0).toUpperCase()}
                       </div>
                       <div className="font-medium text-slate-900 dark:text-slate-100">{typeof log.user === 'string' ? log.user : log.user?.name || 'Unknown'}</div>
+=======
+                        {(() => {
+                          const userName = typeof log.user === 'string' ? log.user : (log.user?.name || log.user?.email || 'U');
+                          return userName.charAt(0).toUpperCase();
+                        })()}
+                      </div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">
+                        {typeof log.user === 'string' ? log.user : (log.user?.name || log.user?.email || 'Unknown')}
+                      </div>
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
                     </div>
                   </TableCell>
                   <TableCell className="py-4">{getActionBadge(log.action)}</TableCell>

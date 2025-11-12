@@ -18,6 +18,7 @@ import rbacRoutes from './rbac.routes';
 import projectTemplateRoutes from './projectTemplate.routes';
 import resourceRoutes from './resourceRoutes';
 import departmentRoutes from './department.routes';
+import departmentBudgetRoutes from './departmentBudget.routes';
 import onboardingRoutes from './onboarding.routes';
 import fileShareRoutes from './fileShare.routes';
 import chatRoutes from './chat.routes';
@@ -35,6 +36,9 @@ import projectLedgerRoutes from './projectLedger.routes';
 import generalLedgerRoutes from './generalLedger.routes';
 import integratedFinanceRoutes from './integratedFinance.routes';
 import dashboardRoutes from './dashboard.routes';
+import periodClosingRoutes from './periodClosing.routes';
+import bankReconciliationRoutes from './bankReconciliation.routes';
+import indianAccountRoutes from './indianAccount.routes';
 
 import backupRoutes from './backupRoutes';
 
@@ -60,6 +64,7 @@ router.use('/rbac', rbacRoutes);
 router.use('/project-templates', projectTemplateRoutes);
 router.use('/resources', resourceRoutes);
 router.use('/departments', departmentRoutes);
+router.use('/department-budgets', departmentBudgetRoutes);
 router.use('/onboarding', onboardingRoutes);
 router.use('/dashboard', dashboardRoutes);
 
@@ -80,6 +85,9 @@ router.use('/financial-reports', financialReportRoutes);
 router.use('/project-ledger', projectLedgerRoutes);
 router.use('/general-ledger', generalLedgerRoutes);
 router.use('/integrated-finance', integratedFinanceRoutes);
+router.use('/period-closing', periodClosingRoutes);
+router.use('/bank-reconciliation', bankReconciliationRoutes);
+// Indian accounts merged into general-ledger
 
 // --- Health Check Endpoints ---
 router.get('/health', (req, res) => {

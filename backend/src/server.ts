@@ -9,7 +9,6 @@ import path from "path";
 import { Server as SocketServer } from "socket.io";
 import { logger } from "./utils/logger";
 import routes from "./routes/index";
-import authRoutes from "./routes/auth.routes";
 import assignmentRoutes from "./routes/assignment.routes";
 import backupRoutes from "./routes/backupRoutes";
 import errorMiddleware from "./middleware/error.middleware";
@@ -22,21 +21,14 @@ const server = http.createServer(app);
 // Trust proxy for secure cookies and proxies
 app.set("trust proxy", 1);
 
-// Use exact environment variables from .env
-let allowedOrigins: string[] = [];
-try {
-  allowedOrigins = [
-    ...(process.env.CORS_ORIGIN?.split(',') || []),
-    ...(process.env.FRONTEND_URL?.split(',') || [])
-  ].filter(Boolean); // Remove undefined/null values
-} catch (error) {
-  logger.error("Error parsing CORS origins:", error);
-  allowedOrigins = [];
-}
+// CORS configuration
+const allowedOrigins = [
+  ...(process.env.CORS_ORIGIN?.split(',') || []),
+  ...(process.env.FRONTEND_URL?.split(',') || [])
+].filter(Boolean);
 
-// CORS configuration - permissive for development
 const corsOptions = {
-  origin: true, // Allow all origins in development
+  origin: process.env.NODE_ENV === "production" ? allowedOrigins : true,
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
@@ -256,10 +248,11 @@ mongoose
   .then(async () => {
     logger.info("✅ Connected to MongoDB");
     
-    // Initialize onboarding system (permissions and roles)
+    // Initialize onboarding system
     try {
       const { initializeOnboardingSystem } = await import('./utils/initializeOnboarding');
       await initializeOnboardingSystem();
+<<<<<<< HEAD
       
       // Create default roles if they don't exist
       const { Role } = await import('./models/Role');
@@ -314,30 +307,27 @@ mongoose
         }
       }
       
+=======
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
       logger.info('✅ Onboarding system initialized');
     } catch (error) {
       logger.error('❌ Error initializing onboarding system:', error);
     }
     
-    // Initialize budget monitoring system
+    // Initialize Finance & Accounting System
     try {
-      const { initializeBudgetMonitoring, syncAllBudgetsOnStartup } = await import('./utils/initializeBudgetMonitoring');
-      
-      // Sync all budgets on startup
-      await syncAllBudgetsOnStartup();
-      
-      // Start real-time monitoring
-      initializeBudgetMonitoring();
-      
-      logger.info('✅ Budget monitoring system initialized');
+      const { initializeFinanceSystem } = await import('./utils/initializeFinance');
+      await initializeFinanceSystem();
     } catch (error) {
-      logger.error('❌ Error initializing budget monitoring:', error);
+      logger.error('❌ Error initializing Finance System:', error);
     }
     
     server.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
-      logger.info(`👉 Allowed origins: ${JSON.stringify(allowedOrigins)}`);
-      logger.info('💰 Integrated Finance System: Budget-Ledger real-time sync active');
+      logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      if (allowedOrigins.length > 0) {
+        logger.info(`🔒 CORS origins: ${allowedOrigins.join(', ')}`);
+      }
     });
   })
   .catch((error) => {
