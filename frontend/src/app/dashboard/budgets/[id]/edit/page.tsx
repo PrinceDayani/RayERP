@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
 import { getBudget, updateBudget } from '@/lib/api/budgetAPI';
 import { Budget, BudgetCategory, BudgetItem } from '@/types/budget';
-import Layout from '@/components/Layout';
 
 export default function EditBudgetPage() {
   const [budget, setBudget] = useState<Budget | null>(null);
@@ -22,7 +21,7 @@ export default function EditBudgetPage() {
   const [formData, setFormData] = useState({
     projectName: '',
     totalBudget: '',
-    currency: 'USD',
+    currency: 'INR',
     categories: [] as BudgetCategory[]
   });
 
@@ -145,7 +144,6 @@ export default function EditBudgetPage() {
   }
 
   return (
-    <Layout>
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -194,10 +192,10 @@ export default function EditBudgetPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="INR">INR</SelectItem>
                     <SelectItem value="EUR">EUR</SelectItem>
                     <SelectItem value="GBP">GBP</SelectItem>
-                    <SelectItem value="INR">INR</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -337,6 +335,5 @@ export default function EditBudgetPage() {
           </Button>
         </div>
       </div>
-    </Layout>
   );
 }

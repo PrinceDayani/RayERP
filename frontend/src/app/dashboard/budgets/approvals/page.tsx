@@ -4,14 +4,12 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle, XCircle, Clock, Eye, MessageSquare, ArrowLeft } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Eye, ArrowLeft } from "lucide-react";
 import { Budget } from "@/types/budget";
 import { getPendingApprovals, approveBudget, rejectBudget, getAllBudgets } from "@/lib/api/budgetAPI";
-import Layout from "@/components/Layout";
 import { useRouter } from "next/navigation";
 
 export default function BudgetApprovalsPage() {
@@ -27,36 +25,24 @@ export default function BudgetApprovalsPage() {
 
   useEffect(() => {
     fetchBudgets();
-  }, []);
-
-  useEffect(() => {
-    filterBudgets();
-  }, [budgets, statusFilter]);
+  }, [statusFilter]);
 
   const fetchBudgets = async () => {
     try {
-      let data;
-      if (statusFilter === 'pending') {
-        data = await getPendingApprovals();
-      } else {
-        data = await getAllBudgets();
-      }
+      setLoading(true);
+      const data = await getAllBudgets();
       setBudgets(data);
+      
+      let filtered = data;
+      if (statusFilter !== "all") {
+        filtered = data.filter(budget => budget.status === statusFilter);
+      }
+      setFilteredBudgets(filtered);
     } catch (error) {
       console.error("Error fetching budgets:", error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const filterBudgets = () => {
-    let filtered = budgets;
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(budget => budget.status === statusFilter);
-    }
-
-    setFilteredBudgets(filtered);
   };
 
   const getStatusColor = (status: string) => {
@@ -111,7 +97,6 @@ export default function BudgetApprovalsPage() {
   }
 
   return (
-    <Layout>
       <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
@@ -315,6 +300,5 @@ export default function BudgetApprovalsPage() {
         </DialogContent>
       </Dialog>
       </div>
-    </Layout>
   );
 }

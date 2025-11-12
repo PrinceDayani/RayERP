@@ -14,7 +14,9 @@ import { useRealTimeSetting } from '@/lib/realTimeSettings';
 import { Eye, EyeOff, ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 
 // Extended security settings type with additional properties
-interface ExtendedSecuritySettings extends Omit<SecuritySettingsType, 'lastPasswordChange'> {
+interface ExtendedSecuritySettings {
+  twoFactorEnabled: boolean;
+  sessionTimeout: number;
   lastPasswordChange?: Date | string;
   loginAttempts?: number;
   maxLoginAttempts: number;
@@ -104,15 +106,14 @@ export default function SecuritySettings() {
   };
   
   // Handle any Date objects that might come from the API
+  const [lastPasswordChange, setLastPasswordChange] = useState<Date | string | undefined>();
+  
   useEffect(() => {
-    if (settings.lastPasswordChange && settings.lastPasswordChange instanceof Date) {
+    if (lastPasswordChange && lastPasswordChange instanceof Date) {
       // Convert Date objects to ISO strings for consistency
-      setSettings(prev => ({
-        ...prev,
-        lastPasswordChange: (prev.lastPasswordChange as Date).toISOString()
-      }));
+      setLastPasswordChange(lastPasswordChange.toISOString());
     }
-  }, [settings.lastPasswordChange]);
+  }, [lastPasswordChange]);
   
   // Prompt before unload if there are unsaved changes
   useEffect(() => {
@@ -129,8 +130,20 @@ export default function SecuritySettings() {
   }, [hasUnsavedChanges]);
   
   // Handle setting changes with unsaved changes tracking
-
+  const handleToggleTwoFactor = (enabled: boolean) => {
+    setTwoFactorEnabled(enabled);
+    if (enabled && !twoFactorEnabled) {
+      setShowQrCode(true);
+    } else if (!enabled) {
+      setShowQrCode(false);
+    }
+    setHasUnsavedChanges(true);
+  };
   
+  const updateSettings = (updates: Partial<ExtendedSecuritySettings>) => {
+    // This function is kept for compatibility but settings are now handled individually
+    setHasUnsavedChanges(true);
+  };
   const validatePassword = () => {
     // Clear previous errors
     setPasswordError('');

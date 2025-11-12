@@ -5,14 +5,48 @@ export interface IAccount extends Document {
   name: string;
   type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
   subType: string;
+  category: string;
+  level: number;
   projectId?: mongoose.Types.ObjectId;
   balance: number;
   isActive: boolean;
+  isGroup: boolean;
   description?: string;
-  createdBy: mongoose.Types.ObjectId;
+  createdBy?: mongoose.Types.ObjectId;
   openingBalance: number;
   currency: string;
   parentId?: mongoose.Types.ObjectId;
+  subGroupId?: mongoose.Types.ObjectId;
+  taxInfo?: {
+    gstNo?: string;
+    panNo?: string;
+    aadharNo?: string;
+    tanNo?: string;
+    cinNo?: string;
+    taxRate?: number;
+  };
+  contactInfo?: {
+    primaryEmail?: string;
+    secondaryEmail?: string;
+    primaryPhone?: string;
+    secondaryPhone?: string;
+    mobile?: string;
+    fax?: string;
+    website?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    pincode?: string;
+  };
+  bankDetails?: {
+    accountNumber?: string;
+    ifscCode?: string;
+    bankName?: string;
+    branch?: string;
+  };
+  creditLimit?: number;
+  tags?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,7 +70,17 @@ const AccountSchema = new Schema<IAccount>({
   },
   subType: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
+  },
+  category: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  level: {
+    type: Number,
+    default: 0
   },
   balance: {
     type: Number,
@@ -48,20 +92,70 @@ const AccountSchema = new Schema<IAccount>({
   },
   currency: {
     type: String,
-    default: 'USD',
+    default: 'INR',
     trim: true
   },
   parentId: {
     type: Schema.Types.ObjectId,
     ref: 'Account'
   },
+  subGroupId: {
+    type: Schema.Types.ObjectId,
+    ref: 'AccountSubGroup'
+  },
   isActive: {
     type: Boolean,
     default: true
   },
+  isGroup: {
+    type: Boolean,
+    default: false
+  },
   description: {
     type: String,
     trim: true
+  },
+  projectId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project'
+  },
+  taxInfo: {
+    gstNo: String,
+    panNo: String,
+    aadharNo: String,
+    tanNo: String,
+    cinNo: String,
+    taxRate: Number
+  },
+  contactInfo: {
+    primaryEmail: String,
+    secondaryEmail: String,
+    primaryPhone: String,
+    secondaryPhone: String,
+    mobile: String,
+    fax: String,
+    website: String,
+    address: String,
+    city: String,
+    state: String,
+    country: String,
+    pincode: String
+  },
+  bankDetails: {
+    accountNumber: String,
+    ifscCode: String,
+    bankName: String,
+    branch: String
+  },
+  creditLimit: {
+    type: Number,
+    default: 0
+  },
+  tags: [String],
+  createdBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
   }
 }, {
   timestamps: true
@@ -70,6 +164,9 @@ const AccountSchema = new Schema<IAccount>({
 AccountSchema.index({ code: 1 });
 AccountSchema.index({ type: 1 });
 AccountSchema.index({ isActive: 1 });
+AccountSchema.index({ subGroupId: 1 });
 AccountSchema.index({ type: 1, isActive: 1 });
 
-export const Account = mongoose.model<IAccount>('Account', AccountSchema);
+const Account = mongoose.model<IAccount>('Account', AccountSchema);
+export { Account };
+export default Account;

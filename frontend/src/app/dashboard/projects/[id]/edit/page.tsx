@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -60,6 +59,7 @@ const EditProjectPage = () => {
         client: formData.client,
         manager: formData.manager,
         team: formData.team || [],
+        departments: formData.departments || [],
         tags: formData.tags || [],
       };
       
@@ -90,7 +90,6 @@ const EditProjectPage = () => {
 
   if (!isAuthenticated) {
     return (
-      <Layout>
         <div className="flex h-screen items-center justify-center">
           <Card>
             <CardContent className="pt-6 text-center">
@@ -100,21 +99,17 @@ const EditProjectPage = () => {
             </CardContent>
           </Card>
         </div>
-      </Layout>
     );
   }
 
   if (loading) {
     return (
-      <Layout>
         <div className="flex justify-center p-8">Loading project details...</div>
-      </Layout>
     );
   }
 
   if (!project) {
     return (
-      <Layout>
         <div className="flex flex-col items-center justify-center p-8">
           <h2 className="text-xl font-semibold mb-2">Project Not Found</h2>
           <p className="text-muted-foreground mb-4">The requested project could not be found.</p>
@@ -123,12 +118,10 @@ const EditProjectPage = () => {
             Back to Projects
           </Button>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="flex-1 space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -164,6 +157,7 @@ const EditProjectPage = () => {
                 client: project.client,
                 manager: project.manager,
                 team: project.team,
+                departments: project.departments,
                 tags: project.tags,
               }}
               onSubmit={handleUpdateProject}
@@ -174,7 +168,6 @@ const EditProjectPage = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
   );
 };
 

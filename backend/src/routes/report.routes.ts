@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { protect } from '../middleware/auth.middleware';
 import { authorize } from '../middleware/role.middleware';
-import { UserRole } from '../models/User';
 import * as reportController from '../controllers/reportController';
 
 const router = Router();
@@ -10,7 +9,7 @@ const router = Router();
 router.get(
   '/employees',
   protect,
-  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ROOT),
+  authorize('Admin', 'Superadmin', 'Root'),
   reportController.getEmployeeReports
 );
 
@@ -18,7 +17,7 @@ router.get(
 router.get(
   '/projects',
   protect,
-  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ROOT),
+  authorize('Admin', 'Superadmin', 'Root'),
   reportController.getProjectReports
 );
 
@@ -26,7 +25,7 @@ router.get(
 router.get(
   '/tasks',
   protect,
-  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ROOT),
+  authorize('Admin', 'Superadmin', 'Root'),
   reportController.getTaskReports
 );
 
@@ -34,7 +33,7 @@ router.get(
 router.get(
   '/team-productivity',
   protect,
-  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.ROOT),
+  authorize('Admin', 'Superadmin', 'Root'),
   reportController.getTeamProductivity
 );
 

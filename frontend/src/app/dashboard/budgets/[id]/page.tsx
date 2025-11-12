@@ -9,7 +9,6 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Edit, Send, CheckCircle, XCircle, Clock, DollarSign, TrendingUp, Calendar, User } from 'lucide-react';
 import { getBudget, submitForApproval } from '@/lib/api/budgetAPI';
 import { Budget } from '@/types/budget';
-import Layout from '@/components/Layout';
 
 export default function BudgetDetailPage() {
   const [budget, setBudget] = useState<Budget | null>(null);
@@ -73,7 +72,6 @@ export default function BudgetDetailPage() {
   }
 
   return (
-    <Layout>
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -272,6 +270,5 @@ export default function BudgetDetailPage() {
           )}
         </div>
       </div>
-    </Layout>
   );
 }

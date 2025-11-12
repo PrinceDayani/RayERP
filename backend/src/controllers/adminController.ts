@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
+import Employee from '../models/Employee';
 import ActivityLog from '../models/ActivityLog';
 import AdminSettings from '../models/AdminSettings';
 import { logger } from '../utils/logger';
@@ -27,14 +28,15 @@ export const getAdminStats = async (req: Request, res: Response) => {
 // Get all users for admin
 export const getAdminUsers = async (req: Request, res: Response) => {
   try {
-    const users = await User.find().select('-password').populate('roles').sort({ createdAt: -1 });
+    const users = await User.find().select('-password').populate('role').sort({ createdAt: -1 });
     
     const formattedUsers = users.map(user => ({
+      id: user._id.toString(),
       _id: user._id.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
-      roles: user.roles || [],
+      roles: user.role ? [user.role] : [],
       status: user.status || 'active',
       lastLogin: user.lastLogin || user.createdAt
     }));
@@ -70,6 +72,7 @@ export const createAdminUser = async (req: Request, res: Response) => {
 
     res.status(201).json({
       id: user._id.toString(),
+      _id: user._id.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
@@ -88,7 +91,7 @@ export const updateAdminUser = async (req: Request, res: Response) => {
     const { userId } = req.params;
     const updates = req.body;
 
-    const user = await User.findByIdAndUpdate(userId, updates, { new: true }).populate('roles').select('-password');
+    const user = await User.findByIdAndUpdate(userId, updates, { new: true }).populate('role').select('-password');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -104,11 +107,12 @@ export const updateAdminUser = async (req: Request, res: Response) => {
     });
 
     res.json({
+      id: user._id.toString(),
       _id: user._id.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
-      roles: user.roles || [],
+      roles: user.role ? [user.role] : [],
       status: user.status || 'active',
       lastLogin: user.lastLogin || user.createdAt
     });
@@ -123,10 +127,18 @@ export const deleteAdminUser = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     
-    const user = await User.findByIdAndDelete(userId);
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    // Delete associated employee if exists
+    const employee = await Employee.findOne({ user: userId });
+    if (employee) {
+      await Employee.findByIdAndDelete(employee._id);
+    }
+
+    await User.findByIdAndDelete(userId);
 
     // Log activity
     await ActivityLog.create({
@@ -134,11 +146,11 @@ export const deleteAdminUser = async (req: Request, res: Response) => {
       action: 'delete',
       resource: 'user',
       status: 'success',
-      details: `Deleted user: ${user.email}`,
+      details: `Deleted user: ${user.email}${employee ? ' and associated employee' : ''}`,
       ipAddress: req.ip || 'unknown'
     });
 
-    res.json({ message: 'User deleted successfully' });
+    res.json({ message: `User${employee ? ' and associated employee' : ''} deleted successfully` });
   } catch (error: any) {
     logger.error(`Delete admin user error: ${error.message}`);
     res.status(500).json({ error: error.message });

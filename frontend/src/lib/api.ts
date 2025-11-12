@@ -1,29 +1,47 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public data?: any) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
 export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  });
-  
-  if (!response.ok) {
-    throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+  try {
+    const token = localStorage.getItem('auth-token');
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...options.headers,
+      },
+      ...options,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const message = errorData.error || errorData.message || `HTTP error! status: ${response.status}`;
+      throw new ApiError(response.status, message, errorData);
+    }
+    
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Server connection failed. Please check if the backend is running.');
+    }
+    throw error;
   }
-  
-  return response.json();
 };
 
 export const analyticsApi = {
+  async checkAuth() {
+    return apiRequest('/api/auth/check');
+  },
+  async getDashboardAnalytics() {
+    return apiRequest('/api/analytics/dashboard');
+  },
   async getEmployeeMetrics() {
     return {
       total: 150,
@@ -85,3 +103,18 @@ export const api = {
     return response.json();
   }
 };
+
+export const employeesAPI = {
+  async getEmployee(id: string) {
+    return apiRequest(`/api/employees/${id}`);
+  },
+  async updateEmployee(id: string, data: any) {
+    return apiRequest(`/api/employees/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+};
+
+// Default export for backward compatibility
+export default api;

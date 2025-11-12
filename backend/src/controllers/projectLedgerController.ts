@@ -60,7 +60,7 @@ export const createJournalEntry = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { date, reference, description, narration, lines } = req.body;
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id || (req as any).user?._id;
 
     // Validate that debits equal credits
     const totalDebit = lines.reduce((sum: number, line: any) => sum + (line.debit || 0), 0);
@@ -182,7 +182,7 @@ export const postJournalEntry = async (req: Request, res: Response) => {
 export const approveJournalEntry = async (req: Request, res: Response) => {
   try {
     const { entryId } = req.params;
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id || (req as any).user?._id;
 
     const entry = await ProjectJournalEntry.findById(entryId);
     if (!entry) {
@@ -240,12 +240,14 @@ export const deleteJournalEntry = async (req: Request, res: Response) => {
 export const getProjectLedgerEntries = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { accountCode, startDate, endDate } = req.query;
+    const { accountCode, startDate, endDate, includeAll } = req.query;
 
-    let query: any = { 
-      projectId,
-      status: { $in: ['posted', 'approved'] }
-    };
+    let query: any = { projectId };
+    
+    // Only show posted/approved entries unless includeAll is true
+    if (includeAll !== 'true') {
+      query.status = { $in: ['posted', 'approved'] };
+    }
 
     if (startDate && endDate) {
       query.date = {

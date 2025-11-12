@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,24 +31,24 @@ const ProjectAnalyticsDashboard = () => {
 
   const fetchAnalytics = async () => {
     try {
-      const [statsData, projectsData] = await Promise.all([
+      const token = localStorage.getItem('auth-token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+      
+      const [statsData, projectsData, budgetData, tasksData] = await Promise.all([
         getProjectStats(),
-        getAllProjects()
+        getAllProjects(),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets/analytics`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks`, { headers }).then(r => r.ok ? r.json() : []).catch(() => [])
       ]);
       
-      setStats(statsData);
+      setStats({
+        ...statsData,
+        totalTasks: tasksData.length,
+        completedTasks: tasksData.filter((t: any) => t.status === 'completed').length,
+        overdueTasks: tasksData.filter((t: any) => new Date(t.dueDate) < new Date() && t.status !== 'completed').length
+      });
       setProjects(projectsData);
-      
-      const token = localStorage.getItem('auth-token');
-      if (token) {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets/analytics`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setBudgetAnalytics(data);
-        }
-      }
+      setBudgetAnalytics(budgetData);
     } catch (error) {
       console.error("Error fetching analytics:", error);
     } finally {
@@ -82,7 +81,6 @@ const ProjectAnalyticsDashboard = () => {
 
   if (!isAuthenticated) {
     return (
-      <Layout>
         <div className="flex h-screen items-center justify-center">
           <Card>
             <CardContent className="pt-6 text-center">
@@ -92,25 +90,21 @@ const ProjectAnalyticsDashboard = () => {
             </CardContent>
           </Card>
         </div>
-      </Layout>
     );
   }
 
   if (loading) {
     return (
-      <Layout>
         <div className="flex justify-center items-center h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p>Loading analytics...</p>
           </div>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="flex-1 space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -133,8 +127,8 @@ const ProjectAnalyticsDashboard = () => {
                   <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Projects</p>
                   <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{stats?.totalProjects || 0}</p>
                   <div className="flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                    <span className="text-sm text-green-600">+12% from last month</span>
+                    <Activity className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm text-blue-600">{stats?.activeProjects || 0} active</span>
                   </div>
                 </div>
                 <div className="h-12 w-12 bg-blue-200 dark:bg-blue-800 rounded-full flex items-center justify-center">
@@ -212,6 +206,53 @@ const ProjectAnalyticsDashboard = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <Card className="border-l-4 border-l-blue-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total Budget</p>
+                      <p className="text-xl font-bold">₹{metrics?.totalBudget.toLocaleString()}</p>
+                    </div>
+                    <DollarSign className="h-6 w-6 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-green-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Team Members</p>
+                      <p className="text-xl font-bold">{projects.reduce((sum, p) => sum + (p.team?.length || 0), 0)}</p>
+                    </div>
+                    <Users className="h-6 w-6 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-purple-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Avg Progress</p>
+                      <p className="text-xl font-bold">{metrics?.avgProgress}%</p>
+                    </div>
+                    <Target className="h-6 w-6 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-l-4 border-l-orange-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">On-Time Rate</p>
+                      <p className="text-xl font-bold">{metrics?.onTimeRate}%</p>
+                    </div>
+                    <Clock className="h-6 w-6 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -291,41 +332,119 @@ const ProjectAnalyticsDashboard = () => {
               </Card>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Performing Projects</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {projects
-                    .sort((a, b) => (b.progress || 0) - (a.progress || 0))
-                    .slice(0, 5)
-                    .map((project) => (
-                      <div 
-                        key={project._id} 
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                        onClick={() => router.push(`/dashboard/projects/${project._id}`)}
-                      >
-                        <div className="flex-1">
-                          <h4 className="font-medium">{project.name || project.title}</h4>
-                          <p className="text-sm text-muted-foreground">{project.description}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="outline">{project.status}</Badge>
-                            <Badge variant="secondary">{project.priority}</Badge>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Performing Projects</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {projects
+                      .sort((a, b) => (b.progress || 0) - (a.progress || 0))
+                      .slice(0, 5)
+                      .map((project) => (
+                        <div 
+                          key={project._id} 
+                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                          onClick={() => router.push(`/dashboard/projects/${project._id}`)}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium truncate">{project.name || project.title}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline" className="text-xs">{project.status}</Badge>
+                              <Badge variant="secondary" className="text-xs">{project.priority}</Badge>
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <p className="text-xl font-bold text-green-600">{project.progress}%</p>
+                            <Progress value={project.progress} className="w-20 mt-1" />
                           </div>
                         </div>
-                        <div className="text-right ml-4">
-                          <p className="text-2xl font-bold text-green-600">{project.progress}%</p>
-                          <Progress value={project.progress} className="w-24 mt-2" />
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Projects by Priority</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {['critical', 'high', 'medium', 'low'].map(priority => {
+                      const count = projects.filter(p => p.priority === priority).length;
+                      const percentage = stats?.totalProjects > 0 ? (count / stats.totalProjects) * 100 : 0;
+                      const colors = {
+                        critical: 'bg-red-500',
+                        high: 'bg-orange-500',
+                        medium: 'bg-yellow-500',
+                        low: 'bg-green-500'
+                      };
+                      return (
+                        <div key={priority}>
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm font-medium capitalize">{priority}</span>
+                            <span className="text-sm text-muted-foreground">{count} ({percentage.toFixed(0)}%)</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className={`${colors[priority as keyof typeof colors]} h-2 rounded-full`} style={{ width: `${percentage}%` }} />
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="performance" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Project Health Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {projects.map(project => {
+                    const daysRemaining = Math.ceil((new Date(project.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                    const budgetHealth = project.budget > 0 ? ((project.spentBudget || 0) / project.budget) * 100 : 0;
+                    const scheduleHealth = daysRemaining < 0 ? 0 : daysRemaining < 7 ? 50 : 100;
+                    const progressHealth = project.progress;
+                    const overallHealth = (budgetHealth <= 90 ? 100 : 50) * 0.3 + scheduleHealth * 0.3 + progressHealth * 0.4;
+                    
+                    const healthColor = overallHealth >= 70 ? 'text-green-600' : overallHealth >= 40 ? 'text-yellow-600' : 'text-red-600';
+                    const healthBg = overallHealth >= 70 ? 'bg-green-50 border-green-200' : overallHealth >= 40 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200';
+                    
+                    return (
+                      <Card key={project._id} className={`${healthBg} cursor-pointer`} onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
+                        <CardContent className="p-4">
+                          <h4 className="font-semibold text-sm mb-2 truncate">{project.name}</h4>
+                          <div className="text-center mb-3">
+                            <p className={`text-3xl font-bold ${healthColor}`}>{overallHealth.toFixed(0)}</p>
+                            <p className="text-xs text-muted-foreground">Health Score</p>
+                          </div>
+                          <div className="space-y-2 text-xs">
+                            <div className="flex justify-between">
+                              <span>Progress</span>
+                              <span className="font-medium">{project.progress}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Budget</span>
+                              <span className="font-medium">{budgetHealth.toFixed(0)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Schedule</span>
+                              <span className="font-medium">{daysRemaining > 0 ? `${daysRemaining}d` : 'Overdue'}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
                 <CardContent className="p-6">
@@ -544,7 +663,6 @@ const ProjectAnalyticsDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
   );
 };
 

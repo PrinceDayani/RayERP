@@ -4,5 +4,9 @@
 import AnalyticsPage from "@/components/analytics/AnalyticsPage";
 
 export default function ReportsPage() {
-  return <AnalyticsPage />;
+  return (
+    <div className="min-h-screen">
+      <AnalyticsPage />
+    </div>
+  );
 }

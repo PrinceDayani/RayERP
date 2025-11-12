@@ -14,10 +14,16 @@ export const useGeneralLedger = () => {
     setError(null);
     try {
       const data = await generalLedgerApi.getAccounts();
-      setAccounts(data || []);
+      const accountsData = data?.accounts || data || [];
+      // Map _id to id for frontend compatibility
+      const mappedAccounts = Array.isArray(accountsData) 
+        ? accountsData.map((acc: any) => ({ ...acc, id: acc._id || acc.id }))
+        : [];
+      setAccounts(mappedAccounts);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error fetching accounts';
       setError(errorMessage);
+      setAccounts([]);
       console.error('Error fetching accounts:', error);
     } finally {
       setLoading(false);
@@ -45,11 +51,13 @@ export const useGeneralLedger = () => {
     setError(null);
     try {
       const data = await generalLedgerApi.getJournalEntries(params);
-      setJournalEntries(data.journalEntries || []);
+      const entriesData = data?.journalEntries || data || [];
+      setJournalEntries(Array.isArray(entriesData) ? entriesData : []);
       return data;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error fetching journal entries';
       setError(errorMessage);
+      setJournalEntries([]);
       console.error('Error fetching journal entries:', error);
     } finally {
       setLoading(false);

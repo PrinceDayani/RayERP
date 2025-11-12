@@ -4,11 +4,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import Layout from "@/components/Layout";
 import TaskManagement from "@/components/projects/TaskManagement";
 import ProjectTimeline from "@/components/projects/ProjectTimeline";
 import ProjectFiles from "@/components/projects/ProjectFiles";
 import ProjectActivity from "@/components/projects/ProjectActivity";
+import ProjectAnalytics from "@/components/ProjectAnalytics";
+import { ProjectMilestones } from "@/components/projects/ProjectMilestones";
+import { ProjectRisks } from "@/components/projects/ProjectRisks";
 import ProjectProfitLoss from "@/components/projects/finance/ProjectProfitLoss";
 import ProjectTrialBalance from "@/components/projects/finance/ProjectTrialBalance";
 import ProjectBalanceSheet from "@/components/projects/finance/ProjectBalanceSheet";
@@ -31,6 +33,8 @@ import {
 } from "lucide-react";
 import { getProjectById, updateProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
+import { GanttChart } from "@/components/GanttChart";
+import tasksAPI, { type Task } from "@/lib/api/tasksAPI";
 
 
 const ProjectDetailPage = () => {
@@ -41,8 +45,45 @@ const ProjectDetailPage = () => {
   
   const [project, setProject] = useState<Project | null>(null);
   const [budget, setBudget] = useState<any>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('tasks');
+
+  const handleUpdateMilestones = async (milestones: any[]) => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/milestones`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ milestones })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setProject(updated);
+        toast({ title: "Milestones updated successfully" });
+      }
+    } catch (error) {
+      toast({ title: "Failed to update milestones", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateRisks = async (risks: any[]) => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/risks`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ risks })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setProject(updated);
+        toast({ title: "Risks updated successfully" });
+      }
+    } catch (error) {
+      toast({ title: "Failed to update risks", variant: "destructive" });
+    }
+  };
 
   useEffect(() => {
     // Check for tab parameter in URL
@@ -58,6 +99,7 @@ const ProjectDetailPage = () => {
     if (isAuthenticated && projectId) {
       fetchProject();
       fetchBudget();
+      fetchTasks();
     }
   }, [isAuthenticated, projectId]);
 
@@ -125,6 +167,15 @@ const ProjectDetailPage = () => {
     }
   };
 
+  const fetchTasks = async () => {
+    try {
+      const data = await tasksAPI.getTasksByProject(projectId);
+      setTasks(data);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    }
+  };
+
 
 
   const getStatusColor = (status: string) => {
@@ -149,7 +200,6 @@ const ProjectDetailPage = () => {
 
   if (!isAuthenticated) {
     return (
-      <Layout>
         <div className="flex h-screen items-center justify-center">
           <Card>
             <CardContent className="pt-6 text-center">
@@ -159,21 +209,17 @@ const ProjectDetailPage = () => {
             </CardContent>
           </Card>
         </div>
-      </Layout>
     );
   }
 
   if (loading) {
     return (
-      <Layout>
         <div className="flex justify-center p-8">Loading project details...</div>
-      </Layout>
     );
   }
 
   if (!project) {
     return (
-      <Layout>
         <div className="flex flex-col items-center justify-center p-8">
           <h2 className="text-xl font-semibold mb-2">Project Not Found</h2>
           <p className="text-muted-foreground mb-4">The requested project could not be found.</p>
@@ -182,12 +228,10 @@ const ProjectDetailPage = () => {
             Back to Projects
           </Button>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="flex-1 space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -471,30 +515,41 @@ const ProjectDetailPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 border rounded-lg">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Users className="h-4 w-4 text-blue-600" />
+                  {project.manager && (
+                    <div className="flex items-center gap-3 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Users className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">
+                          {typeof project.manager === 'object' && project.manager.firstName && project.manager.lastName
+                            ? `${project.manager.firstName} ${project.manager.lastName}`
+                            : 'Project Manager'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Manager</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">Project Manager</p>
-                      <p className="text-sm text-muted-foreground">Manager</p>
-                    </div>
-                  </div>
+                  )}
+                  
                   
                   {project.team && project.team.length > 0 ? (
-                    project.team.map((memberId, index) => (
+                    project.team.map((member: any, index) => (
                       <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
                         <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
                           <Users className="h-4 w-4 text-gray-600" />
                         </div>
                         <div>
-                          <p className="font-medium">Team Member {index + 1}</p>
-                          <p className="text-sm text-muted-foreground">Developer</p>
+                          <p className="font-medium">
+                            {typeof member === 'object' && member.firstName && member.lastName 
+                              ? `${member.firstName} ${member.lastName}` 
+                              : `Team Member ${index + 1}`}
+                          </p>
+                          <p className="text-sm text-muted-foreground">Team Member</p>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground text-center py-4">No team members assigned</p>
+                    !project.manager && <p className="text-muted-foreground text-center py-4">No team members assigned</p>
                   )}
                 </div>
               </CardContent>
@@ -502,10 +557,25 @@ const ProjectDetailPage = () => {
           </div>
         </div>
 
+        {/* Milestones and Risks */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ProjectMilestones 
+            projectId={projectId} 
+            milestones={project.milestones || []} 
+            onUpdate={handleUpdateMilestones} 
+          />
+          <ProjectRisks 
+            projectId={projectId} 
+            risks={project.risks || []} 
+            onUpdate={handleUpdateRisks} 
+          />
+        </div>
+
         {/* Tabs for Tasks and Other Details */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="budget">Budget</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
@@ -517,49 +587,51 @@ const ProjectDetailPage = () => {
             <TaskManagement projectId={projectId} showProjectTasks={true} />
           </TabsContent>
 
+          <TabsContent value="analytics">
+            <ProjectAnalytics projectId={projectId} />
+          </TabsContent>
+
           <TabsContent value="budget">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Project Budget</CardTitle>
-                  <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    {budget ? 'Manage Budget' : 'Create Budget'}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {budget ? (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="text-center">
-                            <DollarSign className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-                            <p className="text-sm text-muted-foreground">Total Budget</p>
-                            <p className="text-2xl font-bold">{budget.currency} {budget.totalBudget?.toLocaleString()}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="text-center">
-                            <BarChart3 className="h-8 w-8 mx-auto text-green-600 mb-2" />
-                            <p className="text-sm text-muted-foreground">Spent</p>
-                            <p className="text-2xl font-bold">{budget.currency} {budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0).toLocaleString()}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="text-center">
-                            <Users className="h-8 w-8 mx-auto text-orange-600 mb-2" />
-                            <p className="text-sm text-muted-foreground">Remaining</p>
-                            <p className="text-2xl font-bold">{budget.currency} {(budget.totalBudget - budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-semibold">Project Budget</h3>
+                <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  {budget ? 'Manage Budget' : 'Create Budget'}
+                </Button>
+              </div>
+              
+              {budget ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <DollarSign className="h-8 w-8 mx-auto text-blue-600 mb-2" />
+                          <p className="text-sm text-muted-foreground">Total Budget</p>
+                          <p className="text-2xl font-bold">{budget.currency} {budget.totalBudget?.toLocaleString()}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <BarChart3 className="h-8 w-8 mx-auto text-green-600 mb-2" />
+                          <p className="text-sm text-muted-foreground">Spent</p>
+                          <p className="text-2xl font-bold">{budget.currency} {budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0).toLocaleString()}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <Users className="h-8 w-8 mx-auto text-orange-600 mb-2" />
+                          <p className="text-sm text-muted-foreground">Remaining</p>
+                          <p className="text-2xl font-bold">{budget.currency} {(budget.totalBudget - budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                     <div className="mt-6">
                       <div className="flex justify-between text-sm mb-2">
                         <span>Budget Utilization</span>
@@ -599,27 +671,47 @@ const ProjectDetailPage = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="text-center py-12">
-                    <DollarSign className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Budget Created</h3>
-                    <p className="text-muted-foreground mb-4">This project doesn't have a budget yet. Create one to start tracking expenses.</p>
-                    <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      Create Budget
+                  <Card>
+                    <CardContent className="text-center py-12">
+                      <DollarSign className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No Budget Created</h3>
+                      <p className="text-muted-foreground mb-4">This project doesn't have a budget yet. Create one to start tracking expenses.</p>
+                      <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Create Budget
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {budget && (
+                  <div className="text-center">
+                    <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)} className="w-full" variant="outline">
+                      View Full Budget Details
                     </Button>
                   </div>
                 )}
-                <div className="mt-6 text-center">
-                  <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)} className="w-full" variant="outline">
-                    View Full Budget Details
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="timeline">
-            <ProjectTimeline projectId={projectId} />
+            {tasks.length > 0 && (
+              <GanttChart 
+                tasks={tasks.map(task => ({
+                  id: task._id,
+                  name: task.title,
+                  startDate: new Date(task.createdAt),
+                  endDate: task.dueDate ? new Date(task.dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                  progress: task.status === 'completed' ? 100 : task.status === 'in-progress' ? 50 : 0,
+                  status: task.status,
+                  priority: task.priority
+                }))}
+                title={`${project?.name} Timeline`}
+              />
+            )}
+            <div className="mt-6">
+              <ProjectTimeline projectId={projectId} />
+            </div>
           </TabsContent>
 
           <TabsContent value="files">
@@ -663,7 +755,6 @@ const ProjectDetailPage = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
   );
 };
 

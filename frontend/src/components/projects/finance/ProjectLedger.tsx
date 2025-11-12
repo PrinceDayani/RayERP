@@ -240,10 +240,31 @@ export default function ProjectLedger({ projectId }: ProjectLedgerProps) {
   };
 
   const handleSaveJournalEntry = async () => {
+    // Validate required fields
+    if (!newJournalEntry.date || !newJournalEntry.reference || !newJournalEntry.description) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields (Date, Reference, Description)",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!isBalanced()) {
       toast({
         title: "Error",
         description: "Journal entry must be balanced (Total Debits = Total Credits)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate that at least 2 lines have accounts selected
+    const validLines = newJournalEntry.lines.filter(line => line.accountCode && (line.debit > 0 || line.credit > 0));
+    if (validLines.length < 2) {
+      toast({
+        title: "Error",
+        description: "Journal entry must have at least 2 lines with accounts and amounts",
         variant: "destructive",
       });
       return;
@@ -254,7 +275,7 @@ export default function ProjectLedger({ projectId }: ProjectLedgerProps) {
         date: newJournalEntry.date,
         reference: newJournalEntry.reference,
         description: newJournalEntry.description,
-        lines: newJournalEntry.lines.filter(line => line.accountCode && (line.debit > 0 || line.credit > 0))
+        lines: validLines
       };
 
       await projectFinanceApi.createJournalEntry(projectId, entryData);
@@ -797,6 +818,55 @@ export default function ProjectLedger({ projectId }: ProjectLedgerProps) {
                               size="sm" 
                               className="text-green-600 hover:text-green-700"
                               title="Post Entry"
+                              onClick={async () => {
+                                try {
+                                  await projectFinanceApi.postJournalEntry(projectId, entry.id);
+                                  toast({
+                                    title: "Success",
+                                    description: "Journal entry posted successfully",
+                                  });
+                                  await fetchData();
+                                } catch (error: any) {
+                                  toast({
+                                    title: "Error",
+                                    description: error.message || "Failed to post journal entry",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {entry.status === 'posted' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-blue-600 hover:text-blue-700"
+                              title="Approve Entry"
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/project-ledger/${projectId}/journal-entries/${entry.id}/approve`, {
+                                    method: 'PATCH',
+                                    headers: {
+                                      'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
+                                      'Content-Type': 'application/json'
+                                    }
+                                  });
+                                  if (!response.ok) throw new Error('Failed to approve');
+                                  toast({
+                                    title: "Success",
+                                    description: "Journal entry approved successfully",
+                                  });
+                                  await fetchData();
+                                } catch (error: any) {
+                                  toast({
+                                    title: "Error",
+                                    description: error.message || "Failed to approve journal entry",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
                             >
                               <Check className="h-4 w-4" />
                             </Button>

@@ -132,9 +132,9 @@ paymentSchema.pre('save', function(next) {
 
 // Virtual for formatted amount
 paymentSchema.virtual('formattedAmount').get(function() {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'INR'
   }).format(this.amount);
 });
 

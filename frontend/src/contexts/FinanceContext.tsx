@@ -20,7 +20,7 @@ export const useFinanceContext = () => {
 export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const value = {
     currentPeriod: '2024',
-    currency: 'USD',
+    currency: 'INR',
     permissions: ['read', 'write']
   };
 

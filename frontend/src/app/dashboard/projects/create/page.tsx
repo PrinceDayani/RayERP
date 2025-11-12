@@ -5,7 +5,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,10 +25,17 @@ interface Employee {
   lastName: string;
 }
 
+interface Department {
+  _id: string;
+  name: string;
+  description: string;
+}
+
 const CreateProjectPage = () => {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
 
   const [projectForm, setProjectForm] = useState({
@@ -42,6 +48,7 @@ const CreateProjectPage = () => {
     budget: 0,
     manager: "",
     team: [] as string[],
+    departments: [] as string[],
     client: "",
     tags: [] as string[]
   });
@@ -49,15 +56,32 @@ const CreateProjectPage = () => {
   useEffect(() => {
     if (isAuthenticated) {
       fetchEmployees();
+      fetchDepartments();
     }
   }, [isAuthenticated]);
 
   const fetchEmployees = async () => {
     try {
-      const data = await getAllEmployees();
-      setEmployees(data);
+      const response = await getAllEmployees();
+      const data = response?.data || response;
+      setEmployees(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching employees:", error);
+      setEmployees([]);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/departments`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setDepartments(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      setDepartments([]);
     }
   };
 
@@ -119,9 +143,17 @@ const CreateProjectPage = () => {
     }));
   };
 
+  const handleDepartmentToggle = (departmentId: string) => {
+    setProjectForm(prev => ({
+      ...prev,
+      departments: prev.departments.includes(departmentId)
+        ? prev.departments.filter(id => id !== departmentId)
+        : [...prev.departments, departmentId]
+    }));
+  };
+
   if (!isAuthenticated) {
     return (
-      <Layout>
         <div className="flex h-screen items-center justify-center">
           <Card>
             <CardContent className="pt-6 text-center">
@@ -131,12 +163,10 @@ const CreateProjectPage = () => {
             </CardContent>
           </Card>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="flex-1 space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -305,7 +335,7 @@ const CreateProjectPage = () => {
                     <SelectContent>
                       {employees.map((employee) => (
                         <SelectItem key={employee._id} value={employee._id}>
-                          {employee.firstName} {employee.lastName}
+                          {`${employee.firstName} ${employee.lastName}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -354,6 +384,38 @@ const CreateProjectPage = () => {
             </CardContent>
           </Card>
 
+          {/* Departments */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Departments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {departments.map((department) => (
+                  <div
+                    key={department._id}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      projectForm.departments.includes(department._id)
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => handleDepartmentToggle(department._id)}
+                  >
+                    <div>
+                      <p className="font-medium">{department.name}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{department.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {projectForm.departments.length > 0 && (
+                <p className="text-sm text-muted-foreground mt-4">
+                  {projectForm.departments.length} department(s) selected
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Submit Button */}
           <div className="flex justify-end gap-4">
             <Button 
@@ -370,7 +432,6 @@ const CreateProjectPage = () => {
           </div>
         </form>
       </div>
-    </Layout>
   );
 };
 

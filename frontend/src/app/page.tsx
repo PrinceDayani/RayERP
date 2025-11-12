@@ -1,13 +1,18 @@
-//frontend\src\app\page.tsx
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function Home() {
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    router.push("/dashboard"); // Redirect to Dashboard on page load
-  }, []);}
+    if (!loading) {
+      router.push(user ? '/dashboard' : '/login');
+    }
+  }, [user, loading, router]);
+
+  return null;
+}

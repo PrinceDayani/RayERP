@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -330,7 +329,6 @@ const AttendanceManagement = () => {
 
   if (!isAuthenticated) {
     return (
-      <Layout>
         <div className="flex h-screen items-center justify-center">
           <Card>
             <CardContent className="pt-6 text-center">
@@ -339,12 +337,10 @@ const AttendanceManagement = () => {
             </CardContent>
           </Card>
         </div>
-      </Layout>
     );
   }
 
   return (
-    <Layout>
       <div className="flex-1 space-y-6 p-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -513,7 +509,7 @@ const AttendanceManagement = () => {
                         <SelectItem value="all">All employees</SelectItem>
                         {employees.map((emp) => (
                           <SelectItem key={emp._id} value={emp._id}>
-                            {emp.firstName} {emp.lastName}
+                            {`${emp.firstName} ${emp.lastName}`}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -649,7 +645,7 @@ const AttendanceManagement = () => {
                   <SelectContent>
                     {employees.map((emp) => (
                       <SelectItem key={emp._id} value={emp._id}>
-                        {emp.firstName} {emp.lastName}
+                        {`${emp.firstName} ${emp.lastName}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -715,7 +711,6 @@ const AttendanceManagement = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </Layout>
   );
 };
 

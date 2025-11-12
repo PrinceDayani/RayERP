@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, Save } from "lucide-react";
-import Layout from "@/components/Layout";
 
 interface TemplateItem {
   _id?: string;
@@ -332,7 +331,7 @@ export default function BudgetTemplatesPage() {
   };
 
   return (
-    <Layout>
+    
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Budget Templates</h1>
@@ -541,6 +540,5 @@ export default function BudgetTemplatesPage() {
           ))}
         </div>
       </div>
-    </Layout>
   );
 }

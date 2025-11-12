@@ -38,7 +38,7 @@ const masterBudgetSchema = new Schema<IMasterBudget>({
   totalAllocated: { type: Number, default: 0, min: 0 },
   totalUtilized: { type: Number, default: 0, min: 0 },
   remainingBudget: { type: Number, default: 0 },
-  currency: { type: String, default: 'USD' },
+  currency: { type: String, default: 'INR' },
   status: { 
     type: String, 
     enum: ['draft', 'approved', 'active', 'closed'], 
