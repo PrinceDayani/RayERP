@@ -252,7 +252,6 @@ mongoose
     try {
       const { initializeOnboardingSystem } = await import('./utils/initializeOnboarding');
       await initializeOnboardingSystem();
-<<<<<<< HEAD
       
       // Create default roles if they don't exist
       const { Role } = await import('./models/Role');
@@ -307,8 +306,6 @@ mongoose
         }
       }
       
-=======
->>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
       logger.info('✅ Onboarding system initialized');
     } catch (error) {
       logger.error('❌ Error initializing onboarding system:', error);
