@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Department from '../models/Department';
 import Employee from '../models/Employee';
+import DepartmentBudget from '../models/DepartmentBudget';
 
 export const getDepartments = async (req: Request, res: Response) => {
   try {
@@ -42,7 +43,15 @@ export const getDepartmentById = async (req: Request, res: Response) => {
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
-    res.json({ success: true, data: department });
+    
+    const budgets = await DepartmentBudget.find({ departmentId: req.params.id });
+    const budgetSummary = {
+      totalAllocated: budgets.reduce((sum, b) => sum + b.totalBudget, 0),
+      totalSpent: budgets.reduce((sum, b) => sum + b.spentBudget, 0),
+      budgetCount: budgets.length
+    };
+    
+    res.json({ success: true, data: { ...department.toObject(), budgetSummary } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

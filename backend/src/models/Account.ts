@@ -16,15 +16,28 @@ export interface IAccount extends Document {
   openingBalance: number;
   currency: string;
   parentId?: mongoose.Types.ObjectId;
+  subGroupId?: mongoose.Types.ObjectId;
   taxInfo?: {
     gstNo?: string;
     panNo?: string;
+    aadharNo?: string;
+    tanNo?: string;
+    cinNo?: string;
     taxRate?: number;
   };
   contactInfo?: {
+    primaryEmail?: string;
+    secondaryEmail?: string;
+    primaryPhone?: string;
+    secondaryPhone?: string;
+    mobile?: string;
+    fax?: string;
+    website?: string;
     address?: string;
-    phone?: string;
-    email?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    pincode?: string;
   };
   bankDetails?: {
     accountNumber?: string;
@@ -86,6 +99,10 @@ const AccountSchema = new Schema<IAccount>({
     type: Schema.Types.ObjectId,
     ref: 'Account'
   },
+  subGroupId: {
+    type: Schema.Types.ObjectId,
+    ref: 'AccountSubGroup'
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -105,12 +122,24 @@ const AccountSchema = new Schema<IAccount>({
   taxInfo: {
     gstNo: String,
     panNo: String,
+    aadharNo: String,
+    tanNo: String,
+    cinNo: String,
     taxRate: Number
   },
   contactInfo: {
+    primaryEmail: String,
+    secondaryEmail: String,
+    primaryPhone: String,
+    secondaryPhone: String,
+    mobile: String,
+    fax: String,
+    website: String,
     address: String,
-    phone: String,
-    email: String
+    city: String,
+    state: String,
+    country: String,
+    pincode: String
   },
   bankDetails: {
     accountNumber: String,
@@ -135,6 +164,7 @@ const AccountSchema = new Schema<IAccount>({
 AccountSchema.index({ code: 1 });
 AccountSchema.index({ type: 1 });
 AccountSchema.index({ isActive: 1 });
+AccountSchema.index({ subGroupId: 1 });
 AccountSchema.index({ type: 1, isActive: 1 });
 
 const Account = mongoose.model<IAccount>('Account', AccountSchema);

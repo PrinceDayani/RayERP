@@ -1,17 +1,33 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import axios from 'axios';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const BASE_URL = `${API_URL}/api/general-ledger`;
+
+// Types
 export interface Account {
   _id: string;
   code: string;
   name: string;
   type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
+  balance: number;
+  isActive: boolean;
+  isGroup: boolean;
   parentId?: string;
   level: number;
-  balance: number;
-  isGroup: boolean;
-  isActive: boolean;
   description?: string;
   children?: Account[];
+  openingBalance?: number;
+  currency?: string;
+  subType?: string;
+  category?: string;
+}
+
+export interface JournalLine {
+  accountId: string | any;
+  ledgerId?: string;
+  debit: number;
+  credit: number;
+  description: string;
 }
 
 export interface JournalEntry {
@@ -21,216 +37,190 @@ export interface JournalEntry {
   reference?: string;
   description: string;
   lines: JournalLine[];
+  totalDebit: number;
+  totalCredit: number;
   isPosted: boolean;
-  createdBy: string;
+  createdBy?: string;
   createdAt: string;
-}
-
-export interface JournalLine {
-  accountId: string;
-  description: string;
-  debit: number;
-  credit: number;
+  updatedAt: string;
 }
 
 export interface TrialBalance {
-  accounts: {
-    id: string;
-    code: string;
-    name: string;
-    type: string;
-    debit: number;
-    credit: number;
-  }[];
-  totals: {
-    debits: number;
-    credits: number;
-    balanced: boolean;
-  };
+  accounts: any[];
+  totals: { debits: number; credits: number; balanced: boolean };
   asOfDate: string;
 }
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('auth-token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
+  return { Authorization: `Bearer ${token}` };
 };
 
+
+
+// Groups
+export const getGroups = async () => {
+  const { data } = await axios.get(`${BASE_URL}/groups`, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const getGroupById = async (id: string) => {
+  const { data } = await axios.get(`${BASE_URL}/groups/${id}`, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const createGroup = async (group: any) => {
+  const { data } = await axios.post(`${BASE_URL}/groups`, group, { headers: getAuthHeaders() });
+  return data;
+};
+
+// Sub-Groups
+export const getSubGroups = async (groupId?: string) => {
+  const params = groupId ? { groupId } : {};
+  const { data } = await axios.get(`${BASE_URL}/sub-groups`, { params, headers: getAuthHeaders() });
+  return data;
+};
+
+export const getSubGroupById = async (id: string) => {
+  const { data } = await axios.get(`${BASE_URL}/sub-groups/${id}`, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const createSubGroup = async (subGroup: any) => {
+  const { data } = await axios.post(`${BASE_URL}/sub-groups`, subGroup, { headers: getAuthHeaders() });
+  return data;
+};
+
+// Ledgers
+export const getLedgers = async (subGroupId?: string, search?: string) => {
+  const params: any = {};
+  if (subGroupId) params.subGroupId = subGroupId;
+  if (search) params.search = search;
+  const { data } = await axios.get(`${BASE_URL}/ledgers`, { params, headers: getAuthHeaders() });
+  return data;
+};
+
+export const getLedgerById = async (id: string, params?: any) => {
+  const { data } = await axios.get(`${BASE_URL}/ledgers/${id}`, { params, headers: getAuthHeaders() });
+  return data;
+};
+
+export const createLedger = async (ledger: any) => {
+  const { data } = await axios.post(`${BASE_URL}/ledgers`, ledger, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const updateLedger = async (id: string, ledger: any) => {
+  const { data } = await axios.put(`${BASE_URL}/ledgers/${id}`, ledger, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const deleteLedger = async (id: string) => {
+  await axios.delete(`${BASE_URL}/ledgers/${id}`, { headers: getAuthHeaders() });
+};
+
+// Hierarchy
+export const getAccountHierarchy = async () => {
+  const { data } = await axios.get(`${BASE_URL}/hierarchy`, { headers: getAuthHeaders() });
+  return data;
+};
+
+// Journal Entries
+export const getJournalEntries = async (params?: { startDate?: string; endDate?: string; limit?: number; page?: number }) => {
+  const { data } = await axios.get(`${BASE_URL}/journal-entries`, { params, headers: getAuthHeaders() });
+  return data;
+};
+
+export const getJournalEntry = async (id: string) => {
+  const { data } = await axios.get(`${BASE_URL}/journal-entries/${id}`, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const createJournalEntry = async (entry: any) => {
+  const { data } = await axios.post(`${BASE_URL}/journal-entries`, entry, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const updateJournalEntry = async (id: string, entry: any) => {
+  const { data } = await axios.put(`${BASE_URL}/journal-entries/${id}`, entry, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const postJournalEntry = async (id: string) => {
+  const { data } = await axios.post(`${BASE_URL}/journal-entries/${id}/post`, {}, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const deleteJournalEntry = async (id: string) => {
+  await axios.delete(`${BASE_URL}/journal-entries/${id}`, { headers: getAuthHeaders() });
+};
+
+// Reports
+export const getTrialBalance = async (asOfDate?: string) => {
+  const params = asOfDate ? { asOfDate } : {};
+  const { data } = await axios.get(`${BASE_URL}/trial-balance`, { params, headers: getAuthHeaders() });
+  return data;
+};
+
+export const getAccountLedger = async (accountId: string, startDate?: string, endDate?: string, limit?: number) => {
+  const params: any = {};
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
+  if (limit) params.limit = limit;
+  const { data } = await axios.get(`${BASE_URL}/accounts/${accountId}/ledger`, { params, headers: getAuthHeaders() });
+  return data;
+};
+
+export const getFinancialReports = async (reportType: string, params?: any) => {
+  const { data } = await axios.get(`${BASE_URL}/reports`, { params: { reportType, ...params }, headers: getAuthHeaders() });
+  return data;
+};
+
+// Accounts (unified interface for groups and ledgers)
+export const getAccounts = async (params?: any) => {
+  const { data } = await axios.get(`${BASE_URL}/accounts`, { params, headers: getAuthHeaders() });
+  return data;
+};
+
+export const createAccount = async (account: any) => {
+  const { data } = await axios.post(`${BASE_URL}/accounts`, account, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const updateAccount = async (id: string, account: any) => {
+  const { data } = await axios.put(`${BASE_URL}/accounts/${id}`, account, { headers: getAuthHeaders() });
+  return data;
+};
+
+export const deleteAccount = async (id: string) => {
+  await axios.delete(`${BASE_URL}/accounts/${id}`, { headers: getAuthHeaders() });
+};
+
+// Export as namespace
 export const generalLedgerAPI = {
-  // Account management
-  async getAccounts(params?: { type?: string; hierarchy?: boolean; includeInactive?: boolean }) {
-    const queryParams = new URLSearchParams();
-    if (params?.type) queryParams.append('type', params.type);
-    if (params?.hierarchy) queryParams.append('hierarchy', 'true');
-    if (params?.includeInactive) queryParams.append('includeInactive', 'true');
-    
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/accounts?${queryParams}`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) throw new Error('Failed to fetch accounts');
-    return response.json();
-  },
-
-  async createAccount(accountData: Partial<Account>) {
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/accounts`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(accountData)
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Failed to create account' }));
-      throw new Error(errorData.message || errorData.error || 'Failed to create account');
-    }
-    return response.json();
-  },
-
-  async updateAccount(id: string, updates: Partial<Account>) {
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/accounts/${id}`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(updates)
-    });
-    if (!response.ok) throw new Error('Failed to update account');
-    return response.json();
-  },
-
-  async deleteAccount(id: string) {
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/accounts/${id}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) throw new Error('Failed to delete account');
-    return response.json();
-  },
-
-  async deleteJournalEntry(id: string) {
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/journal-entries/${id}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) throw new Error('Failed to delete journal entry');
-    return response.json();
-  },
-
-  // Journal entries
-  async getJournalEntries(params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.startDate) queryParams.append('startDate', params.startDate);
-    if (params?.endDate) queryParams.append('endDate', params.endDate);
-    
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/journal-entries?${queryParams}`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) throw new Error('Failed to fetch journal entries');
-    return response.json();
-  },
-
-  async getJournalEntry(id: string) {
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/journal-entries/${id}`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) throw new Error('Failed to fetch journal entry');
-    return response.json();
-  },
-
-  async createJournalEntry(entryData: {
-    date: string;
-    reference?: string;
-    description: string;
-    lines: JournalLine[];
-  }) {
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/journal-entries`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(entryData)
-    });
-    if (!response.ok) throw new Error('Failed to create journal entry');
-    return response.json();
-  },
-
-  async updateJournalEntry(id: string, entryData: {
-    date?: string;
-    reference?: string;
-    description?: string;
-    lines?: JournalLine[];
-  }) {
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/journal-entries/${id}`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(entryData)
-    });
-    if (!response.ok) throw new Error('Failed to update journal entry');
-    return response.json();
-  },
-
-  async postJournalEntry(id: string) {
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/journal-entries/${id}/post`, {
-      method: 'POST',
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) throw new Error('Failed to post journal entry');
-    return response.json();
-  },
-
-  // Reports
-  async getTrialBalance(asOfDate?: string): Promise<TrialBalance> {
-    const queryParams = new URLSearchParams();
-    if (asOfDate) queryParams.append('asOfDate', asOfDate);
-    
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/trial-balance?${queryParams}`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) throw new Error('Failed to fetch trial balance');
-    return response.json();
-  },
-
-  async getAccountLedger(accountId: string, params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) {
-    const queryParams = new URLSearchParams();
-    if (params?.startDate) queryParams.append('startDate', params.startDate);
-    if (params?.endDate) queryParams.append('endDate', params.endDate);
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) throw new Error('Failed to fetch account ledger');
-    return response.json();
-  },
-
-  async getFinancialReports(reportType: 'profit-loss' | 'balance-sheet', params?: { startDate?: string; endDate?: string }) {
-    const queryParams = new URLSearchParams();
-    queryParams.append('reportType', reportType);
-    if (params?.startDate) queryParams.append('startDate', params.startDate);
-    if (params?.endDate) queryParams.append('endDate', params.endDate);
-    
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/reports?${queryParams}`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) throw new Error('Failed to fetch financial report');
-    return response.json();
-  },
-
-  // Transaction automation
-  async createTransactionJournal(transactionData: {
-    transactionType: string;
-    transactionId: string;
-    amount: number;
-    lines: JournalLine[];
-    metadata?: any;
-  }) {
-    const response = await fetch(`${API_BASE_URL}/api/general-ledger/transactions/journal`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(transactionData)
-    });
-    if (!response.ok) throw new Error('Failed to create transaction journal');
-    return response.json();
-  }
+  getGroups,
+  getGroupById,
+  createGroup,
+  getSubGroups,
+  getSubGroupById,
+  createSubGroup,
+  getLedgers,
+  getLedgerById,
+  createLedger,
+  updateLedger,
+  deleteLedger,
+  getAccountHierarchy,
+  getJournalEntries,
+  getJournalEntry,
+  createJournalEntry,
+  updateJournalEntry,
+  postJournalEntry,
+  deleteJournalEntry,
+  getTrialBalance,
+  getAccountLedger,
+  getFinancialReports,
+  getAccounts,
+  createAccount,
+  updateAccount,
+  deleteAccount
 };
-
-export default generalLedgerAPI;

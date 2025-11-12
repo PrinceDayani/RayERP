@@ -105,6 +105,14 @@ npm start
 - Relationship tracking
 - Contact categorization
 
+### 💰 Department Budget Management
+- Budget allocation per department and fiscal year
+- Category-wise budget tracking
+- Expense monitoring and recording
+- Budget approval workflow
+- Real-time budget utilization tracking
+- Budget summary and analytics
+
 ### 🔐 Authentication & Authorization
 - JWT-based authentication
 - Role-based access control (RBAC)
@@ -193,6 +201,16 @@ Base URL: `http://localhost:5000/api`
 - `GET /chat/chats/:chatId/messages` - Get chat messages
 - `PUT /chat/chats/:chatId/read` - Mark messages as read
 - `GET /chat/users` - Get available users for chat
+
+### Department Budget Management
+- `GET /department-budgets` - Get all department budgets
+- `POST /department-budgets` - Create new budget
+- `GET /department-budgets/:id` - Get budget by ID
+- `PUT /department-budgets/:id` - Update budget
+- `PUT /department-budgets/:id/approve` - Approve budget
+- `PUT /department-budgets/:id/expense` - Record expense
+- `GET /department-budgets/department/:departmentId/summary` - Get budget summary
+- `DELETE /department-budgets/:id` - Delete budget
 
 ### Analytics & Reports
 - `GET /analytics/dashboard` - Dashboard statistics
@@ -337,7 +355,8 @@ node test-backend.js
 ## 📚 Documentation
 
 For detailed documentation, see:
-- [Socket Connection Fixes](SOCKET_FIXES_SUMMARY.md) - **NEW!** Fixed socket disconnection issues
+- [Department Budget Management](DEPARTMENT_BUDGET.md) - **NEW!** Budget allocation and tracking per department
+- [Socket Connection Fixes](SOCKET_FIXES_SUMMARY.md) - Fixed socket disconnection issues
 - [Real-Time Dashboard](REALTIME_DASHBOARD_QUICK_START.md) - Live dashboard with instant updates
 - [Real-Time Dashboard Technical Details](REALTIME_DASHBOARD_FIX.md) - Implementation details
 - [Project File Sharing](PROJECT_FILE_SHARING.md) - Share files with departments and specific users

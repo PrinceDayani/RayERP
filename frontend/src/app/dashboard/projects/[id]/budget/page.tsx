@@ -256,11 +256,11 @@ export default function ProjectBudgetPage() {
             <h1 className="text-3xl font-bold">Project Budget</h1>
             {budget && (
               <Badge className={
-                budget.status === 'approved' ? 'bg-green-100 text-green-800' :
-                budget.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                budget.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                budget.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                'bg-blue-100 text-blue-800'
+                budget.status === 'approved' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
+                budget.status === 'pending' ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' :
+                budget.status === 'rejected' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
+                budget.status === 'draft' ? 'bg-muted text-muted-foreground' :
+                'bg-blue-500/10 text-blue-600 dark:text-blue-400'
               }>
                 {budget.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
                 {budget.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
@@ -270,7 +270,7 @@ export default function ProjectBudgetPage() {
               </Badge>
             )}
           </div>
-          <p className="text-gray-600">{project?.name}</p>
+          <p className="text-muted-foreground">{project?.name}</p>
         </div>
         <div className="flex gap-2">
           {budget ? (
@@ -368,15 +368,15 @@ export default function ProjectBudgetPage() {
                 {budget.status === 'approved' && <CheckCircle className="h-4 w-4 text-green-600" />}
                 {budget.status === 'rejected' && <XCircle className="h-4 w-4 text-red-600" />}
                 {budget.status === 'pending' && <Clock className="h-4 w-4 text-yellow-600" />}
-                {budget.status === 'draft' && <FileText className="h-4 w-4 text-gray-600" />}
+                {budget.status === 'draft' && <FileText className="h-4 w-4 text-muted-foreground" />}
               </CardHeader>
               <CardContent>
                 <Badge className={
-                  budget.status === 'approved' ? 'bg-green-100 text-green-800' :
-                  budget.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  budget.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                  budget.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                  'bg-blue-100 text-blue-800'
+                  budget.status === 'approved' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
+                  budget.status === 'pending' ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' :
+                  budget.status === 'rejected' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
+                  budget.status === 'draft' ? 'bg-muted text-muted-foreground' :
+                  'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                 }>
                   {budget.status.charAt(0).toUpperCase() + budget.status.slice(1)}
                 </Badge>
@@ -421,7 +421,7 @@ export default function ProjectBudgetPage() {
               <CardContent>
                 <div className="space-y-3">
                   {budget.approvals.map((approval: any, index: number) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
                       <div className="mt-1">
                         {approval.status === 'approved' && <CheckCircle className="h-5 w-5 text-green-600" />}
                         {approval.status === 'rejected' && <XCircle className="h-5 w-5 text-red-600" />}
@@ -431,18 +431,18 @@ export default function ProjectBudgetPage() {
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{approval.userName || 'Unknown User'}</span>
                           <Badge variant="outline" className={
-                            approval.status === 'approved' ? 'bg-green-50 text-green-700 border-green-200' :
-                            approval.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                            'bg-yellow-50 text-yellow-700 border-yellow-200'
+                            approval.status === 'approved' ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' :
+                            approval.status === 'rejected' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' :
+                            'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20'
                           }>
                             {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
                           </Badge>
                         </div>
                         {approval.comments && (
-                          <p className="text-sm text-gray-600 mt-1">{approval.comments}</p>
+                          <p className="text-sm text-muted-foreground mt-1">{approval.comments}</p>
                         )}
                         {approval.approvedAt && (
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground/70 mt-1">
                             {new Date(approval.approvedAt).toLocaleString()}
                           </p>
                         )}
@@ -488,11 +488,11 @@ export default function ProjectBudgetPage() {
                     <div className="space-y-2">
                       <h4 className="text-sm font-medium">Budget Items</h4>
                       {category.items.map((item) => (
-                        <div key={item._id} className="flex justify-between text-xs p-2 bg-gray-50 rounded">
+                        <div key={item._id} className="flex justify-between text-xs p-2 bg-muted/50 rounded">
                           <div>
                             <p className="font-medium">{item.name}</p>
-                            <p className="text-gray-600">{item.description}</p>
-                            <p className="text-gray-500">{item.quantity} × {budget.currency}{item.unitCost}</p>
+                            <p className="text-muted-foreground">{item.description}</p>
+                            <p className="text-muted-foreground/70">{item.quantity} × {budget.currency}{item.unitCost}</p>
                           </div>
                           <div className="text-right">
                             <p className="font-medium">{budget.currency} {item.totalCost.toLocaleString()}</p>
@@ -530,7 +530,7 @@ export default function ProjectBudgetPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {budget.approvals.map((approval: any, index: number) => (
-                      <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
                         <div className="mt-1">
                           {approval.status === 'approved' && <CheckCircle className="h-5 w-5 text-green-600" />}
                           {approval.status === 'rejected' && <XCircle className="h-5 w-5 text-red-600" />}
@@ -540,18 +540,18 @@ export default function ProjectBudgetPage() {
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{approval.userName || 'Unknown User'}</span>
                             <Badge variant="outline" className={
-                              approval.status === 'approved' ? 'bg-green-50 text-green-700 border-green-200' :
-                              approval.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                              'bg-yellow-50 text-yellow-700 border-yellow-200'
+                              approval.status === 'approved' ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' :
+                              approval.status === 'rejected' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' :
+                              'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20'
                             }>
                               {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
                             </Badge>
                           </div>
                           {approval.comments && (
-                            <p className="text-sm text-gray-600 mt-1">{approval.comments}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{approval.comments}</p>
                           )}
                           {approval.approvedAt && (
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-muted-foreground/70 mt-1">
                               {new Date(approval.approvedAt).toLocaleString()}
                             </p>
                           )}
@@ -600,11 +600,11 @@ export default function ProjectBudgetPage() {
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium">Budget Items</h4>
                         {category.items.map((item) => (
-                          <div key={item._id} className="flex justify-between text-xs p-2 bg-gray-50 rounded">
+                          <div key={item._id} className="flex justify-between text-xs p-2 bg-muted/50 rounded">
                             <div>
                               <p className="font-medium">{item.name}</p>
-                              <p className="text-gray-600">{item.description}</p>
-                              <p className="text-gray-500">{item.quantity} × {budget.currency}{item.unitCost}</p>
+                              <p className="text-muted-foreground">{item.description}</p>
+                              <p className="text-muted-foreground/70">{item.quantity} × {budget.currency}{item.unitCost}</p>
                             </div>
                             <div className="text-right">
                               <p className="font-medium">{budget.currency} {item.totalCost.toLocaleString()}</p>
@@ -622,9 +622,9 @@ export default function ProjectBudgetPage() {
       ) : (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <DollarSign className="w-12 h-12 text-gray-400 mb-4" />
+            <DollarSign className="w-12 h-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Budget Created</h3>
-            <p className="text-gray-600 text-center mb-4">
+            <p className="text-muted-foreground text-center mb-4">
               This project doesn't have a budget yet. Create one to start tracking expenses.
             </p>
             <Button onClick={() => setShowDialog(true)}>

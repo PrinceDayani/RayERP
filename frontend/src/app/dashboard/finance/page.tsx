@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calculator, FileText, TrendingUp, BarChart3, DollarSign, Receipt, Building2, Users } from 'lucide-react';
+import { Calculator, FileText, TrendingUp, BarChart3, DollarSign, Receipt, Building2, Users, BookOpen } from 'lucide-react';
 
 export default function FinancePage() {
   const router = useRouter();
@@ -72,6 +72,14 @@ export default function FinancePage() {
       path: '/dashboard/finance/reports',
       color: 'text-pink-600',
       bgColor: 'bg-pink-100'
+    },
+    {
+      title: 'Account Ledger',
+      description: 'View detailed account transaction history',
+      icon: BookOpen,
+      path: '/dashboard/finance/account-ledger',
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-100'
     }
   ];
 

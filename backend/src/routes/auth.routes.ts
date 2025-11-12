@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { register, login, getCurrentUser, logout, checkInitialSetup, checkAuth } from '../controllers/authController';
+import { register, login, getCurrentUser, logout, checkInitialSetup, checkAuth, changePassword } from '../controllers/authController';
 import { protect } from '../middleware/auth.middleware';
 import { authorizeMinLevel } from '../middleware/role.middleware';
 import { updateUserRole, getAllUsers } from '../controllers/userController';
@@ -42,5 +42,7 @@ router.put('/users/:id/role', protect, authorizeMinLevel(90), updateUserRole);
 
 router.post('/initial-setup', authLimiter, register);
 router.get('/initial-setup', generalLimiter, checkInitialSetup);
+
+router.put('/change-password', protect, generalLimiter, changePassword);
 
 export default router;

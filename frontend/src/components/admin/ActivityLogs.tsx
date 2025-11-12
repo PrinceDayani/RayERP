@@ -112,12 +112,14 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
 
     if (searchTerm) {
       filtered = filtered.filter(
-        (log) =>
-          log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          log.resource.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (log.ipAddress && log.ipAddress.toLowerCase().includes(searchTerm.toLowerCase()))
+        (log) => {
+          const userName = typeof log.user === 'string' ? log.user : (log.user?.name || log.user?.email || '');
+          return userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.resource.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (log.ipAddress && log.ipAddress.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
       );
     }
 
@@ -213,15 +215,18 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
     const headers = ["Timestamp", "User", "Action", "Resource", "Status", "Details", "IP Address"];
     const csvContent = [
       headers.join(","),
-      ...filteredLogs.map((log) => [
-        formatDate(log.timestamp),
-        log.user,
-        log.action,
-        log.resource,
-        log.status || 'success',
-        `"${log.details.replace(/"/g, '""')}"`, // Escape quotes
-        log.ipAddress || 'N/A',
-      ].join(",")),
+      ...filteredLogs.map((log) => {
+        const userName = typeof log.user === 'string' ? log.user : (log.user?.name || log.user?.email || 'Unknown');
+        return [
+          formatDate(log.timestamp),
+          userName,
+          log.action,
+          log.resource,
+          log.status || 'success',
+          `"${log.details.replace(/"/g, '""')}"`, // Escape quotes
+          log.ipAddress || 'N/A',
+        ].join(",");
+      }),
     ].join("\n");
 
     // Create and download the file
@@ -392,9 +397,14 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
                   <TableCell className="py-4">
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-xs">
-                        {log.user.charAt(0).toUpperCase()}
+                        {(() => {
+                          const userName = typeof log.user === 'string' ? log.user : (log.user?.name || log.user?.email || 'U');
+                          return userName.charAt(0).toUpperCase();
+                        })()}
                       </div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">{log.user}</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">
+                        {typeof log.user === 'string' ? log.user : (log.user?.name || log.user?.email || 'Unknown')}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="py-4">{getActionBadge(log.action)}</TableCell>

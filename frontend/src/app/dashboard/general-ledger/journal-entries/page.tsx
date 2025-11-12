@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, FileText, ArrowLeft, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, FileText, ArrowLeft, Eye, Edit, Trash2, CheckCircle } from 'lucide-react';
 import { generalLedgerAPI, type JournalEntry, type Account } from '@/lib/api/generalLedgerAPI';
 import { toast } from '@/components/ui/use-toast';
 
@@ -79,6 +79,17 @@ export default function JournalEntriesPage() {
       fetchData();
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to delete entry', variant: 'destructive' });
+    }
+  };
+
+  const handlePost = async (id: string, entryNumber: string) => {
+    if (!confirm(`Post journal entry ${entryNumber}? This will update account balances and create ledger entries.`)) return;
+    try {
+      await generalLedgerAPI.postJournalEntry(id);
+      toast({ title: 'Success', description: 'Journal entry posted successfully' });
+      fetchData();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to post entry', variant: 'destructive' });
     }
   };
 
@@ -184,7 +195,7 @@ export default function JournalEntriesPage() {
 
         <div className="space-y-3">
           <Label>Journal Lines</Label>
-          <div className="bg-gray-50 p-2 rounded text-sm font-medium grid grid-cols-5 gap-2">
+          <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-sm font-medium grid grid-cols-5 gap-2">
             <div>Account</div>
             <div>Description</div>
             <div>Debit</div>
@@ -245,7 +256,7 @@ export default function JournalEntriesPage() {
           </Button>
         </div>
 
-        <div className="bg-blue-50 p-4 rounded-lg">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div><strong>Total Debits:</strong> ₹{totalDebits.toFixed(2)}</div>
             <div><strong>Total Credits:</strong> ₹{totalCredits.toFixed(2)}</div>
@@ -279,7 +290,7 @@ export default function JournalEntriesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <Button variant="ghost" onClick={() => router.back()}>
@@ -287,8 +298,8 @@ export default function JournalEntriesPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Journal Entries</h1>
-            <p className="text-gray-600 mt-1">Create and manage journal entries</p>
+            <h1 className="text-3xl font-bold dark:text-gray-100">Journal Entries</h1>
+            <p className="text-gray-600 dark:text-gray-300 mt-1">Create and manage journal entries</p>
           </div>
         </div>
         
@@ -307,6 +318,23 @@ export default function JournalEntriesPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 mb-4">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-2">
+            <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium dark:text-gray-200">How to create ledger entries:</p>
+              <ol className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-4 list-decimal space-y-1">
+                <li>Create a journal entry using the "Create Journal Entry" button</li>
+                <li>Click the green <CheckCircle className="w-3 h-3 inline" /> (Post) button to post the entry</li>
+                <li>Posting will update account balances and create ledger entries</li>
+                <li>Posted entries cannot be edited or deleted</li>
+              </ol>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -344,18 +372,21 @@ export default function JournalEntriesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleView(entry._id)}>
+                        <Button variant="ghost" size="sm" onClick={() => handleView(entry._id)} title="View">
                           <Eye className="w-4 h-4" />
                         </Button>
                         {!entry.isPosted && (
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(entry._id)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        )}
-                        {!entry.isPosted && (
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(entry._id, entry.entryNumber)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => handlePost(entry._id, entry.entryNumber)} title="Post" className="text-green-600 hover:text-green-700">
+                              <CheckCircle className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(entry._id)} title="Edit">
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(entry._id, entry.entryNumber)} title="Delete" className="text-red-600 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </TableCell>
@@ -472,7 +503,7 @@ export default function JournalEntriesPage() {
         <div><Label>Description *</Label><Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} required rows={2} /></div>
         <div className="space-y-3">
           <Label>Journal Lines</Label>
-          <div className="bg-gray-50 p-2 rounded text-sm font-medium grid grid-cols-5 gap-2">
+          <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-sm font-medium grid grid-cols-5 gap-2">
             <div>Account</div><div>Description</div><div>Debit</div><div>Credit</div><div>Action</div>
           </div>
           {formData.lines.map((line, index) => (
@@ -489,7 +520,7 @@ export default function JournalEntriesPage() {
           ))}
           <Button type="button" variant="outline" onClick={addLine}><Plus className="w-4 h-4 mr-2" />Add Line</Button>
         </div>
-        <div className="bg-blue-50 p-4 rounded-lg">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div><strong>Total Debits:</strong> ₹{totalDebits.toFixed(2)}</div>
             <div><strong>Total Credits:</strong> ₹{totalCredits.toFixed(2)}</div>
