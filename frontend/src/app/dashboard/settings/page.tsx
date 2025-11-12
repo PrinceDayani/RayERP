@@ -11,8 +11,9 @@ import NotificationSettings from '@/components/settings/NotificationSettings';
 import AppearanceSettings from '@/components/settings/AppearanceSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 import { useSocket } from '@/hooks/useSocket';
-import { Settings, User, Bell, Palette, Shield, Wifi, WifiOff, Search, Command, ArrowLeft, Sparkles } from 'lucide-react';
+import { Settings, User, Bell, Palette, Shield, Wifi, WifiOff, Search, Command, ArrowLeft, Sparkles, Users } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import HierarchySettings from '@/components/settings/HierarchySettings';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
@@ -66,10 +67,10 @@ export default function SettingsPage() {
         e.preventDefault();
         setShowSearch(prev => !prev);
       }
-      // Cmd/Ctrl + 1-4 for tab navigation
-      if ((e.metaKey || e.ctrlKey) && ['1', '2', '3', '4'].includes(e.key)) {
+      // Cmd/Ctrl + 1-5 for tab navigation
+      if ((e.metaKey || e.ctrlKey) && ['1', '2', '3', '4', '5'].includes(e.key)) {
         e.preventDefault();
-        const tabs = ['profile', 'notifications', 'appearance', 'security'];
+        const tabs = ['profile', 'notifications', 'appearance', 'security', 'hierarchy'];
         setActiveTab(tabs[parseInt(e.key) - 1]);
       }
       // Escape to close search
@@ -211,7 +212,7 @@ export default function SettingsPage() {
         {/* Settings Tabs */}
         <Tabs defaultValue="profile" value={activeTab} onValueChange={handleTabChange}>
           <div className="sticky top-4 z-10 mb-8">
-            <TabsList className="grid grid-cols-2 lg:grid-cols-4 w-full max-w-4xl mx-auto p-1.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border shadow-xl rounded-2xl">
+            <TabsList className="grid grid-cols-2 lg:grid-cols-5 w-full max-w-5xl mx-auto p-1.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border shadow-xl rounded-2xl">
               <TabsTrigger 
                 value="profile" 
                 className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
@@ -250,6 +251,16 @@ export default function SettingsPage() {
                 <span>Security</span>
                 <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                   ⌘4
+                </kbd>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="hierarchy" 
+                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
+              >
+                <Users className="h-4 w-4" />
+                <span>Hierarchy</span>
+                <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  ⌘5
                 </kbd>
               </TabsTrigger>
             </TabsList>
@@ -318,6 +329,26 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
+          
+          <TabsContent value="hierarchy" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 pointer-events-none"></div>
+              <CardHeader className="relative">
+                <CardTitle className="flex items-center gap-3 text-2xl">
+                  <div className="p-2 bg-gradient-to-br from-indigo-500 to-cyan-600 rounded-xl">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  Organization Hierarchy
+                </CardTitle>
+                <CardDescription className="text-base">
+                  View and contact users with higher roles in your organization
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="relative">
+                <HierarchySettings />
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
         
         {/* Keyboard Shortcuts Help */}
@@ -329,7 +360,7 @@ export default function SettingsPage() {
                 <span>Search</span>
               </div>
               <div className="flex items-center gap-2">
-                <kbd className="px-2 py-1 bg-white dark:bg-slate-700 rounded border shadow-sm font-mono text-xs">⌘1-4</kbd>
+                <kbd className="px-2 py-1 bg-white dark:bg-slate-700 rounded border shadow-sm font-mono text-xs">⌘1-5</kbd>
                 <span>Switch tabs</span>
               </div>
               <div className="flex items-center gap-2">
