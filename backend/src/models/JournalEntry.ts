@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IJournalLine {
-  ledgerId: mongoose.Types.ObjectId;
+  accountId: mongoose.Types.ObjectId;
   debit: number;
   credit: number;
   description: string;
@@ -22,7 +22,7 @@ export interface IJournalEntry extends Document {
 }
 
 const JournalLineSchema = new Schema<IJournalLine>({
-  ledgerId: {
+  accountId: {
     type: Schema.Types.ObjectId,
     ref: 'Account',
     required: true

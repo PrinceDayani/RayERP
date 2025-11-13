@@ -210,6 +210,23 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
     }
   };
 
+<<<<<<< HEAD
+  const exportLogs = async (format: 'text' | 'pdf' | 'excel') => {
+    try {
+      const blob = await adminAPI.exportLogs(format);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `activity-logs-${new Date().toISOString().slice(0, 10)}.${format === 'excel' ? 'csv' : format === 'pdf' ? 'pdf' : 'txt'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
+=======
   const exportLogs = () => {
     // Convert logs to CSV
     const headers = ["Timestamp", "User", "Action", "Resource", "Status", "Details", "IP Address"];
@@ -238,6 +255,7 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+>>>>>>> 9bf2e563046dd1d8fcf20bff1baa39d54de0eadc
   };
 
   if (isLoading) {

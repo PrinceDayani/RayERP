@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { Account } from '../models/Account';
 import { AccountGroup } from '../models/AccountGroup';
 import { AccountSubGroup } from '../models/AccountSubGroup';
-import { AccountLedger } from '../models/AccountLedger';
+import { PartyLedger } from '../models/PartyLedger';
 import { JournalEntry } from '../models/JournalEntry';
 import { Ledger } from '../models/Ledger';
 import { Transaction } from '../models/Transaction';
@@ -102,7 +102,7 @@ export const getLedgers = async (req: Request, res: Response) => {
     if (accountId) filter.accountId = accountId;
     if (search) filter.name = { $regex: search, $options: 'i' };
     
-    const ledgers = await AccountLedger.find(filter)
+    const ledgers = await PartyLedger.find(filter)
       .populate({ path: 'accountId', populate: { path: 'subGroupId' } })
       .sort({ code: 1 });
     res.json(ledgers);
@@ -114,12 +114,12 @@ export const getLedgers = async (req: Request, res: Response) => {
 export const getLedgerById = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate, limit } = req.query;
-    const ledger = await AccountLedger.findById(req.params.id)
+    const ledger = await PartyLedger.findById(req.params.id)
       .populate({ path: 'accountId', populate: { path: 'subGroupId' } });
     if (!ledger) return res.status(404).json({ message: 'Ledger not found' });
     
     const query: any = {
-      'lines.ledgerId': ledger._id,
+      'lines.accountId': ledger.accountId,
       isPosted: true
     };
     
@@ -138,7 +138,7 @@ export const getLedgerById = async (req: Request, res: Response) => {
     const transactions = await transactionQuery;
     
     const ledgerTransactions = transactions.map(entry => {
-      const line = entry.lines.find(l => l.ledgerId.toString() === ledger._id.toString());
+      const line = entry.lines.find(l => l.accountId.toString() === ledger.accountId.toString());
       return {
         entryNumber: entry.entryNumber,
         date: entry.date,
@@ -156,7 +156,7 @@ export const getLedgerById = async (req: Request, res: Response) => {
 
 export const createLedger = async (req: Request, res: Response) => {
   try {
-    const ledger = await AccountLedger.create({ ...req.body, createdBy: req.user?._id });
+    const ledger = await PartyLedger.create({ ...req.body, createdBy: req.user?._id });
     res.status(201).json(ledger);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -165,7 +165,7 @@ export const createLedger = async (req: Request, res: Response) => {
 
 export const updateLedger = async (req: Request, res: Response) => {
   try {
-    const ledger = await AccountLedger.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const ledger = await PartyLedger.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!ledger) return res.status(404).json({ message: 'Ledger not found' });
     res.json(ledger);
   } catch (error: any) {
@@ -175,7 +175,7 @@ export const updateLedger = async (req: Request, res: Response) => {
 
 export const deleteLedger = async (req: Request, res: Response) => {
   try {
-    const ledger = await AccountLedger.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    const ledger = await PartyLedger.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
     if (!ledger) return res.status(404).json({ message: 'Ledger not found' });
     res.json({ message: 'Ledger deleted successfully' });
   } catch (error: any) {
@@ -190,7 +190,7 @@ const buildSubGroupTree = async (parentId: any): Promise<any[]> => {
     const children = await buildSubGroupTree(sg._id);
     const accounts = await Account.find({ subGroupId: sg._id, isActive: true }).sort({ code: 1 });
     const accountsWithLedgers = await Promise.all(accounts.map(async (acc) => {
-      const ledgers = await AccountLedger.find({ accountId: acc._id, isActive: true }).sort({ code: 1 });
+      const ledgers = await PartyLedger.find({ accountId: acc._id, isActive: true }).sort({ code: 1 });
       return { ...acc.toObject(), ledgers };
     }));
     return { ...sg.toObject(), children, accounts: accountsWithLedgers };
@@ -206,7 +206,7 @@ export const getAccountHierarchy = async (req: Request, res: Response) => {
         const children = await buildSubGroupTree(sg._id);
         const accounts = await Account.find({ subGroupId: sg._id, isActive: true }).sort({ code: 1 });
         const accountsWithLedgers = await Promise.all(accounts.map(async (acc) => {
-          const ledgers = await AccountLedger.find({ accountId: acc._id, isActive: true }).sort({ code: 1 });
+          const ledgers = await PartyLedger.find({ accountId: acc._id, isActive: true }).sort({ code: 1 });
           return { ...acc.toObject(), ledgers };
         }));
         return { ...sg.toObject(), children, accounts: accountsWithLedgers };
@@ -423,7 +423,7 @@ export const getJournalEntry = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const entry = await JournalEntry.findById(id)
-      .populate('lines.ledgerId', 'code name')
+      .populate('lines.accountId', 'code name')
       .populate('createdBy', 'name email');
     
     if (!entry) {
@@ -453,7 +453,7 @@ export const getJournalEntries = async (req: Request, res: Response) => {
     const skip = (Number(page) - 1) * Number(limit);
     
     const journalEntries = await JournalEntry.find(query)
-      .populate('lines.ledgerId', 'code name')
+      .populate('lines.accountId', 'code name')
       .populate('createdBy', 'name email')
       .sort({ date: -1, entryNumber: -1 })
       .limit(Number(limit))
@@ -508,8 +508,14 @@ export const createJournalEntry = async (req: Request, res: Response) => {
         });
       }
       
+      if (!account.isActive) {
+        return res.status(400).json({ 
+          message: `Line ${i + 1}: Account '${account.name}' is inactive`
+        });
+      }
+      
       sanitizedLines.push({
-        ledgerId: account._id,
+        accountId: account._id,
         debit: Number(line.debit) || 0,
         credit: Number(line.credit) || 0,
         description: line.description?.trim() || description
@@ -543,7 +549,7 @@ export const createJournalEntry = async (req: Request, res: Response) => {
     await journalEntry.save();
     
     await journalEntry.populate([
-      { path: 'lines.ledgerId', select: 'code name' },
+      { path: 'lines.accountId', select: 'code name' },
       { path: 'createdBy', select: 'name email' }
     ]);
 
@@ -575,9 +581,17 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
     if (lines && Array.isArray(lines)) {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (!line.ledgerId || !line.description) {
+        const accountId = line.accountId || line.ledgerId;
+        if (!accountId || !line.description) {
           return res.status(400).json({ 
-            message: `Line ${i + 1}: Ledger and description are required` 
+            message: `Line ${i + 1}: Account and description are required` 
+          });
+        }
+        
+        const account = await Account.findById(accountId);
+        if (!account) {
+          return res.status(400).json({ 
+            message: `Line ${i + 1}: Account not found` 
           });
         }
       }
@@ -602,7 +616,7 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
       id,
       updateData,
       { new: true, runValidators: true }
-    ).populate('lines.ledgerId', 'code name').populate('createdBy', 'name email');
+    ).populate('lines.accountId', 'code name').populate('createdBy', 'name email');
     
     res.json(updated);
   } catch (error) {
@@ -654,10 +668,12 @@ export const postJournalEntry = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Journal entry already posted' });
     }
 
-    // Process each journal line - update Account balances
+    // Process each journal line - update Account and PartyLedger balances
     for (const line of journalEntry.lines) {
-      const account = await Account.findById(line.ledgerId).session(session);
-      if (!account) continue;
+      const account = await Account.findById(line.accountId).session(session);
+      if (!account) {
+        throw new Error(`Account ${line.accountId} not found`);
+      }
 
       // Calculate new balance based on account type
       let newBalance = account.balance;
@@ -671,15 +687,31 @@ export const postJournalEntry = async (req: Request, res: Response) => {
 
       // Update account balance
       await Account.findByIdAndUpdate(
-        line.ledgerId,
+        line.accountId,
         { balance: newBalance },
         { session }
       );
       
+      // Update PartyLedger balance if exists
+      const partyLedger = await PartyLedger.findOne({ accountId: line.accountId }).session(session);
+      if (partyLedger) {
+        let partyBalance = partyLedger.currentBalance;
+        if (partyLedger.balanceType === 'debit') {
+          partyBalance += line.debit - line.credit;
+        } else {
+          partyBalance += line.credit - line.debit;
+        }
+        await PartyLedger.findByIdAndUpdate(
+          partyLedger._id,
+          { currentBalance: partyBalance },
+          { session }
+        );
+      }
+      
       // Create ledger entry for audit trail
       if (Ledger) {
         await Ledger.create([{
-          accountId: line.ledgerId,
+          accountId: line.accountId,
           journalEntryId: journalEntry._id,
           date: journalEntry.date,
           description: line.description,
