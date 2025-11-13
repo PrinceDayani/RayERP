@@ -36,43 +36,50 @@ export const createEmployee = async (req: Request, res: Response) => {
     
     employeeData.employeeId = nextId;
     
-    // Initialize departments array with primary department if provided
     if (employeeData.department && !employeeData.departments) {
       employeeData.departments = [employeeData.department];
     } else if (employeeData.department && employeeData.departments && !employeeData.departments.includes(employeeData.department)) {
       employeeData.departments.push(employeeData.department);
     }
     
-    // Find Normal role
     const normalRole = await Role.findOne({ name: 'Normal' });
     if (!normalRole) {
       return res.status(400).json({ message: 'Normal role not found. Please ensure roles are seeded.' });
     }
     
-    // Create user account for employee
-    const user = await User.create({
-      name: `${employeeData.firstName} ${employeeData.lastName}`,
-      email: employeeData.email,
-      password: employeeData.employeeId, // Default password is employee ID
-      role: normalRole._id,
-      status: 'active'
-    });
+    // Automatically create user for employee
+    let user;
+    try {
+      user = await User.create({
+        name: `${employeeData.firstName} ${employeeData.lastName}`,
+        email: employeeData.email,
+        password: employeeData.employeeId,
+        role: normalRole._id,
+        status: 'active'
+      });
+    } catch (userError: any) {
+      return res.status(400).json({ message: 'Failed to create user', error: userError.message });
+    }
     
     employeeData.user = user._id;
-    const employee = new Employee(employeeData);
-    await employee.save();
     
-    // Emit socket event
-    const { io } = await import('../server');
-    io.emit('employee:created', employee);
-    
-    // Emit dashboard stats update
-    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
-    await RealTimeEmitter.emitDashboardStats();
-    
-    res.status(201).json(employee);
-  } catch (error) {
-    res.status(400).json({ message: 'Error creating employee', error });
+    try {
+      const employee = new Employee(employeeData);
+      await employee.save();
+      
+      const { io } = await import('../server');
+      io.emit('employee:created', employee);
+      
+      const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+      await RealTimeEmitter.emitDashboardStats();
+      
+      res.status(201).json(employee);
+    } catch (employeeError: any) {
+      await User.findByIdAndDelete(user._id);
+      throw employeeError;
+    }
+  } catch (error: any) {
+    res.status(400).json({ message: 'Error creating employee', error: error.message });
   }
 };
 
@@ -80,7 +87,17 @@ export const updateEmployee = async (req: Request, res: Response) => {
   try {
     const updateData = req.body;
     
-    // Sync departments array with primary department
+    if (updateData.user === null || updateData.user === undefined || updateData.user === '') {
+      return res.status(400).json({ message: 'Employee must have an associated user' });
+    }
+    
+    if (updateData.user) {
+      const userExists = await User.findById(updateData.user);
+      if (!userExists) {
+        return res.status(400).json({ message: 'User does not exist' });
+      }
+    }
+    
     if (updateData.department) {
       const currentEmployee = await Employee.findById(req.params.id);
       if (currentEmployee) {
@@ -100,17 +117,29 @@ export const updateEmployee = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Employee not found' });
     }
     
-    // Emit socket event
+    // Sync user data with employee data
+    if (employee.user && (updateData.firstName || updateData.lastName || updateData.email)) {
+      const userUpdate: any = {};
+      if (updateData.firstName || updateData.lastName) {
+        userUpdate.name = `${employee.firstName} ${employee.lastName}`;
+      }
+      if (updateData.email) {
+        userUpdate.email = employee.email;
+      }
+      if (Object.keys(userUpdate).length > 0) {
+        await User.findByIdAndUpdate(employee.user, userUpdate);
+      }
+    }
+    
     const { io } = await import('../server');
     io.emit('employee:updated', employee);
     
-    // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
     
     res.json(employee);
-  } catch (error) {
-    res.status(400).json({ message: 'Error updating employee', error });
+  } catch (error: any) {
+    res.status(400).json({ message: 'Error updating employee', error: error.message });
   }
 };
 
@@ -121,24 +150,18 @@ export const deleteEmployee = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Employee not found' });
     }
     
-    // Delete associated user if exists
-    if (employee.user) {
-      await User.findByIdAndDelete(employee.user);
-    }
-    
+    await User.findByIdAndDelete(employee.user);
     await Employee.findByIdAndDelete(req.params.id);
     
-    // Emit socket event
     const { io } = await import('../server');
     io.emit('employee:deleted', { id: req.params.id });
     
-    // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
     
     res.json({ message: 'Employee and associated user deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error deleting employee', error });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error deleting employee', error: error.message });
   }
 };
 

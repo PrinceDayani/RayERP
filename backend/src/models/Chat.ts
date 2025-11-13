@@ -2,6 +2,8 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IMessage {
   sender: mongoose.Types.ObjectId;
+  senderName: string;
+  senderEmail: string;
   content: string;
   timestamp: Date;
   read: boolean;
@@ -36,6 +38,8 @@ export interface IChat extends Document {
 
 const messageSchema = new Schema<IMessage>({
   sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  senderName: { type: String, required: true },
+  senderEmail: { type: String, required: true },
   content: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
   read: { type: Boolean, default: false },

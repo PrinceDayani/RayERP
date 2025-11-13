@@ -2,50 +2,48 @@
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, TrendingUp, TrendingDown } from "lucide-react";
-import { projectFinanceApi } from "@/lib/api/projectFinanceApi";
-import { getAllProjects, type Project } from "@/lib/api/projectsAPI";
-import { ProjectCashFlow } from "@/types/project-finance.types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { DollarSign, TrendingUp, TrendingDown, Download, Calendar } from "lucide-react";
+import { reportingApi } from "@/lib/api/finance/reportingApi";
 
 const CashFlowPage = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string>("");
-  const [cashFlowData, setCashFlowData] = useState<ProjectCashFlow | null>(null);
+  const [cashFlowData, setCashFlowData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    fetchProjects();
+    fetchCashFlowData();
   }, []);
 
-  useEffect(() => {
-    if (selectedProject) {
-      fetchCashFlowData();
-    }
-  }, [selectedProject]);
-
-  const fetchProjects = async () => {
+  const fetchCashFlowData = async () => {
+    setLoading(true);
     try {
-      const projectsData = await getAllProjects();
-      setProjects(projectsData || []);
-      if (projectsData?.length > 0) {
-        setSelectedProject(projectsData[0]._id);
+      const response = await reportingApi.getCashFlow(startDate, endDate);
+      if (response.success) {
+        setCashFlowData(response.data);
       }
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error('Error fetching cash flow:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchCashFlowData = async () => {
-    if (!selectedProject) return;
-    setLoading(true);
+  const handleExport = async (format: string) => {
     try {
-      const data = await projectFinanceApi.getCashFlow(selectedProject);
-      setCashFlowData(data);
+      const data = await reportingApi.exportReport('cash-flow', format, startDate, endDate);
+      if (format === 'csv') {
+        const blob = new Blob([data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cash-flow-${startDate}-${endDate}.csv`;
+        a.click();
+      }
     } catch (error) {
-      console.error('Error fetching cash flow data:', error);
-    } finally {
-      setLoading(false);
+      console.error('Export error:', error);
     }
   };
 
@@ -55,22 +53,20 @@ const CashFlowPage = () => {
           <div className="flex items-center gap-3">
             <DollarSign className="h-8 w-8 text-orange-600" />
             <div>
-              <h1 className="text-3xl font-bold">Cash Flow</h1>
-              <p className="text-muted-foreground">Track cash inflows and outflows by activity</p>
+              <h1 className="text-3xl font-bold">Cash Flow Statement</h1>
+              <p className="text-muted-foreground">Track company cash inflows and outflows by activity</p>
             </div>
           </div>
-          <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select Project" />
-            </SelectTrigger>
-            <SelectContent>
-              {projects.map((project) => (
-                <SelectItem key={project._id} value={project._id}>
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40" />
+              <span>to</span>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40" />
+            </div>
+            <Button onClick={fetchCashFlowData}>Refresh</Button>
+            <Button variant="outline" onClick={() => handleExport('csv')}><Download className="h-4 w-4 mr-2" />Export CSV</Button>
+          </div>
         </div>
 
         {loading ? (
@@ -88,7 +84,7 @@ const CashFlowPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ${cashFlowData.openingBalance.toLocaleString()}
+                    ${cashFlowData.openingBalance?.toLocaleString()}
                   </div>
                 </CardContent>
               </Card>
@@ -101,7 +97,7 @@ const CashFlowPage = () => {
                     cashFlowData.netCashFlow > 0 ? 'text-green-600' : 'text-red-600'
                   }`}>
                     {cashFlowData.netCashFlow > 0 ? <TrendingUp className="h-6 w-6" /> : <TrendingDown className="h-6 w-6" />}
-                    ${cashFlowData.netCashFlow.toLocaleString()}
+                    ${cashFlowData.netCashFlow?.toLocaleString()}
                   </div>
                 </CardContent>
               </Card>
@@ -111,7 +107,7 @@ const CashFlowPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-blue-600">
-                    ${cashFlowData.closingBalance.toLocaleString()}
+                    ${cashFlowData.closingBalance?.toLocaleString()}
                   </div>
                 </CardContent>
               </Card>
@@ -124,22 +120,22 @@ const CashFlowPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
-                    <span>Cash Receipts</span>
+                    <span>Cash Inflows</span>
                     <span className="font-medium text-green-600">
-                      +${cashFlowData.operating.receipts.toLocaleString()}
+                      +${cashFlowData.operatingActivities?.inflows?.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Cash Payments</span>
+                    <span>Cash Outflows</span>
                     <span className="font-medium text-red-600">
-                      -${cashFlowData.operating.payments.toLocaleString()}
+                      -${cashFlowData.operatingActivities?.outflows?.toLocaleString()}
                     </span>
                   </div>
                   <hr />
-                  <div className="flex justify-between font-semibold">
+                  <div className="flex justify-between font-bold">
                     <span>Net Operating</span>
-                    <span className={cashFlowData.operating.net > 0 ? 'text-green-600' : 'text-red-600'}>
-                      ${cashFlowData.operating.net.toLocaleString()}
+                    <span className={cashFlowData.operatingActivities?.net > 0 ? 'text-green-600' : 'text-red-600'}>
+                      ${cashFlowData.operatingActivities?.net?.toLocaleString()}
                     </span>
                   </div>
                 </CardContent>
@@ -151,22 +147,22 @@ const CashFlowPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
-                    <span>Cash Receipts</span>
+                    <span>Cash Inflows</span>
                     <span className="font-medium text-green-600">
-                      +${cashFlowData.investing.receipts.toLocaleString()}
+                      +${cashFlowData.investingActivities?.inflows?.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Cash Payments</span>
+                    <span>Cash Outflows</span>
                     <span className="font-medium text-red-600">
-                      -${cashFlowData.investing.payments.toLocaleString()}
+                      -${cashFlowData.investingActivities?.outflows?.toLocaleString()}
                     </span>
                   </div>
                   <hr />
-                  <div className="flex justify-between font-semibold">
+                  <div className="flex justify-between font-bold">
                     <span>Net Investing</span>
-                    <span className={cashFlowData.investing.net > 0 ? 'text-green-600' : 'text-red-600'}>
-                      ${cashFlowData.investing.net.toLocaleString()}
+                    <span className={cashFlowData.investingActivities?.net > 0 ? 'text-green-600' : 'text-red-600'}>
+                      ${cashFlowData.investingActivities?.net?.toLocaleString()}
                     </span>
                   </div>
                 </CardContent>
@@ -178,22 +174,22 @@ const CashFlowPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
-                    <span>Cash Receipts</span>
+                    <span>Cash Inflows</span>
                     <span className="font-medium text-green-600">
-                      +${cashFlowData.financing.receipts.toLocaleString()}
+                      +${cashFlowData.financingActivities?.inflows?.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Cash Payments</span>
+                    <span>Cash Outflows</span>
                     <span className="font-medium text-red-600">
-                      -${cashFlowData.financing.payments.toLocaleString()}
+                      -${cashFlowData.financingActivities?.outflows?.toLocaleString()}
                     </span>
                   </div>
                   <hr />
-                  <div className="flex justify-between font-semibold">
+                  <div className="flex justify-between font-bold">
                     <span>Net Financing</span>
-                    <span className={cashFlowData.financing.net > 0 ? 'text-green-600' : 'text-red-600'}>
-                      ${cashFlowData.financing.net.toLocaleString()}
+                    <span className={cashFlowData.financingActivities?.net > 0 ? 'text-green-600' : 'text-red-600'}>
+                      ${cashFlowData.financingActivities?.net?.toLocaleString()}
                     </span>
                   </div>
                 </CardContent>
@@ -205,9 +201,9 @@ const CashFlowPage = () => {
             <CardContent className="p-6">
               <div className="text-center py-8">
                 <DollarSign className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Select a Project</h3>
+                <h3 className="text-lg font-medium mb-2">No Data Available</h3>
                 <p className="text-muted-foreground">
-                  Choose a project to view its cash flow statement
+                  No cash flow data found for the selected period
                 </p>
               </div>
             </CardContent>

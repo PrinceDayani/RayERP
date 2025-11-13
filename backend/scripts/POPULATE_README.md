@@ -17,6 +17,12 @@ cd backend
 node scripts/clearFinanceData.js
 ```
 
+### Sync Employees and Users
+```bash
+cd backend
+node scripts/syncEmployeesUsers.js
+```
+
 ## What Gets Created
 
 ### 🔐 Roles (5)

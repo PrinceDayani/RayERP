@@ -1,25 +1,13 @@
 import express from 'express';
-import { authenticateToken } from '../middleware/auth.middleware';
-import {
-  getProfitLoss,
-  getBalanceSheet,
-  getCashFlow,
-  getFinancialSummary,
-  exportReport
-} from '../controllers/financialReportController';
+import { getProfitLoss, getBalanceSheet, getCashFlow, exportReport, getComparativeReport } from '../controllers/financialReportController';
+import { protect } from '../middleware/auth.middleware';
 
 const router = express.Router();
 
-router.use(authenticateToken);
-
-router.get('/profit-loss', getProfitLoss);
-router.get('/balance-sheet', getBalanceSheet);
-router.get('/cash-flow', getCashFlow);
-router.get('/summary', getFinancialSummary);
-router.get('/project/:projectId/profit-loss', getProfitLoss);
-router.get('/project/:projectId/balance-sheet', getBalanceSheet);
-router.get('/project/:projectId/cash-flow', getCashFlow);
-router.get('/project/:projectId/summary', getFinancialSummary);
-router.get('/export', exportReport);
+router.get('/profit-loss', protect, getProfitLoss);
+router.get('/balance-sheet', protect, getBalanceSheet);
+router.get('/cash-flow', protect, getCashFlow);
+router.get('/export', protect, exportReport);
+router.get('/comparative', protect, getComparativeReport);
 
 export default router;

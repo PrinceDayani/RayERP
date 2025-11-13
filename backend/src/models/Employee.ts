@@ -26,7 +26,7 @@ export interface IEmployee extends Document {
   };
   skills: string[];
   manager?: mongoose.Types.ObjectId;
-  user?: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,7 +57,27 @@ const employeeSchema = new Schema<IEmployee>({
   },
   skills: [String],
   manager: { type: Schema.Types.ObjectId, ref: 'Employee' },
-  user: { type: Schema.Types.ObjectId, ref: 'User' }
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
+
+employeeSchema.pre('save', async function(next) {
+  if (this.isModified('user') || this.isNew) {
+    const User = mongoose.model('User');
+    const userExists = await User.findById(this.user);
+    if (!userExists) throw new Error('User must exist');
+  }
+  next();
+});
+
+employeeSchema.pre('findOneAndUpdate', async function(next) {
+  const update = this.getUpdate() as any;
+  const userId = update.user || update.$set?.user;
+  if (userId) {
+    const User = mongoose.model('User');
+    const userExists = await User.findById(userId);
+    if (!userExists) throw new Error('User must exist');
+  }
+  next();
+});
 
 export default mongoose.model<IEmployee>('Employee', employeeSchema);

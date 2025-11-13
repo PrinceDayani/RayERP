@@ -83,11 +83,18 @@ export const chatController = {
         }
       }
 
+      const currentUser = await User.findById(userId);
+      if (!currentUser) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+
       const userAgent = req.headers['user-agent'] || '';
       const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
       const message = {
         sender: userId,
+        senderName: currentUser.name,
+        senderEmail: currentUser.email,
         content,
         timestamp: new Date(),
         read: false,

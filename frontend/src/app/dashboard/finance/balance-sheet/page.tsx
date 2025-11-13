@@ -2,50 +2,47 @@
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText } from "lucide-react";
-import { projectFinanceApi } from "@/lib/api/projectFinanceApi";
-import { getAllProjects, type Project } from "@/lib/api/projectsAPI";
-import { ProjectBalanceSheet } from "@/types/project-finance.types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { FileText, Download, Calendar } from "lucide-react";
+import { reportingApi } from "@/lib/api/finance/reportingApi";
 
 const BalanceSheetPage = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string>("");
-  const [balanceSheetData, setBalanceSheetData] = useState<ProjectBalanceSheet | null>(null);
+  const [balanceSheetData, setBalanceSheetData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    fetchProjects();
+    fetchBalanceSheetData();
   }, []);
 
-  useEffect(() => {
-    if (selectedProject) {
-      fetchBalanceSheetData();
-    }
-  }, [selectedProject]);
-
-  const fetchProjects = async () => {
+  const fetchBalanceSheetData = async () => {
+    setLoading(true);
     try {
-      const projectsData = await getAllProjects();
-      setProjects(projectsData || []);
-      if (projectsData?.length > 0) {
-        setSelectedProject(projectsData[0]._id);
+      const response = await reportingApi.getBalanceSheet(asOfDate);
+      if (response.success) {
+        setBalanceSheetData(response.data);
       }
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error('Error fetching balance sheet:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchBalanceSheetData = async () => {
-    if (!selectedProject) return;
-    setLoading(true);
+  const handleExport = async (format: string) => {
     try {
-      const data = await projectFinanceApi.getBalanceSheet(selectedProject);
-      setBalanceSheetData(data);
+      const data = await reportingApi.exportReport('balance-sheet', format, undefined, asOfDate);
+      if (format === 'csv') {
+        const blob = new Blob([data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `balance-sheet-${asOfDate}.csv`;
+        a.click();
+      }
     } catch (error) {
-      console.error('Error fetching balance sheet data:', error);
-    } finally {
-      setLoading(false);
+      console.error('Export error:', error);
     }
   };
 
@@ -56,21 +53,17 @@ const BalanceSheetPage = () => {
             <FileText className="h-8 w-8 text-purple-600" />
             <div>
               <h1 className="text-3xl font-bold">Balance Sheet</h1>
-              <p className="text-muted-foreground">View project assets, liabilities, and equity</p>
+              <p className="text-muted-foreground">Company assets, liabilities, and equity</p>
             </div>
           </div>
-          <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select Project" />
-            </SelectTrigger>
-            <SelectContent>
-              {projects.map((project) => (
-                <SelectItem key={project._id} value={project._id}>
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} className="w-40" />
+            </div>
+            <Button onClick={fetchBalanceSheetData}>Refresh</Button>
+            <Button variant="outline" onClick={() => handleExport('csv')}><Download className="h-4 w-4 mr-2" />Export CSV</Button>
+          </div>
         </div>
 
         {loading ? (
@@ -85,29 +78,17 @@ const BalanceSheetPage = () => {
               <CardHeader>
                 <CardTitle className="text-green-600">Assets</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">Current Assets</h4>
-                  {balanceSheetData.assets.current.map((asset, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>{asset.name}</span>
-                      <span>${asset.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Fixed Assets</h4>
-                  {balanceSheetData.assets.fixed.map((asset, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>{asset.name}</span>
-                      <span>${asset.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="space-y-3">
+                {balanceSheetData.assets?.map((asset: any, index: number) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span>{asset.account} ({asset.code})</span>
+                    <span className="font-medium">${asset.amount.toLocaleString()}</span>
+                  </div>
+                ))}
                 <hr />
-                <div className="flex justify-between font-semibold">
+                <div className="flex justify-between font-bold text-lg">
                   <span>Total Assets</span>
-                  <span className="text-green-600">${balanceSheetData.assets.total.toLocaleString()}</span>
+                  <span className="text-green-600">${balanceSheetData.totalAssets?.toLocaleString()}</span>
                 </div>
               </CardContent>
             </Card>
@@ -116,29 +97,17 @@ const BalanceSheetPage = () => {
               <CardHeader>
                 <CardTitle className="text-red-600">Liabilities</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">Current Liabilities</h4>
-                  {balanceSheetData.liabilities.current.map((liability, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>{liability.name}</span>
-                      <span>${liability.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Long-term Liabilities</h4>
-                  {balanceSheetData.liabilities.longTerm.map((liability, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>{liability.name}</span>
-                      <span>${liability.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="space-y-3">
+                {balanceSheetData.liabilities?.map((liability: any, index: number) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span>{liability.account} ({liability.code})</span>
+                    <span className="font-medium">${liability.amount.toLocaleString()}</span>
+                  </div>
+                ))}
                 <hr />
-                <div className="flex justify-between font-semibold">
+                <div className="flex justify-between font-bold text-lg">
                   <span>Total Liabilities</span>
-                  <span className="text-red-600">${balanceSheetData.liabilities.total.toLocaleString()}</span>
+                  <span className="text-red-600">${balanceSheetData.totalLiabilities?.toLocaleString()}</span>
                 </div>
               </CardContent>
             </Card>
@@ -147,28 +116,25 @@ const BalanceSheetPage = () => {
               <CardHeader>
                 <CardTitle className="text-blue-600">Equity</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-medium mb-2">Equity Items</h4>
-                  {balanceSheetData.equity.items.map((item, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>{item.name}</span>
-                      <span>${item.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="space-y-3">
+                {balanceSheetData.equity?.map((item: any, index: number) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span>{item.account} ({item.code})</span>
+                    <span className="font-medium">${item.amount.toLocaleString()}</span>
+                  </div>
+                ))}
                 <hr />
-                <div className="flex justify-between font-semibold">
+                <div className="flex justify-between font-bold text-lg">
                   <span>Total Equity</span>
-                  <span className="text-blue-600">${balanceSheetData.equity.total.toLocaleString()}</span>
+                  <span className="text-blue-600">${balanceSheetData.totalEquity?.toLocaleString()}</span>
                 </div>
                 <hr />
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total Liab. + Equity</span>
-                  <span>${(balanceSheetData.liabilities.total + balanceSheetData.equity.total).toLocaleString()}</span>
+                  <span>${(balanceSheetData.totalLiabilities + balanceSheetData.totalEquity).toLocaleString()}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {balanceSheetData.assets.total === (balanceSheetData.liabilities.total + balanceSheetData.equity.total) ? 
+                <p className="text-xs text-muted-foreground mt-2">
+                  {Math.abs(balanceSheetData.totalAssets - (balanceSheetData.totalLiabilities + balanceSheetData.totalEquity)) < 0.01 ? 
                     "✓ Balance sheet balances" : "⚠ Balance sheet does not balance"}
                 </p>
               </CardContent>
@@ -179,9 +145,9 @@ const BalanceSheetPage = () => {
             <CardContent className="p-6">
               <div className="text-center py-8">
                 <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Select a Project</h3>
+                <h3 className="text-lg font-medium mb-2">No Data Available</h3>
                 <p className="text-muted-foreground">
-                  Choose a project to view its balance sheet
+                  No balance sheet data found for the selected date
                 </p>
               </div>
             </CardContent>
