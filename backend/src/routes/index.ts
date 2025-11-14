@@ -10,6 +10,7 @@ import express from 'express';
 import contactRoutes from './contact.routes';
 import analyticsRoutes from './analytics.routes';
 import settingsRoutes from './settings.routes';
+import accountingSettingsRoutes from './settings.routes';
 import adminRoutes from './admin.routes';
 import leaveRoutes from './leave.routes';
 import employeeReportRoutes from './employeeReport.routes';
@@ -38,7 +39,11 @@ import integratedFinanceRoutes from './integratedFinance.routes';
 import dashboardRoutes from './dashboard.routes';
 import periodClosingRoutes from './periodClosing.routes';
 import bankReconciliationRoutes from './bankReconciliation.routes';
+import recurringEntryRoutes from './recurringEntry.routes';
+import voucherRoutes from './voucher.routes';
+import advancedReportRoutes from './advancedReport.routes';
 import indianAccountRoutes from './indianAccount.routes';
+import financeAdvancedRoutes from './financeAdvanced.routes';
 
 const router = express.Router();
 
@@ -53,6 +58,7 @@ router.use("/reports", reportRoutes);
 router.use('/contacts', contactRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/accounting-settings', accountingSettingsRoutes);
 router.use('/admin', adminRoutes);
 router.use('/leaves', leaveRoutes);
 router.use('/employee-reports', employeeReportRoutes);
@@ -83,6 +89,10 @@ router.use('/general-ledger', generalLedgerRoutes);
 router.use('/integrated-finance', integratedFinanceRoutes);
 router.use('/period-closing', periodClosingRoutes);
 router.use('/bank-reconciliation', bankReconciliationRoutes);
+router.use('/recurring-entries', recurringEntryRoutes);
+router.use('/vouchers', voucherRoutes);
+router.use('/advanced-reports', advancedReportRoutes);
+router.use('/finance-advanced', financeAdvancedRoutes);
 // Indian accounts merged into general-ledger
 
 // --- Health Check Endpoints ---

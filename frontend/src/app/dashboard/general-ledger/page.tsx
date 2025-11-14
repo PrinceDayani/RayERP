@@ -48,7 +48,7 @@ interface Ledger {
 }
 
 interface VoucherLine {
-  ledgerId: string;
+  accountId: string;
   ledgerName?: string;
   amount: number;
   isDebit: boolean;
@@ -90,6 +90,9 @@ export default function GeneralLedgerPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accountingMode, setAccountingMode] = useState<'western' | 'indian'>('western');
+
+
 
 
   
@@ -99,8 +102,8 @@ export default function GeneralLedgerPage() {
     {
       id: '1', name: 'Salary Payment', description: 'Monthly salary payment template',
       lines: [
-        { ledgerId: '8', isDebit: true, narration: 'Salary for the month' },
-        { ledgerId: '2', isDebit: false, narration: 'Payment through bank' }
+        { accountId: '8', isDebit: true, narration: 'Salary for the month' },
+        { accountId: '2', isDebit: false, narration: 'Payment through bank' }
       ]
     }
   ]);
@@ -114,7 +117,21 @@ export default function GeneralLedgerPage() {
 
   useEffect(() => {
     fetchData();
+    fetchAccountingMode();
   }, []);
+
+  const fetchAccountingMode = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/accounting-settings`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setAccountingMode(data.accountingMode || 'western');
+    } catch (error) {
+      console.error('Failed to fetch accounting mode', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -398,8 +415,8 @@ export default function GeneralLedgerPage() {
     const [formData, setFormData] = useState({
       date: new Date().toISOString().split('T')[0], reference: '', narration: '', project: '', department: '', templateId: '',
       lines: [
-        { ledgerId: '', amount: 0, isDebit: true, narration: '', costCenter: '', billRef: '' },
-        { ledgerId: '', amount: 0, isDebit: false, narration: '', costCenter: '', billRef: '' }
+        { accountId: '', amount: 0, isDebit: true, narration: '', costCenter: '', billRef: '' },
+        { accountId: '', amount: 0, isDebit: false, narration: '', costCenter: '', billRef: '' }
       ]
     });
     
@@ -411,13 +428,13 @@ export default function GeneralLedgerPage() {
       if (template) {
         setFormData(prev => ({
           ...prev, narration: template.description,
-          lines: template.lines.map(line => ({ ...line, amount: 0, costCenter: '', billRef: '' }))
+          lines: template.lines.map(line => ({ ...line, amount: 0, costCenter: '', billRef: '', narration: line.narration || '' }))
         }));
       }
     };
 
     const addLine = () => {
-      setFormData({ ...formData, lines: [...formData.lines, { ledgerId: '', amount: 0, isDebit: true, narration: '', costCenter: '', billRef: '' }] });
+      setFormData({ ...formData, lines: [...formData.lines, { accountId: '', amount: 0, isDebit: true, narration: '', costCenter: '', billRef: '' }] });
     };
 
     const updateLine = (index: number, field: string, value: any) => {
@@ -443,7 +460,7 @@ export default function GeneralLedgerPage() {
 
       try {
         const journalLines = formData.lines.map(line => ({
-          accountId: line.ledgerId,
+          accountId: line.accountId,
           description: line.narration || formData.narration,
           debit: line.isDebit ? line.amount : 0,
           credit: !line.isDebit ? line.amount : 0
@@ -540,7 +557,7 @@ export default function GeneralLedgerPage() {
           </div>
           {formData.lines.map((line, index) => (
             <div key={index} className="grid grid-cols-6 gap-2">
-              <Select value={line.ledgerId} onValueChange={(value) => updateLine(index, 'ledgerId', value)}>
+              <Select value={line.accountId} onValueChange={(value) => updateLine(index, 'accountId', value)}>
                 <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
                 <SelectContent>
                   {accounts.filter(a => !a.isGroup).map(account => (
@@ -602,11 +619,16 @@ export default function GeneralLedgerPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6 space-y-6">
       <div className="flex justify-between items-center bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">General Ledger</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-2">
-            <Calculator className="w-4 h-4" />
-            Complete accounting and financial management
-          </p>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">General Ledger</h1>
+            <div className="text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-2">
+              <Calculator className="w-4 h-4" />
+              Complete accounting and financial management
+              <Badge variant="outline" className="ml-2">
+                {accountingMode === 'indian' ? '🇮🇳 Indian Mode' : '🌍 Western Mode'}
+              </Badge>
+            </div>
+          </div>
         </div>
         <div className="flex space-x-3">
           <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
@@ -741,6 +763,159 @@ export default function GeneralLedgerPage() {
             </div>
           </CardContent>
         </Card>
+        
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20" onClick={() => router.push('/dashboard/general-ledger/bills')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-pink-600 rounded-xl shadow-lg">
+                <Receipt className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-pink-600 dark:text-pink-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Bill-wise Details</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Invoice-level tracking & payments</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-pink-600 dark:text-pink-400">NEW</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Feature</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20" onClick={() => router.push('/dashboard/general-ledger/interest')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-indigo-600 rounded-xl shadow-lg">
+                <DollarSign className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Interest Calculations</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Calculate & post interest entries</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">NEW</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Feature</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-900/20 dark:to-teal-800/20" onClick={() => router.push('/dashboard/general-ledger/budgets')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-teal-600 rounded-xl shadow-lg">
+                <Package className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">GL Budgets</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Budget tracking & variance analysis</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-teal-600 dark:text-teal-400">NEW</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Feature</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20" onClick={() => router.push('/dashboard/general-ledger/cost-centers')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-amber-600 rounded-xl shadow-lg">
+                <Users className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Cost Centers</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Department/project allocation</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-amber-600 dark:text-amber-400">NEW</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Feature</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20" onClick={() => router.push('/dashboard/general-ledger/manage')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-red-600 rounded-xl shadow-lg">
+                <CreditCard className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-red-600 dark:text-red-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Manage All + Advanced</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">CRUD + Reports, Audit, Import/Export, Batch</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-red-600 dark:text-red-400">⚡</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">All-in-One</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20" onClick={() => router.push('/dashboard/general-ledger/bank-reconciliation')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-emerald-600 rounded-xl shadow-lg">
+                <Banknote className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Bank Reconciliation</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Match bank statements with books</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">✓</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Critical</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-violet-50 to-violet-100 dark:from-violet-900/20 dark:to-violet-800/20" onClick={() => router.push('/dashboard/general-ledger/recurring-entries')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-violet-600 rounded-xl shadow-lg">
+                <FileText className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-violet-600 dark:text-violet-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Recurring Entries</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Automate repetitive journal entries</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-violet-600 dark:text-violet-400">🔄</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Auto</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-900/20 dark:to-rose-800/20" onClick={() => router.push('/dashboard/general-ledger/vouchers')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-rose-600 rounded-xl shadow-lg">
+                <Receipt className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-rose-600 dark:text-rose-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">All Vouchers</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Payment, Receipt, Contra, Sales, Purchase</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-rose-600 dark:text-rose-400">6</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Types</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-300 border-0 bg-gradient-to-br from-sky-50 to-sky-100 dark:from-sky-900/20 dark:to-sky-800/20" onClick={() => router.push('/dashboard/general-ledger/advanced-reports')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-sky-600 rounded-xl shadow-lg">
+                <FileSpreadsheet className="w-8 h-8 text-white" />
+              </div>
+              <ChevronRight className="w-6 h-6 text-sky-600 dark:text-sky-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Advanced Reports</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Detailed P&L, Balance Sheet, Cash Flow</p>
+            <div className="mt-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
+              <span className="text-3xl font-bold text-sky-600 dark:text-sky-400">📊</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Pro</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
@@ -815,6 +990,7 @@ export default function GeneralLedgerPage() {
                     <TableHead>Under Group</TableHead>
                     <TableHead className="text-right">Opening Balance</TableHead>
                     <TableHead className="text-right">Current Balance</TableHead>
+                    {accountingMode === 'indian' && <TableHead>GST/PAN</TableHead>}
                     <TableHead>Contact</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -836,6 +1012,14 @@ export default function GeneralLedgerPage() {
                         <TableCell className="text-right font-mono">
                           ₹{ledger.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </TableCell>
+                        {accountingMode === 'indian' && (
+                          <TableCell>
+                            <div className="text-xs">
+                              <div>GST: N/A</div>
+                              <div>PAN: N/A</div>
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell>
                           <div className="text-sm">{ledger.code}</div>
                           {ledger.description && <div className="text-xs text-muted-foreground">{ledger.description}</div>}

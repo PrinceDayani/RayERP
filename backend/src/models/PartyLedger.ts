@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+// Indian/Tally-style: Party ledgers for customers/vendors with contact & tax info
 export interface IPartyLedger extends Document {
   code: string;
   name: string;

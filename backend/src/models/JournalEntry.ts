@@ -5,10 +5,17 @@ export interface IJournalLine {
   debit: number;
   credit: number;
   description: string;
+  costCenter?: string;
+  departmentId?: mongoose.Types.ObjectId;
+  projectId?: mongoose.Types.ObjectId;
+  billReference?: string;
+  billAmount?: number;
+  billDate?: Date;
 }
 
 export interface IJournalEntry extends Document {
   entryNumber: string;
+  voucherType: 'journal' | 'payment' | 'receipt' | 'sales' | 'purchase';
   date: Date;
   reference?: string;
   description: string;
@@ -16,6 +23,8 @@ export interface IJournalEntry extends Document {
   totalDebit: number;
   totalCredit: number;
   isPosted: boolean;
+  currency?: string;
+  exchangeRate?: number;
   createdBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -41,6 +50,29 @@ const JournalLineSchema = new Schema<IJournalLine>({
     type: String,
     required: true,
     trim: true
+  },
+  costCenter: {
+    type: String,
+    trim: true
+  },
+  departmentId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Department'
+  },
+  projectId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project'
+  },
+  billReference: {
+    type: String,
+    trim: true
+  },
+  billAmount: {
+    type: Number,
+    min: 0
+  },
+  billDate: {
+    type: Date
   }
 });
 
@@ -49,6 +81,12 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
     type: String,
     required: true,
     unique: true
+  },
+  voucherType: {
+    type: String,
+    enum: ['journal', 'payment', 'receipt', 'sales', 'purchase'],
+    default: 'journal',
+    required: true
   },
   date: {
     type: Date,
@@ -79,6 +117,16 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
   isPosted: {
     type: Boolean,
     default: false
+  },
+  currency: {
+    type: String,
+    default: 'INR',
+    trim: true
+  },
+  exchangeRate: {
+    type: Number,
+    default: 1,
+    min: 0
   },
   createdBy: {
     type: Schema.Types.ObjectId,

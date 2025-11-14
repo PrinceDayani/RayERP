@@ -11,7 +11,7 @@ import NotificationSettings from '@/components/settings/NotificationSettings';
 import AppearanceSettings from '@/components/settings/AppearanceSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 import { useSocket } from '@/hooks/useSocket';
-import { Settings, User, Bell, Palette, Shield, Wifi, WifiOff, Search, Command, ArrowLeft, Sparkles } from 'lucide-react';
+import { Settings, User, Bell, Palette, Shield, Wifi, WifiOff, Search, Command, ArrowLeft, Sparkles, Globe, IndianRupee } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function SettingsPage() {
@@ -20,7 +20,49 @@ export default function SettingsPage() {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [accountingMode, setAccountingMode] = useState<"western" | "indian">("western");
+  const [switchingMode, setSwitchingMode] = useState(false);
   const socket = useSocket();
+
+  useEffect(() => {
+    fetchAccountingMode();
+  }, []);
+
+  const fetchAccountingMode = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/accounting-settings`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setAccountingMode(data.accountingMode || "western");
+    } catch (error) {
+      console.error("Failed to fetch accounting mode", error);
+    }
+  };
+
+  const toggleAccountingMode = async () => {
+    setSwitchingMode(true);
+    const newMode = accountingMode === "western" ? "indian" : "western";
+    try {
+      const token = localStorage.getItem("token");
+      const endpoint = newMode === "indian" 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/accounting-settings/convert-to-indian`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/accounting-settings/convert-to-western`;
+      
+      await fetch(endpoint, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setAccountingMode(newMode);
+      toast.success(`Switched to ${newMode === "indian" ? "Indian" : "Western"} accounting mode`);
+    } catch (error) {
+      toast.error("Failed to switch accounting mode");
+    } finally {
+      setSwitchingMode(false);
+    }
+  };
 
   // Monitor socket connection
   useEffect(() => {
@@ -166,6 +208,21 @@ export default function SettingsPage() {
                       </>
                     )}
                   </div>
+                  
+                  {/* Accounting Mode Toggle */}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={toggleAccountingMode}
+                    disabled={switchingMode}
+                    className="gap-2 hover:bg-orange-50 dark:hover:bg-orange-950 transition-all"
+                  >
+                    {accountingMode === "indian" ? (
+                      <><IndianRupee className="h-4 w-4" /> Indian</>
+                    ) : (
+                      <><Globe className="h-4 w-4" /> Western</>
+                    )}
+                  </Button>
                   
                   {/* Sync Button */}
                   <Button 

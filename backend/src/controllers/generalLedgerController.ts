@@ -6,6 +6,10 @@ import { PartyLedger } from '../models/PartyLedger';
 import { JournalEntry } from '../models/JournalEntry';
 import { Ledger } from '../models/Ledger';
 import { Transaction } from '../models/Transaction';
+import { CostCenter } from '../models/CostCenter';
+import { Currency, ExchangeRate } from '../models/Currency';
+import { BillDetail } from '../models/BillDetail';
+import { GLBudget } from '../models/GLBudget';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 
@@ -38,6 +42,26 @@ export const createGroup = async (req: Request, res: Response) => {
     res.status(201).json(group);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateGroup = async (req: Request, res: Response) => {
+  try {
+    const group = await AccountGroup.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!group) return res.status(404).json({ message: 'Group not found' });
+    res.json(group);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteGroup = async (req: Request, res: Response) => {
+  try {
+    const group = await AccountGroup.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    if (!group) return res.status(404).json({ message: 'Group not found' });
+    res.json({ message: 'Group deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -91,6 +115,26 @@ export const createSubGroup = async (req: Request, res: Response) => {
     res.status(201).json(subGroup);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateSubGroup = async (req: Request, res: Response) => {
+  try {
+    const subGroup = await AccountSubGroup.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!subGroup) return res.status(404).json({ message: 'Sub-group not found' });
+    res.json(subGroup);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteSubGroup = async (req: Request, res: Response) => {
+  try {
+    const subGroup = await AccountSubGroup.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    if (!subGroup) return res.status(404).json({ message: 'Sub-group not found' });
+    res.json({ message: 'Sub-group deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -493,15 +537,14 @@ export const createJournalEntry = async (req: Request, res: Response) => {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
-      const accountId = line.accountId || line.ledgerId;
-      if (!accountId) {
+      if (!line.accountId) {
         return res.status(400).json({ 
           message: `Line ${i + 1}: Account is required`
         });
       }
       
       // Verify account exists
-      const account = await Account.findById(accountId);
+      const account = await Account.findById(line.accountId);
       if (!account) {
         return res.status(400).json({ 
           message: `Line ${i + 1}: Invalid account ID`
@@ -581,14 +624,13 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
     if (lines && Array.isArray(lines)) {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        const accountId = line.accountId || line.ledgerId;
-        if (!accountId || !line.description) {
+        if (!line.accountId || !line.description) {
           return res.status(400).json({ 
             message: `Line ${i + 1}: Account and description are required` 
           });
         }
         
-        const account = await Account.findById(accountId);
+        const account = await Account.findById(line.accountId);
         if (!account) {
           return res.status(400).json({ 
             message: `Line ${i + 1}: Account not found` 
@@ -1012,5 +1054,429 @@ export const createTransactionJournal = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error creating transaction journal' });
   } finally {
     session.endSession();
+  }
+};
+
+// Voucher Types
+export const getVouchersByType = async (req: Request, res: Response) => {
+  try {
+    const { voucherType } = req.params;
+    const { startDate, endDate, page = 1, limit = 50 } = req.query;
+    
+    const query: any = { voucherType };
+    if (startDate && endDate) {
+      query.date = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
+    }
+    
+    const skip = (Number(page) - 1) * Number(limit);
+    const entries = await JournalEntry.find(query)
+      .populate('lines.accountId', 'code name')
+      .sort({ date: -1 })
+      .limit(Number(limit))
+      .skip(skip);
+    
+    const total = await JournalEntry.countDocuments(query);
+    
+    res.json({ entries, total, page: Number(page), pages: Math.ceil(total / Number(limit)) });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Currencies
+export const getCurrencies = async (req: Request, res: Response) => {
+  try {
+    const currencies = await Currency.find().sort({ code: 1 });
+    res.json(currencies);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const createCurrency = async (req: Request, res: Response) => {
+  try {
+    const currency = await Currency.create(req.body);
+    res.status(201).json(currency);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateCurrency = async (req: Request, res: Response) => {
+  try {
+    const currency = await Currency.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!currency) return res.status(404).json({ message: 'Currency not found' });
+    res.json(currency);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteCurrency = async (req: Request, res: Response) => {
+  try {
+    const currency = await Currency.findByIdAndDelete(req.params.id);
+    if (!currency) return res.status(404).json({ message: 'Currency not found' });
+    res.json({ message: 'Currency deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getExchangeRate = async (req: Request, res: Response) => {
+  try {
+    const { fromCurrency, toCurrency, date } = req.query;
+    const query: any = { fromCurrency, toCurrency };
+    if (date) query.date = { $lte: new Date(date as string) };
+    
+    const rate = await ExchangeRate.findOne(query).sort({ date: -1 });
+    res.json(rate || { rate: 1 });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateExchangeRate = async (req: Request, res: Response) => {
+  try {
+    const rate = await ExchangeRate.create(req.body);
+    res.status(201).json(rate);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Cost Centers
+export const getCostCenters = async (req: Request, res: Response) => {
+  try {
+    const costCenters = await CostCenter.find({ isActive: true })
+      .populate('departmentId', 'name')
+      .populate('projectId', 'name')
+      .sort({ code: 1 });
+    res.json(costCenters);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const createCostCenter = async (req: Request, res: Response) => {
+  try {
+    const costCenter = await CostCenter.create(req.body);
+    res.status(201).json(costCenter);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateCostCenter = async (req: Request, res: Response) => {
+  try {
+    const costCenter = await CostCenter.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!costCenter) return res.status(404).json({ message: 'Cost center not found' });
+    res.json(costCenter);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteCostCenter = async (req: Request, res: Response) => {
+  try {
+    const costCenter = await CostCenter.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    if (!costCenter) return res.status(404).json({ message: 'Cost center not found' });
+    res.json({ message: 'Cost center deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getCostCenterReport = async (req: Request, res: Response) => {
+  try {
+    const { costCenterId } = req.params;
+    const { startDate, endDate } = req.query;
+    
+    const costCenter = await CostCenter.findById(costCenterId);
+    if (!costCenter) return res.status(404).json({ message: 'Cost center not found' });
+    
+    const query: any = {
+      'lines.costCenter': costCenter.code,
+      isPosted: true
+    };
+    if (startDate && endDate) {
+      query.date = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
+    }
+    
+    const entries = await JournalEntry.find(query)
+      .populate('lines.accountId', 'code name')
+      .sort({ date: -1 });
+    
+    let totalDebit = 0, totalCredit = 0;
+    const transactions = entries.flatMap(entry => 
+      entry.lines
+        .filter(line => line.costCenter === costCenter.code)
+        .map(line => {
+          totalDebit += line.debit;
+          totalCredit += line.credit;
+          return {
+            date: entry.date,
+            entryNumber: entry.entryNumber,
+            description: line.description,
+            debit: line.debit,
+            credit: line.credit
+          };
+        })
+    );
+    
+    res.json({ costCenter, transactions, totalDebit, totalCredit, net: totalDebit - totalCredit });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Bill-wise Details
+export const getBillDetails = async (req: Request, res: Response) => {
+  try {
+    const { accountId } = req.params;
+    const { status } = req.query;
+    const query: any = { accountId };
+    if (status) query.status = status;
+    
+    const bills = await BillDetail.find(query).sort({ billDate: -1 });
+    res.json(bills);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const createBillDetail = async (req: Request, res: Response) => {
+  try {
+    const billData = { ...req.body, balanceAmount: req.body.billAmount - (req.body.paidAmount || 0) };
+    const bill = await BillDetail.create(billData);
+    res.status(201).json(bill);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateBillDetail = async (req: Request, res: Response) => {
+  try {
+    const { billId } = req.params;
+    const bill = await BillDetail.findByIdAndUpdate(billId, req.body, { new: true });
+    if (!bill) return res.status(404).json({ message: 'Bill not found' });
+    res.json(bill);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteBillDetail = async (req: Request, res: Response) => {
+  try {
+    const { billId } = req.params;
+    const bill = await BillDetail.findByIdAndDelete(billId);
+    if (!bill) return res.status(404).json({ message: 'Bill not found' });
+    res.json({ message: 'Bill deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateBillPayment = async (req: Request, res: Response) => {
+  try {
+    const { billId } = req.params;
+    const { paymentAmount } = req.body;
+    
+    const bill = await BillDetail.findById(billId);
+    if (!bill) return res.status(404).json({ message: 'Bill not found' });
+    
+    bill.paidAmount += paymentAmount;
+    bill.balanceAmount = bill.billAmount - bill.paidAmount;
+    bill.status = bill.balanceAmount === 0 ? 'paid' : bill.paidAmount > 0 ? 'partial' : 'pending';
+    await bill.save();
+    
+    res.json(bill);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const getBillStatement = async (req: Request, res: Response) => {
+  try {
+    const { accountId } = req.params;
+    const { startDate, endDate } = req.query;
+    
+    const query: any = { accountId };
+    if (startDate && endDate) {
+      query.billDate = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
+    }
+    
+    const bills = await BillDetail.find(query).sort({ billDate: -1 });
+    const summary = {
+      totalBills: bills.length,
+      totalAmount: bills.reduce((sum, b) => sum + b.billAmount, 0),
+      totalPaid: bills.reduce((sum, b) => sum + b.paidAmount, 0),
+      totalBalance: bills.reduce((sum, b) => sum + b.balanceAmount, 0)
+    };
+    
+    res.json({ bills, summary });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Interest Calculations
+export const calculateInterest = async (req: Request, res: Response) => {
+  try {
+    const { accountId } = req.params;
+    const { fromDate, toDate } = req.body;
+    
+    const account = await Account.findById(accountId);
+    if (!account) return res.status(404).json({ message: 'Account not found' });
+    if (!account.enableInterest) return res.status(400).json({ message: 'Interest not enabled for this account' });
+    
+    const days = Math.ceil((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24));
+    const interest = (account.balance * (account.interestRate || 0) * days) / (365 * 100);
+    
+    res.json({ accountId, fromDate, toDate, principal: account.balance, rate: account.interestRate, days, interest });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const postInterestEntry = async (req: Request, res: Response) => {
+  try {
+    const { accountId } = req.params;
+    const { interest, date, interestAccountId } = req.body;
+    
+    const lastEntry = await JournalEntry.findOne().sort({ entryNumber: -1 });
+    const nextNumber = lastEntry ? parseInt(lastEntry.entryNumber.replace('JE', '')) + 1 : 1;
+    const entryNumber = `JE${nextNumber.toString().padStart(6, '0')}`;
+    
+    const entry = await JournalEntry.create({
+      entryNumber,
+      voucherType: 'journal',
+      date: new Date(date),
+      description: 'Interest calculation',
+      lines: [
+        { accountId: interestAccountId, debit: interest, credit: 0, description: 'Interest expense' },
+        { accountId, debit: 0, credit: interest, description: 'Interest income' }
+      ]
+    });
+    
+    res.status(201).json(entry);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const getInterestReport = async (req: Request, res: Response) => {
+  try {
+    const { accountId } = req.params;
+    const { fiscalYear } = req.query;
+    
+    const account = await Account.findById(accountId);
+    if (!account) return res.status(404).json({ message: 'Account not found' });
+    
+    const startDate = new Date(`${fiscalYear}-04-01`);
+    const endDate = new Date(`${Number(fiscalYear) + 1}-03-31`);
+    
+    const entries = await JournalEntry.find({
+      'lines.accountId': accountId,
+      description: /interest/i,
+      date: { $gte: startDate, $lte: endDate },
+      isPosted: true
+    });
+    
+    const totalInterest = entries.reduce((sum, e) => {
+      const line = e.lines.find(l => l.accountId.toString() === accountId);
+      return sum + (line ? line.credit - line.debit : 0);
+    }, 0);
+    
+    res.json({ account, fiscalYear, totalInterest, entries });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GL Budgets
+export const getGLBudgets = async (req: Request, res: Response) => {
+  try {
+    const { fiscalYear } = req.query;
+    const query: any = {};
+    if (fiscalYear) query.fiscalYear = fiscalYear;
+    
+    const budgets = await GLBudget.find(query).populate('accountId', 'code name type');
+    res.json(budgets);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const createGLBudget = async (req: Request, res: Response) => {
+  try {
+    const budget = await GLBudget.create(req.body);
+    res.status(201).json(budget);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const updateGLBudget = async (req: Request, res: Response) => {
+  try {
+    const budget = await GLBudget.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!budget) return res.status(404).json({ message: 'Budget not found' });
+    res.json(budget);
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteGLBudget = async (req: Request, res: Response) => {
+  try {
+    const budget = await GLBudget.findByIdAndDelete(req.params.id);
+    if (!budget) return res.status(404).json({ message: 'Budget not found' });
+    res.json({ message: 'Budget deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getBudgetVarianceReport = async (req: Request, res: Response) => {
+  try {
+    const { fiscalYear } = req.query;
+    const budgets = await GLBudget.find({ fiscalYear }).populate('accountId', 'code name type');
+    
+    for (const budget of budgets) {
+      const account = await Account.findById(budget.accountId);
+      if (account) {
+        budget.actualAmount = account.balance;
+        budget.variance = budget.budgetAmount - budget.actualAmount;
+        budget.utilizationPercent = budget.budgetAmount > 0 ? (budget.actualAmount / budget.budgetAmount) * 100 : 0;
+        await budget.save();
+      }
+    }
+    
+    res.json(budgets);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getAccountBudgetStatus = async (req: Request, res: Response) => {
+  try {
+    const { accountId } = req.params;
+    const { fiscalYear } = req.query;
+    
+    const budget = await GLBudget.findOne({ accountId, fiscalYear });
+    const account = await Account.findById(accountId);
+    
+    if (!account) return res.status(404).json({ message: 'Account not found' });
+    
+    const status = {
+      account: { code: account.code, name: account.name, balance: account.balance },
+      budget: budget ? budget.budgetAmount : 0,
+      actual: account.balance,
+      variance: budget ? budget.budgetAmount - account.balance : 0,
+      utilization: budget && budget.budgetAmount > 0 ? (account.balance / budget.budgetAmount) * 100 : 0
+    };
+    
+    res.json(status);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
 };

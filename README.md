@@ -113,6 +113,19 @@ npm start
 - Real-time budget utilization tracking
 - Budget summary and analytics
 
+### 🧾 Complete Voucher System
+- **8 Voucher Types**: Payment, Receipt, Contra, Sales, Purchase, Journal, Debit Note, Credit Note
+- **Auto-numbering**: Automatic voucher number generation with fiscal year prefix
+- **Double-entry validation**: Ensures debits equal credits
+- **Multi-line entries**: Support for complex transactions
+- **Draft & Post workflow**: Create, review, and post vouchers
+- **Cancellation tracking**: Cancel posted vouchers with reason
+- **Party management**: Track vendors, customers, and parties
+- **Payment modes**: Cash, Bank, Cheque, UPI, Card, NEFT, RTGS
+- **Invoice linking**: Link vouchers to invoices
+- **Real-time statistics**: Live voucher stats by type and status
+- **Journal entry integration**: Auto-create GL entries on posting
+
 ### 🔐 Authentication & Authorization
 - JWT-based authentication
 - Role-based access control (RBAC)
@@ -124,6 +137,23 @@ npm start
 - Business intelligence reports
 - Data visualization
 - Export capabilities
+
+### 📊 Balance Sheet (Production Ready)
+- **Comparative Analysis**: YoY, QoQ, and custom date comparisons
+- **Drill-down to Transactions**: Click any account to view underlying transactions
+- **Financial Ratios**: Current ratio, debt-to-equity, working capital
+- **PDF & CSV Export**: One-click export with formatting
+- **Visual Change Indicators**: Green/red arrows showing increases/decreases
+- **Real-time Calculations**: Automatic balance verification
+
+### 🏦 Bank Reconciliation (Production Ready)
+- **Auto-Matching Algorithm**: Fuzzy matching with 3-day tolerance and description matching
+- **Bank Statement Upload**: Import statements with metadata tracking
+- **Bulk Operations**: Select and match multiple transactions at once
+- **Reconciliation History**: Complete audit trail of all reconciliations
+- **Outstanding Items Report**: Track outstanding cheques and deposits in transit
+- **Persistent State**: Resume incomplete reconciliations anytime
+- **Status Tracking**: Pending → In Progress → Completed workflow
 
 ### 💬 Chat & Messaging
 - Real-time chat between users
@@ -211,6 +241,32 @@ Base URL: `http://localhost:5000/api`
 - `PUT /department-budgets/:id/expense` - Record expense
 - `GET /department-budgets/department/:departmentId/summary` - Get budget summary
 - `DELETE /department-budgets/:id` - Delete budget
+
+### Voucher Management
+- `POST /vouchers` - Create new voucher
+- `GET /vouchers` - Get all vouchers (with filters)
+- `GET /vouchers/stats` - Get voucher statistics
+- `GET /vouchers/:id` - Get voucher by ID
+- `PUT /vouchers/:id` - Update voucher (draft only)
+- `POST /vouchers/:id/post` - Post voucher (lock and update balances)
+- `POST /vouchers/:id/cancel` - Cancel posted voucher
+- `DELETE /vouchers/:id` - Delete voucher (draft only)
+
+### Financial Reports
+- `GET /financial-reports/balance-sheet` - Get balance sheet with comparison
+- `GET /financial-reports/profit-loss` - Get profit & loss statement
+- `GET /financial-reports/cash-flow` - Get cash flow statement
+- `GET /financial-reports/export` - Export reports (CSV/PDF)
+- `GET /financial-reports/account-transactions/:accountId` - Get account drill-down
+
+### Bank Reconciliation
+- `POST /bank-reconciliation/statements` - Upload bank statement
+- `GET /bank-reconciliation/statements` - Get all statements
+- `POST /bank-reconciliation/statements/:id/reconcile` - Start reconciliation with auto-matching
+- `PUT /bank-reconciliation/reconciliations/:id/complete` - Complete reconciliation
+- `GET /bank-reconciliation/reconciliations` - Get reconciliation history
+- `POST /bank-reconciliation/reconciliations/bulk-match` - Bulk match transactions
+- `GET /bank-reconciliation/reconciliations/outstanding/:accountId` - Get outstanding items
 
 ### Analytics & Reports
 - `GET /analytics/dashboard` - Dashboard statistics
@@ -355,7 +411,11 @@ node test-backend.js
 ## 📚 Documentation
 
 For detailed documentation, see:
-- [Department Budget Management](DEPARTMENT_BUDGET.md) - **NEW!** Budget allocation and tracking per department
+- [Balance Sheet & Bank Reconciliation Upgrade](BALANCE_SHEET_BANK_RECON_UPGRADE.md) - **NEW!** Production-ready with all enterprise features
+- [Complete Voucher System](VOUCHER_SYSTEM.md) - All 8 voucher types with full accounting integration
+- [Voucher Quick Start Guide](VOUCHER_QUICK_START.md) - Get started with vouchers in 5 minutes
+- [Unified General Ledger](UNIFIED_GENERAL_LEDGER.md) - All accounting features in one place with superior UX
+- [Department Budget Management](DEPARTMENT_BUDGET.md) - Budget allocation and tracking per department
 - [Socket Connection Fixes](SOCKET_FIXES_SUMMARY.md) - Fixed socket disconnection issues
 - [Real-Time Dashboard](REALTIME_DASHBOARD_QUICK_START.md) - Live dashboard with instant updates
 - [Real-Time Dashboard Technical Details](REALTIME_DASHBOARD_FIX.md) - Implementation details

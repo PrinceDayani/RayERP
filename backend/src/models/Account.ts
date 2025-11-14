@@ -17,6 +17,10 @@ export interface IAccount extends Document {
   currency: string;
   parentId?: mongoose.Types.ObjectId;
   subGroupId?: mongoose.Types.ObjectId;
+  enableBillTracking?: boolean;
+  enableInterest?: boolean;
+  interestRate?: number;
+  budgetAmount?: number;
   taxInfo?: {
     gstNo?: string;
     panNo?: string;
@@ -152,6 +156,23 @@ const AccountSchema = new Schema<IAccount>({
     default: 0
   },
   tags: [String],
+  enableBillTracking: {
+    type: Boolean,
+    default: false
+  },
+  enableInterest: {
+    type: Boolean,
+    default: false
+  },
+  interestRate: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  budgetAmount: {
+    type: Number,
+    default: 0
+  },
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User',

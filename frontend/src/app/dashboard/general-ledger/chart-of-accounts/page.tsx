@@ -169,16 +169,13 @@ export default function ChartOfAccountsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!selectedAccount) return;
-      
+      if (!selectedAccount) return;  
       try {
         await generalLedgerAPI.updateAccount(selectedAccount._id, formData);
-
         toast({
           title: 'Success',
           description: 'Account updated successfully'
         });
-
         setShowEditDialog(false);
         fetchAccounts();
       } catch (error) {

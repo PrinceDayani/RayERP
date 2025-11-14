@@ -131,12 +131,14 @@ export const startReconciliation = async (req: Request, res: Response) => {
     const unmatchedBookEntries: mongoose.Types.ObjectId[] = [];
     const unmatchedBankEntries: string[] = [];
 
+    // Auto-matching algorithm with fuzzy matching
     for (const bankTxn of statement.transactions) {
-      const match = ledgerEntries.find(entry =>
-        Math.abs(entry.debit - bankTxn.debit) < 0.01 &&
-        Math.abs(entry.credit - bankTxn.credit) < 0.01 &&
-        entry.date.toDateString() === new Date(bankTxn.date).toDateString()
-      );
+      const match = ledgerEntries.find(entry => {
+        const amountMatch = Math.abs(entry.debit - bankTxn.debit) < 0.01 && Math.abs(entry.credit - bankTxn.credit) < 0.01;
+        const dateMatch = Math.abs(entry.date.getTime() - new Date(bankTxn.date).getTime()) < 3 * 24 * 60 * 60 * 1000; // 3 days tolerance
+        const descMatch = entry.description?.toLowerCase().includes(bankTxn.description?.toLowerCase().substring(0, 10) || '');
+        return amountMatch && (dateMatch || descMatch);
+      });
 
       if (match) {
         matchedTransactions.push(match._id);
@@ -168,6 +170,49 @@ export const startReconciliation = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error starting reconciliation' });
   }
 };
+
+export const bulkMatch = async (req: Request, res: Response) => {
+  try {
+    const { reconciliationId, matches } = req.body;
+    const reconciliation = await Reconciliation.findById(reconciliationId);
+    if (!reconciliation) {
+      return res.status(404).json({ message: 'Reconciliation not found' });
+    }
+    
+    for (const match of matches) {
+      if (!reconciliation.matchedTransactions.includes(match.ledgerId)) {
+        reconciliation.matchedTransactions.push(match.ledgerId);
+        reconciliation.unmatchedBookEntries = reconciliation.unmatchedBookEntries.filter(id => !id.equals(match.ledgerId));
+      }
+    }
+    
+    await reconciliation.save();
+    res.json({ success: true, data: reconciliation });
+  } catch (error) {
+    logger.error('Bulk match error:', error);
+    res.status(500).json({ message: 'Error performing bulk match' });
+  }
+};
+
+export const getOutstandingItems = async (req: Request, res: Response) => {
+  try {
+    const { accountId } = req.params;
+    const reconciliations = await Reconciliation.find({ accountId, status: 'completed' }).sort({ reconciliationDate: -1 }).limit(1);
+    
+    if (reconciliations.length === 0) {
+      return res.json({ success: true, data: { outstandingCheques: [], depositsInTransit: [] } });
+    }
+    
+    const lastRecon = reconciliations[0];
+    const outstandingCheques = await Ledger.find({ _id: { $in: lastRecon.unmatchedBookEntries }, debit: { $gt: 0 } });
+    const depositsInTransit = await Ledger.find({ _id: { $in: lastRecon.unmatchedBookEntries }, credit: { $gt: 0 } });
+    
+    res.json({ success: true, data: { outstandingCheques, depositsInTransit } });
+  } catch (error) {
+    logger.error('Outstanding items error:', error);
+    res.status(500).json({ message: 'Error fetching outstanding items' });
+  }
+}
 
 export const completeReconciliation = async (req: Request, res: Response) => {
   try {
