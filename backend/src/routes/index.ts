@@ -44,6 +44,20 @@ import voucherRoutes from './voucher.routes';
 import advancedReportRoutes from './advancedReport.routes';
 import indianAccountRoutes from './indianAccount.routes';
 import financeAdvancedRoutes from './financeAdvanced.routes';
+import billsRoutes from './bills.routes';
+import costCenterRoutes from './costCenter.routes';
+import chartOfAccountsRoutes from './chartOfAccounts.routes';
+import glBudgetRoutes from './glBudget.routes';
+import interestCalculationRoutes from './interestCalculation.routes';
+import invoiceEnhancedRoutes from './invoiceEnhanced.routes';
+import journalEnhancedRoutes from './journalEnhanced.routes';
+import invoiceTemplateRoutes from './invoiceTemplate.routes';
+import journalTemplateRoutes from './journalTemplate.routes';
+import allocationRuleRoutes from './allocationRule.routes';
+import invoiceNewRoutes from './invoice.routes';
+import journalEntryRoutes from './journalEntry.routes';
+import invoiceTemplateNewRoutes from './invoiceTemplate.routes';
+import journalEntryTemplateRoutes from './journalEntryTemplate.routes';
 
 const router = express.Router();
 
@@ -93,6 +107,20 @@ router.use('/recurring-entries', recurringEntryRoutes);
 router.use('/vouchers', voucherRoutes);
 router.use('/advanced-reports', advancedReportRoutes);
 router.use('/finance-advanced', financeAdvancedRoutes);
+router.use('/bills', billsRoutes);
+router.use('/cost-centers', costCenterRoutes);
+router.use('/chart-of-accounts', chartOfAccountsRoutes);
+router.use('/gl-budgets', glBudgetRoutes);
+router.use('/interest-calculations', interestCalculationRoutes);
+router.use('/invoices-enhanced', invoiceEnhancedRoutes);
+router.use('/journal-enhanced', journalEnhancedRoutes);
+router.use('/invoice-templates', invoiceTemplateRoutes);
+router.use('/journal-templates', journalTemplateRoutes);
+router.use('/allocation-rules', allocationRuleRoutes);
+router.use('/invoices-new', invoiceNewRoutes);
+router.use('/journal-entries', journalEntryRoutes);
+router.use('/invoice-templates-new', invoiceTemplateNewRoutes);
+router.use('/journal-entry-templates', journalEntryTemplateRoutes);
 // Indian accounts merged into general-ledger
 
 // --- Health Check Endpoints ---

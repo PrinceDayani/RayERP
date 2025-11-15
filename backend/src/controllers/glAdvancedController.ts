@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import AuditLog from '../models/AuditLog';
 import Scenario from '../models/Scenario';
-import { JournalEntry } from '../models/JournalEntry';
+import JournalEntry from '../models/JournalEntry';
 import { AccountLedger } from '../models/AccountLedger';
 import mongoose from 'mongoose';
 

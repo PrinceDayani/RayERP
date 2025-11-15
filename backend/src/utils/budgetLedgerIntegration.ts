@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import Budget from '../models/Budget';
 import ProjectJournalEntry from '../models/ProjectLedger';
-import { JournalEntry } from '../models/JournalEntry';
+import JournalEntry from '../models/JournalEntry';
 import { Account } from '../models/Account';
 import { Ledger } from '../models/Ledger';
 import { logger } from './logger';

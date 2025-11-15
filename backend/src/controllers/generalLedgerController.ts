@@ -3,7 +3,7 @@ import { Account } from '../models/Account';
 import { AccountGroup } from '../models/AccountGroup';
 import { AccountSubGroup } from '../models/AccountSubGroup';
 import { PartyLedger } from '../models/PartyLedger';
-import { JournalEntry } from '../models/JournalEntry';
+import JournalEntry from '../models/JournalEntry';
 import { Ledger } from '../models/Ledger';
 import { Transaction } from '../models/Transaction';
 import { CostCenter } from '../models/CostCenter';

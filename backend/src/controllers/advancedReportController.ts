@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Account } from '../models/Account';
-import { JournalEntry } from '../models/JournalEntry';
+import JournalEntry from '../models/JournalEntry';
 import { Voucher } from '../models/Voucher';
 import { logger } from '../utils/logger';
 

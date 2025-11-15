@@ -9,15 +9,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, Download, Upload, GitBranch } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { costCenterAPI } from '@/lib/api/costCenterAPI';
 
 export default function CostCentersPage() {
   const [costCenters, setCostCenters] = useState<any[]>([]);
   const [showDialog, setShowDialog] = useState(false);
-  const [formData, setFormData] = useState({ name: '', code: '', description: '', budget: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    code: '', 
+    description: '', 
+    budget: '', 
+    budgetPeriod: 'yearly',
+    costType: 'direct'
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -26,10 +33,7 @@ export default function CostCentersPage() {
 
   const fetchCostCenters = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/cost-centers`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await res.json();
+      const data = await costCenterAPI.getAll({ hierarchy: true });
       setCostCenters(data.data || []);
     } catch (error) {
       console.error('Error:', error);
@@ -39,20 +43,11 @@ export default function CostCentersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_URL}/api/cost-centers`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
-      if (res.ok) {
-        toast({ title: 'Success', description: 'Cost center created' });
-        setShowDialog(false);
-        setFormData({ name: '', code: '', description: '', budget: '' });
-        fetchCostCenters();
-      }
+      await costCenterAPI.create(formData);
+      toast({ title: 'Success', description: 'Cost center created' });
+      setShowDialog(false);
+      setFormData({ name: '', code: '', description: '', budget: '', budgetPeriod: 'yearly', costType: 'direct' });
+      fetchCostCenters();
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to create', variant: 'destructive' });
     }
@@ -61,14 +56,25 @@ export default function CostCentersPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this cost center?')) return;
     try {
-      await fetch(`${API_URL}/api/cost-centers/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      await costCenterAPI.delete(id);
       toast({ title: 'Success', description: 'Cost center deleted' });
       fetchCostCenters();
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to delete', variant: 'destructive' });
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const blob = await costCenterAPI.exportCSV();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cost-centers-${Date.now()}.csv`;
+      a.click();
+      toast({ title: 'Success', description: 'Exported successfully' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Export failed', variant: 'destructive' });
     }
   };
 
@@ -82,9 +88,14 @@ export default function CostCentersPage() {
           <h1 className="text-3xl font-bold">Cost Centers</h1>
           <p className="text-gray-600 mt-1">Department and project cost allocation</p>
         </div>
-        <Button onClick={() => setShowDialog(true)}>
-          <Plus className="w-4 h-4 mr-2" />Create Cost Center
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowDialog(true)}>
+            <Plus className="w-4 h-4 mr-2" />Create
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="w-4 h-4 mr-2" />Export
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -191,6 +202,28 @@ export default function CostCentersPage() {
             <div>
               <Label>Budget</Label>
               <Input type="number" step="0.01" value={formData.budget} onChange={(e) => setFormData({...formData, budget: e.target.value})} placeholder="0.00" required />
+            </div>
+            <div>
+              <Label>Budget Period</Label>
+              <Select value={formData.budgetPeriod || 'yearly'} onValueChange={(val) => setFormData({...formData, budgetPeriod: val})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Cost Type</Label>
+              <Select value={formData.costType || 'direct'} onValueChange={(val) => setFormData({...formData, costType: val})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="direct">Direct</SelectItem>
+                  <SelectItem value="indirect">Indirect</SelectItem>
+                  <SelectItem value="overhead">Overhead</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>

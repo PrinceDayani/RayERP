@@ -21,6 +21,12 @@ export interface IAccount extends Document {
   enableInterest?: boolean;
   interestRate?: number;
   budgetAmount?: number;
+  allowPosting?: boolean;
+  restrictionReason?: string;
+  reconciliationStatus?: 'pending' | 'in_progress' | 'reconciled';
+  lastReconciledDate?: Date;
+  reconciledBalance?: number;
+  metadata?: Record<string, any>;
   taxInfo?: {
     gstNo?: string;
     panNo?: string;
@@ -172,6 +178,29 @@ const AccountSchema = new Schema<IAccount>({
   budgetAmount: {
     type: Number,
     default: 0
+  },
+  allowPosting: {
+    type: Boolean,
+    default: true
+  },
+  restrictionReason: {
+    type: String,
+    trim: true
+  },
+  reconciliationStatus: {
+    type: String,
+    enum: ['pending', 'in_progress', 'reconciled'],
+    default: 'pending'
+  },
+  lastReconciledDate: {
+    type: Date
+  },
+  reconciledBalance: {
+    type: Number,
+    default: 0
+  },
+  metadata: {
+    type: Schema.Types.Mixed
   },
   createdBy: {
     type: Schema.Types.ObjectId,

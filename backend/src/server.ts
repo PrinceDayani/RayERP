@@ -227,6 +227,14 @@ realTimeAdminEmitter.initialize(io);
 // Initialize real-time data emitter
 import './utils/realTimeEmitter';
 
+// Initialize cron jobs
+import { initializeCronJobs } from './utils/cronJobs';
+initializeCronJobs();
+
+// Initialize recurring job schedulers
+import { initializeSchedulers } from './utils/recurringJobsScheduler';
+initializeSchedulers();
+
 // MongoDB connection and server startup
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGO_URI;

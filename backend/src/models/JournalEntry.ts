@@ -1,159 +1,222 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IJournalLine {
-  accountId: mongoose.Types.ObjectId;
+export interface IJournalEntryLine {
+  account: mongoose.Types.ObjectId;
+  accountId: mongoose.Types.ObjectId; // Alias for account
   debit: number;
   credit: number;
-  description: string;
-  costCenter?: string;
-  departmentId?: mongoose.Types.ObjectId;
-  projectId?: mongoose.Types.ObjectId;
-  billReference?: string;
-  billAmount?: number;
-  billDate?: Date;
+  description?: string;
+  costCenter?: mongoose.Types.ObjectId | string;
+  department?: mongoose.Types.ObjectId;
+  project?: mongoose.Types.ObjectId;
+  currency?: string;
+  exchangeRate?: number;
+  foreignDebit?: number;
+  foreignCredit?: number;
+  quantity?: number; // For statistical entries
+  unit?: string; // For statistical entries
 }
 
 export interface IJournalEntry extends Document {
   entryNumber: string;
-  voucherType: 'journal' | 'payment' | 'receipt' | 'sales' | 'purchase';
-  date: Date;
-  reference?: string;
+  entryType: 'MANUAL' | 'RECURRING' | 'REVERSING' | 'TEMPLATE' | 'INTER_COMPANY' | 'CONSOLIDATION' | 'TAX' | 'STATISTICAL';
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'POSTED' | 'REVERSED' | 'CANCELLED';
+  
+  // Dates
+  date: Date; // Alias for entryDate
+  entryDate: Date;
+  postingDate?: Date;
+  reversalDate?: Date;
+  periodYear: number;
+  periodMonth: number;
+  
+  // Description
   description: string;
-  lines: IJournalLine[];
+  reference?: string;
+  
+  // Posted status
+  isPosted: boolean;
+  
+  // Lines
+  lines: IJournalEntryLine[];
   totalDebit: number;
   totalCredit: number;
-  isPosted: boolean;
-  currency?: string;
-  exchangeRate?: number;
-  createdBy?: mongoose.Types.ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
+  
+  // Recurring
+  isRecurring: boolean;
+  recurringFrequency?: 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUALLY' | 'ANNUALLY';
+  recurringStartDate?: Date;
+  recurringEndDate?: Date;
+  nextRecurringDate?: Date;
+  autoPost: boolean;
+  
+  // Reversing
+  isReversing: boolean;
+  reversalPeriodYear?: number;
+  reversalPeriodMonth?: number;
+  reversedEntryId?: mongoose.Types.ObjectId;
+  originalEntryId?: mongoose.Types.ObjectId;
+  
+  // Template
+  templateId?: mongoose.Types.ObjectId;
+  templateName?: string;
+  
+  // Inter-company
+  isInterCompany: boolean;
+  sourceCompany?: string;
+  targetCompany?: string;
+  matchingEntryId?: mongoose.Types.ObjectId;
+  
+  // Approval
+  approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  approvalWorkflow: Array<{
+    level: number;
+    approverId: mongoose.Types.ObjectId;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    date?: Date;
+    comments?: string;
+  }>;
+  
+  // Budget Check
+  budgetCheckPerformed: boolean;
+  budgetWarnings: Array<{
+    account: mongoose.Types.ObjectId;
+    budgetAmount: number;
+    actualAmount: number;
+    variance: number;
+    message: string;
+  }>;
+  
+  // Attachments
+  attachments: string[];
+  
+  // Source
+  sourceType?: 'INVOICE' | 'VOUCHER' | 'PAYROLL' | 'DEPRECIATION' | 'ACCRUAL' | 'MANUAL';
+  sourceId?: mongoose.Types.ObjectId;
+  
+  // Audit
+  createdBy: mongoose.Types.ObjectId;
+  updatedBy?: mongoose.Types.ObjectId;
+  postedBy?: mongoose.Types.ObjectId;
+  reversedBy?: mongoose.Types.ObjectId;
+  reversalReason?: string;
+  
+  // Period Lock
+  isLocked: boolean;
+  lockedBy?: mongoose.Types.ObjectId;
+  lockedDate?: Date;
+  
+  // Change History
+  changeHistory: Array<{
+    changedBy: mongoose.Types.ObjectId;
+    changedAt: Date;
+    field: string;
+    oldValue: any;
+    newValue: any;
+  }>;
 }
 
-const JournalLineSchema = new Schema<IJournalLine>({
-  accountId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Account',
-    required: true
-  },
-  debit: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  credit: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  description: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  costCenter: {
-    type: String,
-    trim: true
-  },
-  departmentId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Department'
-  },
-  projectId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Project'
-  },
-  billReference: {
-    type: String,
-    trim: true
-  },
-  billAmount: {
-    type: Number,
-    min: 0
-  },
-  billDate: {
-    type: Date
-  }
-});
-
 const JournalEntrySchema = new Schema<IJournalEntry>({
-  entryNumber: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  voucherType: {
-    type: String,
-    enum: ['journal', 'payment', 'receipt', 'sales', 'purchase'],
-    default: 'journal',
-    required: true
-  },
-  date: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-  reference: {
-    type: String,
-    required: false,
-    trim: true
-  },
-  description: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  lines: [JournalLineSchema],
-  totalDebit: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  totalCredit: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  isPosted: {
-    type: Boolean,
-    default: false
-  },
-  currency: {
-    type: String,
-    default: 'INR',
-    trim: true
-  },
-  exchangeRate: {
-    type: Number,
-    default: 1,
-    min: 0
-  },
-  createdBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: false
-  }
-}, {
-  timestamps: true
-});
-
-// Validate that debits equal credits
-JournalEntrySchema.pre('save', function(next) {
-  const totalDebit = this.lines.reduce((sum, line) => sum + line.debit, 0);
-  const totalCredit = this.lines.reduce((sum, line) => sum + line.credit, 0);
+  entryNumber: { type: String, required: true, unique: true },
+  entryType: { type: String, enum: ['MANUAL', 'RECURRING', 'REVERSING', 'TEMPLATE', 'INTER_COMPANY', 'CONSOLIDATION', 'TAX', 'STATISTICAL'], default: 'MANUAL' },
+  status: { type: String, enum: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'POSTED', 'REVERSED', 'CANCELLED'], default: 'DRAFT' },
   
-  this.totalDebit = totalDebit;
-  this.totalCredit = totalCredit;
+  date: { type: Date },
+  entryDate: { type: Date, required: true },
+  postingDate: Date,
+  reversalDate: Date,
+  periodYear: { type: Number, required: true },
+  periodMonth: { type: Number, required: true },
   
-  if (Math.abs(totalDebit - totalCredit) > 0.01) {
-    return next(new Error('Total debits must equal total credits'));
-  }
+  isPosted: { type: Boolean, default: false },
   
-  next();
-});
+  description: { type: String, required: true },
+  reference: String,
+  
+  lines: [{
+    account: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount', required: true },
+    debit: { type: Number, default: 0 },
+    credit: { type: Number, default: 0 },
+    description: String,
+    costCenter: { type: Schema.Types.ObjectId, ref: 'CostCenter' },
+    department: { type: Schema.Types.ObjectId, ref: 'Department' },
+    project: { type: Schema.Types.ObjectId, ref: 'Project' },
+    currency: String,
+    exchangeRate: Number,
+    foreignDebit: Number,
+    foreignCredit: Number,
+    quantity: Number,
+    unit: String
+  }],
+  totalDebit: { type: Number, required: true },
+  totalCredit: { type: Number, required: true },
+  
+  isRecurring: { type: Boolean, default: false },
+  recurringFrequency: { type: String, enum: ['MONTHLY', 'QUARTERLY', 'SEMI_ANNUALLY', 'ANNUALLY'] },
+  recurringStartDate: Date,
+  recurringEndDate: Date,
+  nextRecurringDate: Date,
+  autoPost: { type: Boolean, default: false },
+  
+  isReversing: { type: Boolean, default: false },
+  reversalPeriodYear: Number,
+  reversalPeriodMonth: Number,
+  reversedEntryId: { type: Schema.Types.ObjectId, ref: 'JournalEntry' },
+  originalEntryId: { type: Schema.Types.ObjectId, ref: 'JournalEntry' },
+  
+  templateId: { type: Schema.Types.ObjectId, ref: 'JournalEntryTemplate' },
+  templateName: String,
+  
+  isInterCompany: { type: Boolean, default: false },
+  sourceCompany: String,
+  targetCompany: String,
+  matchingEntryId: { type: Schema.Types.ObjectId, ref: 'JournalEntry' },
+  
+  approvalStatus: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
+  approvalWorkflow: [{
+    level: Number,
+    approverId: { type: Schema.Types.ObjectId, ref: 'User' },
+    status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
+    date: Date,
+    comments: String
+  }],
+  
+  budgetCheckPerformed: { type: Boolean, default: false },
+  budgetWarnings: [{
+    account: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' },
+    budgetAmount: Number,
+    actualAmount: Number,
+    variance: Number,
+    message: String
+  }],
+  
+  attachments: [String],
+  
+  sourceType: { type: String, enum: ['INVOICE', 'VOUCHER', 'PAYROLL', 'DEPRECIATION', 'ACCRUAL', 'MANUAL'] },
+  sourceId: Schema.Types.ObjectId,
+  
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  postedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  reversedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  reversalReason: String,
+  
+  isLocked: { type: Boolean, default: false },
+  lockedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  lockedDate: Date,
+  
+  changeHistory: [{
+    changedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    changedAt: Date,
+    field: String,
+    oldValue: Schema.Types.Mixed,
+    newValue: Schema.Types.Mixed
+  }]
+}, { timestamps: true });
 
 JournalEntrySchema.index({ entryNumber: 1 });
-JournalEntrySchema.index({ date: 1 });
-JournalEntrySchema.index({ isPosted: 1 });
+JournalEntrySchema.index({ status: 1, entryDate: 1 });
+JournalEntrySchema.index({ periodYear: 1, periodMonth: 1 });
+JournalEntrySchema.index({ isRecurring: 1, nextRecurringDate: 1 });
 
-export const JournalEntry = mongoose.model<IJournalEntry>('JournalEntry', JournalEntrySchema);
+export default mongoose.model<IJournalEntry>('JournalEntry', JournalEntrySchema);

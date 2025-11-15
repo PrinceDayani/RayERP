@@ -5,11 +5,12 @@ import { logger } from '../utils/logger';
 
 export const getProfitLoss = async (req: Request, res: Response) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, costCenterId, compareYoY, compareQoQ, budgetComparison } = req.query;
     const query: any = {};
     if (startDate && endDate) {
       query.date = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
     }
+    if (costCenterId) query.costCenter = costCenterId;
 
     const revenueAccounts = await Account.find({ type: 'revenue', isActive: true });
     const expenseAccounts = await Account.find({ type: 'expense', isActive: true });
@@ -17,22 +18,32 @@ export const getProfitLoss = async (req: Request, res: Response) => {
     const revenue = await Promise.all(revenueAccounts.map(async (acc) => {
       const entries = await Ledger.find({ accountId: acc._id, ...query });
       const total = entries.reduce((sum, e) => sum + e.credit - e.debit, 0);
-      return { account: acc.name, code: acc.code, amount: total };
+      return { accountId: acc._id, account: acc.name, code: acc.code, amount: total };
     }));
 
     const expenses = await Promise.all(expenseAccounts.map(async (acc) => {
       const entries = await Ledger.find({ accountId: acc._id, ...query });
       const total = entries.reduce((sum, e) => sum + e.debit - e.credit, 0);
-      return { account: acc.name, code: acc.code, amount: total };
+      return { accountId: acc._id, account: acc.name, code: acc.code, amount: total };
     }));
 
     const totalRevenue = revenue.reduce((sum, r) => sum + r.amount, 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
     const netIncome = totalRevenue - totalExpenses;
+    const grossMargin = totalRevenue > 0 ? ((totalRevenue - totalExpenses) / totalRevenue) * 100 : 0;
+    const operatingMargin = totalRevenue > 0 ? (netIncome / totalRevenue) * 100 : 0;
+
+    let comparison = null;
+    if (compareYoY && startDate && endDate) {
+      const prevYearStart = new Date(new Date(startDate as string).setFullYear(new Date(startDate as string).getFullYear() - 1));
+      const prevYearEnd = new Date(new Date(endDate as string).setFullYear(new Date(endDate as string).getFullYear() - 1));
+      const prevData = await getProfitLossData(prevYearStart.toISOString(), prevYearEnd.toISOString(), costCenterId as string);
+      comparison = { type: 'YoY', previous: prevData, variance: netIncome - prevData.netIncome };
+    }
 
     res.json({
       success: true,
-      data: { revenue, expenses, totalRevenue, totalExpenses, netIncome, period: { startDate, endDate } }
+      data: { revenue, expenses, totalRevenue, totalExpenses, netIncome, grossMargin, operatingMargin, comparison, period: { startDate, endDate } }
     });
   } catch (error: any) {
     logger.error('P&L error:', error);
@@ -239,11 +250,12 @@ async function generatePDF(data: any, reportType: string): Promise<Buffer> {
   return Buffer.from(`PDF Report: ${reportType}\n\n${content}`);
 }
 
-async function getProfitLossData(startDate: string, endDate: string) {
+async function getProfitLossData(startDate: string, endDate: string, costCenterId?: string) {
   const query: any = {};
   if (startDate && endDate) {
     query.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
   }
+  if (costCenterId) query.costCenter = costCenterId;
 
   const revenueAccounts = await Account.find({ type: 'revenue', isActive: true });
   const expenseAccounts = await Account.find({ type: 'expense', isActive: true });
@@ -260,7 +272,11 @@ async function getProfitLossData(startDate: string, endDate: string) {
     return { account: acc.name, code: acc.code, amount: total };
   }));
 
-  return { revenue, expenses };
+  const totalRevenue = revenue.reduce((sum, r) => sum + r.amount, 0);
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const netIncome = totalRevenue - totalExpenses;
+
+  return { revenue, expenses, totalRevenue, totalExpenses, netIncome };
 }
 
 async function getBalanceSheetData(asOfDate: string) {
@@ -354,7 +370,13 @@ export const getComparativeReport = async (req: Request, res: Response) => {
     const comparison = {
       period1: period1Data,
       period2: period2Data,
-      variance: calculateVariance(period1Data, period2Data)
+      variance: {
+        revenue: period1Data.totalRevenue - period2Data.totalRevenue,
+        expenses: period1Data.totalExpenses - period2Data.totalExpenses,
+        netIncome: period1Data.netIncome - period2Data.netIncome,
+        revenuePercent: period2Data.totalRevenue > 0 ? ((period1Data.totalRevenue - period2Data.totalRevenue) / period2Data.totalRevenue) * 100 : 0,
+        expensesPercent: period2Data.totalExpenses > 0 ? ((period1Data.totalExpenses - period2Data.totalExpenses) / period2Data.totalExpenses) * 100 : 0
+      }
     };
 
     res.json({ success: true, data: comparison });
@@ -364,6 +386,59 @@ export const getComparativeReport = async (req: Request, res: Response) => {
   }
 };
 
-function calculateVariance(period1: any, period2: any) {
-  return { message: 'Variance calculation' };
-}
+export const getMultiPeriodPL = async (req: Request, res: Response) => {
+  try {
+    const { startDate, endDate, periodType = 'monthly' } = req.query;
+    const periods = [];
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
+    
+    let current = new Date(start);
+    while (current <= end) {
+      const periodEnd = periodType === 'monthly' ? new Date(current.getFullYear(), current.getMonth() + 1, 0) :
+                        periodType === 'quarterly' ? new Date(current.getFullYear(), current.getMonth() + 3, 0) :
+                        new Date(current.getFullYear(), 11, 31);
+      
+      const data = await getProfitLossData(current.toISOString(), periodEnd.toISOString());
+      periods.push({ period: current.toISOString().split('T')[0], ...data });
+      
+      current = periodType === 'monthly' ? new Date(current.getFullYear(), current.getMonth() + 1, 1) :
+                periodType === 'quarterly' ? new Date(current.getFullYear(), current.getMonth() + 3, 1) :
+                new Date(current.getFullYear() + 1, 0, 1);
+    }
+    
+    res.json({ success: true, data: periods });
+  } catch (error: any) {
+    logger.error('Multi-period P&L error:', error);
+    res.status(500).json({ success: false, message: 'Error generating multi-period P&L', error: error.message });
+  }
+};
+
+export const getPLForecast = async (req: Request, res: Response) => {
+  try {
+    const { months = 3 } = req.query;
+    const historicalData = await getProfitLossData(
+      new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+      new Date().toISOString()
+    );
+    
+    const avgMonthlyRevenue = historicalData.totalRevenue / 12;
+    const avgMonthlyExpenses = historicalData.totalExpenses / 12;
+    const growthRate = 1.05;
+    
+    const forecast = [];
+    for (let i = 1; i <= Number(months); i++) {
+      forecast.push({
+        month: i,
+        revenue: avgMonthlyRevenue * Math.pow(growthRate, i),
+        expenses: avgMonthlyExpenses * Math.pow(growthRate, i),
+        netIncome: (avgMonthlyRevenue - avgMonthlyExpenses) * Math.pow(growthRate, i)
+      });
+    }
+    
+    res.json({ success: true, data: { historical: historicalData, forecast } });
+  } catch (error: any) {
+    logger.error('P&L forecast error:', error);
+    res.status(500).json({ success: false, message: 'Error generating forecast', error: error.message });
+  }
+};

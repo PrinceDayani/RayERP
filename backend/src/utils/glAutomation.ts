@@ -1,4 +1,4 @@
-import { JournalEntry } from '../models/JournalEntry';
+import JournalEntry from '../models/JournalEntry';
 import { Account } from '../models/Account';
 import { Transaction } from '../models/Transaction';
 import { Ledger } from '../models/Ledger';

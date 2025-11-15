@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FolderOpen, Edit, Trash2, ArrowLeft } from 'lucide-react';
+import { Plus, FolderOpen, Edit, Trash2, ArrowLeft, Download, Upload, FileText } from 'lucide-react';
 import { generalLedgerAPI, type Account } from '@/lib/api/generalLedgerAPI';
+import { chartOfAccountsAPI } from '@/lib/api/chartOfAccountsAPI';
 import { toast } from '@/components/ui/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ChartOfAccountsPage() {
   const router = useRouter();
@@ -20,11 +22,23 @@ export default function ChartOfAccountsPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [templates, setTemplates] = useState<any[]>([]);
 
   useEffect(() => {
     fetchAccounts();
+    fetchTemplates();
   }, []);
+
+  const fetchTemplates = async () => {
+    try {
+      const data = await chartOfAccountsAPI.getTemplates();
+      setTemplates(data.data || []);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
 
   const fetchAccounts = async () => {
     try {
@@ -350,23 +364,77 @@ export default function ChartOfAccountsPage() {
           </div>
         </div>
         
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Account
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Account</DialogTitle>
-              <DialogDescription>
-                Add a new account to your chart of accounts. Group accounts can contain sub-accounts.
-              </DialogDescription>
-            </DialogHeader>
-            <CreateAccountForm />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <FileText className="w-4 h-4 mr-2" />
+                Templates
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Apply Account Template</DialogTitle>
+                <DialogDescription>Choose an industry template to create accounts</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                {templates.map(t => (
+                  <Card key={t._id} className="cursor-pointer hover:bg-gray-50" onClick={async () => {
+                    try {
+                      await chartOfAccountsAPI.applyTemplate(t._id);
+                      toast({ title: 'Success', description: `Applied ${t.name} template` });
+                      setShowTemplateDialog(false);
+                      fetchAccounts();
+                    } catch (error) {
+                      toast({ title: 'Error', description: 'Failed to apply template', variant: 'destructive' });
+                    }
+                  }}>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold">{t.name}</h3>
+                      <p className="text-sm text-gray-600">{t.description}</p>
+                      <p className="text-xs text-gray-500 mt-1">{t.accounts?.length || 0} accounts</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
+          
+          <Button variant="outline" onClick={async () => {
+            try {
+              const blob = await chartOfAccountsAPI.exportCSV();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `chart-of-accounts-${Date.now()}.csv`;
+              a.click();
+              toast({ title: 'Success', description: 'Exported successfully' });
+            } catch (error) {
+              toast({ title: 'Error', description: 'Export failed', variant: 'destructive' });
+            }
+          }}>
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Account
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create New Account</DialogTitle>
+                <DialogDescription>
+                  Add a new account to your chart of accounts. Group accounts can contain sub-accounts.
+                </DialogDescription>
+              </DialogHeader>
+              <CreateAccountForm />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>

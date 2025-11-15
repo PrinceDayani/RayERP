@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Voucher, VoucherType } from '../models/Voucher';
 import { Account } from '../models/Account';
-import { JournalEntry } from '../models/JournalEntry';
+import JournalEntry from '../models/JournalEntry';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 

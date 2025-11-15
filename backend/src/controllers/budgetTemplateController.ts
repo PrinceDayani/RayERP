@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import BudgetTemplate from '../models/BudgetTemplate';
+import { BudgetTemplate } from '../models/BudgetTemplate';
 
 export const getTemplates = async (req: Request, res: Response) => {
   try {

@@ -5,7 +5,7 @@ import AuditLog from '../models/AuditLog';
 import ApprovalWorkflow from '../models/ApprovalWorkflow';
 import FinancialDocument from '../models/FinancialDocument';
 import SmartAlert from '../models/SmartAlert';
-import { JournalEntry } from '../models/JournalEntry';
+import JournalEntry from '../models/JournalEntry';
 import Account from '../models/Account';
 import FiscalYear from '../models/FiscalYear';
 

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { RecurringEntry } from '../models/RecurringEntry';
-import { JournalEntry } from '../models/JournalEntry';
+import JournalEntry from '../models/JournalEntry';
 import { logger } from '../utils/logger';
 
 const calculateNextRunDate = (startDate: Date, frequency: string): Date => {
