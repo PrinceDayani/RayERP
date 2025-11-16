@@ -315,6 +315,10 @@ mongoose
     try {
       const { initializeFinanceSystem } = await import('./utils/initializeFinance');
       await initializeFinanceSystem();
+      
+      // Initialize Complete Finance System
+      const { initializeCompleteFinanceSystem } = await import('./utils/initializeFinanceComplete');
+      await initializeCompleteFinanceSystem();
     } catch (error) {
       logger.error('❌ Error initializing Finance System:', error);
     }

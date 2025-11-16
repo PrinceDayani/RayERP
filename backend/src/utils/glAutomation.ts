@@ -44,13 +44,13 @@ export class GLAutomation {
 
       const lines = [
         {
-          accountId: accountsReceivable._id,
+          accountCode: accountsReceivable.code,
           debit: amount,
           credit: 0,
           description: `Invoice ${invoiceId} - Customer receivable`
         },
         {
-          accountId: salesRevenue._id,
+          accountCode: salesRevenue.code,
           debit: 0,
           credit: amount - taxAmount,
           description: `Invoice ${invoiceId} - Sales revenue`
@@ -59,7 +59,7 @@ export class GLAutomation {
 
       if (taxAmount > 0 && salesTax) {
         lines.push({
-          accountId: salesTax._id,
+          accountCode: salesTax.code,
           debit: 0,
           credit: taxAmount,
           description: `Invoice ${invoiceId} - Sales tax`
@@ -109,13 +109,13 @@ export class GLAutomation {
 
       const lines = [
         {
-          accountId: toAccount._id,
+          accountCode: toAccount.code,
           debit: amount,
           credit: 0,
           description: `Payment ${paymentId} - ${reference || 'Payment received'}`
         },
         {
-          accountId: fromAccount._id,
+          accountCode: fromAccount.code,
           debit: 0,
           credit: amount,
           description: `Payment ${paymentId} - ${reference || 'Payment made'}`

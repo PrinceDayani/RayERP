@@ -191,11 +191,24 @@ const GeneralLedger = () => {
 
   const fetchAccounts = async () => {
     try {
-      // Fallback to localStorage
+      // Fallback to localStorage with error handling
       const storedAccounts = localStorage.getItem('gl_accounts');
       if (storedAccounts) {
-        setAccounts(JSON.parse(storedAccounts));
-      } else {
+        try {
+          const parsedAccounts = JSON.parse(storedAccounts);
+          if (Array.isArray(parsedAccounts)) {
+            setAccounts(parsedAccounts);
+          } else {
+            throw new Error('Invalid accounts data format');
+          }
+        } catch (parseError) {
+          console.error('Error parsing stored accounts:', parseError);
+          localStorage.removeItem('gl_accounts');
+          // Fall through to create sample accounts
+        }
+      }
+      
+      if (!storedAccounts || accounts.length === 0) {
         // Create sample accounts if none exist
         const sampleAccounts: Account[] = [
           { _id: '1', code: '1001', name: 'Cash in Hand', type: 'asset', balance: 50000, isActive: true },
@@ -209,17 +222,36 @@ const GeneralLedger = () => {
         localStorage.setItem('gl_accounts', JSON.stringify(sampleAccounts));
       }
     } catch (error) {
+      console.error('Error fetching accounts:', error);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to load accounts. Using default accounts.', 
+        variant: 'destructive' 
+      });
       setAccounts([]);
     }
   };
 
   const fetchJournalEntries = async () => {
     try {
-      // Fallback to localStorage
+      // Fallback to localStorage with error handling
       const storedEntries = localStorage.getItem('gl_journal_entries');
       if (storedEntries) {
-        setJournalEntries(JSON.parse(storedEntries));
-      } else {
+        try {
+          const parsedEntries = JSON.parse(storedEntries);
+          if (Array.isArray(parsedEntries)) {
+            setJournalEntries(parsedEntries);
+          } else {
+            throw new Error('Invalid journal entries data format');
+          }
+        } catch (parseError) {
+          console.error('Error parsing stored journal entries:', parseError);
+          localStorage.removeItem('gl_journal_entries');
+          // Fall through to create sample entries
+        }
+      }
+      
+      if (!storedEntries || journalEntries.length === 0) {
         // Create sample journal entries if none exist
         const sampleEntries: JournalEntry[] = [
           {
@@ -255,6 +287,12 @@ const GeneralLedger = () => {
         localStorage.setItem('gl_journal_entries', JSON.stringify(sampleEntries));
       }
     } catch (error) {
+      console.error('Error fetching journal entries:', error);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to load journal entries. Using default entries.', 
+        variant: 'destructive' 
+      });
       setJournalEntries([]);
     }
   };
@@ -277,6 +315,19 @@ const GeneralLedger = () => {
 
   const createJournalEntry = async () => {
     try {
+      // Comprehensive validation
+      if (!newJournalEntry.date || !newJournalEntry.description.trim()) {
+        toast({ title: 'Error', description: 'Date and description are required', variant: 'destructive' });
+        return;
+      }
+      
+      // Validate date
+      const entryDate = new Date(newJournalEntry.date);
+      if (isNaN(entryDate.getTime())) {
+        toast({ title: 'Error', description: 'Invalid date format', variant: 'destructive' });
+        return;
+      }
+      
       // Validate minimum two lines for double-entry
       if (newJournalEntry.lines.length < 2) {
         toast({ title: 'Error', description: 'Double-entry requires at least two journal lines', variant: 'destructive' });
@@ -284,12 +335,43 @@ const GeneralLedger = () => {
       }
 
       // Validate each line has an account and amount
-      const invalidLines = newJournalEntry.lines.filter(line => 
-        !line.accountId || ((parseFloat(line.debit) || 0) === 0 && (parseFloat(line.credit) || 0) === 0)
-      );
-      if (invalidLines.length > 0) {
-        toast({ title: 'Error', description: 'Each line must have an account and amount', variant: 'destructive' });
-        return;
+      for (let i = 0; i < newJournalEntry.lines.length; i++) {
+        const line = newJournalEntry.lines[i];
+        
+        if (!line.accountId) {
+          toast({ title: 'Error', description: `Line ${i + 1}: Account is required`, variant: 'destructive' });
+          return;
+        }
+        
+        const debitAmount = parseFloat(line.debit) || 0;
+        const creditAmount = parseFloat(line.credit) || 0;
+        
+        if (debitAmount < 0 || creditAmount < 0) {
+          toast({ title: 'Error', description: `Line ${i + 1}: Amounts cannot be negative`, variant: 'destructive' });
+          return;
+        }
+        
+        if (debitAmount === 0 && creditAmount === 0) {
+          toast({ title: 'Error', description: `Line ${i + 1}: Either debit or credit amount must be greater than zero`, variant: 'destructive' });
+          return;
+        }
+        
+        if (debitAmount > 0 && creditAmount > 0) {
+          toast({ title: 'Error', description: `Line ${i + 1}: A line cannot have both debit and credit amounts`, variant: 'destructive' });
+          return;
+        }
+        
+        // Verify account exists
+        const account = accounts.find(acc => acc._id === line.accountId);
+        if (!account) {
+          toast({ title: 'Error', description: `Line ${i + 1}: Selected account not found`, variant: 'destructive' });
+          return;
+        }
+        
+        if (!account.isActive) {
+          toast({ title: 'Error', description: `Line ${i + 1}: Account '${account.name}' is inactive`, variant: 'destructive' });
+          return;
+        }
       }
 
       // Calculate totals
@@ -302,20 +384,20 @@ const GeneralLedger = () => {
         return;
       }
 
-      // Create new journal entry
+      // Create new journal entry with proper validation
       const journalEntry: JournalEntry = {
         _id: `je${Date.now()}`,
         entryNumber: `JE${String(journalEntries.length + 1).padStart(4, '0')}`,
         date: newJournalEntry.date,
         time: newJournalEntry.time,
-        reference: newJournalEntry.reference,
-        description: newJournalEntry.description,
+        reference: newJournalEntry.reference.trim(),
+        description: newJournalEntry.description.trim(),
         totalDebit,
         totalCredit,
         status: 'draft',
         lines: newJournalEntry.lines.map(line => ({
           accountId: line.accountId,
-          description: line.description,
+          description: line.description.trim() || newJournalEntry.description.trim(),
           debit: parseFloat(line.debit) || 0,
           credit: parseFloat(line.credit) || 0,
           projectId: line.projectId,
@@ -325,7 +407,17 @@ const GeneralLedger = () => {
 
       const updatedEntries = [...journalEntries, journalEntry];
       setJournalEntries(updatedEntries);
-      localStorage.setItem('gl_journal_entries', JSON.stringify(updatedEntries));
+      
+      try {
+        localStorage.setItem('gl_journal_entries', JSON.stringify(updatedEntries));
+      } catch (storageError) {
+        console.error('Error saving to localStorage:', storageError);
+        toast({ 
+          title: 'Warning', 
+          description: 'Entry created but failed to save to local storage', 
+          variant: 'destructive' 
+        });
+      }
 
       // Reset form
       setNewJournalEntry({
@@ -342,7 +434,12 @@ const GeneralLedger = () => {
       setShowJournalDialog(false);
       toast({ title: 'Success', description: 'Journal entry created successfully' });
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to create journal entry', variant: 'destructive' });
+      console.error('Error creating journal entry:', error);
+      toast({ 
+        title: 'Error', 
+        description: error instanceof Error ? error.message : 'Failed to create journal entry', 
+        variant: 'destructive' 
+      });
     }
   };
 
@@ -796,6 +893,7 @@ const GeneralLedger = () => {
             <TabsTrigger value="ledger">Ledger</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="ai-insights">AI Insights</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -1759,6 +1857,167 @@ const GeneralLedger = () => {
                       ))
                     }
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ai-insights">
+            <div className="space-y-6">
+              {/* AI Insights Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">AI-Powered Financial Insights</h2>
+                  <p className="text-muted-foreground">Advanced analytics and predictions for your financial data</p>
+                </div>
+                <Button onClick={fetchAIInsights} disabled={loading}>
+                  <Activity className="h-4 w-4 mr-2" />
+                  Refresh Insights
+                </Button>
+              </div>
+
+              {/* AI Predictions */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                  <CardHeader>
+                    <CardTitle>Cash Flow Prediction</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {aiInsights?.predictions ? (
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-2xl font-bold">{formatCurrency(aiInsights.predictions.cashFlow?.next30Days || 0)}</p>
+                          <p className="text-sm opacity-90">Next 30 Days</p>
+                        </div>
+                        <div>
+                          <p className="text-xl font-semibold">{formatCurrency(aiInsights.predictions.cashFlow?.next90Days || 0)}</p>
+                          <p className="text-sm opacity-90">Next 90 Days</p>
+                        </div>
+                        <div className="text-xs opacity-75">
+                          Confidence: {((aiInsights.predictions.cashFlow?.confidence || 0) * 100).toFixed(0)}%
+                        </div>
+                      </div>
+                    ) : (
+                      <p>Loading predictions...</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
+                  <CardHeader>
+                    <CardTitle>Revenue Forecast</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {aiInsights?.predictions ? (
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-2xl font-bold">{formatCurrency(aiInsights.predictions.revenue?.nextQuarter || 0)}</p>
+                          <p className="text-sm opacity-90">Next Quarter</p>
+                        </div>
+                        <div className="text-xs opacity-75">
+                          Confidence: {((aiInsights.predictions.revenue?.confidence || 0) * 100).toFixed(0)}%
+                        </div>
+                      </div>
+                    ) : (
+                      <p>Loading forecast...</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Anomaly Detection */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Anomaly Detection
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {aiInsights?.anomalies && aiInsights.anomalies.length > 0 ? (
+                    <div className="space-y-3">
+                      {aiInsights.anomalies.map((anomaly: any, index: number) => (
+                        <div key={index} className="p-3 border rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{anomaly.description}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Amount: {formatCurrency(anomaly.amount)} | Confidence: {(anomaly.confidence * 100).toFixed(0)}%
+                              </p>
+                            </div>
+                            <Badge variant={anomaly.confidence > 0.8 ? "destructive" : "secondary"}>
+                              {anomaly.type}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No anomalies detected</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* AI Recommendations */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    AI Recommendations
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {aiInsights?.optimizations && aiInsights.optimizations.length > 0 ? (
+                    <div className="space-y-2">
+                      {aiInsights.optimizations.map((recommendation: string, index: number) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                          <p className="text-sm">{recommendation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No recommendations available</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Risk Assessment */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Risk Assessment
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {aiInsights?.riskAssessment ? (
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <p className="text-3xl font-bold text-orange-600">
+                          {aiInsights.riskAssessment.overall.toUpperCase()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Overall Risk Level</p>
+                      </div>
+                      {aiInsights.riskAssessment.factors && (
+                        <div className="space-y-2">
+                          {aiInsights.riskAssessment.factors.map((factor: any, index: number) => (
+                            <div key={index} className="flex items-center justify-between p-2 border rounded">
+                              <span className="capitalize">{factor.type}</span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant={factor.level === 'high' ? 'destructive' : factor.level === 'medium' ? 'secondary' : 'default'}>
+                                  {factor.level}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">Impact: {factor.impact}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">Risk assessment not available</p>
+                  )}
                 </CardContent>
               </Card>
             </div>

@@ -1,91 +1,144 @@
 import { Request, Response, NextFunction } from 'express';
-import mongoose from 'mongoose';
+import { body, param, query, validationResult } from 'express-validator';
 
-export const validateObjectId = (paramName: string = 'id') => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const id = req.params[paramName];
-    
-    if (!id) {
-      return res.status(400).json({ message: `${paramName} parameter is required` });
-    }
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: `Invalid ${paramName} format` });
-    }
-    
-    next();
+// Generic validation result handler
+export const handleValidationErrors = (req: Request, res: Response, next: NextFunction) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: errors.array()
+    });
+  }
+  next();
+};
+
+// Journal Entry Validation Rules
+export const validateJournalEntry = [
+  body('entryDate').isISO8601().withMessage('Valid entry date is required'),
+  body('description').trim().isLength({ min: 1, max: 500 }).withMessage('Description must be 1-500 characters'),
+  body('lines').isArray({ min: 2 }).withMessage('At least 2 journal lines are required'),
+  body('lines.*.account').isMongoId().withMessage('Valid account ID is required'),
+  body('lines.*.debit').isNumeric().withMessage('Debit must be a number'),
+  body('lines.*.credit').isNumeric().withMessage('Credit must be a number'),
+  body('lines.*.description').trim().isLength({ min: 1, max: 200 }).withMessage('Line description is required'),
+  handleValidationErrors
+];
+
+// ID Parameter Validation
+export const validateMongoId = (paramName: string = 'id') => [
+  param(paramName).isMongoId().withMessage(`Valid ${paramName} is required`),
+  handleValidationErrors
+];
+
+// Date Range Validation
+export const validateDateRange = [
+  query('fromDate').optional().isISO8601().withMessage('Valid from date is required'),
+  query('toDate').optional().isISO8601().withMessage('Valid to date is required'),
+  handleValidationErrors
+];
+
+// File Upload Validation
+export const validateFileUpload = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      message: 'File is required'
+    });
+  }
+
+  // Check file size (10MB limit)
+  if (req.file.size > 10 * 1024 * 1024) {
+    return res.status(400).json({
+      success: false,
+      message: 'File size must be less than 10MB'
+    });
+  }
+
+  // Check file type
+  const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'text/csv'];
+  if (!allowedTypes.includes(req.file.mimetype)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid file type. Only JPEG, PNG, PDF, and CSV files are allowed'
+    });
+  }
+
+  next();
+};
+
+// Sanitize input to prevent XSS
+export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
+  const sanitizeString = (str: string): string => {
+    return str.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+              .replace(/javascript:/gi, '')
+              .replace(/on\w+\s*=/gi, '');
   };
-};
 
-export const validateRequiredFields = (fields: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const missingFields = fields.filter(field => {
-      const value = req.body[field];
-      return value === undefined || value === null || value === '';
-    });
-    
-    if (missingFields.length > 0) {
-      return res.status(400).json({ 
-        message: `Missing required fields: ${missingFields.join(', ')}` 
-      });
+  const sanitizeObject = (obj: any): any => {
+    if (typeof obj === 'string') {
+      return sanitizeString(obj);
+    } else if (Array.isArray(obj)) {
+      return obj.map(sanitizeObject);
+    } else if (obj && typeof obj === 'object') {
+      const sanitized: any = {};
+      for (const key in obj) {
+        sanitized[key] = sanitizeObject(obj[key]);
+      }
+      return sanitized;
     }
-    
-    next();
+    return obj;
   };
+
+  req.body = sanitizeObject(req.body);
+  req.query = sanitizeObject(req.query);
+  req.params = sanitizeObject(req.params);
+
+  next();
 };
 
-export const validateTaskStatus = (req: Request, res: Response, next: NextFunction) => {
-  const validStatuses = ['todo', 'in-progress', 'review', 'completed'];
-  const { status } = req.body;
-  
-  if (status && !validStatuses.includes(status)) {
-    return res.status(400).json({ 
-      message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
+// Rate limiting for sensitive operations
+export const rateLimitSensitive = (req: Request, res: Response, next: NextFunction) => {
+  // This would typically use a rate limiting library like express-rate-limit
+  // For now, we'll just add a simple check
+  const userAgent = req.get('User-Agent') || '';
+  if (userAgent.includes('bot') || userAgent.includes('crawler')) {
+    return res.status(429).json({
+      success: false,
+      message: 'Too many requests'
     });
   }
-  
   next();
 };
 
-export const validateProjectStatus = (req: Request, res: Response, next: NextFunction) => {
-  const validStatuses = ['planning', 'active', 'on-hold', 'completed', 'cancelled'];
-  const { status } = req.body;
-  
-  if (status && !validStatuses.includes(status)) {
-    return res.status(400).json({ 
-      message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
-    });
-  }
-  
-  next();
-};
+// Additional validation functions
+export const validateObjectId = (paramName: string = 'id') => [
+  param(paramName).isMongoId().withMessage(`Valid ${paramName} is required`),
+  handleValidationErrors
+];
 
-export const validatePriority = (req: Request, res: Response, next: NextFunction) => {
-  const validPriorities = ['low', 'medium', 'high', 'critical'];
-  const { priority } = req.body;
-  
-  if (priority && !validPriorities.includes(priority)) {
-    return res.status(400).json({ 
-      message: `Invalid priority. Must be one of: ${validPriorities.join(', ')}` 
-    });
-  }
-  
-  next();
-};
+export const validateRequiredFields = (fields: string[]) => [
+  ...fields.map(field => 
+    body(field).notEmpty().withMessage(`${field} is required`)
+  ),
+  handleValidationErrors
+];
 
-export const validateDateRange = (req: Request, res: Response, next: NextFunction) => {
-  const { startDate, endDate } = req.body;
-  
-  if (startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    if (start >= end) {
-      return res.status(400).json({ 
-        message: 'Start date must be before end date' 
-      });
-    }
-  }
-  
-  next();
-};
+export const validateProjectStatus = [
+  body('status').isIn(['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'])
+    .withMessage('Valid status is required'),
+  handleValidationErrors
+];
+
+export const validateTaskStatus = [
+  body('status').isIn(['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE', 'CANCELLED'])
+    .withMessage('Valid task status is required'),
+  handleValidationErrors
+];
+
+export const validatePriority = [
+  body('priority').isIn(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
+    .withMessage('Valid priority is required'),
+  handleValidationErrors
+];
