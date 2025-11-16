@@ -1,0 +1,295 @@
+import { Account } from '../models/Account';
+import JournalEntry from '../models/JournalEntry';
+import Invoice from '../models/Invoice';
+import Payment from '../models/Payment';
+import Budget from '../models/Budget';
+
+export class FinanceValidator {
+  
+  // Validate journal entry balance
+  static validateJournalEntryBalance(lines: any[]): { isValid: boolean; message?: string } {
+    if (!lines || lines.length < 2) {
+      return { isValid: false, message: 'Journal entry must have at least 2 lines' };
+    }
+
+    const totalDebits = lines.reduce((sum, line) => sum + (line.debit || 0), 0);
+    const totalCredits = lines.reduce((sum, line) => sum + (line.credit || 0), 0);
+
+    if (Math.abs(totalDebits - totalCredits) > 0.01) {
+      return { 
+        isValid: false, 
+        message: `Journal entry is not balanced. Debits: ${totalDebits}, Credits: ${totalCredits}` 
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  // Validate account posting permissions
+  static async validateAccountPosting(accountId: string): Promise<{ isValid: boolean; message?: string }> {
+    try {
+      const account = await Account.findById(accountId);
+      if (!account) {
+        return { isValid: false, message: 'Account not found' };
+      }
+
+      if (!account.isActive) {
+        return { isValid: false, message: 'Account is inactive' };
+      }
+
+      if (!account.allowPosting) {
+        return { isValid: false, message: 'Posting not allowed to this account' };
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      return { isValid: false, message: 'Error validating account' };
+    }
+  }
+
+  // Validate period lock
+  static async validatePeriodLock(date: Date): Promise<{ isValid: boolean; message?: string }> {
+    try {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+
+      const lockedEntry = await JournalEntry.findOne({
+        periodYear: year,
+        periodMonth: month,
+        isLocked: true
+      });
+
+      if (lockedEntry) {
+        return { isValid: false, message: `Period ${year}-${month} is locked` };
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      return { isValid: false, message: 'Error validating period lock' };
+    }
+  }
+
+  // Validate invoice totals
+  static validateInvoiceTotals(invoice: any): { isValid: boolean; message?: string } {
+    if (!invoice.lineItems || invoice.lineItems.length === 0) {
+      return { isValid: false, message: 'Invoice must have at least one line item' };
+    }
+
+    const calculatedSubtotal = invoice.lineItems.reduce((sum: number, item: any) => {
+      return sum + (item.quantity * item.unitPrice) - (item.discount || 0);
+    }, 0);
+
+    const calculatedTax = invoice.lineItems.reduce((sum: number, item: any) => {
+      const lineTotal = (item.quantity * item.unitPrice) - (item.discount || 0);
+      return sum + (lineTotal * (item.taxRate || 0) / 100);
+    }, 0);
+
+    const calculatedTotal = calculatedSubtotal + calculatedTax;
+
+    if (Math.abs(invoice.subtotal - calculatedSubtotal) > 0.01) {
+      return { isValid: false, message: 'Invoice subtotal calculation error' };
+    }
+
+    if (Math.abs(invoice.totalTax - calculatedTax) > 0.01) {
+      return { isValid: false, message: 'Invoice tax calculation error' };
+    }
+
+    if (Math.abs(invoice.totalAmount - calculatedTotal) > 0.01) {
+      return { isValid: false, message: 'Invoice total calculation error' };
+    }
+
+    return { isValid: true };
+  }
+
+  // Validate payment allocation
+  static validatePaymentAllocation(payment: any): { isValid: boolean; message?: string } {
+    if (!payment.allocations || payment.allocations.length === 0) {
+      return { isValid: false, message: 'Payment must have at least one allocation' };
+    }
+
+    const totalAllocated = payment.allocations.reduce((sum: number, allocation: any) => {
+      return sum + allocation.amount;
+    }, 0);
+
+    if (Math.abs(payment.totalAmount - totalAllocated) > 0.01) {
+      return { 
+        isValid: false, 
+        message: `Payment allocation mismatch. Total: ${payment.totalAmount}, Allocated: ${totalAllocated}` 
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  // Validate budget limits
+  static async validateBudgetLimits(
+    accountId: string, 
+    amount: number, 
+    fiscalYear: number
+  ): Promise<{ isValid: boolean; message?: string; warning?: string }> {
+    try {
+      const budget = await Budget.findOne({
+        'categories.items.accountId': accountId,
+        fiscalYear,
+        status: 'approved'
+      });
+
+      if (!budget) {
+        return { isValid: true, warning: 'No budget found for this account' };
+      }
+
+      // Find the relevant category and item
+      for (const category of budget.categories) {
+        for (const item of category.items) {
+          if (item.accountId && item.accountId.toString() === accountId) {
+            const newTotal = category.spentAmount + amount;
+            if (newTotal > category.allocatedAmount) {
+              const variance = newTotal - category.allocatedAmount;
+              return {
+                isValid: false,
+                message: `Budget exceeded by ${variance} for category ${category.name}`
+              };
+            }
+            
+            if (newTotal > category.allocatedAmount * 0.9) {
+              const remaining = category.allocatedAmount - newTotal;
+              return {
+                isValid: true,
+                warning: `Budget warning: Only ${remaining} remaining for category ${category.name}`
+              };
+            }
+          }
+        }
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      return { isValid: true, warning: 'Error validating budget limits' };
+    }
+  }
+
+  // Validate currency consistency
+  static validateCurrencyConsistency(
+    baseCurrency: string, 
+    transactionCurrency: string, 
+    exchangeRate?: number
+  ): { isValid: boolean; message?: string } {
+    if (baseCurrency !== transactionCurrency && !exchangeRate) {
+      return { 
+        isValid: false, 
+        message: 'Exchange rate required for foreign currency transactions' 
+      };
+    }
+
+    if (exchangeRate && exchangeRate <= 0) {
+      return { isValid: false, message: 'Exchange rate must be positive' };
+    }
+
+    return { isValid: true };
+  }
+
+  // Validate date ranges
+  static validateDateRange(startDate: Date, endDate: Date): { isValid: boolean; message?: string } {
+    if (startDate > endDate) {
+      return { isValid: false, message: 'Start date cannot be after end date' };
+    }
+
+    const now = new Date();
+    if (startDate > now) {
+      return { isValid: false, message: 'Start date cannot be in the future' };
+    }
+
+    return { isValid: true };
+  }
+
+  // Validate account hierarchy
+  static async validateAccountHierarchy(
+    accountId: string, 
+    parentId?: string
+  ): Promise<{ isValid: boolean; message?: string }> {
+    try {
+      if (!parentId) return { isValid: true };
+
+      const account = await Account.findById(accountId);
+      const parent = await Account.findById(parentId);
+
+      if (!account || !parent) {
+        return { isValid: false, message: 'Account or parent not found' };
+      }
+
+      if (account.type !== parent.type) {
+        return { 
+          isValid: false, 
+          message: 'Child account must have same type as parent account' 
+        };
+      }
+
+      // Check for circular reference
+      let currentParent = parent;
+      while (currentParent.parentId) {
+        if (currentParent.parentId.toString() === accountId) {
+          return { isValid: false, message: 'Circular reference detected in account hierarchy' };
+        }
+        currentParent = await Account.findById(currentParent.parentId) as any;
+        if (!currentParent) break;
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      return { isValid: false, message: 'Error validating account hierarchy' };
+    }
+  }
+
+  // Comprehensive validation for journal entries
+  static async validateJournalEntry(journalEntry: any): Promise<{ 
+    isValid: boolean; 
+    errors: string[]; 
+    warnings: string[] 
+  }> {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Balance validation
+    const balanceCheck = this.validateJournalEntryBalance(journalEntry.lines);
+    if (!balanceCheck.isValid) {
+      errors.push(balanceCheck.message!);
+    }
+
+    // Period lock validation
+    const periodCheck = await this.validatePeriodLock(journalEntry.entryDate);
+    if (!periodCheck.isValid) {
+      errors.push(periodCheck.message!);
+    }
+
+    // Account validation
+    for (const line of journalEntry.lines) {
+      const accountCheck = await this.validateAccountPosting(line.account);
+      if (!accountCheck.isValid) {
+        errors.push(`Line ${line.description}: ${accountCheck.message}`);
+      }
+
+      // Budget validation
+      if (line.debit > 0) {
+        const budgetCheck = await this.validateBudgetLimits(
+          line.account, 
+          line.debit, 
+          journalEntry.periodYear
+        );
+        if (!budgetCheck.isValid) {
+          errors.push(`Line ${line.description}: ${budgetCheck.message}`);
+        }
+        if (budgetCheck.warning) {
+          warnings.push(`Line ${line.description}: ${budgetCheck.warning}`);
+        }
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings
+    };
+  }
+}
+
+export default FinanceValidator;
