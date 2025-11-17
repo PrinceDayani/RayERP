@@ -1,0 +1,442 @@
+import { Request, Response } from 'express';
+import { JournalEntry } from '../models/JournalEntry';
+import { Account } from '../models/Account';
+import { Ledger } from '../models/Ledger';
+import mongoose from 'mongoose';
+
+export const createJournalEntry = async (req: Request, res: Response) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const journalData = {
+      ...req.body,
+      createdBy: req.user.id,
+      date: req.body.date || req.body.entryDate,
+      entryDate: req.body.entryDate || req.body.date
+    };
+
+    // Validate that debits equal credits
+    const totalDebits = journalData.lines.reduce((sum: number, line: any) => sum + (line.debit || 0), 0);
+    const totalCredits = journalData.lines.reduce((sum: number, line: any) => sum + (line.credit || 0), 0);
+
+    if (Math.abs(totalDebits - totalCredits) > 0.01) {
+      return res.status(400).json({
+        success: false,
+        message: 'Total debits must equal total credits'
+      });
+    }
+
+    journalData.totalDebit = totalDebits;
+    journalData.totalCredit = totalCredits;
+
+    // Generate entry number if not provided
+    if (!journalData.entryNumber) {
+      const count = await JournalEntry.countDocuments();
+      journalData.entryNumber = `JE-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+    }
+
+    // Validate accounts exist
+    const accountIds = journalData.lines.map((line: any) => line.account || line.accountId);
+    const accounts = await Account.find({ _id: { $in: accountIds } });
+    
+    if (accounts.length !== accountIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'One or more accounts not found'
+      });
+    }
+
+    // Set accountId for each line
+    journalData.lines = journalData.lines.map((line: any) => ({
+      ...line,
+      account: line.account || line.accountId,
+      accountId: line.account || line.accountId
+    }));
+
+    const journalEntry = new JournalEntry(journalData);
+    await journalEntry.save({ session });
+
+    // If auto-post is enabled, post the entry
+    if (journalData.status === 'POSTED' || journalData.autoPost) {
+      await postJournalEntry(journalEntry._id, req.user.id, session);
+    }
+
+    await session.commitTransaction();
+
+    const populatedEntry = await JournalEntry.findById(journalEntry._id)
+      .populate('lines.account', 'name code type')
+      .populate('createdBy', 'name email');
+
+    res.status(201).json({
+      success: true,
+      data: populatedEntry,
+      message: 'Journal entry created successfully'
+    });
+  } catch (error: any) {
+    await session.abortTransaction();
+    res.status(400).json({ success: false, message: error.message });
+  } finally {
+    session.endSession();
+  }
+};
+
+export const getJournalEntries = async (req: Request, res: Response) => {
+  try {
+    const {
+      status,
+      entryType,
+      startDate,
+      endDate,
+      accountId,
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    const filter: any = {};
+    if (status) filter.status = status;
+    if (entryType) filter.entryType = entryType;
+    if (accountId) filter['lines.account'] = accountId;
+    
+    if (startDate || endDate) {
+      filter.entryDate = {};
+      if (startDate) filter.entryDate.$gte = new Date(startDate as string);
+      if (endDate) filter.entryDate.$lte = new Date(endDate as string);
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [entries, total] = await Promise.all([
+      JournalEntry.find(filter)
+        .populate('lines.account', 'name code type')
+        .populate('createdBy', 'name email')
+        .sort({ entryDate: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      JournalEntry.countDocuments(filter)
+    ]);
+
+    res.json({
+      success: true,
+      data: entries,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(total / Number(limit))
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getJournalEntryById = async (req: Request, res: Response) => {
+  try {
+    const entry = await JournalEntry.findById(req.params.id)
+      .populate('lines.account', 'name code type balance')
+      .populate('createdBy', 'name email')
+      .populate('updatedBy', 'name email')
+      .populate('postedBy', 'name email');
+
+    if (!entry) {
+      return res.status(404).json({ success: false, message: 'Journal entry not found' });
+    }
+
+    res.json({ success: true, data: entry });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateJournalEntry = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const entry = await JournalEntry.findById(req.params.id);
+    
+    if (!entry) {
+      return res.status(404).json({ success: false, message: 'Journal entry not found' });
+    }
+
+    // Prevent modification of posted entries
+    if (entry.status === 'POSTED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot modify posted journal entry. Please reverse it first.'
+      });
+    }
+
+    // Validate debits equal credits if lines are being updated
+    if (req.body.lines) {
+      const totalDebits = req.body.lines.reduce((sum: number, line: any) => sum + (line.debit || 0), 0);
+      const totalCredits = req.body.lines.reduce((sum: number, line: any) => sum + (line.credit || 0), 0);
+
+      if (Math.abs(totalDebits - totalCredits) > 0.01) {
+        return res.status(400).json({
+          success: false,
+          message: 'Total debits must equal total credits'
+        });
+      }
+
+      req.body.totalDebit = totalDebits;
+      req.body.totalCredit = totalCredits;
+    }
+
+    // Track changes
+    const changes = [];
+    for (const [key, value] of Object.entries(req.body)) {
+      if (entry.get(key) !== value) {
+        changes.push({
+          changedBy: req.user.id,
+          changedAt: new Date(),
+          field: key,
+          oldValue: entry.get(key),
+          newValue: value
+        });
+      }
+    }
+
+    Object.assign(entry, req.body);
+    entry.updatedBy = req.user.id;
+    entry.changeHistory.push(...changes);
+
+    await entry.save();
+
+    const populatedEntry = await JournalEntry.findById(entry._id)
+      .populate('lines.account', 'name code type')
+      .populate('updatedBy', 'name email');
+
+    res.json({
+      success: true,
+      data: populatedEntry,
+      message: 'Journal entry updated successfully'
+    });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const postJournalEntry = async (entryId: any, userId: any, session?: any) => {
+  const entry = await JournalEntry.findById(entryId).session(session);
+  
+  if (!entry) {
+    throw new Error('Journal entry not found');
+  }
+
+  if (entry.status === 'POSTED') {
+    throw new Error('Journal entry is already posted');
+  }
+
+  // Update account balances and create ledger entries
+  for (const line of entry.lines) {
+    const account = await Account.findById(line.account).session(session);
+    if (!account) {
+      throw new Error(`Account not found: ${line.account}`);
+    }
+
+    // Update account balance
+    const balanceChange = line.debit - line.credit;
+    account.balance += balanceChange;
+    await account.save({ session });
+
+    // Create ledger entry
+    const ledgerEntry = new Ledger({
+      accountId: line.account,
+      date: entry.entryDate,
+      description: line.description || entry.description,
+      debit: line.debit,
+      credit: line.credit,
+      balance: account.balance,
+      journalEntryId: entry._id,
+      reference: entry.entryNumber
+    });
+    await ledgerEntry.save({ session });
+  }
+
+  // Update journal entry status
+  entry.status = 'POSTED';
+  entry.isPosted = true;
+  entry.postingDate = new Date();
+  entry.postedBy = userId;
+  await entry.save({ session });
+
+  return entry;
+};
+
+export const postJournalEntryRoute = async (req: Request, res: Response) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const entry = await postJournalEntry(req.params.id, req.user.id, session);
+    await session.commitTransaction();
+
+    const populatedEntry = await JournalEntry.findById(entry._id)
+      .populate('lines.account', 'name code type')
+      .populate('postedBy', 'name email');
+
+    res.json({
+      success: true,
+      data: populatedEntry,
+      message: 'Journal entry posted successfully'
+    });
+  } catch (error: any) {
+    await session.abortTransaction();
+    res.status(400).json({ success: false, message: error.message });
+  } finally {
+    session.endSession();
+  }
+};
+
+export const reverseJournalEntry = async (req: Request, res: Response) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { reason } = req.body;
+    const originalEntry = await JournalEntry.findById(req.params.id).session(session);
+    
+    if (!originalEntry) {
+      return res.status(404).json({ success: false, message: 'Journal entry not found' });
+    }
+
+    if (originalEntry.status !== 'POSTED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only posted journal entries can be reversed'
+      });
+    }
+
+    // Create reversing entry
+    const reversingLines = originalEntry.lines.map(line => ({
+      account: line.account,
+      accountId: line.accountId,
+      debit: line.credit, // Swap debits and credits
+      credit: line.debit,
+      description: `Reversal: ${line.description || originalEntry.description}`,
+      costCenter: line.costCenter,
+      department: line.department,
+      project: line.project
+    }));
+
+    const reversingEntry = new JournalEntry({
+      entryNumber: `REV-${originalEntry.entryNumber}`,
+      entryType: 'REVERSING',
+      status: 'POSTED',
+      entryDate: new Date(),
+      date: new Date(),
+      postingDate: new Date(),
+      periodYear: new Date().getFullYear(),
+      periodMonth: new Date().getMonth() + 1,
+      description: `Reversal of ${originalEntry.entryNumber}: ${reason}`,
+      lines: reversingLines,
+      totalDebit: originalEntry.totalCredit,
+      totalCredit: originalEntry.totalDebit,
+      isPosted: true,
+      originalEntryId: originalEntry._id,
+      createdBy: req.user.id,
+      postedBy: req.user.id
+    });
+
+    await reversingEntry.save({ session });
+
+    // Update account balances
+    for (const line of reversingEntry.lines) {
+      const account = await Account.findById(line.account).session(session);
+      if (account) {
+        const balanceChange = line.debit - line.credit;
+        account.balance += balanceChange;
+        await account.save({ session });
+
+        // Create ledger entry
+        const ledgerEntry = new Ledger({
+          accountId: line.account,
+          date: reversingEntry.entryDate,
+          description: line.description,
+          debit: line.debit,
+          credit: line.credit,
+          balance: account.balance,
+          journalEntryId: reversingEntry._id,
+          reference: reversingEntry.entryNumber
+        });
+        await ledgerEntry.save({ session });
+      }
+    }
+
+    // Update original entry
+    originalEntry.status = 'REVERSED';
+    originalEntry.reversedEntryId = reversingEntry._id;
+    originalEntry.reversedBy = req.user.id;
+    originalEntry.reversalReason = reason;
+    originalEntry.reversalDate = new Date();
+    await originalEntry.save({ session });
+
+    await session.commitTransaction();
+
+    res.json({
+      success: true,
+      data: {
+        originalEntry,
+        reversingEntry
+      },
+      message: 'Journal entry reversed successfully'
+    });
+  } catch (error: any) {
+    await session.abortTransaction();
+    res.status(400).json({ success: false, message: error.message });
+  } finally {
+    session.endSession();
+  }
+};
+
+export const deleteJournalEntry = async (req: Request, res: Response) => {
+  try {
+    const entry = await JournalEntry.findById(req.params.id);
+    
+    if (!entry) {
+      return res.status(404).json({ success: false, message: 'Journal entry not found' });
+    }
+
+    // Prevent deletion of posted entries
+    if (entry.status === 'POSTED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete posted journal entry. Please reverse it instead.'
+      });
+    }
+
+    await JournalEntry.findByIdAndDelete(req.params.id);
+
+    res.json({
+      success: true,
+      message: 'Journal entry deleted successfully'
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export default {
+  createJournalEntry,
+  getJournalEntries,
+  getJournalEntryById,
+  updateJournalEntry,
+  postJournalEntryRoute,
+  reverseJournalEntry,
+  deleteJournalEntry
+};

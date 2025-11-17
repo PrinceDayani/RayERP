@@ -62,15 +62,15 @@ export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) 
 
   // Listen for new notifications
   useSocketEvent<NotificationEvent>('notification', (data) => {
-    setNotifications(prev => [data, ...prev]);
+    setNotifications(prev => [{ ...data, id: data.id || `notif-${Date.now()}` }, ...prev]);
   });
 
   // Listen for new orders
   useSocketEvent<OrderCreatedEvent>('order:new', (data) => {
     const notification: NotificationEvent = {
-      id: `order-${data._id}`,
+      id: `order-${data._id}-${Date.now()}`,
       type: 'order_created',
-      message: `New order #${data.orderNumber} has been placed by ${data.customer.name}`,
+      message: `New order #${data.orderNumber} has been placed by ${data.customer?.name || 'Unknown'}`,
       timestamp: new Date().toISOString(),
       read: false,
       link: `/dashboard/orders/${data._id}`

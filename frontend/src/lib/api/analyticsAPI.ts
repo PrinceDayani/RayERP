@@ -69,12 +69,60 @@ export const getInventoryAnalytics = async () => {
   }
 };
 
+// Get productivity trends
+export const getProductivityTrends = async (period = '30d', department = 'all') => {
+  try {
+    const response = await api.get(`/analytics/productivity-trends?period=${period}&department=${department}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching productivity trends:', error);
+    throw error;
+  }
+};
+
+// Get project dues
+export const getProjectDues = async () => {
+  try {
+    const response = await api.get('/analytics/project-dues');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching project dues:', error);
+    throw error;
+  }
+};
+
+// Get top performers
+export const getTopPerformers = async (period = '30d', limit = 5) => {
+  try {
+    const response = await api.get(`/analytics/top-performers?period=${period}&limit=${limit}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching top performers:', error);
+    throw error;
+  }
+};
+
+// Get dashboard stats (alias for getDashboardAnalytics)
+export const getDashboardStats = async () => {
+  try {
+    const response = await api.get('/analytics/stats');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    throw error;
+  }
+};
+
 export const analyticsAPI = {
   checkAuth,
   getDashboard: getDashboardAnalytics,
   getDashboardAnalytics,
+  getDashboardStats,
   getSales: getSalesAnalytics,
-  getInventory: getInventoryAnalytics
+  getInventory: getInventoryAnalytics,
+  getProductivityTrends,
+  getProjectDues,
+  getTopPerformers
 };
 
 export default analyticsAPI;

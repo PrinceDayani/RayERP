@@ -10,6 +10,7 @@ import { Server as SocketServer } from "socket.io";
 import { logger } from "./utils/logger";
 import routes from "./routes/index";
 import assignmentRoutes from "./routes/assignment.routes";
+import backupRoutes from "./routes/backupRoutes";
 import errorMiddleware from "./middleware/error.middleware";
 
 dotenv.config();
@@ -72,6 +73,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use("/api", routes);
 app.use("/api", assignmentRoutes);
+app.use("/api/backup", backupRoutes);
 
 // Catch-all for undefined routes
 app.all('*', (req, res) => {
@@ -95,9 +97,9 @@ const io = new SocketServer(server, {
   transports: ["polling", "websocket"],
   allowEIO3: true,
   path: "/socket.io/",
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  upgradeTimeout: 30000,
+  pingTimeout: 20000,
+  pingInterval: 10000,
+  upgradeTimeout: 10000,
   maxHttpBufferSize: 1e6
 });
 
@@ -225,7 +227,9 @@ import { realTimeAdminEmitter } from './utils/realTimeAdminEmitter';
 realTimeAdminEmitter.initialize(io);
 
 // Initialize real-time data emitter
-import './utils/realTimeEmitter';
+import { RealTimeEmitter } from './utils/realTimeEmitter';
+RealTimeEmitter.initialize(io);
+RealTimeEmitter.startIntervals();
 
 // Initialize cron jobs
 import { initializeCronJobs } from './utils/cronJobs';
@@ -258,6 +262,60 @@ mongoose
     try {
       const { initializeOnboardingSystem } = await import('./utils/initializeOnboarding');
       await initializeOnboardingSystem();
+      
+      // Create default roles if they don't exist
+      const { Role } = await import('./models/Role');
+      
+      const defaultRoles = [
+        {
+          name: 'super_admin',
+          description: 'Super Administrator with complete system access',
+          permissions: [
+            'manage_roles', 'view_users', 'create_user', 'update_user', 'delete_user',
+            'view_employees', 'create_employee', 'update_employee', 'delete_employee',
+            'view_products', 'create_product', 'update_product', 'delete_product',
+            'view_customers', 'create_customer',
+            'update_customer', 'delete_customer', 'view_reports', 'export_data',
+            'system_settings', 'view_logs'
+          ]
+        },
+        {
+          name: 'admin',
+          description: 'Administrator with management access',
+          permissions: [
+            'view_users', 'create_user', 'update_user',
+            'view_employees', 'create_employee', 'update_employee',
+            'view_products', 'create_product', 'update_product',
+            'view_customers',
+            'create_customer', 'update_customer', 'view_reports'
+          ]
+        },
+        {
+          name: 'manager',
+          description: 'Manager with operational access',
+          permissions: [
+            'view_users', 'view_employees',
+            'view_products', 'create_product', 'update_product',
+            'view_customers', 'create_customer', 'update_customer'
+          ]
+        },
+        {
+          name: 'employee',
+          description: 'Employee with basic access',
+          permissions: [
+            'view_employees', 'view_products', 'view_customers'
+          ]
+        }
+      ];
+      
+      for (const roleData of defaultRoles) {
+        const existingRole = await Role.findOne({ name: roleData.name });
+        if (!existingRole) {
+          await Role.create(roleData);
+          logger.info(`✅ Default ${roleData.name} role created`);
+        }
+      }
+      
       logger.info('✅ Onboarding system initialized');
     } catch (error) {
       logger.error('❌ Error initializing onboarding system:', error);
@@ -265,8 +323,17 @@ mongoose
     
     // Initialize Finance & Accounting System
     try {
-      const { initializeFinanceSystem } = await import('./utils/initializeFinance');
+      const { initializeFinanceSystem, setupFinanceSocketEvents } = await import('./utils/initializeFinance');
       await initializeFinanceSystem();
+      setupFinanceSocketEvents(io);
+      
+      // Initialize Complete Finance System
+      try {
+        const { initializeCompleteFinanceSystem } = await import('./utils/initializeFinanceComplete');
+        await initializeCompleteFinanceSystem();
+      } catch (error) {
+        logger.warn('⚠️ Complete Finance System initialization skipped:', error);
+      }
     } catch (error) {
       logger.error('❌ Error initializing Finance System:', error);
     }

@@ -171,11 +171,21 @@ export const useNotifications = () => {
 
   const playNotificationSound = useCallback(() => {
     try {
-      const audio = new Audio('/notification-sound.mp3');
-      audio.volume = 0.3;
-      audio.play().catch(() => {
-        // Silently fail if audio can't be played
-      });
+      // Try multiple audio formats for better compatibility
+      const audioSources = ['/notification-sound.mp3', '/notification.wav', '/notification.ogg'];
+      
+      for (const src of audioSources) {
+        try {
+          const audio = new Audio(src);
+          audio.volume = 0.3;
+          audio.play().catch(() => {
+            // Silently fail if audio can't be played
+          });
+          break; // If successful, don't try other formats
+        } catch (error) {
+          continue; // Try next format
+        }
+      }
     } catch (error) {
       // Silently fail if audio can't be created
     }

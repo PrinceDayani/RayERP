@@ -21,9 +21,10 @@ const AdminControls = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const isRoot = user?.role === "root";
-  const isSuperAdmin = user?.role === "super_admin";
-  const isAdmin = user?.role === "admin";
+  const userRole = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
+  const isRoot = userRole === "root";
+  const isSuperAdmin = userRole === "super_admin";
+  const isAdmin = userRole === "admin";
   const hasAdminAccess = isAdmin || isSuperAdmin || isRoot;
 
   useEffect(() => {

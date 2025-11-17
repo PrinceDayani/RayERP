@@ -5,10 +5,11 @@ import { requireRole } from '../middleware/role.middleware';
 
 const router = Router();
 
+router.get("/me", protect, getProfile);
 router.get("/profile", protect, getProfile);
 router.put("/profile", protect, updateProfile);
 router.put("/change-password", protect, changePassword);
-router.get("/", protect, requireRole(['Superadmin', 'Root']), getAllUsers);
+router.get("/", protect, requireRole(['super_admin', 'root', 'admin', 'manager']), getAllUsers);
 router.get("/:id", protect, getUserById);
 router.put("/bulk/role", protect, requireRole(['Superadmin', 'Root']), bulkUpdateUserRoles);
 router.put("/:id/role", protect, requireRole(['Superadmin', 'Root']), updateUserRole);

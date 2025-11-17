@@ -58,18 +58,22 @@ export const checkRolePermission = (requiredPermission: string) => {
         return res.status(401).json({ message: 'Authentication required' });
       }
 
-      const user = await User.findById(userId).populate('roles');
+      const user = await User.findById(userId).populate('role');
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      // Check if user has required permission through any of their roles
+      // Check if user has required permission through their role
       let hasPermission = false;
-      if (user.roles) {
-        for (const role of user.roles as any[]) {
-          if (role.permissions.includes(requiredPermission)) {
+      if (user.role) {
+        // If role is populated, check permissions
+        if (typeof user.role === 'object' && 'permissions' in user.role) {
+          hasPermission = (user.role as any).permissions.includes(requiredPermission);
+        } else {
+          // If role is just an ID, populate it
+          const role = await Role.findById(user.role);
+          if (role && role.permissions.includes(requiredPermission)) {
             hasPermission = true;
-            break;
           }
         }
       }

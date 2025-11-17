@@ -44,12 +44,11 @@ const ProjectActivity: React.FC<ProjectActivityProps> = ({ projectId }) => {
       setLoading(true);
       const filterType = filter === "all" ? undefined : filter;
       const data = await projectActivityAPI.getByProject(projectId!, filterType);
-      setActivities(data);
+      setActivities(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error("Error fetching activities:", error);
-      if (error.response?.status === 404) {
-        setActivities([]);
-      } else {
+      setActivities([]);
+      if (error.response?.status !== 404) {
         toast({
           title: "Error",
           description: "Failed to load project activity",
@@ -148,7 +147,7 @@ const ProjectActivity: React.FC<ProjectActivityProps> = ({ projectId }) => {
           <div className="flex justify-center p-8">Loading activity...</div>
         ) : (
           <div className="space-y-4">
-            {activities.map((activity, index) => (
+            {Array.isArray(activities) && activities.map((activity, index) => (
             <div key={activity._id} className="relative">
               {/* Timeline line */}
               {index < activities.length - 1 && (

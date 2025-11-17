@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { useToast } from "@/components/ui/use-toast";
+import toast from 'react-hot-toast';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -170,10 +170,7 @@ export default function SecuritySettings() {
   };
   
   const handleSaveSettings = async () => {
-    toast({
-      title: "Success",
-      description: "Security settings are automatically saved",
-    });
+    toast.success('Security settings are automatically saved');
     setHasUnsavedChanges(false);
   };
   
@@ -202,21 +199,14 @@ export default function SecuritySettings() {
       setShowQrCode(false);
       setTwoFactorCode('');
       
-      toast({
-        title: "Success",
-        description: "Two-factor authentication enabled successfully",
-      });
+      toast.success('Two-factor authentication enabled successfully');
       
       // Save the updated settings
       await handleSaveSettings();
       
     } catch (error) {
       console.error('Failed to verify 2FA code:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to verify 2FA code",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : 'Failed to verify 2FA code');
       
       // Revert 2FA setting since verification failed
       updateSettings({ twoFactorEnabled: false });
@@ -256,10 +246,7 @@ export default function SecuritySettings() {
       setNewPassword('');
       setConfirmPassword('');
       
-      toast({
-        title: "Success",
-        description: "Password changed successfully",
-      });
+      toast.success('Password changed successfully');
       
       // Password change successful
       
@@ -267,11 +254,7 @@ export default function SecuritySettings() {
       
     } catch (error) {
       console.error('Failed to change password:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to change password",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : 'Failed to change password');
     } finally {
       setIsChangingPassword(false);
     }

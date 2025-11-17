@@ -8,12 +8,23 @@ import { emitToUser } from '../utils/socket.utils';
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find().populate('role').select('-password');
+    const Employee = (await import('../models/Employee')).default;
     
-    res.status(200).json({
-      success: true,
-      count: users.length,
-      users
-    });
+    const usersWithDetails = await Promise.all(users.map(async (user) => {
+      const employee = await Employee.findOne({ user: user._id });
+      return {
+        _id: user._id,
+        firstName: employee?.firstName || user.name?.split(' ')[0] || '',
+        lastName: employee?.lastName || user.name?.split(' ')[1] || '',
+        email: user.email,
+        phone: employee?.phone,
+        role: (user.role as any)?.name || 'employee',
+        department: employee?.department,
+        avatarUrl: (employee as any)?.avatarUrl
+      };
+    }));
+    
+    res.status(200).json(usersWithDetails);
   } catch (error: any) {
     logger.error(`Get all users error: ${error.message}`);
     res.status(500).json({
@@ -287,24 +298,20 @@ export const getProfile = async (req: Request, res: Response) => {
     const Employee = (await import('../models/Employee')).default;
     const employee = await Employee.findOne({ user: userId });
     
-    res.status(200).json({
-      success: true,
-      profile: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        employee: employee ? {
-          firstName: employee.firstName,
-          lastName: employee.lastName,
-          phone: employee.phone,
-          position: employee.position,
-          department: employee.department,
-          departments: employee.departments
-        } : null
-      }
-    });
+    const userProfile = {
+      _id: user._id,
+      firstName: employee?.firstName || user.name?.split(' ')[0] || '',
+      lastName: employee?.lastName || user.name?.split(' ')[1] || '',
+      email: user.email,
+      phone: employee?.phone,
+      role: (user.role as any)?.name || 'employee',
+      department: employee?.department,
+      avatarUrl: (employee as any)?.avatarUrl,
+      name: user.name,
+      status: user.status
+    };
+    
+    res.status(200).json(userProfile);
   } catch (error: any) {
     logger.error(`Get profile error: ${error.message}`);
     res.status(500).json({ success: false, message: 'Error retrieving profile' });

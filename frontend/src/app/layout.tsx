@@ -7,6 +7,7 @@ import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { RealTimeProvider } from '@/context/RealTimeContext';
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as HotToaster } from 'react-hot-toast';
 import { ThemeEnforcer } from '@/components/theme-enforcer';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -32,6 +33,17 @@ export default function RootLayout({
             <RealTimeProvider>
               {children}
               <Toaster />
+              <HotToaster 
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: '#1f2937',
+                    color: '#fff',
+                    border: '1px solid #374151'
+                  }
+                }}
+              />
             </RealTimeProvider>
           </AuthProvider>
         </ThemeProvider>

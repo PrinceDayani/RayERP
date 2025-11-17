@@ -61,6 +61,8 @@ import journalEntryTemplateRoutes from './journalEntryTemplate.routes';
 import projectFinanceEnhanced from './projectFinanceEnhanced';
 import financialReportsEnhanced from './financialReportsEnhanced';
 
+import backupRoutes from './backupRoutes';
+
 const router = express.Router();
 
 // --- Core Application Routes ---
@@ -87,9 +89,11 @@ router.use('/departments', departmentRoutes);
 router.use('/department-budgets', departmentBudgetRoutes);
 router.use('/onboarding', onboardingRoutes);
 router.use('/dashboard', dashboardRoutes);
+
 router.use('/file-shares', fileShareRoutes);
 router.use('/chat', chatRoutes);
 router.use('/broadcast', broadcastRoutes);
+router.use('/backup', backupRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);

@@ -22,7 +22,7 @@ export const getAccounts = async (req: Request, res: Response) => {
     if (projectId) filter.projectId = projectId;
     
     const accounts = await Account.find(filter)
-      .populate('parentAccount', 'name code')
+      .populate('parentId', 'name code')
       .populate('projectId', 'name');
     res.json({ success: true, data: accounts });
   } catch (error: any) {
@@ -33,7 +33,7 @@ export const getAccounts = async (req: Request, res: Response) => {
 export const getAccountById = async (req: Request, res: Response) => {
   try {
     const account = await Account.findById(req.params.id)
-      .populate('parentAccount', 'name code')
+      .populate('parentId', 'name code')
       .populate('projectId', 'name');
     if (!account) {
       return res.status(404).json({ success: false, message: 'Account not found' });
