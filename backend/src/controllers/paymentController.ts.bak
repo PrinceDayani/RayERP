@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Payment from '../models/Payment';
 import Invoice from '../models/Invoice';
-import JournalEntry from '../models/JournalEntry';
+import { JournalEntry } from '../models/JournalEntry';
 import { Account } from '../models/Account';
 import mongoose from 'mongoose';
 
@@ -28,31 +28,16 @@ export const createPayment = async (req: Request, res: Response) => {
     const payment = new Payment(paymentData);
     await payment.save({ session });
 
-    // Update related invoices
-    if (payment.allocations && payment.allocations.length > 0) {
-      for (const allocation of payment.allocations) {
-        const invoice = await Invoice.findById(allocation.invoiceId).session(session);
+    // Update related invoices if any
+    if (payment.invoiceIds && payment.invoiceIds.length > 0) {
+      for (const invoiceId of payment.invoiceIds) {
+        const invoice = await Invoice.findById(invoiceId).session(session);
         if (invoice) {
-          invoice.paidAmount += allocation.amount;
-          invoice.balanceAmount = invoice.totalAmount - invoice.paidAmount;
+          invoice.paidAmount += payment.amount;
           
-          if (invoice.balanceAmount <= 0.01) {
-            invoice.status = 'PAID';
-            invoice.paidDate = new Date();
-          } else if (invoice.paidAmount > 0) {
-            invoice.status = 'PARTIALLY_PAID';
+          if (invoice.paidAmount >= invoice.totalAmount) {
+            invoice.status = 'paid';
           }
-
-          // Add payment record to invoice
-          invoice.payments.push({
-            date: payment.paymentDate,
-            amount: allocation.amount,
-            currency: payment.currency,
-            exchangeRate: payment.exchangeRate,
-            amountInBaseCurrency: allocation.amount * payment.exchangeRate,
-            paymentMethod: payment.paymentMethod,
-            reference: payment.reference || payment.paymentNumber
-          });
 
           await invoice.save({ session });
         }
@@ -60,7 +45,7 @@ export const createPayment = async (req: Request, res: Response) => {
     }
 
     // Create journal entry if payment is completed
-    if (payment.status === 'COMPLETED') {
+    if (payment.status === 'completed') {
       await createPaymentJournalEntry(payment, req.user.id, session);
     }
 
@@ -169,7 +154,7 @@ export const updatePayment = async (req: Request, res: Response) => {
     }
 
     // Prevent modification of completed payments
-    if (payment.status === 'COMPLETED') {
+    if (payment.status === 'completed') {
       return res.status(400).json({
         success: false,
         message: 'Cannot modify completed payment'
@@ -209,7 +194,7 @@ export const deletePayment = async (req: Request, res: Response) => {
     }
 
     // Prevent deletion of completed payments
-    if (payment.status === 'COMPLETED') {
+    if (payment.status === 'completed') {
       return res.status(400).json({
         success: false,
         message: 'Cannot delete completed payment'

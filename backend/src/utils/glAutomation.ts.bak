@@ -189,7 +189,7 @@ export class GLAutomation {
 
     // Process each journal line
     for (const line of journalEntry.lines) {
-      const account = await Account.findById(line.accountId).session(session);
+      const account = await Account.findOne({ code: line.accountCode }).session(session);
       if (!account) continue;
 
       // Calculate new balance
@@ -202,14 +202,14 @@ export class GLAutomation {
 
       // Update account balance
       await Account.findByIdAndUpdate(
-        line.accountId,
+        account._id,
         { balance: newBalance },
         { session }
       );
 
       // Create ledger entry
       await Ledger.create([{
-        accountId: line.accountId,
+        accountId: account._id,
         date: journalEntry.date,
         description: line.description,
         debit: line.debit,

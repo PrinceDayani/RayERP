@@ -1,33 +1,23 @@
 import { logger } from './logger';
-import { io } from '../server';
+
+let ioInstance: any = null;
+
+export const setSocketInstance = (io: any) => {
+  ioInstance = io;
+};
 
 export const initializeFinanceSystem = async () => {
   try {
     logger.info('🏦 Initializing Finance & Accounting System...');
 
     // Initialize budget monitoring
-    const { initializeBudgetMonitoring, syncAllBudgetsOnStartup } = await import('./initializeBudgetMonitoring');
-    await syncAllBudgetsOnStartup();
-    initializeBudgetMonitoring();
-    logger.info('✅ Budget monitoring initialized');
-
-    // Setup finance socket events
-    if (io) {
-      io.on('connection', (socket) => {
-        socket.on('finance:subscribe', (data) => {
-          const { projectId, userId } = data;
-          if (projectId) socket.join(`finance:project:${projectId}`);
-          if (userId) socket.join(`finance:user:${userId}`);
-          logger.info(`Socket ${socket.id} subscribed to finance updates`);
-        });
-
-        socket.on('finance:unsubscribe', (data) => {
-          const { projectId, userId } = data;
-          if (projectId) socket.leave(`finance:project:${projectId}`);
-          if (userId) socket.leave(`finance:user:${userId}`);
-        });
-      });
-      logger.info('✅ Finance socket events configured');
+    try {
+      const { initializeBudgetMonitoring, syncAllBudgetsOnStartup } = await import('./initializeBudgetMonitoring');
+      await syncAllBudgetsOnStartup();
+      initializeBudgetMonitoring();
+      logger.info('✅ Budget monitoring initialized');
+    } catch (error) {
+      logger.warn('⚠️ Budget monitoring initialization skipped:', error);
     }
 
     logger.info('✅ Finance & Accounting System initialized successfully');
@@ -46,24 +36,45 @@ export const initializeFinanceSystem = async () => {
 
   } catch (error) {
     logger.error('❌ Error initializing Finance System:', error);
-    throw error;
+    // Don't throw error to prevent server startup failure
   }
 };
 
+export const setupFinanceSocketEvents = (io: any) => {
+  ioInstance = io;
+  
+  io.on('connection', (socket: any) => {
+    socket.on('finance:subscribe', (data: any) => {
+      const { projectId, userId } = data;
+      if (projectId) socket.join(`finance:project:${projectId}`);
+      if (userId) socket.join(`finance:user:${userId}`);
+      logger.info(`Socket ${socket.id} subscribed to finance updates`);
+    });
+
+    socket.on('finance:unsubscribe', (data: any) => {
+      const { projectId, userId } = data;
+      if (projectId) socket.leave(`finance:project:${projectId}`);
+      if (userId) socket.leave(`finance:user:${userId}`);
+    });
+  });
+  
+  logger.info('✅ Finance socket events configured');
+};
+
 export const emitFinanceEvent = (event: string, data: any) => {
-  if (io) {
-    io.emit(event, { ...data, timestamp: new Date() });
+  if (ioInstance) {
+    ioInstance.emit(event, { ...data, timestamp: new Date() });
   }
 };
 
 export const emitToProject = (projectId: string, event: string, data: any) => {
-  if (io) {
-    io.to(`finance:project:${projectId}`).emit(event, { ...data, timestamp: new Date() });
+  if (ioInstance) {
+    ioInstance.to(`finance:project:${projectId}`).emit(event, { ...data, timestamp: new Date() });
   }
 };
 
 export const emitToUser = (userId: string, event: string, data: any) => {
-  if (io) {
-    io.to(`finance:user:${userId}`).emit(event, { ...data, timestamp: new Date() });
+  if (ioInstance) {
+    ioInstance.to(`finance:user:${userId}`).emit(event, { ...data, timestamp: new Date() });
   }
 };

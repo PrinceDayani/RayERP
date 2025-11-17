@@ -175,7 +175,7 @@ const NotificationSystem: React.FC<NotificationProps> = ({ isAuthenticated }) =>
             <div className="flex gap-1 mt-2">
               {['all', 'unread', 'order', 'inventory', 'project', 'task'].map((filterType) => (
                 <Button
-                  key={filterType}
+                  key={`filter-${filterType}`}
                   variant={filter === filterType ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setFilter(filterType)}

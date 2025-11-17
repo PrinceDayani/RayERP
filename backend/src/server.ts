@@ -227,7 +227,9 @@ import { realTimeAdminEmitter } from './utils/realTimeAdminEmitter';
 realTimeAdminEmitter.initialize(io);
 
 // Initialize real-time data emitter
-import './utils/realTimeEmitter';
+import { RealTimeEmitter } from './utils/realTimeEmitter';
+RealTimeEmitter.initialize(io);
+RealTimeEmitter.startIntervals();
 
 // MongoDB connection and server startup
 const PORT = process.env.PORT || 5000;
@@ -313,12 +315,17 @@ mongoose
     
     // Initialize Finance & Accounting System
     try {
-      const { initializeFinanceSystem } = await import('./utils/initializeFinance');
+      const { initializeFinanceSystem, setupFinanceSocketEvents } = await import('./utils/initializeFinance');
       await initializeFinanceSystem();
+      setupFinanceSocketEvents(io);
       
       // Initialize Complete Finance System
-      const { initializeCompleteFinanceSystem } = await import('./utils/initializeFinanceComplete');
-      await initializeCompleteFinanceSystem();
+      try {
+        const { initializeCompleteFinanceSystem } = await import('./utils/initializeFinanceComplete');
+        await initializeCompleteFinanceSystem();
+      } catch (error) {
+        logger.warn('⚠️ Complete Finance System initialization skipped:', error);
+      }
     } catch (error) {
       logger.error('❌ Error initializing Finance System:', error);
     }

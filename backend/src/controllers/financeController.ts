@@ -4,7 +4,7 @@ import Transaction from '../models/Transaction';
 import Invoice from '../models/Invoice';
 import Payment from '../models/Payment';
 import Budget from '../models/Budget';
-import JournalEntry from '../models/JournalEntry';
+import { JournalEntry } from '../models/JournalEntry';
 import { Ledger } from '../models/Ledger';
 import mongoose from 'mongoose';
 

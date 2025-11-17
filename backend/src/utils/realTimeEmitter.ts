@@ -1,10 +1,18 @@
-import { io } from '../server';
+import { Server as SocketIOServer } from 'socket.io';
 import Employee from '../models/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
 
 export class RealTimeEmitter {
+  private static ioInstance: any = null;
+
+  static initialize(io: any) {
+    this.ioInstance = io;
+  }
+
   static async emitDashboardStats() {
+    if (!this.ioInstance) return;
+    
     try {
       const [employees, projects, tasks] = await Promise.all([
         Employee.find(),
@@ -30,14 +38,16 @@ export class RealTimeEmitter {
 
       stats.profit = stats.revenue - stats.expenses;
 
-      io.emit('dashboard:stats', stats);
+      this.ioInstance.emit('dashboard:stats', stats);
     } catch (error) {
       console.error('Error emitting dashboard stats:', error);
     }
   }
 
   static emitMetricsUpdate(data: any) {
-    io.emit('metrics_update', {
+    if (!this.ioInstance) return;
+    
+    this.ioInstance.emit('metrics_update', {
       activeUsers: Math.floor(Math.random() * 50) + 10,
       totalRevenue: data.totalRevenue || 0,
       ordersToday: data.ordersToday || 0,
@@ -47,7 +57,9 @@ export class RealTimeEmitter {
   }
 
   static emitActivityLog(activity: { type: string; message: string; user?: string }) {
-    io.emit('activity_log', {
+    if (!this.ioInstance) return;
+    
+    this.ioInstance.emit('activity_log', {
       id: Date.now().toString(),
       ...activity,
       timestamp: new Date().toISOString()
@@ -55,16 +67,20 @@ export class RealTimeEmitter {
   }
 
   static emitSystemStatus(status: { database: string; api: string; socket: string }) {
-    io.emit('system_status', status);
+    if (!this.ioInstance) return;
+    
+    this.ioInstance.emit('system_status', status);
+  }
+
+  static startIntervals() {
+    // Auto-emit dashboard stats every 30 seconds
+    setInterval(() => {
+      RealTimeEmitter.emitDashboardStats();
+    }, 30000);
+
+    // Auto-emit metrics every 15 seconds
+    setInterval(() => {
+      RealTimeEmitter.emitMetricsUpdate({});
+    }, 15000);
   }
 }
-
-// Auto-emit dashboard stats every 10 seconds
-setInterval(() => {
-  RealTimeEmitter.emitDashboardStats();
-}, 10000);
-
-// Auto-emit metrics every 5 seconds
-setInterval(() => {
-  RealTimeEmitter.emitMetricsUpdate({});
-}, 5000);
