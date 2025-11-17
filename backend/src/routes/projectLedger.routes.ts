@@ -12,6 +12,14 @@ import {
   getProjectLedgerEntries,
   getProjectTrialBalance
 } from '../controllers/projectLedgerController';
+import {
+  getProjectBudgetVsActual,
+  updateProjectBudget,
+  recalculateActuals,
+  getProjectProfitability,
+  calculateProfitability,
+  getProjectFinancialDashboard
+} from '../controllers/projectLedgerEnhancedController';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { validateObjectId, validateRequiredFields } from '../middleware/validation.middleware';
 
@@ -58,5 +66,17 @@ router.get('/:projectId/ledger-entries', validateObjectId('projectId'), getProje
 
 // Trial Balance route
 router.get('/:projectId/trial-balance', validateObjectId('projectId'), getProjectTrialBalance);
+
+// Budget vs Actual routes
+router.get('/:projectId/budget-actual', validateObjectId('projectId'), getProjectBudgetVsActual);
+router.put('/:projectId/budget', validateObjectId('projectId'), updateProjectBudget);
+router.post('/:projectId/recalculate-actuals', validateObjectId('projectId'), recalculateActuals);
+
+// Profitability routes
+router.get('/:projectId/profitability', validateObjectId('projectId'), getProjectProfitability);
+router.post('/:projectId/calculate-profitability', validateObjectId('projectId'), calculateProfitability);
+
+// Financial Dashboard
+router.get('/:projectId/financial-dashboard', validateObjectId('projectId'), getProjectFinancialDashboard);
 
 export default router;

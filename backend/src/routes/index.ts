@@ -58,6 +58,8 @@ import invoiceNewRoutes from './invoice.routes';
 import journalEntryRoutes from './journalEntry.routes';
 import invoiceTemplateNewRoutes from './invoiceTemplate.routes';
 import journalEntryTemplateRoutes from './journalEntryTemplate.routes';
+import projectFinanceEnhanced from './projectFinanceEnhanced';
+import financialReportsEnhanced from './financialReportsEnhanced';
 
 const router = express.Router();
 
@@ -97,7 +99,6 @@ router.use('/transactions', transactionRoutes);
 router.use('/invoices', invoiceRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/expenses', expenseRoutes);
-router.use('/financial-reports', financialReportRoutes);
 router.use('/project-ledger', projectLedgerRoutes);
 router.use('/general-ledger', generalLedgerRoutes);
 router.use('/integrated-finance', integratedFinanceRoutes);
@@ -121,6 +122,9 @@ router.use('/invoices-new', invoiceNewRoutes);
 router.use('/journal-entries', journalEntryRoutes);
 router.use('/invoice-templates-new', invoiceTemplateNewRoutes);
 router.use('/journal-entry-templates', journalEntryTemplateRoutes);
+router.use('/project-finance', projectFinanceEnhanced);
+router.use('/financial-reports', financialReportRoutes);
+router.use('/financial-reports-enhanced', financialReportsEnhanced);
 // Indian accounts merged into general-ledger
 
 // --- Health Check Endpoints ---

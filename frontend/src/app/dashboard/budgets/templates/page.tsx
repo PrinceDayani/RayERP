@@ -269,8 +269,9 @@ export default function BudgetTemplatesPage() {
   };
 
   const getTotalAmount = (template: BudgetTemplate) => {
+    if (!template.categories || !Array.isArray(template.categories)) return 0;
     return template.categories.reduce((sum, cat) => 
-      sum + cat.items.reduce((catSum, item) => catSum + item.totalCost, 0), 0
+      sum + (cat.items || []).reduce((catSum, item) => catSum + (item.totalCost || 0), 0), 0
     );
   };
 

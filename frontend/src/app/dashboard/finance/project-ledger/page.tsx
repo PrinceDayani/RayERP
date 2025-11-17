@@ -572,19 +572,13 @@ const ProjectLedgerPage = () => {
           </Card>
         ) : selectedProject ? (
           <Tabs defaultValue="ledger" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="ledger" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Ledger Entries
-              </TabsTrigger>
-              <TabsTrigger value="journal" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Journal Entries
-              </TabsTrigger>
-              <TabsTrigger value="quick-entry" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Quick Entry
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="ledger">Ledger</TabsTrigger>
+              <TabsTrigger value="journal">Journal</TabsTrigger>
+              <TabsTrigger value="budget">Budget</TabsTrigger>
+              <TabsTrigger value="profitability">Profit</TabsTrigger>
+              <TabsTrigger value="time">Time</TabsTrigger>
+              <TabsTrigger value="more">More...</TabsTrigger>
             </TabsList>
 
             <TabsContent value="ledger">
@@ -744,6 +738,133 @@ const ProjectLedgerPage = () => {
                   </Table>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="budget">
+              <Card>
+                <CardHeader><CardTitle>Project Budget vs Actual</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-4 gap-4">
+                      <Card className="p-4">
+                        <p className="text-sm text-muted-foreground">Total Budget</p>
+                        <p className="text-2xl font-bold">$100,000</p>
+                      </Card>
+                      <Card className="p-4">
+                        <p className="text-sm text-muted-foreground">Actual Spend</p>
+                        <p className="text-2xl font-bold text-blue-600">$75,000</p>
+                      </Card>
+                      <Card className="p-4">
+                        <p className="text-sm text-muted-foreground">Remaining</p>
+                        <p className="text-2xl font-bold text-green-600">$25,000</p>
+                      </Card>
+                      <Card className="p-4">
+                        <p className="text-sm text-muted-foreground">Utilization</p>
+                        <p className="text-2xl font-bold">75%</p>
+                      </Card>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-4">
+                      <div className="bg-blue-600 h-4 rounded-full" style={{width: '75%'}}></div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="profitability">
+              <Card>
+                <CardHeader><CardTitle>Project Profitability Analysis</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-6">
+                    <div className="p-6 bg-green-50 rounded">
+                      <p className="text-sm text-muted-foreground">Revenue</p>
+                      <p className="text-3xl font-bold text-green-600">$150,000</p>
+                    </div>
+                    <div className="p-6 bg-red-50 rounded">
+                      <p className="text-sm text-muted-foreground">Costs</p>
+                      <p className="text-3xl font-bold text-red-600">$100,000</p>
+                    </div>
+                    <div className="p-6 bg-blue-50 rounded">
+                      <p className="text-sm text-muted-foreground">Gross Profit</p>
+                      <p className="text-3xl font-bold text-blue-600">$50,000</p>
+                      <p className="text-sm mt-2">33.33% margin</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="time">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Time Tracking & Billing</CardTitle>
+                    <Button size="sm"><Plus className="h-4 w-4 mr-2" />Log Time</Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Hours</TableHead>
+                        <TableHead>Rate</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Billable</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>John Doe</TableCell>
+                        <TableCell>160</TableCell>
+                        <TableCell>$50/hr</TableCell>
+                        <TableCell className="font-bold">$8,000</TableCell>
+                        <TableCell><Badge className="bg-green-600">Yes</Badge></TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Jane Smith</TableCell>
+                        <TableCell>120</TableCell>
+                        <TableCell>$50/hr</TableCell>
+                        <TableCell className="font-bold">$6,000</TableCell>
+                        <TableCell><Badge className="bg-green-600">Yes</Badge></TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="more">
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+                  <h3 className="font-bold mb-2">Milestones & Billing</h3>
+                  <p className="text-sm text-muted-foreground">Link entries to project milestones</p>
+                </Card>
+                <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+                  <h3 className="font-bold mb-2">Inter-project Transfers</h3>
+                  <p className="text-sm text-muted-foreground">Move costs between projects</p>
+                </Card>
+                <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+                  <h3 className="font-bold mb-2">Project Cash Flow</h3>
+                  <p className="text-sm text-muted-foreground">Dedicated cash flow statement</p>
+                </Card>
+                <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+                  <h3 className="font-bold mb-2">Resource Allocation</h3>
+                  <p className="text-sm text-muted-foreground">Track employee time & costs</p>
+                </Card>
+                <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+                  <h3 className="font-bold mb-2">Variance Reports</h3>
+                  <p className="text-sm text-muted-foreground">Planned vs actual analysis</p>
+                </Card>
+                <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+                  <h3 className="font-bold mb-2">Automated Accruals</h3>
+                  <p className="text-sm text-muted-foreground">Auto-accrue at month-end</p>
+                </Card>
+                <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+                  <h3 className="font-bold mb-2">Project Closing</h3>
+                  <p className="text-sm text-muted-foreground">Formal closure workflow</p>
+                </Card>
+              </div>
             </TabsContent>
 
             <TabsContent value="quick-entry">

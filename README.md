@@ -219,6 +219,18 @@ npm start
 - **PDF Export with Branding**: Professional reports
 - **Real-time Updates**: Live P&L as transactions occur
 
+### 📊 Project Ledger (Production Ready) **NEW!**
+- **Budget vs Actual Tracking**: Real-time budget monitoring with smart alerts
+- **Profitability Analysis**: ROI, gross margin, net margin calculations
+- **Trend Analysis**: Monthly profit trends and forecasting
+- **Financial Dashboard**: Complete project financial overview
+- **Smart Alerts**: 80%, 90% budget utilization warnings
+- **Auto-Calculations**: Recalculate actuals from journal entries
+- **Break-Even Analysis**: Calculate break-even point
+- **Cost Classification**: Direct vs indirect cost tracking
+- **Variance Analysis**: Favorable/unfavorable variance tracking
+- **Category Budgets**: Budget by category with tracking
+
 ### 🔐 Authentication & Authorization
 - JWT-based authentication
 - Role-based access control (RBAC)
@@ -480,6 +492,14 @@ Base URL: `http://localhost:5000/api`
 - `PUT /journal-entry-templates/:id` - Update template
 - `DELETE /journal-entry-templates/:id` - Delete template
 
+### Project Ledger **NEW!**
+- `GET /project-ledger/:projectId/budget-actual` - Get budget vs actual
+- `PUT /project-ledger/:projectId/budget` - Update project budget
+- `POST /project-ledger/:projectId/recalculate-actuals` - Recalculate actuals
+- `GET /project-ledger/:projectId/profitability` - Get profitability metrics
+- `POST /project-ledger/:projectId/calculate-profitability` - Calculate profitability
+- `GET /project-ledger/:projectId/financial-dashboard` - Get financial dashboard
+
 ### Analytics & Reports
 - `GET /analytics/dashboard` - Dashboard statistics
 - `GET /reports/employees` - Employee reports
@@ -623,6 +643,12 @@ node test-backend.js
 ## 📚 Documentation
 
 For detailed documentation, see:
+- [Project Ledger - Documentation Index](PROJECT_LEDGER_INDEX.md) - **NEW!** Complete documentation index
+- [Project Ledger - Quick Start](PROJECT_LEDGER_QUICK_START.md) - **NEW!** Get started in 5 minutes
+- [Project Ledger - Deployment](DEPLOY_PROJECT_LEDGER.md) - **NEW!** Deploy in 2 minutes
+- [Project Ledger - Production Ready](PROJECT_LEDGER_PRODUCTION_READY.md) - **NEW!** Complete feature documentation
+- [Project Ledger - Complete Guide](PROJECT_LEDGER_COMPLETE.md) - **NEW!** Full implementation guide
+- [Project Ledger - Final Summary](PROJECT_LEDGER_FINAL_SUMMARY.md) - **NEW!** Overview and statistics
 - [Enterprise Payment & P/L System](PAYMENT_PL_ENTERPRISE.md) - **NEW!** 31 enterprise features for payments and profit/loss
 - [Enhanced Journal Entry - Documentation Index](JOURNAL_ENTRY_INDEX.md) - **NEW!** Complete guide to all journal entry features
 - [Enhanced Journal Entry System](JOURNAL_ENTRY_ENHANCED.md) - **NEW!** Templates, Real-time Validation, Attachments & Batch Import
