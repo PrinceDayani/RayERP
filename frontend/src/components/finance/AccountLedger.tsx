@@ -58,7 +58,9 @@ const AccountLedger = () => {
       queryParams.append('page', filters.page.toString());
       queryParams.append('limit', filters.limit.toString());
 
-      const response = await fetch(`/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
+        credentials: 'include'
+      });
 
       if (!response.ok) throw new Error('Failed to fetch account ledger');
 
@@ -89,7 +91,9 @@ const AccountLedger = () => {
       if (filters.endDate) queryParams.append('endDate', filters.endDate);
       queryParams.append('export', 'true');
 
-      const response = await fetch(`/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
+        credentials: 'include'
+      });
 
       if (!response.ok) throw new Error('Failed to export ledger');
 

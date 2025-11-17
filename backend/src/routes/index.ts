@@ -15,6 +15,14 @@ import leaveRoutes from './leave.routes';
 import employeeReportRoutes from './employeeReport.routes';
 import activityRoutes from './activity.routes';
 import rbacRoutes from './rbac.routes';
+import projectTemplateRoutes from './projectTemplate.routes';
+import resourceRoutes from './resourceRoutes';
+import departmentRoutes from './department.routes';
+import departmentBudgetRoutes from './departmentBudget.routes';
+import onboardingRoutes from './onboarding.routes';
+import fileShareRoutes from './fileShare.routes';
+import chatRoutes from './chat.routes';
+import broadcastRoutes from './broadcast.routes';
 // --- Merged Financial & Ledger Routes ---
 import budgetRoutes from './budgetRoutes';
 import budgetTemplateRoutes from './budgetTemplateRoutes';
@@ -26,6 +34,13 @@ import expenseRoutes from './expense.routes';
 import financialReportRoutes from './financialReport.routes';
 import projectLedgerRoutes from './projectLedger.routes';
 import generalLedgerRoutes from './generalLedger.routes';
+import integratedFinanceRoutes from './integratedFinance.routes';
+import dashboardRoutes from './dashboard.routes';
+import periodClosingRoutes from './periodClosing.routes';
+import bankReconciliationRoutes from './bankReconciliation.routes';
+import indianAccountRoutes from './indianAccount.routes';
+
+import backupRoutes from './backupRoutes';
 
 const router = express.Router();
 
@@ -44,7 +59,19 @@ router.use('/admin', adminRoutes);
 router.use('/leaves', leaveRoutes);
 router.use('/employee-reports', employeeReportRoutes);
 router.use('/activities', activityRoutes);
+router.use('/activity', activityRoutes); // Alias for singular form
 router.use('/rbac', rbacRoutes);
+router.use('/project-templates', projectTemplateRoutes);
+router.use('/resources', resourceRoutes);
+router.use('/departments', departmentRoutes);
+router.use('/department-budgets', departmentBudgetRoutes);
+router.use('/onboarding', onboardingRoutes);
+router.use('/dashboard', dashboardRoutes);
+
+router.use('/file-shares', fileShareRoutes);
+router.use('/chat', chatRoutes);
+router.use('/broadcast', broadcastRoutes);
+router.use('/backup', backupRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);
@@ -57,6 +84,10 @@ router.use('/expenses', expenseRoutes);
 router.use('/financial-reports', financialReportRoutes);
 router.use('/project-ledger', projectLedgerRoutes);
 router.use('/general-ledger', generalLedgerRoutes);
+router.use('/integrated-finance', integratedFinanceRoutes);
+router.use('/period-closing', periodClosingRoutes);
+router.use('/bank-reconciliation', bankReconciliationRoutes);
+// Indian accounts merged into general-ledger
 
 // --- Health Check Endpoints ---
 router.get('/health', (req, res) => {

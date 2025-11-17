@@ -1,31 +1,48 @@
 import express from 'express';
-import { register, login, getCurrentUser, logout, checkInitialSetup, checkAuth } from '../controllers/authController';
+import rateLimit from 'express-rate-limit';
+import { register, login, getCurrentUser, logout, checkInitialSetup, checkAuth, changePassword } from '../controllers/authController';
 import { protect } from '../middleware/auth.middleware';
-import { authorize, authorizeHierarchy } from '../middleware/role.middleware';
-import { UserRole } from '../models/User';
+import { authorizeMinLevel } from '../middleware/role.middleware';
 import { updateUserRole, getAllUsers } from '../controllers/userController';
 
 const router = express.Router();
 
-// Public routes
-router.post('/login', login);
-router.post('/logout', logout);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { 
+    success: false,
+    message: 'Too many authentication attempts. Please try again in 15 minutes.' 
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { 
+    success: false,
+    message: 'Too many requests. Please try again later.' 
+  }
+});
+
+router.post('/login', authLimiter, login);
+router.post('/logout', generalLimiter, logout);
 
 // Protected routes
 router.get('/me', protect, getCurrentUser);
 router.get('/check', protect, checkAuth);
 
-// Role-protected routes
-// Only authenticated users with required roles can access these routes
-router.post('/register', protect, register);
+router.post('/register', protect, authLimiter, register);
 
-// User management routes with role-based access
-router.get('/users', protect, authorizeHierarchy(UserRole.ADMIN), getAllUsers);
-router.patch('/users/:id/role', protect, authorizeHierarchy(UserRole.SUPER_ADMIN), updateUserRole);
-router.put('/users/:id/role', protect, authorizeHierarchy(UserRole.SUPER_ADMIN), updateUserRole);
+router.get('/users', protect, authorizeMinLevel(80), getAllUsers);
+router.patch('/users/:id/role', protect, authorizeMinLevel(90), updateUserRole);
+router.put('/users/:id/role', protect, authorizeMinLevel(90), updateUserRole);
 
-// Special case: Allow first user registration without authentication
-router.post('/initial-setup', register);
-router.get('/initial-setup', checkInitialSetup);
+router.post('/initial-setup', authLimiter, register);
+router.get('/initial-setup', generalLimiter, checkInitialSetup);
+
+router.put('/change-password', protect, generalLimiter, changePassword);
 
 export default router;

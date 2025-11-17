@@ -59,6 +59,7 @@ const EditProjectPage = () => {
         client: formData.client,
         manager: formData.manager,
         team: formData.team || [],
+        departments: formData.departments || [],
         tags: formData.tags || [],
       };
       
@@ -156,6 +157,7 @@ const EditProjectPage = () => {
                 client: project.client,
                 manager: project.manager,
                 team: project.team,
+                departments: project.departments,
                 tags: project.tags,
               }}
               onSubmit={handleUpdateProject}

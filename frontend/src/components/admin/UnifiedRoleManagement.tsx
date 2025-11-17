@@ -17,6 +17,7 @@ import { PlusIcon, EditIcon, TrashIcon, SearchIcon, UserIcon, ShieldIcon, Toggle
 import adminAPI from "@/lib/api/adminAPI";
 import { toast } from "@/components/ui/use-toast";
 import { logActivity } from "@/lib/activityLogger";
+import { CreateRoleDialog } from "./CreateRoleDialog";
 
 interface Role {
   _id: string;
@@ -112,21 +113,13 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
 
   const activeRoles = roles.filter(role => role.isActive);
 
-  const handleCreateRole = async () => {
-    try {
-      const createdRole = await adminAPI.createRole({ ...newRole, isActive: true });
-      setRoles([...roles, createdRole]);
-      await logActivity({
-        action: 'create',
-        resource: 'role',
-        details: `Created role: ${newRole.name} with ${newRole.permissions.length} permissions`
-      });
-      setNewRole({ name: "", description: "", permissions: [] });
-      setIsAddRoleOpen(false);
-      toast({ title: "Success", description: "Role created successfully" });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to create role", variant: "destructive" });
-    }
+  const handleRoleCreated = async (createdRole: any) => {
+    setRoles([...roles, createdRole]);
+    await logActivity({
+      action: 'create',
+      resource: 'role',
+      details: `Created role: ${createdRole.name} with ${createdRole.permissions.length} permissions`
+    });
   };
 
   const handleUpdateRole = async () => {
@@ -176,28 +169,60 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
         details: `Deleted role: ${role?.name}`
       });
       toast({ title: "Success", description: "Role deleted successfully" });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to delete role", variant: "destructive" });
+    } catch (error: any) {
+      const errorMessage = error.message || "Failed to delete role";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     }
   };
 
   const handleAssignRoles = async () => {
     if (!currentUser) return;
     try {
-      const selectedRoleNames = activeRoles.filter(role => selectedRoles.includes(role._id)).map(role => role.name);
-      const updatedUser = await adminAPI.assignRolesToUser(currentUser._id, selectedRoles);
-      setUsers(users.map(u => u._id === currentUser._id ? updatedUser : u));
-      await logActivity({
-        action: 'update',
-        resource: 'user',
-        details: `Assigned roles [${selectedRoleNames.join(', ')}] to user: ${currentUser.name}`
-      });
+      if (selectedRoles.length === 0) {
+        // No role selected - clear roles
+        const updatedUser = await adminAPI.assignRolesToUser(currentUser._id, []);
+        setUsers(users.map(u => u._id === currentUser._id ? {
+          ...u,
+          roles: []
+        } : u));
+        
+        await logActivity({
+          action: 'update',
+          resource: 'user',
+          details: `Removed all roles from user: ${currentUser.name}`
+        });
+        
+        toast({ title: "Success", description: `Roles cleared for ${currentUser.name}` });
+      } else {
+        // Single role selected
+        const selectedRole = activeRoles.find(role => role._id === selectedRoles[0]);
+        const updatedUser = await adminAPI.assignRolesToUser(currentUser._id, selectedRoles);
+        
+        // Update the user in the local state
+        setUsers(users.map(u => u._id === currentUser._id ? {
+          ...u,
+          roles: selectedRole ? [selectedRole] : []
+        } : u));
+        
+        await logActivity({
+          action: 'update',
+          resource: 'user',
+          details: `Assigned role "${selectedRole?.name}" to user: ${currentUser.name}`
+        });
+        
+        toast({ title: "Success", description: `Role updated for ${currentUser.name}` });
+      }
+      
       setIsAssignRoleOpen(false);
       setCurrentUser(null);
       setSelectedRoles([]);
-      toast({ title: "Success", description: `Roles updated for ${currentUser.name}` });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to assign roles", variant: "destructive" });
+    } catch (error: any) {
+      console.error('Role assignment error:', error);
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to assign role", 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -263,70 +288,10 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                 </SelectContent>
               </Select>
             </div>
-            <Dialog open={isAddRoleOpen} onOpenChange={setIsAddRoleOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <PlusIcon className="mr-2 h-4 w-4" />
-                  Create Role
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Role</DialogTitle>
-                  <DialogDescription>Define a new role with specific permissions</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">Name</Label>
-                    <Input
-                      id="name"
-                      className="col-span-3"
-                      value={newRole.name}
-                      onChange={(e) => setNewRole({ ...newRole, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="description" className="text-right">Description</Label>
-                    <Textarea
-                      id="description"
-                      className="col-span-3"
-                      value={newRole.description}
-                      onChange={(e) => setNewRole({ ...newRole, description: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-start gap-4">
-                    <Label className="text-right">Permissions</Label>
-                    <div className="col-span-3 space-y-4">
-                      {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
-                        <div key={category} className="space-y-2">
-                          <h4 className="font-medium text-sm">{category}</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {categoryPermissions.map((permission) => (
-                              <div key={permission._id} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`new-${permission.name}`}
-                                  checked={newRole.permissions.includes(permission.name)}
-                                  onCheckedChange={(checked) => 
-                                    handlePermissionChange(permission.name, checked as boolean)
-                                  }
-                                />
-                                <Label htmlFor={`new-${permission.name}`} className="text-sm">
-                                  {permission.name}
-                                </Label>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddRoleOpen(false)}>Cancel</Button>
-                  <Button onClick={handleCreateRole}>Create Role</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => setIsAddRoleOpen(true)}>
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Create Role
+            </Button>
           </div>
 
           <div className="rounded-md border">
@@ -453,7 +418,7 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Assigned Roles</TableHead>
+                  <TableHead>Assigned Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -470,6 +435,13 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
+                        {/* Show primary role first */}
+                        {user.role && typeof user.role === 'string' && (
+                          <Badge variant="default" className="text-xs">
+                            {user.role.toUpperCase()}
+                          </Badge>
+                        )}
+                        {/* Show RBAC roles */}
                         {user.roles && user.roles.length > 0 ? (
                           user.roles.map((role) => (
                             <Badge key={role._id} variant="secondary" className="text-xs">
@@ -477,7 +449,7 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                             </Badge>
                           ))
                         ) : (
-                          <span className="text-muted-foreground text-sm">No roles assigned</span>
+                          !user.role && <span className="text-muted-foreground text-sm">No roles assigned</span>
                         )}
                       </div>
                     </TableCell>
@@ -492,12 +464,13 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                         size="sm"
                         onClick={() => {
                           setCurrentUser(user);
-                          setSelectedRoles(user.roles?.map(role => role._id) || []);
+                          // Set the first RBAC role as selected, or empty if none
+                          setSelectedRoles(user.roles && user.roles.length > 0 ? [user.roles[0]._id] : []);
                           setIsAssignRoleOpen(true);
                         }}
                       >
                         <ShieldIcon className="mr-2 h-4 w-4" />
-                        Assign Roles
+                        Assign Role
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -574,39 +547,35 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
       <Dialog open={isAssignRoleOpen} onOpenChange={setIsAssignRoleOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Assign Roles</DialogTitle>
+            <DialogTitle>Assign Role</DialogTitle>
             <DialogDescription>
-              Select active roles for {currentUser?.name}
+              Select a role for {currentUser?.name}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-4">
-              <Label>Available Active Roles</Label>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {activeRoles.map((role) => (
-                  <div key={role._id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`assign-${role._id}`}
-                      checked={selectedRoles.includes(role._id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedRoles([...selectedRoles, role._id]);
-                        } else {
-                          setSelectedRoles(selectedRoles.filter(id => id !== role._id));
-                        }
-                      }}
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor={`assign-${role._id}`} className="text-sm font-medium">
-                        {role.name}
-                      </Label>
-                      {role.description && (
-                        <p className="text-xs text-muted-foreground">{role.description}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <Label>Select Role</Label>
+              <Select 
+                value={selectedRoles[0] || ""} 
+                onValueChange={(value) => setSelectedRoles(value ? [value] : [])}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No Role</SelectItem>
+                  {activeRoles.map((role) => (
+                    <SelectItem key={role._id} value={role._id}>
+                      <div>
+                        <div className="font-medium">{role.name}</div>
+                        {role.description && (
+                          <div className="text-xs text-muted-foreground">{role.description}</div>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -615,6 +584,13 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Role Dialog */}
+      <CreateRoleDialog
+        open={isAddRoleOpen}
+        onOpenChange={setIsAddRoleOpen}
+        onRoleCreated={handleRoleCreated}
+      />
     </div>
   );
 }

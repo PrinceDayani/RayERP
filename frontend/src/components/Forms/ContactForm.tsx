@@ -1,7 +1,16 @@
-// frontend/src/components/Forms/ContactForm.tsx
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Contact } from '@/lib/api/index';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, X, User, Mail, Phone, Building2, MapPin, FileText, Tag, AlertTriangle } from 'lucide-react';
 
 interface ContactFormProps {
   initialData?: Contact;
@@ -20,6 +29,8 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
     address: '',
     notes: '',
     tags: [],
+    reference: '',
+    alternativePhone: '',
   });
   const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -93,175 +104,227 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-          Name *
-        </label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-            errors.name ? 'border-red-500' : ''
-          }`}
-        />
-        {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-      </div>
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <User className="h-5 w-5" />
+          {initialData ? 'Edit Contact' : 'Add New Contact'}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Full Name *
+              </Label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Enter full name"
+                className={errors.name ? 'border-red-500' : ''}
+              />
+              {errors.name && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.name}
+                </p>
+              )}
+            </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-            Phone Number *
-          </label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.phone ? 'border-red-500' : ''
-            }`}
-          />
-          {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email || ''}
-            onChange={handleChange}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.email ? 'border-red-500' : ''
-            }`}
-          />
-          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="company" className="block text-sm font-medium text-gray-700">
-            Company
-          </label>
-          <input
-            type="text"
-            id="company"
-            name="company"
-            value={formData.company || ''}
-            onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="position" className="block text-sm font-medium text-gray-700">
-            Position
-          </label>
-          <input
-            type="text"
-            id="position"
-            name="position"
-            value={formData.position || ''}
-            onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-          Address
-        </label>
-        <input
-          type="text"
-          id="address"
-          name="address"
-          value={formData.address || ''}
-          onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-          Notes
-        </label>
-        <textarea
-          id="notes"
-          name="notes"
-          rows={3}
-          value={formData.notes || ''}
-          onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        ></textarea>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Tags</label>
-        <div className="flex items-center">
-          <input
-            type="text"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="Add a tag and press Enter"
-          />
-          <button
-            type="button"
-            onClick={addTag}
-            className="ml-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Add
-          </button>
-        </div>
-        {formData.tags && formData.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {formData.tags.map((tag, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => removeTag(tag)}
-                  className="ml-1 inline-flex text-blue-400 hover:text-blue-600 focus:outline-none"
-                >
-                  &times;
-                </button>
-              </span>
-            ))}
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Phone Number *
+              </Label>
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="Enter phone number"
+                className={errors.phone ? 'border-red-500' : ''}
+              />
+              {errors.phone && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.phone}
+                </p>
+              )}
+            </div>
           </div>
-        )}
-      </div>
 
-      <div className="flex justify-end space-x-3">
-        <button
-          type="button"
-          onClick={() => router.push('/dashboard/contacts')}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'Saving...' : 'Save Contact'}
-        </button>
-      </div>
-    </form>
+          <div className="space-y-2">
+            <Label htmlFor="email" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Email Address
+            </Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email || ''}
+              onChange={handleChange}
+              placeholder="Enter email address"
+              className={errors.email ? 'border-red-500' : ''}
+            />
+            {errors.email && (
+              <p className="text-sm text-red-500 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {errors.email}
+              </p>
+            )}
+          </div>
+
+          {/* Professional Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="company" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Company
+              </Label>
+              <Input
+                id="company"
+                name="company"
+                value={formData.company || ''}
+                onChange={handleChange}
+                placeholder="Enter company name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="position">
+                Position/Title
+              </Label>
+              <Input
+                id="position"
+                name="position"
+                value={formData.position || ''}
+                onChange={handleChange}
+                placeholder="Enter job title or position"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="address" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Address
+              </Label>
+              <Input
+                id="address"
+                name="address"
+                value={formData.address || ''}
+                onChange={handleChange}
+                placeholder="Enter full address"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="alternativePhone" className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Alternative Phone
+              </Label>
+              <Input
+                id="alternativePhone"
+                name="alternativePhone"
+                type="tel"
+                value={formData.alternativePhone || ''}
+                onChange={handleChange}
+                placeholder="Enter alternative phone number"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="reference">
+              Reference/How did you meet?
+            </Label>
+            <Input
+              id="reference"
+              name="reference"
+              value={formData.reference || ''}
+              onChange={handleChange}
+              placeholder="e.g., LinkedIn, Conference, Referral from John Doe"
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Notes
+            </Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              rows={4}
+              value={formData.notes || ''}
+              onChange={handleChange}
+              placeholder="Add any additional notes or comments"
+            />
+          </div>
+
+          {/* Tags */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              Tags
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                placeholder="Add a tag and press Enter"
+                className="flex-1"
+              />
+              <Button type="button" onClick={addTag} variant="outline" size="sm">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {formData.tags && formData.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {formData.tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                    {tag}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0 ml-1"
+                      onClick={() => removeTag(tag)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex justify-end gap-3 pt-6 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push('/dashboard/contacts')}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Saving...' : initialData ? 'Update Contact' : 'Create Contact'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 

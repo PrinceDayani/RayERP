@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import User from '../models/User';
 import { Role } from '../models/Role';
+import Employee from '../models/Employee';
+import Department from '../models/Department';
 
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -14,25 +16,38 @@ export const requirePermission = (permission: string) => {
       }
 
       const userId = req.user.id;
-      const user = await User.findById(userId).populate('roles');
+      const user = await User.findById(userId).populate('role');
       
       if (!user) {
         return res.status(401).json({ message: 'User not found' });
       }
 
-      // Check if user has root, superadmin, or admin role (backward compatibility)
-      if (user.role === 'root' || user.role === 'superadmin' || user.role === 'admin') {
+      const userRole = user.role as any;
+      
+      if (userRole?.level >= 80) {
         return next();
       }
 
-      // Check RBAC permissions
       const userPermissions = new Set<string>();
       
-      if (user.roles && user.roles.length > 0) {
-        for (const role of user.roles as any[]) {
-          if (role.permissions) {
-            role.permissions.forEach((perm: string) => userPermissions.add(perm));
-          }
+      if (userRole?.permissions) {
+        userRole.permissions.forEach((perm: string) => userPermissions.add(perm));
+      }
+
+      // Check department permissions
+      const employee = await Employee.findOne({ email: user.email });
+      if (employee) {
+        const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
+        if (departmentNames.length > 0) {
+          const departments = await Department.find({ 
+            name: { $in: departmentNames },
+            status: 'active'
+          });
+          departments.forEach(dept => {
+            if (dept.permissions && dept.permissions.length > 0) {
+              dept.permissions.forEach((perm: string) => userPermissions.add(perm));
+            }
+          });
         }
       }
 
@@ -60,25 +75,38 @@ export const requireAnyPermission = (permissions: string[]) => {
       }
 
       const userId = req.user.id;
-      const user = await User.findById(userId).populate('roles');
+      const user = await User.findById(userId).populate('role');
       
       if (!user) {
         return res.status(401).json({ message: 'User not found' });
       }
 
-      // Check if user has root, superadmin, or admin role (backward compatibility)
-      if (user.role === 'root' || user.role === 'superadmin' || user.role === 'admin') {
+      const userRole = user.role as any;
+      
+      if (userRole?.level >= 80) {
         return next();
       }
 
-      // Check RBAC permissions
       const userPermissions = new Set<string>();
       
-      if (user.roles && user.roles.length > 0) {
-        for (const role of user.roles as any[]) {
-          if (role.permissions) {
-            role.permissions.forEach((perm: string) => userPermissions.add(perm));
-          }
+      if (userRole?.permissions) {
+        userRole.permissions.forEach((perm: string) => userPermissions.add(perm));
+      }
+
+      // Check department permissions
+      const employee = await Employee.findOne({ email: user.email });
+      if (employee) {
+        const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
+        if (departmentNames.length > 0) {
+          const departments = await Department.find({ 
+            name: { $in: departmentNames },
+            status: 'active'
+          });
+          departments.forEach(dept => {
+            if (dept.permissions && dept.permissions.length > 0) {
+              dept.permissions.forEach((perm: string) => userPermissions.add(perm));
+            }
+          });
         }
       }
 

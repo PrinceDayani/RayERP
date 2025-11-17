@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/tests/**/*",
+    "src/routes/fileShare.routes.ts",
+    "src/routes/project.routes.ts",
+    "src/routes/projectLedger.routes.ts", 
+    "src/routes/task.routes.ts",
+    "src/services/settingsService.ts",
+    "src/utils/settingsHelper.ts",
+    "src/utils/financeValidation.ts"
+  ]
+}

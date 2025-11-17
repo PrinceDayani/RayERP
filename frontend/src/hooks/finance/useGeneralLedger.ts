@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { generalLedgerApi } from '@/lib/api/finance/generalLedgerApi';
+import { generalLedgerAPI } from '@/lib/api/generalLedgerAPI';
 import { Account, JournalEntry } from '@/types/finance/generalLedger.types';
 
 export const useGeneralLedger = () => {
@@ -13,9 +13,13 @@ export const useGeneralLedger = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await generalLedgerApi.getAccounts();
+      const data = await generalLedgerAPI.getAccounts();
       const accountsData = data?.accounts || data || [];
-      setAccounts(Array.isArray(accountsData) ? accountsData : []);
+      // Map _id to id for frontend compatibility
+      const mappedAccounts = Array.isArray(accountsData) 
+        ? accountsData.map((acc: any) => ({ ...acc, id: acc._id || acc.id }))
+        : [];
+      setAccounts(mappedAccounts);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error fetching accounts';
       setError(errorMessage);
@@ -30,7 +34,7 @@ export const useGeneralLedger = () => {
     setLoading(true);
     setError(null);
     try {
-      const newAccount = await generalLedgerApi.createAccount(accountData);
+      const newAccount = await generalLedgerAPI.createAccount(accountData);
       setAccounts(prev => [...prev, newAccount]);
       return newAccount;
     } catch (error) {
@@ -46,7 +50,7 @@ export const useGeneralLedger = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await generalLedgerApi.getJournalEntries(params);
+      const data = await generalLedgerAPI.getJournalEntries(params);
       const entriesData = data?.journalEntries || data || [];
       setJournalEntries(Array.isArray(entriesData) ? entriesData : []);
       return data;
@@ -64,7 +68,7 @@ export const useGeneralLedger = () => {
     setLoading(true);
     setError(null);
     try {
-      const newEntry = await generalLedgerApi.createJournalEntry(entryData);
+      const newEntry = await generalLedgerAPI.createJournalEntry(entryData);
       setJournalEntries(prev => [newEntry, ...prev]);
       return newEntry;
     } catch (error) {
@@ -80,7 +84,7 @@ export const useGeneralLedger = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await generalLedgerApi.getTrialBalance();
+      const data = await generalLedgerAPI.getTrialBalance();
       setTrialBalance(data);
       return data;
     } catch (error) {

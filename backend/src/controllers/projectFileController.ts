@@ -1,11 +1,23 @@
 //path: backend/src/controllers/projectFileController.ts
 
 import { Request, Response } from 'express';
+import multer from 'multer';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as zlib from 'zlib';
+import { promisify } from 'util';
+import sharp from 'sharp';
 import ProjectFile from '../models/ProjectFile';
 import Project from '../models/Project';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { logActivity } from '../utils/activityLogger';
+
+const gzip = promisify(zlib.gzip);
+const gunzip = promisify(zlib.gunzip);
+
+// Extend Request interface to include file property
+interface MulterRequest extends Request {
+  file?: Express.Multer.File;
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -44,7 +56,7 @@ export const upload = multer({
 // Get all files for a project
 export const getProjectFiles = async (req: Request, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const { id: projectId } = req.params;
 
     // Check if project exists
     const project = await Project.findById(projectId);
@@ -53,7 +65,10 @@ export const getProjectFiles = async (req: Request, res: Response) => {
     }
 
     const files = await ProjectFile.find({ project: projectId })
+      .select('-fileData')
       .populate('uploadedBy', 'firstName lastName email')
+      .populate('sharedWithDepartments', 'name description')
+      .populate('sharedWithUsers', 'name email')
       .sort({ createdAt: -1 });
 
     res.json(files);
@@ -64,9 +79,10 @@ export const getProjectFiles = async (req: Request, res: Response) => {
 };
 
 // Upload file to project
-export const uploadProjectFile = async (req: Request, res: Response) => {
+export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const { id: projectId } = req.params;
+    const { sharedWithDepartments } = req.body;
     const userId = (req as any).user.id;
 
     // Check if project exists
@@ -79,20 +95,92 @@ export const uploadProjectFile = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
+    // Read file data
+    let fileData = fs.readFileSync(req.file.path);
+    const originalSize = fileData.length;
+
+    let finalData: Buffer = fileData;
+    let isCompressed = false;
+
+    // Lossless image optimization
+    if (/^image\/(jpeg|jpg|png|webp|tiff)/.test(req.file.mimetype)) {
+      try {
+        const optimized = await sharp(fileData)
+          .png({ compressionLevel: 9, quality: 100 })  // Lossless PNG
+          .toBuffer();
+        
+        if (optimized.length < originalSize) {
+          finalData = Buffer.from(optimized);
+          const reduction = ((1 - optimized.length / originalSize) * 100).toFixed(2);
+          console.log(`Image optimized (lossless): ${originalSize} -> ${optimized.length} bytes (${reduction}% reduction)`);
+        } else {
+          console.log(`Image optimization skipped (no benefit): ${req.file.originalname}`);
+        }
+      } catch (error) {
+        console.log(`Image optimization failed, using original: ${req.file.originalname}`);
+      }
+    }
+    // Gzip compression for documents
+    else if (!/^(video|audio)\//.test(req.file.mimetype) && 
+             !/\.(zip|rar|7z|gz|bz2)$/i.test(req.file.originalname)) {
+      const compressedData = await gzip(fileData, { level: 9 });
+      
+      if (compressedData.length < originalSize * 0.95) {
+        finalData = Buffer.from(compressedData);
+        isCompressed = true;
+        const reduction = ((1 - compressedData.length / originalSize) * 100).toFixed(2);
+        console.log(`Document compressed: ${originalSize} -> ${compressedData.length} bytes (${reduction}% reduction)`);
+      }
+    }
+
+    const { sharedWithUsers, shareType } = req.body;
+    
     const projectFile = new ProjectFile({
       name: req.file.filename,
       originalName: req.file.originalname,
       path: req.file.path,
-      size: req.file.size,
+      size: finalData.length,
+      originalSize: originalSize,
       mimeType: req.file.mimetype,
       project: projectId,
-      uploadedBy: userId
+      uploadedBy: userId,
+      sharedWithDepartments: sharedWithDepartments ? JSON.parse(sharedWithDepartments) : [],
+      sharedWithUsers: sharedWithUsers ? JSON.parse(sharedWithUsers) : [],
+      shareType: shareType || 'department',
+      fileData: finalData,
+      storageType: 'database',
+      compressed: isCompressed
     });
 
     await projectFile.save();
+
+    // Delete file from disk after saving to DB
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
     await projectFile.populate('uploadedBy', 'firstName lastName email');
 
-    res.status(201).json(projectFile);
+    // Log activity
+    const user = (req as any).user;
+    await logActivity({
+      userId: userId,
+      userName: user.name || user.email,
+      action: 'share',
+      resource: `File: ${req.file.originalname}`,
+      resourceType: 'file',
+      resourceId: projectFile._id,
+      projectId: projectId,
+      details: `Shared file "${req.file.originalname}" in project`,
+      visibility: 'management',
+      metadata: { fileName: req.file.originalname, fileSize: finalData.length }
+    });
+
+    // Remove fileData from response
+    const response = projectFile.toObject();
+    delete response.fileData;
+
+    res.status(201).json(response);
   } catch (error) {
     console.error('Error uploading file:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -102,7 +190,7 @@ export const uploadProjectFile = async (req: Request, res: Response) => {
 // Download project file
 export const downloadProjectFile = async (req: Request, res: Response) => {
   try {
-    const { projectId, fileId } = req.params;
+    const { id: projectId, fileId } = req.params;
 
     const file = await ProjectFile.findOne({ 
       _id: fileId, 
@@ -113,13 +201,104 @@ export const downloadProjectFile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'File not found' });
     }
 
-    if (!fs.existsSync(file.path)) {
-      return res.status(404).json({ message: 'File not found on disk' });
+    // If stored in database
+    if (file.storageType === 'database' && file.fileData) {
+      let fileData = file.fileData;
+      
+      // Decompress if compressed
+      if (file.compressed) {
+        fileData = await gunzip(file.fileData);
+      }
+      
+      res.setHeader('Content-Type', file.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
+      res.send(fileData);
+    } 
+    // If stored on disk (legacy)
+    else if (fs.existsSync(file.path)) {
+      res.download(file.path, file.originalName);
+    } 
+    else {
+      return res.status(404).json({ message: 'File data not found' });
     }
-
-    res.download(file.path, file.originalName);
   } catch (error) {
     console.error('Error downloading file:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Share file with departments/users
+export const shareProjectFile = async (req: Request, res: Response) => {
+  try {
+    const { id: projectId, fileId } = req.params;
+    const { departmentIds, userIds, shareType } = req.body;
+    const userId = (req as any).user.id;
+    const user = (req as any).user;
+
+    const file = await ProjectFile.findOne({ _id: fileId, project: projectId });
+    if (!file) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+
+    if (shareType === 'department' || shareType === 'both') {
+      file.sharedWithDepartments = departmentIds || [];
+    }
+    if (shareType === 'user' || shareType === 'both') {
+      file.sharedWithUsers = userIds || [];
+    }
+    file.shareType = shareType;
+
+    await file.save();
+    await file.populate([
+      { path: 'sharedWithDepartments', select: 'name' },
+      { path: 'sharedWithUsers', select: 'name email' }
+    ]);
+
+    await logActivity({
+      userId,
+      userName: user.name || user.email,
+      action: 'update',
+      resource: `File: ${file.originalName}`,
+      resourceType: 'file',
+      resourceId: fileId,
+      projectId,
+      details: `Updated sharing settings for "${file.originalName}"`,
+      visibility: 'management'
+    });
+
+    const response = file.toObject();
+    delete response.fileData;
+    res.json(response);
+  } catch (error) {
+    console.error('Error sharing file:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get files shared with user
+export const getSharedFiles = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const { departmentId } = req.query;
+
+    const query: any = {
+      $or: [
+        { sharedWithUsers: userId },
+        ...(departmentId ? [{ sharedWithDepartments: departmentId }] : [])
+      ]
+    };
+
+    const files = await ProjectFile.find(query)
+      .select('-fileData')
+      .populate('project', 'name')
+      .populate('uploadedBy', 'name email')
+      .populate('sharedWithDepartments', 'name')
+      .populate('sharedWithUsers', 'name email')
+      .sort({ createdAt: -1 });
+
+    res.json(files);
+  } catch (error) {
+    console.error('Error fetching shared files:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -127,7 +306,9 @@ export const downloadProjectFile = async (req: Request, res: Response) => {
 // Delete project file
 export const deleteProjectFile = async (req: Request, res: Response) => {
   try {
-    const { projectId, fileId } = req.params;
+    const { id: projectId, fileId } = req.params;
+    const userId = (req as any).user.id;
+    const user = (req as any).user;
 
     const file = await ProjectFile.findOne({ 
       _id: fileId, 
@@ -138,17 +319,33 @@ export const deleteProjectFile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'File not found' });
     }
 
-    // Delete file from disk
-    if (fs.existsSync(file.path)) {
+    const fileName = file.originalName;
+
+    // Delete file from disk if it exists (legacy files)
+    if (file.storageType === 'disk' && fs.existsSync(file.path)) {
       fs.unlinkSync(file.path);
     }
 
     // Delete from database
     await ProjectFile.findByIdAndDelete(fileId);
 
+    // Log activity
+    await logActivity({
+      userId: userId,
+      userName: user.name || user.email,
+      action: 'delete',
+      resource: `File: ${fileName}`,
+      resourceType: 'file',
+      resourceId: fileId,
+      projectId: projectId,
+      details: `Deleted file "${fileName}" from project`,
+      visibility: 'management',
+      metadata: { fileName }
+    });
+
     res.json({ message: 'File deleted successfully' });
   } catch (error) {
     console.error('Error deleting file:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
-};
+}

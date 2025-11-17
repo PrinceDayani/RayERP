@@ -17,7 +17,37 @@ const RoleGuard: React.FC<RoleGuardProps> = ({
   minimumRole,
   redirectTo = '/login',
 }) => {
-  const { isAuthenticated, loading, hasPermission, hasMinimumRole } = useAuth();
+  const { isAuthenticated, loading, hasMinimumLevel, user } = useAuth();
+  
+  const hasPermission = (roles: UserRole[]): boolean => {
+    if (!user || !user.role) return false;
+    
+    const userRole = typeof user.role === 'string' ? user.role : user.role?.name || '';
+    const userRoleName = userRole.toLowerCase().trim();
+    
+    if (userRoleName === 'root') return true;
+    
+    return roles.some(role => {
+      const roleName = typeof role === 'string' ? role : role.toString();
+      return userRoleName === roleName.toLowerCase().trim();
+    });
+  };
+  
+  const hasMinimumRole = (role: UserRole) => {
+    return hasMinimumLevel ? hasMinimumLevel(getRoleLevel(role)) : false;
+  };
+  
+  const getRoleLevel = (role: UserRole): number => {
+    const levels: Record<UserRole, number> = {
+      [UserRole.ROOT]: 100,
+      [UserRole.SUPER_ADMIN]: 90,
+      [UserRole.ADMIN]: 80,
+      [UserRole.MANAGER]: 70,
+      [UserRole.EMPLOYEE]: 60,
+      [UserRole.NORMAL]: 50
+    };
+    return levels[role] || 0;
+  };
   const router = useRouter();
 
   useEffect(() => {
@@ -33,7 +63,7 @@ const RoleGuard: React.FC<RoleGuardProps> = ({
         router.push('/dashboard');
       }
     }
-  }, [isAuthenticated, loading, requiredRoles, minimumRole, hasPermission, hasMinimumRole, router, redirectTo]);
+  }, [isAuthenticated, loading, requiredRoles, minimumRole, router, redirectTo]);
 
   // Show nothing while checking authentication or during redirection
   if (loading || !isAuthenticated) {

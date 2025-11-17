@@ -26,108 +26,77 @@ export const projectFinanceApi = {
       params.append('endDate', filters.dateRange.endDate);
     }
     
-    // Mock data for now
-    return {
-      projectId,
-      revenue: {
-        contractValue: 150000,
-        billedAmount: 120000,
-        unbilledAmount: 30000
-      },
-      expenses: {
-        directCosts: 80000,
-        indirectCosts: 15000,
-        overheads: 10000
-      },
-      grossProfit: 45000,
-      netProfit: 35000,
-      profitMargin: 23.33
-    };
+    const token = localStorage.getItem('token') || localStorage.getItem('auth-token');
+    const response = await fetch(`${API_BASE}/api/general-ledger/reports?reportType=profit-loss&${params}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return handleResponse(response);
   },
 
   // Trial Balance
   getTrialBalance: async (projectId: string, filters?: ProjectFinanceFilters): Promise<ProjectTrialBalance> => {
-    // Mock data
-    return {
-      projectId,
-      accounts: [
-        { accountCode: '1001', accountName: 'Cash', debit: 25000, credit: 0, balance: 25000 },
-        { accountCode: '1200', accountName: 'Accounts Receivable', debit: 30000, credit: 0, balance: 30000 },
-        { accountCode: '2001', accountName: 'Accounts Payable', debit: 0, credit: 15000, balance: -15000 },
-        { accountCode: '4001', accountName: 'Project Revenue', debit: 0, credit: 120000, balance: -120000 },
-        { accountCode: '5001', accountName: 'Direct Costs', debit: 80000, credit: 0, balance: 80000 }
-      ],
-      totalDebits: 135000,
-      totalCredits: 135000
-    };
+    const params = new URLSearchParams();
+    if (filters?.dateRange?.endDate) {
+      params.append('asOfDate', filters.dateRange.endDate);
+    }
+    
+    const token = localStorage.getItem('token') || localStorage.getItem('auth-token');
+    const response = await fetch(`${API_BASE}/api/general-ledger/trial-balance?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return handleResponse(response);
   },
 
   // Balance Sheet
   getBalanceSheet: async (projectId: string, filters?: ProjectFinanceFilters): Promise<ProjectBalanceSheet> => {
-    // Mock data
-    return {
-      projectId,
-      assets: {
-        current: [
-          { name: 'Cash', amount: 25000 },
-          { name: 'Accounts Receivable', amount: 30000 },
-          { name: 'Work in Progress', amount: 15000 }
-        ],
-        fixed: [
-          { name: 'Equipment', amount: 50000 },
-          { name: 'Software', amount: 10000 }
-        ],
-        total: 130000
-      },
-      liabilities: {
-        current: [
-          { name: 'Accounts Payable', amount: 15000 },
-          { name: 'Accrued Expenses', amount: 5000 }
-        ],
-        longTerm: [
-          { name: 'Equipment Loan', amount: 25000 }
-        ],
-        total: 45000
-      },
-      equity: {
-        items: [
-          { name: 'Project Capital', amount: 50000 },
-          { name: 'Retained Earnings', amount: 35000 }
-        ],
-        total: 85000
+    const params = new URLSearchParams();
+    if (filters?.dateRange) {
+      params.append('startDate', filters.dateRange.startDate);
+      params.append('endDate', filters.dateRange.endDate);
+    }
+    
+    const token = localStorage.getItem('token') || localStorage.getItem('auth-token');
+    const response = await fetch(`${API_BASE}/api/general-ledger/reports?reportType=balance-sheet&${params}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
-    };
+    });
+    
+    return handleResponse(response);
   },
 
   // Cash Flow
   getCashFlow: async (projectId: string, filters?: ProjectFinanceFilters): Promise<ProjectCashFlow> => {
-    // Mock data
-    return {
-      projectId,
-      operating: {
-        receipts: 120000,
-        payments: 95000,
-        net: 25000
-      },
-      investing: {
-        receipts: 0,
-        payments: 60000,
-        net: -60000
-      },
-      financing: {
-        receipts: 50000,
-        payments: 0,
-        net: 50000
-      },
-      netCashFlow: 15000,
-      openingBalance: 10000,
-      closingBalance: 25000
-    };
+    const params = new URLSearchParams();
+    if (filters?.dateRange) {
+      params.append('startDate', filters.dateRange.startDate);
+      params.append('endDate', filters.dateRange.endDate);
+    }
+    
+    const token = localStorage.getItem('token') || localStorage.getItem('auth-token');
+    const response = await fetch(`${API_BASE}/api/general-ledger/reports?reportType=cash-flow&${params}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return handleResponse(response);
   },
 
   // Ledger Entries
   getLedgerEntries: async (projectId: string, filters?: ProjectFinanceFilters): Promise<ProjectLedgerEntry[]> => {
     const params = new URLSearchParams();
+    params.append('includeAll', 'true'); // Include draft entries
     if (filters?.dateRange) {
       params.append('startDate', filters.dateRange.startDate);
       params.append('endDate', filters.dateRange.endDate);

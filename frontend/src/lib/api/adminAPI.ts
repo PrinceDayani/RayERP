@@ -218,35 +218,59 @@ const adminAPI = {
   // Role Management
   getRoles: async (): Promise<any[]> => {
     try {
-      return await apiRequest('/api/rbac/roles');
+      const response = await apiRequest('/api/rbac/roles');
+      console.log('getRoles response:', response);
+      // Handle different response formats
+      if (Array.isArray(response)) {
+        return response;
+      } else if (response?.roles && Array.isArray(response.roles)) {
+        return response.roles;
+      } else if (response?.data && Array.isArray(response.data)) {
+        return response.data;
+      }
+      console.warn('Unexpected roles response format:', response);
+      return [];
     } catch (error) {
       console.error('Error fetching roles:', error);
-      return [];
+      throw error;
     }
   },
 
   assignRolesToUser: async (userId: string, roleIds: string[]): Promise<AdminUser> => {
     try {
-      const response = await apiRequest(`/api/auth/users/${userId}/role`, {
+      const response = await apiRequest(`/api/rbac/users/${userId}/roles`, {
         method: 'PUT',
-        body: JSON.stringify({ role: roleIds[0] })
+        body: JSON.stringify({ roleIds })
       });
-      return response.user;
+      return response;
     } catch (error) {
       console.error('Error assigning roles to user:', error);
       throw error;
     }
   },
 
-  updateUserRole: async (userId: string, role: string): Promise<AdminUser> => {
+  updateUserRole: async (userId: string, roleId: string): Promise<AdminUser> => {
     try {
-      const response = await apiRequest(`/api/auth/users/${userId}/role`, {
+      const response = await apiRequest(`/api/users/${userId}/role`, {
         method: 'PUT',
-        body: JSON.stringify({ role })
+        body: JSON.stringify({ roleId })
       });
-      return response.user;
+      return response;
     } catch (error) {
       console.error('Error updating user role:', error);
+      throw error;
+    }
+  },
+
+  bulkUpdateUserRoles: async (userIds: string[], roleId: string): Promise<{ success: boolean; updated: number }> => {
+    try {
+      const response = await apiRequest('/api/users/bulk/role', {
+        method: 'PUT',
+        body: JSON.stringify({ userIds, roleId })
+      });
+      return response;
+    } catch (error) {
+      console.error('Error bulk updating user roles:', error);
       throw error;
     }
   },
@@ -292,6 +316,83 @@ const adminAPI = {
       });
     } catch (error) {
       console.error('Error deleting role:', error);
+      throw error;
+    }
+  },
+
+  resetPassword: async (userId: string, newPassword: string): Promise<void> => {
+    try {
+      const response = await apiRequest(`/api/users/${userId}/reset-password`, {
+        method: 'PUT',
+        body: JSON.stringify({ newPassword })
+      });
+      return response;
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      throw error;
+    }
+  },
+
+  exportLogs: async (format: 'text' | 'pdf' | 'excel' | 'csv'): Promise<Blob> => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      console.log('Exporting logs:', { format, API_URL, tokenPresent: !!token });
+      
+      const response = await fetch(`${API_URL}/api/admin/export-logs?format=${format}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': '*/*'
+        },
+        credentials: 'include'
+      });
+      
+      console.log('Export response:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      if (!response.ok) {
+        let errorMessage;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || response.statusText;
+        } catch {
+          errorMessage = await response.text() || response.statusText;
+        }
+        throw new Error(`Export failed (${response.status}): ${errorMessage}`);
+      }
+      
+      const blob = await response.blob();
+      console.log('Blob created:', { size: blob.size, type: blob.type });
+      
+      if (blob.size === 0) {
+        throw new Error('Empty file received');
+      }
+      
+      return blob;
+    } catch (error: any) {
+      console.error('Export logs error:', error);
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Network error: Unable to connect to server');
+      }
+      throw error;
+    }
+  },
+
+  // Alternative export method using text response
+  exportLogsAsText: async (format: 'text' | 'pdf' | 'excel' | 'csv'): Promise<string> => {
+    try {
+      const response = await apiRequest(`/api/admin/export-logs?format=${format}`);
+      return response;
+    } catch (error) {
+      console.error('Export logs as text error:', error);
       throw error;
     }
   },

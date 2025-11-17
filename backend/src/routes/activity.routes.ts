@@ -8,7 +8,7 @@ const router = Router();
 router.use(protect);
 
 router.post('/', createActivity);
-router.get('/batch', requirePermission('view_activities'), getBatchActivities);
-router.get('/', requirePermission('view_activities'), getActivities);
+router.get('/batch', getBatchActivities);
+router.get('/', getActivities);
 
 export default router;

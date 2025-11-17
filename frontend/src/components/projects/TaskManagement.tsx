@@ -81,7 +81,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
   const fetchEmployees = async () => {
     try {
       const data = await getAllEmployees();
-      setEmployees(data);
+      setEmployees(Array.isArray(data) ? data : (data.data || []));
     } catch (error) {
       console.error("Error fetching employees:", error);
     }
@@ -614,7 +614,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
                   <SelectContent>
                     {employees.map((employee) => (
                       <SelectItem key={employee._id} value={employee._id}>
-                        {employee.firstName} {employee.lastName}
+                        {`${employee.firstName} ${employee.lastName}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -764,7 +764,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
                 <SelectContent>
                   {employees.map((employee) => (
                     <SelectItem key={employee._id} value={employee._id}>
-                      {employee.firstName} {employee.lastName}
+                      {`${employee.firstName} ${employee.lastName}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

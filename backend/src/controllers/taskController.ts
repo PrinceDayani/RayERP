@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import Task from '../models/Task';
 import Project from '../models/Project';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
+import { logActivity } from '../utils/activityLogger';
 
 const emitProjectStats = async () => {
   try {
@@ -33,10 +34,62 @@ const emitProjectStats = async () => {
 
 export const getAllTasks = async (req: Request, res: Response) => {
   try {
-    const tasks = await Task.find()
-      .populate('project', 'name')
-      .populate('assignedTo', 'firstName lastName')
-      .populate('assignedBy', 'firstName lastName');
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    
+    let tasks;
+    if (roleName === 'Root' || roleName === 'Super Admin') {
+      // Root and Super Admin can see all tasks
+      tasks = await Task.find({ isTemplate: { $ne: true } })
+        .populate('project', 'name')
+        .populate('assignedTo', 'firstName lastName')
+        .populate('assignedBy', 'firstName lastName')
+        .populate('dependencies.taskId', 'title')
+        .populate('subtasks', 'title status')
+        .populate('parentTask', 'title');
+    } else {
+      // Get user's employee record to find assigned tasks
+      const Employee = (await import('../models/Employee')).default;
+      const employee = await Employee.findOne({ user: user._id });
+      
+      if (!employee) {
+        return res.json([]);
+      }
+
+      // Find projects user is assigned to
+      const Project = (await import('../models/Project')).default;
+      const userProjects = await Project.find({
+        $or: [
+          { members: user._id },
+          { owner: user._id },
+          { team: user._id },
+          { manager: user._id }
+        ]
+      }).select('_id');
+      
+      const projectIds = userProjects.map(p => p._id);
+
+      // Only show tasks from assigned projects OR tasks directly assigned to the employee
+      tasks = await Task.find({ 
+        isTemplate: { $ne: true },
+        $or: [
+          { project: { $in: projectIds } },
+          { assignedTo: employee._id },
+          { assignedBy: employee._id }
+        ]
+      })
+        .populate('project', 'name')
+        .populate('assignedTo', 'firstName lastName')
+        .populate('assignedBy', 'firstName lastName')
+        .populate('dependencies.taskId', 'title')
+        .populate('subtasks', 'title status')
+        .populate('parentTask', 'title');
+    }
+    
     res.json(tasks);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching tasks', error });
@@ -45,14 +98,50 @@ export const getAllTasks = async (req: Request, res: Response) => {
 
 export const getTaskById = async (req: Request, res: Response) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
     const task = await Task.findById(req.params.id)
       .populate('project', 'name')
       .populate('assignedTo', 'firstName lastName')
       .populate('assignedBy', 'firstName lastName')
       .populate('comments.user', 'firstName lastName');
+    
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
+
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    
+    // Root and Super Admin can see all tasks
+    if (roleName !== 'Root' && roleName !== 'Super Admin') {
+      // Get user's employee record
+      const Employee = (await import('../models/Employee')).default;
+      const employee = await Employee.findOne({ user: user._id });
+      
+      // Check if user is assigned to this task
+      const isAssigned = employee && task.assignedTo._id.toString() === employee._id.toString();
+      
+      // Check if user has access to the project
+      const Project = (await import('../models/Project')).default;
+      const project = await Project.findById(task.project);
+      const hasProjectAccess = project && (
+        project.members.some(m => m.toString() === user._id.toString()) ||
+        project.owner.toString() === user._id.toString() ||
+        (project.team && project.team.some((t: any) => t.toString() === user._id.toString())) ||
+        (project.manager && project.manager.toString() === user._id.toString())
+      );
+      
+      // Check if user created the task
+      const isCreator = employee && task.assignedBy && task.assignedBy._id.toString() === employee._id.toString();
+      
+      if (!isAssigned && !hasProjectAccess && !isCreator) {
+        return res.status(403).json({ message: 'Access denied: You are not assigned to this task or project' });
+      }
+    }
+
     res.json(task);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching task', error });
@@ -88,6 +177,11 @@ export const createTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:created', task);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.status(201).json(task);
   } catch (error) {
     console.error('Error creating task:', error);
@@ -150,6 +244,11 @@ export const updateTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:updated', task);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json(task);
   } catch (error) {
     console.error('Error updating task:', error);
@@ -181,6 +280,11 @@ export const deleteTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:deleted', { id: req.params.id });
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
     console.error('Error deleting task:', error);
@@ -196,7 +300,7 @@ export const addTaskComment = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Comment and user are required' });
     }
     
-    const task = await Task.findById(req.params.id);
+    const task = await Task.findById(req.params.id).populate('project', 'name');
     
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -217,8 +321,24 @@ export const addTaskComment = async (req: Request, res: Response) => {
       );
     } catch (timelineError) {
       console.error('Timeline event creation failed:', timelineError);
-      // Continue execution even if timeline fails
     }
+
+    // Log activity
+    const currentUser = (req as any).user;
+    const Employee = (await import('../models/Employee')).default;
+    const employee = await Employee.findById(user);
+    await logActivity({
+      userId: currentUser?.id || user,
+      userName: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+      action: 'comment',
+      resource: `Task: ${task.title}`,
+      resourceType: 'comment',
+      resourceId: task._id,
+      projectId: task.project._id,
+      details: `Commented on task "${task.title}": ${comment.substring(0, 100)}${comment.length > 100 ? '...' : ''}`,
+      visibility: 'project_team',
+      metadata: { comment, taskTitle: task.title }
+    });
     
     const { io } = await import('../server');
     io.emit('task:comment:added', { taskId: req.params.id, comment: task.comments[task.comments.length - 1] });
@@ -344,9 +464,102 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:status:updated', task);
     await emitProjectStats();
+    
+    // Emit dashboard stats update
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitDashboardStats();
+    
     res.json(task);
   } catch (error) {
     console.error('Error updating task status:', error);
     res.status(400).json({ message: 'Error updating task status', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const cloneTask = async (req: Request, res: Response) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const { _id, createdAt, updatedAt, ...taskData } = task.toObject();
+    const clonedTask = new Task({ ...taskData, title: `${taskData.title} (Copy)` });
+    await clonedTask.save();
+    await clonedTask.populate('project assignedTo assignedBy');
+    
+    const { io } = await import('../server');
+    io.emit('task:created', clonedTask);
+    res.status(201).json(clonedTask);
+  } catch (error) {
+    res.status(400).json({ message: 'Error cloning task', error });
+  }
+};
+
+export const bulkUpdateTasks = async (req: Request, res: Response) => {
+  try {
+    const { taskIds, updates } = req.body;
+    if (!taskIds?.length) return res.status(400).json({ message: 'Task IDs required' });
+    
+    await Task.updateMany({ _id: { $in: taskIds } }, updates);
+    const tasks = await Task.find({ _id: { $in: taskIds } }).populate('project assignedTo assignedBy');
+    
+    const { io } = await import('../server');
+    io.emit('tasks:bulk:updated', tasks);
+    res.json(tasks);
+  } catch (error) {
+    res.status(400).json({ message: 'Error bulk updating tasks', error });
+  }
+};
+
+export const addWatcher = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.body;
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    if (!task.watchers.includes(userId)) {
+      task.watchers.push(userId);
+      await task.save();
+    }
+    res.json(task);
+  } catch (error) {
+    res.status(400).json({ message: 'Error adding watcher', error });
+  }
+};
+
+export const removeWatcher = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.body;
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    task.watchers = task.watchers.filter(w => w.toString() !== userId);
+    await task.save();
+    res.json(task);
+  } catch (error) {
+    res.status(400).json({ message: 'Error removing watcher', error });
+  }
+};
+
+export const getTaskTemplates = async (req: Request, res: Response) => {
+  try {
+    const templates = await Task.find({ isTemplate: true });
+    res.json(templates);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching templates', error });
+  }
+};
+
+export const createFromTemplate = async (req: Request, res: Response) => {
+  try {
+    const template = await Task.findById(req.params.id);
+    if (!template || !template.isTemplate) return res.status(404).json({ message: 'Template not found' });
+    
+    const { _id, createdAt, updatedAt, isTemplate, templateName, ...taskData } = template.toObject();
+    const task = new Task({ ...taskData, ...req.body });
+    await task.save();
+    await task.populate('project assignedTo assignedBy');
+    res.status(201).json(task);
+  } catch (error) {
+    res.status(400).json({ message: 'Error creating from template', error });
   }
 };

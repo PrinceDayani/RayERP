@@ -69,6 +69,12 @@ export const tasksAPI = {
     return response.data;
   },
 
+  // Get tasks by project
+  getTasksByProject: async (projectId: string) => {
+    const response = await api.get(`/projects/${projectId}/tasks`);
+    return response.data;
+  },
+
   // Get task by ID
   getById: async (id: string) => {
     const response = await api.get(`/tasks/${id}`);

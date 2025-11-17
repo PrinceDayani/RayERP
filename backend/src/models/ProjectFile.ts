@@ -10,6 +10,13 @@ export interface IProjectFile extends Document {
   mimeType: string;
   project: mongoose.Types.ObjectId;
   uploadedBy: mongoose.Types.ObjectId;
+  sharedWithDepartments: mongoose.Types.ObjectId[];
+  sharedWithUsers: mongoose.Types.ObjectId[];
+  shareType: 'department' | 'user' | 'both';
+  fileData?: Buffer;
+  storageType: 'disk' | 'database';
+  compressed: boolean;
+  originalSize: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +53,35 @@ const ProjectFileSchema: Schema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  sharedWithDepartments: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Department'
+  }],
+  sharedWithUsers: [{
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  shareType: {
+    type: String,
+    enum: ['department', 'user', 'both'],
+    default: 'department'
+  },
+  fileData: {
+    type: Buffer
+  },
+  storageType: {
+    type: String,
+    enum: ['disk', 'database'],
+    default: 'database'
+  },
+  compressed: {
+    type: Boolean,
+    default: false
+  },
+  originalSize: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

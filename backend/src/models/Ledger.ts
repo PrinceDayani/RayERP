@@ -9,6 +9,20 @@ export interface ILedger extends Document {
   balance: number;
   journalEntryId: mongoose.Types.ObjectId;
   reference: string;
+  taxInfo?: {
+    gstNo?: string;
+    panNo?: string;
+    aadharNo?: string;
+    tanNo?: string;
+    cinNo?: string;
+  };
+  contactInfo?: {
+    primaryEmail?: string;
+    secondaryEmail?: string;
+    primaryPhone?: string;
+    secondaryPhone?: string;
+    mobile?: string;
+  };
   createdAt: Date;
 }
 
@@ -52,6 +66,20 @@ const LedgerSchema = new Schema<ILedger>({
     type: String,
     required: true,
     trim: true
+  },
+  taxInfo: {
+    gstNo: String,
+    panNo: String,
+    aadharNo: String,
+    tanNo: String,
+    cinNo: String
+  },
+  contactInfo: {
+    primaryEmail: String,
+    secondaryEmail: String,
+    primaryPhone: String,
+    secondaryPhone: String,
+    mobile: String
   }
 }, {
   timestamps: true

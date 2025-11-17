@@ -4,8 +4,8 @@ import {
   createPayment,
   getPayments,
   getPaymentById,
-  updatePaymentStatus
-} from '../controllers/paymentController';
+  updatePayment
+} from '../controllers/simplePaymentController';
 
 const router = express.Router();
 
@@ -14,6 +14,6 @@ router.use(authenticateToken);
 router.post('/', createPayment);
 router.get('/', getPayments);
 router.get('/:id', getPaymentById);
-router.put('/:id/status', updatePaymentStatus);
+router.put('/:id', updatePayment);
 
 export default router;

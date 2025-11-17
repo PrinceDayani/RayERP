@@ -24,7 +24,8 @@ import {
   BarChart3,
   FileText,
   CheckCircle,
-  XCircle
+  XCircle,
+  User
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
@@ -51,6 +52,7 @@ interface Employee {
   email: string;
   phone: string;
   department: string;
+  departments?: string[];
   position: string;
   salary: number;
   status: 'active' | 'inactive' | 'terminated';
@@ -146,7 +148,8 @@ const EmployeeManagementDashboard = () => {
       // Fetch employees first (most important)
       let employeesData = [];
       try {
-        employeesData = await employeesAPI.getAll();
+        const response = await employeesAPI.getAll();
+        employeesData = Array.isArray(response) ? response : (response?.data || []);
         setEmployees(employeesData);
       } catch (error) {
         console.error("Error fetching employees:", error);
@@ -190,11 +193,14 @@ const EmployeeManagementDashboard = () => {
     }
   };
 
-  const filteredEmployees = employees.filter(employee =>
-    `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.department.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEmployees = employees.filter(employee => {
+    const searchLower = searchTerm.toLowerCase();
+    const nameMatch = `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchLower);
+    const idMatch = employee.employeeId.toLowerCase().includes(searchLower);
+    const deptMatch = employee.department?.toLowerCase().includes(searchLower) || false;
+    const deptsMatch = employee.departments?.some(dept => dept.toLowerCase().includes(searchLower)) || false;
+    return nameMatch || idMatch || deptMatch || deptsMatch;
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -234,12 +240,17 @@ const EmployeeManagementDashboard = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Card>
+      <div className="flex h-screen items-center justify-center p-4">
+        <Card className="card-modern max-w-md w-full">
           <CardContent className="pt-6 text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Users className="h-8 w-8 text-primary" />
+            </div>
             <h2 className="text-xl font-semibold mb-2">Access Required</h2>
-            <p className="text-muted-foreground mb-4">Please log in to access Employee Management</p>
-            <Button onClick={() => router.push("/login")}>Login</Button>
+            <p className="text-muted-foreground mb-6">Please log in to access Employee Management</p>
+            <Button onClick={() => router.push("/login")} className="btn-primary-gradient w-full">
+              Login to Continue
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -247,19 +258,21 @@ const EmployeeManagementDashboard = () => {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Employee Management</h1>
-            <p className="text-muted-foreground">Manage your workforce efficiently</p>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              Employee Management
+            </h1>
+            <p className="text-muted-foreground mt-1">Manage your workforce efficiently with real-time insights</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-xl">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-green-700 font-medium">Live Data</span>
+              <span className="text-sm text-green-700 dark:text-green-400 font-medium">Live Data</span>
             </div>
-            <Button onClick={() => router.push("/dashboard/employees/create")}>
+            <Button onClick={() => router.push("/dashboard/employees/create")} className="btn-primary-gradient">
               <Plus className="h-4 w-4 mr-2" />
               Add Employee
             </Button>
@@ -267,51 +280,63 @@ const EmployeeManagementDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Employees</p>
-                  <p className="text-2xl font-bold">{stats.totalEmployees}</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.totalEmployees}</p>
+                  <p className="text-xs text-muted-foreground mt-1">All workforce</p>
                 </div>
-                <Users className="h-8 w-8 text-blue-600" />
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
+                  <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="card-modern hover-lift border-l-4 border-l-green-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Active</p>
-                  <p className="text-2xl font-bold">{stats.activeEmployees}</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.activeEmployees}</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Currently working</p>
                 </div>
-                <UserCheck className="h-8 w-8 text-green-600" />
+                <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
+                  <UserCheck className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="card-modern hover-lift border-l-4 border-l-purple-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Present Today</p>
-                  <p className="text-2xl font-bold">{stats.presentToday}</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.presentToday}</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">In office now</p>
                 </div>
-                <Clock className="h-8 w-8 text-blue-600" />
+                <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
+                  <Clock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="card-modern hover-lift border-l-4 border-l-orange-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">On Leave</p>
-                  <p className="text-2xl font-bold">{stats.onLeave}</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.onLeave}</p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Away today</p>
                 </div>
-                <UserX className="h-8 w-8 text-orange-600" />
+                <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-xl">
+                  <UserX className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -319,45 +344,74 @@ const EmployeeManagementDashboard = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="employees">Employees</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
-            <TabsTrigger value="leaves">Leaves</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5 bg-muted/50 p-1 rounded-xl">
+            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
+            <TabsTrigger value="employees" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Employees</TabsTrigger>
+            <TabsTrigger value="attendance" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Attendance</TabsTrigger>
+            <TabsTrigger value="leaves" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Leaves</TabsTrigger>
+            <TabsTrigger value="reports" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>All Employees</CardTitle>
+            {/* Recent Employees */}
+            <Card className="card-modern">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Recent Employees
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <EmployeeList 
-                  employees={employees}
-                  onEdit={(id) => router.push(`/dashboard/employees/${id}/edit`)}
-                  onDelete={handleDeleteEmployee}
-                />
+                <div className="space-y-3">
+                  {employees.slice(0, 5).map((employee) => (
+                    <div key={employee._id} className="flex items-center justify-between p-4 border border-border/50 rounded-xl hover:bg-accent/50 transition-colors">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center">
+                          <span className="text-primary font-semibold text-lg">
+                            {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground">{employee.firstName} {employee.lastName}</h3>
+                          <p className="text-sm text-muted-foreground">{employee.position} • {employee.department}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge className={getStatusColor(employee.status)} variant="secondary">
+                              {employee.status}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground font-mono">{employee.employeeId}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Joined</p>
+                        <p className="font-medium text-sm">{new Date(employee.hireDate).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="employees">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>All Employees</CardTitle>
-                  <div className="flex gap-2">
-                    <div className="relative">
-                      <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+            <Card className="card-modern">
+              <CardHeader className="pb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    All Employees
+                  </CardTitle>
+                  <div className="flex gap-3 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-none">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                       <Input
                         placeholder="Search employees..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 w-64"
+                        className="pl-10 w-full sm:w-64 bg-muted/50 border-0 focus:bg-background"
                       />
                     </div>
-                    <Button onClick={() => router.push("/dashboard/employees/create")}>
+                    <Button onClick={() => router.push("/dashboard/employees/create")} className="btn-primary-gradient">
                       <Plus className="h-4 w-4 mr-2" />
                       Add Employee
                     </Button>
@@ -366,59 +420,100 @@ const EmployeeManagementDashboard = () => {
               </CardHeader>
                 <CardContent>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                    <th className="text-left p-2">Employee ID</th>
-                    <th className="text-left p-2">Name</th>
-                    <th className="text-left p-2">Department</th>
-                    <th className="text-left p-2">Position</th>
-                    <th className="text-left p-2">Status</th>
-                    <th className="text-left p-2">Hire Date</th>
-                    <th className="text-left p-2">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredEmployees.map((employee) => (
-                    <tr key={employee._id} className="border-b hover:bg-gray-50">
-                      <td className="p-2 font-mono">{employee.employeeId}</td>
-                      <td className="p-2">
-                      <div>
-                        <p className="font-medium">{employee.firstName} {employee.lastName}</p>
-                        <p className="text-sm text-gray-600">{employee.email}</p>
-                      </div>
-                      </td>
-                      <td className="p-2">{employee.department}</td>
-                      <td className="p-2">{employee.position}</td>
-                      <td className="p-2">
-                      <Badge className={getStatusColor(employee.status)}>
-                        {employee.status}
-                      </Badge>
-                      </td>
-                      <td className="p-2">{new Date(employee.hireDate).toLocaleDateString()}</td>
-                      <td className="p-2">
-                      <div className="flex gap-2">
-                        <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/employees/${employee._id}/edit`)}
-                        >
-                        <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-red-600"
-                          onClick={() => handleDeleteEmployee(employee._id, `${employee.firstName} ${employee.lastName}`)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      </td>
-                    </tr>
-                    ))}
-                  </tbody>
-                  </table>
+                  <div className="table-modern rounded-xl overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-muted/50">
+                          <th className="text-left p-4 font-semibold text-muted-foreground">Employee ID</th>
+                          <th className="text-left p-4 font-semibold text-muted-foreground">Name</th>
+                          <th className="text-left p-4 font-semibold text-muted-foreground">Department</th>
+                          <th className="text-left p-4 font-semibold text-muted-foreground">Position</th>
+                          <th className="text-left p-4 font-semibold text-muted-foreground">Status</th>
+                          <th className="text-left p-4 font-semibold text-muted-foreground">Hire Date</th>
+                          <th className="text-left p-4 font-semibold text-muted-foreground">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredEmployees.map((employee) => (
+                          <tr 
+                            key={employee._id} 
+                            className="table-row-hover border-b border-border/50 cursor-pointer"
+                            onClick={() => router.push(`/dashboard/employees/${employee._id}`)}
+                          >
+                            <td className="p-4">
+                              <span className="font-mono text-sm bg-muted/50 px-2 py-1 rounded">{employee.employeeId}</span>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
+                                  <span className="text-primary font-semibold text-sm">
+                                    {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-foreground">{employee.firstName} {employee.lastName}</p>
+                                  <p className="text-sm text-muted-foreground">{employee.email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              {employee.departments && employee.departments.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {employee.departments.map((dept, idx) => (
+                                    <span key={idx} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-medium">
+                                      {dept}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium">
+                                  {employee.department || 'N/A'}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-4 text-foreground font-medium">{employee.position}</td>
+                            <td className="p-4">
+                              <Badge className={getStatusColor(employee.status)} variant="secondary">
+                                {employee.status}
+                              </Badge>
+                            </td>
+                            <td className="p-4 text-muted-foreground">{new Date(employee.hireDate).toLocaleDateString()}</td>
+                            <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => router.push(`/dashboard/employees/${employee._id}`)}
+                                  className="hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                                  title="View Details"
+                                >
+                                  <User className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => router.push(`/dashboard/employees/${employee._id}/edit`)}
+                                  className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                                  title="Edit Employee"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleDeleteEmployee(employee._id, `${employee.firstName} ${employee.lastName}`)}
+                                  className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                  title="Delete Employee"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Delete Confirmation Dialog */}
@@ -496,7 +591,8 @@ const LeaveManagement = () => {
 
   const fetchEmployees = async () => {
     try {
-      const data = await employeesAPI.getAll();
+      const response = await employeesAPI.getAll();
+      const data = Array.isArray(response) ? response : (response?.data || []);
       setEmployees(data);
     } catch (error) {
       console.error('Error fetching employees:', error);
@@ -543,7 +639,7 @@ const LeaveManagement = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-medium">
-                    {leave.employee.firstName} {leave.employee.lastName}
+                    {leave.employee?.firstName || 'N/A'} {leave.employee?.lastName || ''}
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {leave.leaveType} - {leave.totalDays} days
@@ -588,7 +684,7 @@ const LeaveManagement = () => {
                   <SelectContent>
                     {employees.map((emp: any) => (
                       <SelectItem key={emp._id} value={emp._id}>
-                        {emp.firstName} {emp.lastName}
+                        {`${emp.firstName} ${emp.lastName}`}
                       </SelectItem>
                     ))}
                   </SelectContent>

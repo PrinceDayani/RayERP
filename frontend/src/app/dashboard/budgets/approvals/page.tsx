@@ -25,36 +25,24 @@ export default function BudgetApprovalsPage() {
 
   useEffect(() => {
     fetchBudgets();
-  }, []);
-
-  useEffect(() => {
-    filterBudgets();
-  }, [budgets, statusFilter]);
+  }, [statusFilter]);
 
   const fetchBudgets = async () => {
     try {
-      let data;
-      if (statusFilter === 'pending') {
-        data = await getPendingApprovals();
-      } else {
-        data = await getAllBudgets();
-      }
+      setLoading(true);
+      const data = await getAllBudgets();
       setBudgets(data);
+      
+      let filtered = data;
+      if (statusFilter !== "all") {
+        filtered = data.filter(budget => budget.status === statusFilter);
+      }
+      setFilteredBudgets(filtered);
     } catch (error) {
       console.error("Error fetching budgets:", error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const filterBudgets = () => {
-    let filtered = budgets;
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(budget => budget.status === statusFilter);
-    }
-
-    setFilteredBudgets(filtered);
   };
 
   const getStatusColor = (status: string) => {
