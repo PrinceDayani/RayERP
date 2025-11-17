@@ -18,35 +18,35 @@ const router = Router();
 router.use(authenticateToken);
 
 router.post('/files/:fileId/share',
-  ...validateObjectId('fileId'),
-  ...validateRequiredFields(['employeeIds']),
+  validateObjectId('fileId'),
+  validateRequiredFields(['employeeIds']),
   shareFile
 );
 
 router.get('/shared', getSharedFiles);
 
 router.get('/projects/:projectId/shares',
-  ...validateObjectId('projectId'),
+  validateObjectId('projectId'),
   getProjectSharedFiles
 );
 
 router.get('/files/:fileId/shares',
-  ...validateObjectId('fileId'),
+  validateObjectId('fileId'),
   getFileShares
 );
 
 router.patch('/shares/:shareId/viewed',
-  ...validateObjectId('shareId'),
+  validateObjectId('shareId'),
   markFileViewed
 );
 
 router.patch('/shares/:shareId/downloaded',
-  ...validateObjectId('shareId'),
+  validateObjectId('shareId'),
   markFileDownloaded
 );
 
 router.delete('/shares/:shareId',
-  ...validateObjectId('shareId'),
+  validateObjectId('shareId'),
   deleteFileShare
 );
 

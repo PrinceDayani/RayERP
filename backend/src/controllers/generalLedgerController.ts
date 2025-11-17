@@ -13,203 +13,6 @@ import { GLBudget } from '../models/GLBudget';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 
-// Accounts
-export const getAccounts = async (req: Request, res: Response) => {
-  try {
-    const accounts = await Account.find({ isActive: true }).sort({ code: 1 });
-    res.json({ success: true, data: accounts });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const createAccount = async (req: Request, res: Response) => {
-  try {
-    const account = new Account({ ...req.body, createdBy: req.user?.id });
-    await account.save();
-    res.status(201).json({ success: true, data: account });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-export const updateAccount = async (req: Request, res: Response) => {
-  try {
-    const account = await Account.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json({ success: true, data: account });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-export const deleteAccount = async (req: Request, res: Response) => {
-  try {
-    await Account.findByIdAndUpdate(req.params.id, { isActive: false });
-    res.json({ success: true, message: 'Account deactivated' });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// Journal Entries
-export const getJournalEntries = async (req: Request, res: Response) => {
-  try {
-    const { limit = 50 } = req.query;
-    const entries = await JournalEntry.find()
-      .populate('lines.account', 'name code')
-      .sort({ entryDate: -1 })
-      .limit(Number(limit));
-    res.json({ success: true, data: entries });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const getJournalEntry = async (req: Request, res: Response) => {
-  try {
-    const entry = await JournalEntry.findById(req.params.id)
-      .populate('lines.account', 'name code');
-    res.json({ success: true, data: entry });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const createJournalEntry = async (req: Request, res: Response) => {
-  try {
-    const entry = new JournalEntry({ ...req.body, createdBy: req.user?.id });
-    await entry.save();
-    res.status(201).json({ success: true, data: entry });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-export const updateGroup = async (req: Request, res: Response) => {
-  try {
-    const group = await AccountGroup.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!group) return res.status(404).json({ message: 'Group not found' });
-    res.json(group);
-  } catch (error: any) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-export const deleteGroup = async (req: Request, res: Response) => {
-  try {
-    const group = await AccountGroup.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
-    if (!group) return res.status(404).json({ message: 'Group not found' });
-    res.json({ message: 'Group deleted successfully' });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export const updateJournalEntry = async (req: Request, res: Response) => {
-  try {
-    const entry = await JournalEntry.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json({ success: true, data: entry });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-export const deleteJournalEntry = async (req: Request, res: Response) => {
-  try {
-    await JournalEntry.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'Journal entry deleted' });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const postJournalEntry = async (req: Request, res: Response) => {
-  try {
-    const entry = await JournalEntry.findByIdAndUpdate(
-      req.params.id, 
-      { status: 'POSTED', isPosted: true, postingDate: new Date() }, 
-      { new: true }
-    );
-    res.json({ success: true, data: entry });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-// Reports
-export const getTrialBalance = async (req: Request, res: Response) => {
-  try {
-    const accounts = await Account.find({ isActive: true }).sort({ code: 1 });
-    const trialBalance = accounts.map(account => ({
-      code: account.code,
-      name: account.name,
-      debit: account.balance >= 0 ? account.balance : 0,
-      credit: account.balance < 0 ? Math.abs(account.balance) : 0
-    }));
-    res.json({ success: true, data: trialBalance });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const getAccountLedger = async (req: Request, res: Response) => {
-  try {
-    const ledger = await Ledger.find({ accountId: req.params.accountId })
-      .sort({ date: -1 })
-      .limit(100);
-    res.json({ success: true, data: ledger });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const getFinancialReports = async (req: Request, res: Response) => {
-  try {
-    const { reportType } = req.query;
-    
-    if (reportType === 'profit-loss') {
-      const revenue = await Account.find({ type: 'revenue', isActive: true });
-      const expenses = await Account.find({ type: 'expense', isActive: true });
-      
-      const totalRevenue = revenue.reduce((sum, acc) => sum + acc.balance, 0);
-      const totalExpenses = expenses.reduce((sum, acc) => sum + acc.balance, 0);
-      
-      res.json({
-        success: true,
-        data: {
-          revenue: { accounts: revenue, total: totalRevenue },
-          expenses: { accounts: expenses, total: totalExpenses },
-          netIncome: totalRevenue - totalExpenses
-        }
-      });
-    } else {
-      res.json({ success: true, data: { message: 'Report type not implemented' } });
-    }
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const updateSubGroup = async (req: Request, res: Response) => {
-  try {
-    const subGroup = await AccountSubGroup.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!subGroup) return res.status(404).json({ message: 'Sub-group not found' });
-    res.json(subGroup);
-  } catch (error: any) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-export const deleteSubGroup = async (req: Request, res: Response) => {
-  try {
-    const subGroup = await AccountSubGroup.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
-    if (!subGroup) return res.status(404).json({ message: 'Sub-group not found' });
-    res.json({ message: 'Sub-group deleted successfully' });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
 // Groups
 export const getGroups = async (req: Request, res: Response) => {
   res.json({ success: true, data: [] });
@@ -272,12 +75,12 @@ export const getLedgers = async (req: Request, res: Response) => {
 export const getLedgerById = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate, limit } = req.query;
-    const ledger = await AccountLedger.findById(req.params.id)
+    const ledger = await PartyLedger.findById(req.params.id)
       .populate({ path: 'accountId', populate: { path: 'subGroupId' } });
     if (!ledger) return res.status(404).json({ message: 'Ledger not found' });
     
     const query: any = {
-      'lines.ledgerId': ledger._id,
+      'lines.accountId': ledger.accountId,
       isPosted: true
     };
     
@@ -296,7 +99,7 @@ export const getLedgerById = async (req: Request, res: Response) => {
     const transactions = await transactionQuery;
     
     const ledgerTransactions = transactions.map(entry => {
-      const line = entry.lines.find(l => l.ledgerId.toString() === ledger._id.toString());
+      const line = entry.lines.find(l => l.accountId?.toString() === ledger.accountId?.toString());
       return {
         entryNumber: entry.entryNumber,
         date: entry.date,
@@ -314,7 +117,7 @@ export const getLedgerById = async (req: Request, res: Response) => {
 
 export const createLedger = async (req: Request, res: Response) => {
   try {
-    const ledger = await AccountLedger.create({ ...req.body, createdBy: req.user?._id });
+    const ledger = await PartyLedger.create({ ...req.body, createdBy: req.user?._id });
     res.status(201).json(ledger);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -323,7 +126,7 @@ export const createLedger = async (req: Request, res: Response) => {
 
 export const updateLedger = async (req: Request, res: Response) => {
   try {
-    const ledger = await AccountLedger.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const ledger = await PartyLedger.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!ledger) return res.status(404).json({ message: 'Ledger not found' });
     res.json(ledger);
   } catch (error: any) {
@@ -333,7 +136,7 @@ export const updateLedger = async (req: Request, res: Response) => {
 
 export const deleteLedger = async (req: Request, res: Response) => {
   try {
-    const ledger = await AccountLedger.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    const ledger = await PartyLedger.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
     if (!ledger) return res.status(404).json({ message: 'Ledger not found' });
     res.json({ message: 'Ledger deleted successfully' });
   } catch (error: any) {
@@ -347,11 +150,7 @@ const buildSubGroupTree = async (parentId: any): Promise<any[]> => {
   return Promise.all(subGroups.map(async (sg) => {
     const children = await buildSubGroupTree(sg._id);
     const accounts = await Account.find({ subGroupId: sg._id, isActive: true }).sort({ code: 1 });
-    const accountsWithLedgers = await Promise.all(accounts.map(async (acc) => {
-      const ledgers = await AccountLedger.find({ accountId: acc._id, isActive: true }).sort({ code: 1 });
-      return { ...acc.toObject(), ledgers };
-    }));
-    return { ...sg.toObject(), children, accounts: accountsWithLedgers };
+    return { ...sg.toObject(), children, accounts };
   }));
 };
 
@@ -363,11 +162,7 @@ export const getAccountHierarchy = async (req: Request, res: Response) => {
       const subGroupsWithChildren = await Promise.all(rootSubGroups.map(async (sg) => {
         const children = await buildSubGroupTree(sg._id);
         const accounts = await Account.find({ subGroupId: sg._id, isActive: true }).sort({ code: 1 });
-        const accountsWithLedgers = await Promise.all(accounts.map(async (acc) => {
-          const ledgers = await AccountLedger.find({ accountId: acc._id, isActive: true }).sort({ code: 1 });
-          return { ...acc.toObject(), ledgers };
-        }));
-        return { ...sg.toObject(), children, accounts: accountsWithLedgers };
+        return { ...sg.toObject(), children, accounts };
       }));
       return { ...group.toObject(), subGroups: subGroupsWithChildren };
     }));
@@ -377,7 +172,7 @@ export const getAccountHierarchy = async (req: Request, res: Response) => {
   }
 };
 
-// Legacy - Get all accounts with hierarchy
+// Get all accounts with hierarchy
 export const getAccounts = async (req: Request, res: Response) => {
   try {
     const { type, isGroup, includeInactive, hierarchy } = req.query;
@@ -814,7 +609,7 @@ export const postJournalEntry = async (req: Request, res: Response) => {
 
     // Process each journal line - update Account balances
     for (const line of journalEntry.lines) {
-      const account = await Account.findById(line.ledgerId).session(session);
+      const account = await Account.findById(line.accountId).session(session);
       if (!account) continue;
 
       // Calculate new balance based on account type
@@ -829,7 +624,7 @@ export const postJournalEntry = async (req: Request, res: Response) => {
 
       // Update account balance
       await Account.findByIdAndUpdate(
-        line.ledgerId,
+        line.accountId,
         { balance: newBalance },
         { session }
       );
@@ -837,7 +632,7 @@ export const postJournalEntry = async (req: Request, res: Response) => {
       // Create ledger entry for audit trail
       if (Ledger) {
         await Ledger.create([{
-          accountId: line.ledgerId,
+          accountId: line.accountId,
           journalEntryId: journalEntry._id,
           date: journalEntry.date,
           description: line.description,

@@ -226,7 +226,7 @@ const NotificationSystem: React.FC<NotificationProps> = ({ isAuthenticated }) =>
                 </div>
               ) : (
                 filteredNotifications.map((notification, index) => (
-                  <div key={notification.id}>
+                  <React.Fragment key={notification.id}>
                     <div 
                       className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${
                         !notification.read ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500' : ''
@@ -286,7 +286,7 @@ const NotificationSystem: React.FC<NotificationProps> = ({ isAuthenticated }) =>
                       </div>
                     </div>
                     {index < filteredNotifications.length - 1 && <Separator />}
-                  </div>
+                  </React.Fragment>
                 ))
               )}
             </div>

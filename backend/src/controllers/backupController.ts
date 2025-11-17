@@ -19,7 +19,7 @@ import Transaction from '../models/Transaction';
 import Invoice from '../models/Invoice';
 import Payment from '../models/Payment';
 import Expense from '../models/Expense';
-import Settings from '../models/Settings';
+import { Settings } from '../models/Settings';
 
 export const createSystemBackup = async (req: Request, res: Response) => {
   try {

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Wifi, WifiOff, Plus } from "lucide-react";
+import { Calendar, Clock, Wifi, WifiOff, TrendingUp, BarChart3 } from "lucide-react";
 
 interface DashboardHeaderProps {
   user: any;
@@ -110,13 +110,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               >
                 Refresh Dashboard
               </Button>
-              <Button 
-                className="h-9"
-                onClick={() => window.location.href = '/dashboard/orders/new'}
-              >
-                <Plus className="mr-1 h-4 w-4" />
-                <span>New Order</span>
-              </Button>
+
             </>
           )}
         </div>

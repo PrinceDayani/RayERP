@@ -105,8 +105,7 @@ const Dashboard = () => {
         ],
         taskDistribution: [
           { name: "Completed", value: stats.completedTasks },
-          { name: "In Progress", value: stats.inProgressTasks || 0 },
-          { name: "Pending", value: stats.pendingTasks || 0 },
+          { name: "In Progress", value: (stats.inProgressTasks || 0) + (stats.pendingTasks || 0) },
         ],
         monthlyRevenue: [
           { month: "Jan", revenue: 65000, expenses: 45000 },
