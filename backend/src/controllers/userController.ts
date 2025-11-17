@@ -13,14 +13,18 @@ export const getAllUsers = async (req: Request, res: Response) => {
     const usersWithDetails = await Promise.all(users.map(async (user) => {
       const employee = await Employee.findOne({ user: user._id });
       return {
+        id: user._id.toString(),
         _id: user._id,
+        name: user.name || `${employee?.firstName || ''} ${employee?.lastName || ''}`.trim(),
         firstName: employee?.firstName || user.name?.split(' ')[0] || '',
         lastName: employee?.lastName || user.name?.split(' ')[1] || '',
         email: user.email,
         phone: employee?.phone,
-        role: (user.role as any)?.name || 'employee',
+        role: user.role,
         department: employee?.department,
-        avatarUrl: (employee as any)?.avatarUrl
+        avatarUrl: (employee as any)?.avatarUrl,
+        status: user.status || 'active',
+        lastLogin: user.lastLogin || 'Never'
       };
     }));
     
@@ -383,5 +387,38 @@ export const changePassword = async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error(`Change password error: ${error.message}`);
     res.status(500).json({ success: false, message: 'Error changing password' });
+  }
+};
+
+// Delete user
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    
+    const user = await User.findById(userId).populate('role');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    const userRole = (user.role as any);
+    if (userRole.name?.toLowerCase() === 'root') {
+      return res.status(403).json({ success: false, message: 'Cannot delete Root user' });
+    }
+    
+    if (req.user) {
+      const currentUserRole = (req.user.role as any);
+      if (userRole.level >= currentUserRole.level) {
+        return res.status(403).json({ success: false, message: 'Cannot delete user with equal or higher role level' });
+      }
+    }
+    
+    await User.findByIdAndDelete(userId);
+    
+    logger.info(`User deleted: ${user.email}`);
+    
+    res.status(200).json({ success: true, message: 'User deleted successfully' });
+  } catch (error: any) {
+    logger.error(`Delete user error: ${error.message}`);
+    res.status(500).json({ success: false, message: 'Error deleting user' });
   }
 };

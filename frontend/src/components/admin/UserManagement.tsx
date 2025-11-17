@@ -69,44 +69,11 @@ export function UserManagement({ isLoading }: UserManagementProps) {
       try {
         // Using adminAPI instead of direct fetch
         const data = await adminAPI.getUsers();
+        console.log('Fetched users:', data);
         setUsers(data);
       } catch (error) {
         console.error("Failed to fetch users:", error);
-        // Mock data if API fails
-        setUsers([
-          {
-            id: "1",
-            name: "John Doe",
-            email: "john@example.com",
-            role: "admin",
-            status: "active",
-            lastLogin: "2025-08-27T15:30:00Z",
-          },
-          {
-            id: "2",
-            name: "Jane Smith",
-            email: "jane@example.com",
-            role: "manager",
-            status: "active",
-            lastLogin: "2025-08-26T10:15:00Z",
-          },
-          {
-            id: "3",
-            name: "Bob Johnson",
-            email: "bob@example.com",
-            role: "user",
-            status: "inactive",
-            lastLogin: "2025-08-15T09:45:00Z",
-          },
-          {
-            id: "4",
-            name: "Alice Williams",
-            email: "alice@example.com",
-            role: "user",
-            status: "pending",
-            lastLogin: "Never",
-          },
-        ]);
+        toast.error('Failed to load users. Please check your connection.');
       }
     };
 

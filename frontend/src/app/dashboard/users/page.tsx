@@ -92,7 +92,7 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/users`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -105,17 +105,11 @@ const UserManagement = () => {
       }
       
       const data = await response.json();
-      if (data.success) {
-        setUsers(data.users);
-        setFilteredUsers(data.users);
-      }
+      setUsers(Array.isArray(data) ? data : data.users || []);
+      setFilteredUsers(Array.isArray(data) ? data : data.users || []);
     } catch (err: any) {
+      console.error('Fetch users error:', err);
       setError(err.message || 'Failed to fetch users');
-      toast({
-        title: "Error",
-        description: err.message || 'Failed to fetch users',
-        variant: "destructive"
-      });
     } finally {
       setLoading(false);
     }
