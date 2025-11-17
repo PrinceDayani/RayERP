@@ -92,7 +92,7 @@ const adminAPI = {
   // User Management
   getUsers: async (): Promise<AdminUser[]> => {
     try {
-      return await apiRequest('/api/admin/users');
+      return await apiRequest('/api/users');
     } catch (error) {
       console.error('Error fetching users:', error);
       throw error;
@@ -101,7 +101,7 @@ const adminAPI = {
 
   createUser: async (userData: any): Promise<AdminUser> => {
     try {
-      return await apiRequest('/api/admin/users', {
+      return await apiRequest('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData)
       });
@@ -113,7 +113,7 @@ const adminAPI = {
 
   updateUser: async (userId: string, userData: any): Promise<AdminUser> => {
     try {
-      return await apiRequest(`/api/admin/users/${userId}`, {
+      return await apiRequest(`/api/users/${userId}`, {
         method: 'PUT',
         body: JSON.stringify(userData)
       });
@@ -125,7 +125,7 @@ const adminAPI = {
 
   deleteUser: async (userId: string): Promise<void> => {
     try {
-      await apiRequest(`/api/admin/users/${userId}`, {
+      await apiRequest(`/api/users/${userId}`, {
         method: 'DELETE'
       });
     } catch (error) {
