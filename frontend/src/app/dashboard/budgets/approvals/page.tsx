@@ -31,15 +31,18 @@ export default function BudgetApprovalsPage() {
     try {
       setLoading(true);
       const data = await getAllBudgets();
-      setBudgets(data);
+      const dataArray = Array.isArray(data) ? data : [];
+      setBudgets(dataArray);
       
-      let filtered = data;
+      let filtered = dataArray;
       if (statusFilter !== "all") {
-        filtered = data.filter(budget => budget.status === statusFilter);
+        filtered = dataArray.filter(budget => budget.status === statusFilter);
       }
       setFilteredBudgets(filtered);
     } catch (error) {
       console.error("Error fetching budgets:", error);
+      setBudgets([]);
+      setFilteredBudgets([]);
     } finally {
       setLoading(false);
     }
