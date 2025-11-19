@@ -135,7 +135,7 @@ Query params: `?projectId=123&status=PENDING&assignedTo=user_id`
   "description": "Create homepage mockup",
   "projectId": "project_id_here",
   "assignedTo": "user_id_here",
-  "priority": "HIGH",
+  "priority": "HIGmmmmH",
   "dueDate": "2024-02-01",
   "status": "PENDING"
 }
