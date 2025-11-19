@@ -11,7 +11,6 @@ const logger = winston.createLogger({
   ],
 })
 
-// Add file transport in production
 if (process.env.NODE_ENV === "production") {
   logger.add(new winston.transports.File({ filename: "error.log", level: "error" }))
   logger.add(new winston.transports.File({ filename: "combined.log" }))

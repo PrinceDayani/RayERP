@@ -7,13 +7,28 @@ import cookieParser from "cookie-parser";
 import http from "http";
 import path from "path";
 import { Server as SocketServer } from "socket.io";
-import { logger } from "./utils/logger";
 import routes from "./routes/index";
 import assignmentRoutes from "./routes/assignment.routes";
 import backupRoutes from "./routes/backupRoutes";
 import errorMiddleware from "./middleware/error.middleware";
 
 dotenv.config();
+
+// Validate required environment variables
+const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET', 'NODE_ENV', 'CORS_ORIGIN', 'FRONTEND_URL', 'PORT', 'LOG_LEVEL'];
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`❌ ${envVar} environment variable is required`);
+    process.exit(1);
+  }
+}
+
+if (isNaN(Number(process.env.PORT))) {
+  console.error('❌ PORT must be a valid number');
+  process.exit(1);
+}
+
+import { logger } from "./utils/logger";
 
 const app = express();
 const server = http.createServer(app);
@@ -23,8 +38,8 @@ app.set("trust proxy", 1);
 
 // CORS configuration
 const allowedOrigins = [
-  ...(process.env.CORS_ORIGIN?.split(',') || []),
-  ...(process.env.FRONTEND_URL?.split(',') || [])
+  ...process.env.CORS_ORIGIN!.split(','),
+  ...process.env.FRONTEND_URL!.split(',')
 ].filter(Boolean);
 
 const corsOptions = {
@@ -116,7 +131,7 @@ io.on("connection", (socket) => {
       }
       
       const jwt = require("jsonwebtoken");
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!);
       
       if (!decoded || !decoded.id) {
         socket.emit("auth_error", "Invalid token payload");
@@ -240,18 +255,8 @@ import { initializeSchedulers } from './utils/recurringJobsScheduler';
 initializeSchedulers();
 
 // MongoDB connection and server startup
-const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGO_URI;
-
-if (!MONGODB_URI) {
-  logger.error("❌ MongoDB URI is missing! Check your environment variables.");
-  process.exit(1);
-}
-
-if (!process.env.JWT_SECRET) {
-  logger.error("❌ JWT_SECRET is missing! Check your environment variables.");
-  process.exit(1);
-}
+const PORT = Number(process.env.PORT!);
+const MONGODB_URI = process.env.MONGO_URI!;
 
 mongoose
   .connect(MONGODB_URI)
@@ -340,7 +345,7 @@ mongoose
     
     server.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
-      logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
       if (allowedOrigins.length > 0) {
         logger.info(`🔒 CORS origins: ${allowedOrigins.join(', ')}`);
       }

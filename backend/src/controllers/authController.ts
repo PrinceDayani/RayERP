@@ -179,11 +179,20 @@ export const login = async (req: Request, res: Response) => {
     // Generate JWT token
     const token = user.generateAuthToken();
 
+    const nodeEnv = process.env.NODE_ENV;
+    if (!nodeEnv) {
+      logger.error('NODE_ENV environment variable is required');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error'
+      });
+    }
+
     // Set HTTP-only cookie with the token
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      secure: nodeEnv === 'production',
+      sameSite: nodeEnv === 'production' ? 'strict' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       path: '/'
     });

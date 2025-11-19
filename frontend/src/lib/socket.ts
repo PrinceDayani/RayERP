@@ -7,7 +7,9 @@ import { getSocketConfig, shouldEnableSocket } from "./socketConfig";
 
 type SocketType = ReturnType<typeof io>;
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import config from './config';
+
+const API_URL = config.apiUrl;
 
 // Global singleton
 let socket: SocketType | null = null;
