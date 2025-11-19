@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CheckCircle, Upload, History, FileSpreadsheet, BarChart3, Bell, Search, Printer, AlertCircle } from 'lucide-react';
 import { bankReconciliationApi } from '@/lib/api/finance/reportingApi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { AccountSelector } from '@/components/finance/AccountSelector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -259,7 +260,7 @@ export default function BankReconciliationPage() {
                         <TableBody>
                           {csvData.slice(0, 5).map((row, idx) => (
                             <TableRow key={idx}>
-                              {row.map((cell, cellIdx) => (
+                              {row.map((cell: string, cellIdx: number) => (
                                 <TableCell key={cellIdx} className="text-xs">{cell}</TableCell>
                               ))}
                             </TableRow>

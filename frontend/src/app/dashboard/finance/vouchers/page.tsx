@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, FileText, Eye, CheckCircle, XCircle, Search, Filter, Download } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { AccountSelector } from '@/components/finance/AccountSelector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -548,18 +549,13 @@ export default function VouchersPage() {
                 {lines.map((line, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-2 p-2 border-t items-center hover:bg-gray-50">
                     <div className="col-span-5">
-                      <Select value={line.accountId} onValueChange={(v) => updateLine(idx, 'accountId', v)}>
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Select account" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accounts.map(acc => (
-                            <SelectItem key={acc._id} value={acc._id}>
-                              {acc.code} - {acc.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <AccountSelector
+                        value={line.accountId}
+                        onValueChange={(v) => updateLine(idx, 'accountId', v)}
+                        accounts={accounts}
+                        onAccountCreated={fetchAccounts}
+                        className="h-9"
+                      />
                     </div>
                     <div className="col-span-2">
                       <Input

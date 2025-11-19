@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, TrendingUp, AlertTriangle, Copy, CheckCircle, XCircle, Clock, Lock } from 'lucide-react';
+import { AccountSelector } from '@/components/finance/AccountSelector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -401,18 +402,12 @@ export default function GLBudgetsPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>Account</Label>
-              <Select value={formData.accountId} onValueChange={(v) => setFormData({...formData, accountId: v})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts.map(acc => (
-                    <SelectItem key={acc._id} value={acc._id}>
-                      {acc.code} - {acc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <AccountSelector
+                value={formData.accountId}
+                onValueChange={(v) => setFormData({...formData, accountId: v})}
+                accounts={accounts}
+                onAccountCreated={fetchAccounts}
+              />
             </div>
             <div>
               <Label>Fiscal Year</Label>
