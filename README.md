@@ -643,6 +643,9 @@ node test-backend.js
 ## 📚 Documentation
 
 For detailed documentation, see:
+- [Inline Account & Group Creation](INLINE_ACCOUNT_CREATION.md) - **NEW!** Create accounts/groups on-the-fly in any form
+- [Inline Creation Quick Guide](INLINE_CREATION_QUICK_GUIDE.md) - **NEW!** 2-minute quick start guide
+- [Inline Creation Summary](INLINE_CREATION_SUMMARY.md) - **NEW!** Implementation summary and metrics
 - [Project Ledger - Documentation Index](PROJECT_LEDGER_INDEX.md) - **NEW!** Complete documentation index
 - [Project Ledger - Quick Start](PROJECT_LEDGER_QUICK_START.md) - **NEW!** Get started in 5 minutes
 - [Project Ledger - Deployment](DEPLOY_PROJECT_LEDGER.md) - **NEW!** Deploy in 2 minutes

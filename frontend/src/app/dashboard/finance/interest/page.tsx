@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Calculator, Play, FileText, TrendingUp, DollarSign, Calendar } from 'lucide-react';
+import { AccountSelector } from '@/components/finance/AccountSelector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -251,18 +252,12 @@ export default function InterestCalculationsPage() {
                 </div>
                 <div>
                   <Label>Account</Label>
-                  <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map(acc => (
-                        <SelectItem key={acc._id} value={acc._id}>
-                          {acc.name} (₹{acc.balance.toLocaleString('en-IN')})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <AccountSelector
+                    value={selectedAccount}
+                    onValueChange={setSelectedAccount}
+                    accounts={accounts}
+                    onAccountCreated={fetchAccounts}
+                  />
                 </div>
                 <div>
                   <Label>Interest Rate (%)</Label>

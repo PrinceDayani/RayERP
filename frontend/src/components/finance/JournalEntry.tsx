@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, FileText, Trash2, Upload, Download, Copy, AlertTriangle, CheckCircle, Paperclip, X, Save, Zap, FileSpreadsheet } from 'lucide-react';
 import axios from 'axios';
+import { AccountSelector } from './AccountSelector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -413,21 +414,13 @@ const JournalEntry = () => {
                 {formData.lines.map((line, index) => (
                   <div key={index} className="grid grid-cols-12 gap-4 p-4 border-b border-gray-100 last:border-b-0 bg-white">
                     <div className="col-span-4">
-                      <Select
+                      <AccountSelector
                         value={line.accountId}
                         onValueChange={(value) => updateLine(index, 'accountId', value)}
-                      >
-                        <SelectTrigger className="bg-white border-gray-300">
-                          <SelectValue placeholder="Select account" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          {accounts.map((account) => (
-                            <SelectItem key={account._id || account.id} value={account._id || account.id}>
-                              {`${account.code} - ${account.name}`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        accounts={accounts}
+                        onAccountCreated={fetchAccounts}
+                        className="bg-white border-gray-300"
+                      />
                     </div>
                     <div className="col-span-2">
                       <Input
