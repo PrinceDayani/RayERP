@@ -45,7 +45,7 @@ interface AuthContextType {
   checkAuth: () => Promise<boolean>;
   backendAvailable: boolean;
   roles: Role[];
-  fetchRoles: () => Promise<void>;
+  fetchRoles: (authToken?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedToken) {
       setToken(savedToken);
       getCurrentUser(savedToken);
-      fetchRoles();
+      fetchRoles(savedToken);
     } else {
       setInitialLoading(false);
     }
@@ -141,6 +141,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.success) {
           setUser(data.user);
           setIsAuthenticated(true);
+          // Fetch roles after getting user
+          await fetchRoles(authToken);
         } else {
           // Invalid response format
           localStorage.removeItem('auth-token');
@@ -200,6 +202,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         localStorage.setItem('auth-token', data.token);
         
+        // Fetch roles after successful login
+        await fetchRoles(data.token);
+        
         // Log login activity
         try {
           const { logActivity } = await import('@/lib/activityLogger');
@@ -226,11 +231,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const fetchRoles = async () => {
+  const fetchRoles = async (authToken?: string) => {
     try {
+      const tokenToUse = authToken || token || localStorage.getItem('auth-token');
+      if (!tokenToUse) return;
+
       const response = await fetch(`${API_URL}/api/rbac/roles`, {
         headers: {
-          'Authorization': `Bearer ${token || localStorage.getItem('auth-token')}`,
+          'Authorization': `Bearer ${tokenToUse}`,
           'Content-Type': 'application/json'
         },
         credentials: 'include'
