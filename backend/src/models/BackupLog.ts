@@ -4,42 +4,50 @@ export interface IBackupLog extends Document {
   backupId: string;
   type: 'manual' | 'scheduled';
   backupType: 'database' | 'files' | 'full' | 'incremental';
-  modules: string[];
   status: 'pending' | 'in-progress' | 'success' | 'failed';
   size: number;
-  filePath?: string;
-  storageLocation: 'local' | 'cloud' | 'external';
-  cloudProvider?: string;
+  duration: number;
   startTime: Date;
-  endTime?: Date;
-  duration?: number;
-  errorMessage?: string;
-  createdBy: mongoose.Types.ObjectId;
+  endTime: Date;
   isEncrypted: boolean;
-  checksum?: string;
   isHealthy: boolean;
+  createdBy: {
+    id: mongoose.Types.ObjectId;
+    name: string;
+    email: string;
+  };
+  modules: string[];
+  errorMessage?: string;
+  filePath?: string;
+  metadata?: any;
 }
 
 const BackupLogSchema = new Schema<IBackupLog>({
   backupId: { type: String, required: true, unique: true },
   type: { type: String, enum: ['manual', 'scheduled'], required: true },
   backupType: { type: String, enum: ['database', 'files', 'full', 'incremental'], required: true },
-  modules: [{ type: String }],
   status: { type: String, enum: ['pending', 'in-progress', 'success', 'failed'], default: 'pending' },
   size: { type: Number, default: 0 },
-  filePath: String,
-  storageLocation: { type: String, enum: ['local', 'cloud', 'external'], required: true },
-  cloudProvider: String,
-  startTime: { type: Date, default: Date.now },
-  endTime: Date,
-  duration: Number,
-  errorMessage: String,
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  duration: { type: Number, default: 0 },
+  startTime: { type: Date, required: true },
+  endTime: { type: Date },
   isEncrypted: { type: Boolean, default: false },
-  checksum: String,
-  isHealthy: { type: Boolean, default: true }
+  isHealthy: { type: Boolean, default: true },
+  createdBy: {
+    id: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    name: { type: String, required: true },
+    email: { type: String, required: true }
+  },
+  modules: [{ type: String }],
+  errorMessage: { type: String },
+  filePath: { type: String },
+  metadata: { type: Schema.Types.Mixed }
 }, {
   timestamps: true
 });
+
+BackupLogSchema.index({ backupId: 1 });
+BackupLogSchema.index({ status: 1 });
+BackupLogSchema.index({ createdAt: -1 });
 
 export default mongoose.model<IBackupLog>('BackupLog', BackupLogSchema);
