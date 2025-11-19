@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useGeneralLedger } from '@/hooks/finance/useGeneralLedger';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, FileText, Trash2, Upload, Download, Copy, AlertTriangle, CheckCircle, Paperclip, X, Save, Zap, FileSpreadsheet } from 'lucide-react';
 import axios from 'axios';
 import { AccountSelector } from './AccountSelector';
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const JournalEntry = () => {
@@ -255,9 +254,9 @@ const JournalEntry = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <Card className="max-w-7xl mx-auto shadow-xl">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+    <div className="min-h-screen p-6 bg-background">
+      <Card className="max-w-7xl mx-auto shadow-xl bg-card border-border">
+        <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center text-2xl">
               <FileText className="w-7 h-7 mr-3" />
@@ -266,7 +265,7 @@ const JournalEntry = () => {
             <div className="flex gap-2">
               <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="bg-white text-blue-700">
+                  <Button variant="outline" size="sm" className="bg-background text-foreground">
                     <Zap className="w-4 h-4 mr-2" />Templates
                   </Button>
                 </DialogTrigger>
@@ -294,7 +293,7 @@ const JournalEntry = () => {
               </Dialog>
               <Dialog open={showBatchDialog} onOpenChange={setShowBatchDialog}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="bg-white text-blue-700">
+                  <Button variant="outline" size="sm" className="bg-background text-foreground">
                     <FileSpreadsheet className="w-4 h-4 mr-2" />Batch Import
                   </Button>
                 </DialogTrigger>
@@ -314,7 +313,7 @@ const JournalEntry = () => {
                   </div>
                 </DialogContent>
               </Dialog>
-              <Button variant="outline" size="sm" onClick={saveAsTemplate} className="bg-white text-blue-700">
+              <Button variant="outline" size="sm" onClick={saveAsTemplate} className="bg-background text-foreground">
                 <Save className="w-4 h-4 mr-2" />Save as Template
               </Button>
             </div>
@@ -351,37 +350,37 @@ const JournalEntry = () => {
                   </div>
                 )}
             {/* Header Information */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 rounded-lg border bg-muted/50 border-border">
               <div>
-                <Label htmlFor="date" className="text-gray-700 font-medium">Date</Label>
+                <Label htmlFor="date" className="font-medium text-foreground">Date</Label>
                 <Input
                   id="date"
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="mt-1 bg-white border-gray-300 focus:border-gray-500"
+                  className="mt-1"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="reference" className="text-gray-700 font-medium">Reference</Label>
+                <Label htmlFor="reference" className="font-medium text-foreground">Reference</Label>
                 <Input
                   id="reference"
                   value={formData.reference}
                   onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
                   placeholder="e.g., INV-001"
-                  className="mt-1 bg-white border-gray-300 focus:border-gray-500"
+                  className="mt-1"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="description" className="text-gray-700 font-medium">Description</Label>
+                <Label htmlFor="description" className="font-medium text-foreground">Description</Label>
                 <Input
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Journal entry description"
-                  className="mt-1 bg-white border-gray-300 focus:border-gray-500"
+                  className="mt-1"
                   required
                 />
               </div>
@@ -390,20 +389,19 @@ const JournalEntry = () => {
             {/* Journal Lines */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label className="text-lg font-semibold text-gray-800">Journal Lines</Label>
+                <Label className="text-lg font-semibold text-foreground">Journal Lines</Label>
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={addLine}
-                  className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Line
                 </Button>
               </div>
               
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 font-medium text-gray-700">
+              <div className="border rounded-lg overflow-hidden bg-card border-border">
+                <div className="grid grid-cols-12 gap-4 p-4 border-b font-medium bg-muted/50 border-border text-foreground">
                   <div className="col-span-4">Account</div>
                   <div className="col-span-2 text-center">Debit</div>
                   <div className="col-span-2 text-center">Credit</div>
@@ -412,14 +410,13 @@ const JournalEntry = () => {
                 </div>
                 
                 {formData.lines.map((line, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-4 p-4 border-b border-gray-100 last:border-b-0 bg-white">
+                  <div key={index} className="grid grid-cols-12 gap-4 p-4 border-b last:border-b-0 border-border bg-card">
                     <div className="col-span-4">
                       <AccountSelector
                         value={line.accountId}
                         onValueChange={(value) => updateLine(index, 'accountId', value)}
                         accounts={accounts}
                         onAccountCreated={fetchAccounts}
-                        className="bg-white border-gray-300"
                       />
                     </div>
                     <div className="col-span-2">
@@ -429,7 +426,7 @@ const JournalEntry = () => {
                         placeholder="0.00"
                         value={line.debit || ''}
                         onChange={(e) => updateLine(index, 'debit', parseFloat(e.target.value) || 0)}
-                        className="text-right bg-white border-gray-300"
+                        className="text-right"
                       />
                     </div>
                     <div className="col-span-2">
@@ -439,7 +436,7 @@ const JournalEntry = () => {
                         placeholder="0.00"
                         value={line.credit || ''}
                         onChange={(e) => updateLine(index, 'credit', parseFloat(e.target.value) || 0)}
-                        className="text-right bg-white border-gray-300"
+                        className="text-right"
                       />
                     </div>
                     <div className="col-span-3">
@@ -447,7 +444,6 @@ const JournalEntry = () => {
                         placeholder="Line description"
                         value={line.description}
                         onChange={(e) => updateLine(index, 'description', e.target.value)}
-                        className="bg-white border-gray-300"
                       />
                     </div>
                     <div className="col-span-1 flex justify-center">
@@ -457,7 +453,7 @@ const JournalEntry = () => {
                         size="sm"
                         onClick={() => removeLine(index)}
                         disabled={formData.lines.length <= 2}
-                        className="bg-white border-gray-300 text-red-600 hover:bg-red-50"
+                        className="text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -499,18 +495,18 @@ const JournalEntry = () => {
             </div>
 
             {/* Totals and Balance Check */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
+            <div className="bg-muted/30 p-6 rounded-lg border border-border">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div className="text-center">
-                  <div className="text-sm text-gray-600 mb-1">Total Debits</div>
-                  <div className="text-2xl font-bold text-gray-800">${totalDebits.toFixed(2)}</div>
+                  <div className="text-sm text-muted-foreground mb-1">Total Debits</div>
+                  <div className="text-2xl font-bold text-foreground">${totalDebits.toFixed(2)}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-sm text-gray-600 mb-1">Total Credits</div>
-                  <div className="text-2xl font-bold text-gray-800">${totalCredits.toFixed(2)}</div>
+                  <div className="text-sm text-muted-foreground mb-1">Total Credits</div>
+                  <div className="text-2xl font-bold text-foreground">${totalCredits.toFixed(2)}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-sm text-gray-600 mb-2">Status</div>
+                  <div className="text-sm text-muted-foreground mb-2">Status</div>
                   <Badge variant={isBalanced ? "default" : "destructive"} className="text-lg px-4 py-1">
                     {isBalanced ? <><CheckCircle className="w-4 h-4 mr-2 inline" />Balanced</> : <><AlertTriangle className="w-4 h-4 mr-2 inline" />Not Balanced</>}
                   </Badge>
@@ -521,7 +517,7 @@ const JournalEntry = () => {
             {/* Action Buttons */}
             <div className="flex justify-end space-x-4 pt-6 border-t">
               <Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
-              <Button type="submit" disabled={loading || !isBalanced} className="bg-blue-600 hover:bg-blue-700">
+              <Button type="submit" disabled={loading || !isBalanced} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 {loading ? <Spinner className="w-4 h-4 mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
                 Create Entry
               </Button>

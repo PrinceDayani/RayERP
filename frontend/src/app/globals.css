@@ -59,24 +59,24 @@
   }
 
   .dark {
-    --background: 222 84% 5%;
+    --background: 222 84% 4%;
     --foreground: 210 40% 98%;
-    --card: 222 84% 5%;
+    --card: 222 84% 6%;
     --card-foreground: 210 40% 98%;
-    --popover: 222 84% 5%;
+    --popover: 222 84% 6%;
     --popover-foreground: 210 40% 98%;
     --primary: 0 84% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 32% 17%;
+    --secondary: 217 32% 15%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217 32% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 32% 17%;
+    --muted: 217 32% 15%;
+    --muted-foreground: 215 20% 70%;
+    --accent: 217 32% 15%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62% 30%;
+    --destructive: 0 62% 50%;
     --destructive-foreground: 0 85% 97%;
-    --border: 217 32% 17%;
-    --input: 217 32% 17%;
+    --border: 217 32% 20%;
+    --input: 217 32% 15%;
     --ring: 0 84% 60%;
     
     /* Enhanced dark gradient colors */
@@ -87,49 +87,61 @@
     --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(348 83% 47%) 100%);
     
     /* ERP Dark Theme Variables */
-    --bg-primary: 0 0% 7%;
-    --bg-secondary: 0 0% 12%;
-    --bg-sidebar: 0 0% 9%;
-    --bg-navbar: 0 0% 9%;
-    --bg-table-even: 0 0% 12%;
-    --bg-table-odd: 0 0% 16%;
-    --bg-active: 345 63% 20%;
+    --bg-primary: 222 84% 4%;
+    --bg-secondary: 217 32% 8%;
+    --bg-sidebar: 222 84% 5%;
+    --bg-navbar: 222 84% 5%;
+    --bg-table-even: 217 32% 10%;
+    --bg-table-odd: 217 32% 12%;
+    --bg-active: 0 84% 15%;
     
-    --text-primary: 0 0% 88%;
-    --text-secondary: 0 0% 64%;
-    --text-heading: 0 0% 100%;
-    --text-active: 345 63% 70%;
+    --text-primary: 210 40% 95%;
+    --text-secondary: 215 20% 70%;
+    --text-heading: 210 40% 98%;
+    --text-active: 0 84% 70%;
     
     --success: 142 76% 50%;
-    --success-bg: 142 76% 15%;
+    --success-bg: 142 76% 12%;
     --warning: 32 95% 55%;
-    --warning-bg: 32 95% 15%;
+    --warning-bg: 32 95% 12%;
     --danger: 0 84% 60%;
-    --danger-bg: 0 84% 15%;
+    --danger-bg: 0 84% 12%;
     
-    --shadow-light: 0 0% 0% / 0.3;
-    --shadow-medium: 0 0% 0% / 0.5;
+    --shadow-light: 0 0% 0% / 0.4;
+    --shadow-medium: 0 0% 0% / 0.6;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    transition: color-scheme 0.3s ease;
   }
   
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
   
-  /* Smooth scrolling */
-  html {
-    scroll-behavior: smooth;
+  /* Enhanced theme transitions */
+  .light {
+    color-scheme: light;
+  }
+  
+  .dark {
+    color-scheme: dark;
   }
   
   /* Focus styles */
   *:focus-visible {
     @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+    transition: box-shadow 0.2s ease;
   }
   
   /* Selection styles */
@@ -139,12 +151,26 @@
   
   /* Improved form elements */
   input, textarea, select {
-    @apply transition-colors duration-200;
+    @apply transition-all duration-300;
+  }
+  
+  input:focus, textarea:focus, select:focus {
+    @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
   }
   
   /* Better button transitions */
   button {
-    @apply transition-all duration-200;
+    @apply transition-all duration-300;
+  }
+  
+  /* Card and component transitions */
+  .card, [data-radix-collection-item] {
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  /* Dropdown and popover transitions */
+  [data-radix-popper-content-wrapper] {
+    transition: background-color 0.3s ease, border-color 0.3s ease;
   }
 }
 

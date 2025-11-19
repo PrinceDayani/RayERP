@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import archiver from 'archiver';
-import AdmZip from 'adm-zip';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';

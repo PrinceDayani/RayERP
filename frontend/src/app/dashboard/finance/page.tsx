@@ -84,7 +84,7 @@ export default function FinancePage() {
     const Icon = module.icon;
     return (
       <Card 
-        className="group cursor-pointer hover:shadow-xl transition-all duration-300 border-0 overflow-hidden"
+        className="group cursor-pointer hover:shadow-xl transition-all duration-300 bg-card border-border overflow-hidden"
         onClick={() => {
           console.log('Navigating to:', module.path);
           router.push(module.path);
@@ -97,11 +97,11 @@ export default function FinancePage() {
               <Icon className="w-6 h-6 text-white" />
             </div>
             {module.badge && <Badge variant="secondary">{module.badge}</Badge>}
-            {module.stat && <span className="text-xs text-gray-500 font-medium">{module.stat}</span>}
+            {module.stat && <span className="text-xs text-muted-foreground font-medium">{module.stat}</span>}
           </div>
-          <h3 className={`font-semibold mb-2 ${size === 'large' ? 'text-xl' : 'text-lg'}`}>{module.title}</h3>
-          <p className="text-sm text-gray-600 mb-3">{module.description}</p>
-          <div className="flex items-center text-sm font-medium text-blue-600 group-hover:text-blue-700">
+          <h3 className={`font-semibold mb-2 text-foreground ${size === 'large' ? 'text-xl' : 'text-lg'}`}>{module.title}</h3>
+          <p className="text-sm text-muted-foreground mb-3">{module.description}</p>
+          <div className="flex items-center text-sm font-medium text-primary group-hover:text-primary/80">
             Open <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
           </div>
         </CardContent>
@@ -110,28 +110,28 @@ export default function FinancePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6 space-y-8">
+    <div className="min-h-screen bg-background p-6 space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Finance & Accounting</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Complete financial management system</p>
+          <h1 className="text-4xl font-bold text-foreground">Finance & Accounting</h1>
+          <p className="text-muted-foreground mt-2">Complete financial management system</p>
         </div>
-        <Button size="lg" onClick={() => router.push('/dashboard/finance/journal-entry')} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+        <Button size="lg" onClick={() => router.push('/dashboard/finance/journal-entry')} className="bg-primary hover:bg-primary/90">
           <Plus className="w-5 h-5 mr-2" />
           New Entry
         </Button>
       </div>
 
-      <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 cursor-pointer hover:shadow-2xl transition-all" onClick={() => router.push('/dashboard/finance/manage')}>
+      <Card className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground border-0 cursor-pointer hover:shadow-2xl transition-all" onClick={() => router.push('/dashboard/finance/manage')}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <h2 className="text-2xl font-bold">🚀 Finance Management Hub</h2>
-                <Badge className="bg-white text-blue-600">Recommended</Badge>
+                <Badge className="bg-background text-foreground">Recommended</Badge>
               </div>
-              <p className="text-blue-100">All accounting features in ONE place - Superior UX, Faster workflow</p>
-              <p className="text-sm text-blue-200 mt-2">Chart of Accounts • Journal Entries • Ledger View • Reports • Advanced Tools</p>
+              <p className="text-primary-foreground/90">All accounting features in ONE place - Superior UX, Faster workflow</p>
+              <p className="text-sm text-primary-foreground/70 mt-2">Chart of Accounts • Journal Entries • Ledger View • Reports • Advanced Tools</p>
             </div>
             <ChevronRight className="w-12 h-12" />
           </div>
@@ -140,7 +140,7 @@ export default function FinancePage() {
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Core Accounting</h2>
+          <h2 className="text-2xl font-bold text-foreground">Core Accounting</h2>
           <Badge variant="outline">Essential</Badge>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -150,7 +150,7 @@ export default function FinancePage() {
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Transaction Management</h2>
+          <h2 className="text-2xl font-bold text-foreground">Transaction Management</h2>
           <Badge variant="outline">Operations</Badge>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -160,8 +160,8 @@ export default function FinancePage() {
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Advanced Features</h2>
-          <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">Enterprise</Badge>
+          <h2 className="text-2xl font-bold text-foreground">Advanced Features</h2>
+          <Badge className="bg-primary text-primary-foreground">Enterprise</Badge>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {advancedModules.map((module) => <ModuleCard key={module.path} module={module} />)}
@@ -170,7 +170,7 @@ export default function FinancePage() {
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Compliance & Security</h2>
+          <h2 className="text-2xl font-bold text-foreground">Compliance & Security</h2>
           <Badge variant="outline">Audit Ready</Badge>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -181,7 +181,7 @@ export default function FinancePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Reports & Analysis</h2>
+            <h2 className="text-2xl font-bold text-foreground">Reports & Analysis</h2>
             <Badge variant="outline">Insights</Badge>
           </div>
           <div className="grid grid-cols-1 gap-6">
@@ -191,7 +191,7 @@ export default function FinancePage() {
 
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Management Tools</h2>
+            <h2 className="text-2xl font-bold text-foreground">Management Tools</h2>
             <Badge variant="outline">Advanced</Badge>
           </div>
           <div className="grid grid-cols-1 gap-6">
@@ -200,12 +200,12 @@ export default function FinancePage() {
         </div>
       </div>
 
-      <Card className="bg-gradient-to-r from-gray-800 to-gray-900 text-white border-0">
+      <Card className="bg-muted border-border">
         <CardContent className="p-8">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-2xl font-bold mb-2">📚 Documentation & Support</h3>
-              <p className="text-gray-300">Complete guides for all accounting features • API documentation • Video tutorials</p>
+              <h3 className="text-2xl font-bold mb-2 text-foreground">📚 Documentation & Support</h3>
+              <p className="text-muted-foreground">Complete guides for all accounting features • API documentation • Video tutorials</p>
             </div>
             <Button variant="secondary" size="lg" onClick={() => window.open('/docs/UNIFIED_GENERAL_LEDGER.md', '_blank')}>View Docs</Button>
           </div>

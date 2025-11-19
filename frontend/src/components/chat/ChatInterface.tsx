@@ -38,10 +38,14 @@ export default function ChatInterface() {
       if (selectedChat?._id === data.chatId) {
         setSelectedChat((prev) => {
           if (!prev) return prev;
-          return {
-            ...prev,
-            messages: [...prev.messages, data.message]
-          };
+          // Ensure message has proper structure before adding
+          if (data.message && data.message.sender) {
+            return {
+              ...prev,
+              messages: [...(prev.messages || []), data.message]
+            };
+          }
+          return prev;
         });
       }
       loadChats();
@@ -64,16 +68,25 @@ export default function ChatInterface() {
   };
 
   const handleSelectChat = async (chat: Chat) => {
-    setSelectedChat(chat);
+    setSelectedChat({ ...chat, messages: [] }); // Initialize with empty messages
     try {
       const response = await chatAPI.getMessages(chat._id);
       setSelectedChat({ ...chat, messages: response.data || [] });
-      await chatAPI.markAsRead(chat._id);
+      
+      // Try to mark messages as read, but don't fail if it doesn't work
+      try {
+        await chatAPI.markAsRead(chat._id);
+      } catch (markReadError) {
+        console.warn('Failed to mark messages as read:', markReadError);
+        // Continue execution even if markAsRead fails
+      }
+      
       if (socket) {
         socket.emit('join_chat', chat._id);
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
+      setSelectedChat({ ...chat, messages: [] }); // Fallback to empty messages on error
     }
   };
 

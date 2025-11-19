@@ -1,8 +1,29 @@
 #!/usr/bin/env node
 
-// Load environment variables
-require('dotenv').config({ path: '.env.local' });
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+// Load environment variables from .env files
+function loadEnvFile(filePath) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    content.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=');
+        if (key && valueParts.length > 0) {
+          process.env[key] = valueParts.join('=');
+        }
+      }
+    });
+  } catch (error) {
+    // File doesn't exist, ignore
+  }
+}
+
+// Load .env files in order of precedence
+loadEnvFile('.env');
+loadEnvFile('.env.local');
 
 // Environment validation script for frontend
 const requiredEnvVars = [

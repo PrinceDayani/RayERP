@@ -3,6 +3,7 @@ import Chat from '../models/Chat';
 import User from '../models/User';
 import path from 'path';
 import fs from 'fs';
+import mongoose from 'mongoose';
 
 export const chatController = {
   // Get all chats for current user
@@ -186,24 +187,91 @@ export const chatController = {
   // Mark messages as read
   markAsRead: async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).user.id;
+      const userId = (req as any).user?.id;
       const { chatId } = req.params;
 
+      // Validate inputs
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User not authenticated' });
+      }
+
+      if (!chatId) {
+        return res.status(400).json({ success: false, message: 'Chat ID is required' });
+      }
+
+      // Validate chatId format
+      if (!mongoose.Types.ObjectId.isValid(chatId)) {
+        return res.status(400).json({ success: false, message: 'Invalid chat ID format' });
+      }
+
+      // Find chat
       const chat = await Chat.findById(chatId);
       if (!chat) {
         return res.status(404).json({ success: false, message: 'Chat not found' });
       }
 
-      chat.messages.forEach((msg: any) => {
-        if (msg.sender.toString() !== userId) {
-          msg.read = true;
-        }
-      });
+      // Check if user is authorized to mark messages as read
+      const user = await User.findById(userId).populate('role');
+      if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
 
-      await chat.save();
-      res.json({ success: true, message: 'Messages marked as read' });
+      const isRoot = user?.role && (user.role as any).name?.toLowerCase() === 'root';
+      
+      if (!isRoot && !chat.participants.some((p: any) => p.toString() === userId)) {
+        return res.status(403).json({ success: false, message: 'Not authorized to access this chat' });
+      }
+
+      // Mark messages as read (only messages not sent by current user)
+      let updatedCount = 0;
+      if (chat.messages && Array.isArray(chat.messages)) {
+        chat.messages.forEach((msg: any) => {
+          if (msg.sender && msg.sender.toString() !== userId && !msg.read) {
+            msg.read = true;
+            updatedCount++;
+          }
+        });
+      }
+
+      // Save only if there were updates
+      if (updatedCount > 0) {
+        await chat.save();
+      }
+      
+      res.json({ 
+        success: true, 
+        message: updatedCount > 0 ? `${updatedCount} messages marked as read` : 'No messages to mark as read',
+        updatedCount 
+      });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message });
+      console.error('Error in markAsRead:', {
+        error: error.message,
+        stack: error.stack,
+        chatId: req.params.chatId,
+        userId: (req as any).user?.id
+      });
+      
+      // Handle specific mongoose errors
+      if (error.name === 'CastError') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid chat ID format' 
+        });
+      }
+      
+      if (error.name === 'ValidationError') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Validation error',
+          details: error.message 
+        });
+      }
+      
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to mark messages as read',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
     }
   },
 
