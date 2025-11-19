@@ -28,7 +28,7 @@ export interface ApprovalRequest {
 export const getBudgets = async (): Promise<Budget[]> => {
   try {
     const response = await api.get('/budgets/all');
-    return response.data;
+    return response.data?.data || response.data || [];
   } catch (error: any) {
     if (error.response?.status === 403 || error.response?.status === 404) {
       return [];
@@ -40,7 +40,7 @@ export const getBudgets = async (): Promise<Budget[]> => {
 export const getAllBudgets = async (): Promise<Budget[]> => {
   try {
     const response = await api.get('/budgets/all');
-    return response.data;
+    return response.data?.data || response.data || [];
   } catch (error: any) {
     if (error.response?.status === 403 || error.response?.status === 404) {
       return [];
@@ -72,7 +72,7 @@ export const deleteBudget = async (id: string): Promise<void> => {
 export const getPendingApprovals = async (): Promise<Budget[]> => {
   try {
     const response = await api.get('/budgets/pending');
-    return response.data;
+    return response.data?.data || response.data || [];
   } catch (error: any) {
     if (error.response?.status === 403) {
       return [];
@@ -134,7 +134,7 @@ export const getBudgetAnalytics = async () => {
 
 export const getBudgetsByProject = async (projectId: string): Promise<Budget[]> => {
   const response = await api.get(`/projects/${projectId}/budgets`);
-  return response.data;
+  return response.data?.data || response.data || [];
 };
 
 export const getProjectBudgetsWithApprovals = async (projectId: string): Promise<Budget[]> => {
@@ -151,7 +151,7 @@ export const getProjectBudgetApprovals = async (projectId: string): Promise<Budg
 
 export const getBudgetsByStatus = async (status: string): Promise<Budget[]> => {
   const response = await api.get(`/budgets/status/${status}`);
-  return response.data;
+  return response.data?.data || response.data || [];
 };
 
 export const unapproveBudget = async (id: string, data: { comments?: string }): Promise<Budget> => {

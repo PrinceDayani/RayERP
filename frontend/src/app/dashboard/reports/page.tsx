@@ -538,15 +538,56 @@ export default function ReportsPage() {
 
 
 
+  const renderCompleteReport = () => (
+    <div className="space-y-8">
+      <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+        <CardContent className="p-6">
+          <h2 className="text-2xl font-bold mb-2">Complete ERP System Report</h2>
+          <p className="text-blue-100">Comprehensive analysis of all modules and operations</p>
+        </CardContent>
+      </Card>
+      
+      <div className="space-y-6">
+        <h3 className="text-xl font-bold">1. Employee Management</h3>
+        {renderEmployeeReport()}
+      </div>
+      
+      <div className="space-y-6">
+        <h3 className="text-xl font-bold">2. Project Management</h3>
+        {renderProjectReport()}
+      </div>
+      
+      <div className="space-y-6">
+        <h3 className="text-xl font-bold">3. Task Analytics</h3>
+        {renderTaskReport()}
+      </div>
+      
+      <div className="space-y-6">
+        <h3 className="text-xl font-bold">4. Communication & Collaboration</h3>
+        {renderChatReport()}
+      </div>
+      
+      <div className="space-y-6">
+        <h3 className="text-xl font-bold">5. Contact Management</h3>
+        {renderContactReport()}
+      </div>
+      
+      <div className="space-y-6">
+        <h3 className="text-xl font-bold">6. Executive Summary</h3>
+        {renderOverviewReport()}
+      </div>
+    </div>
+  );
+
   const renderReportContent = () => {
     switch (selectedReport) {
+      case 'complete': return renderCompleteReport();
       case 'overview': return renderOverviewReport();
       case 'employees': return renderEmployeeReport();
       case 'projects': return renderProjectReport();
       case 'tasks': return renderTaskReport();
       case 'chat': return renderChatReport();
       case 'contacts': return renderContactReport();
-
       default: return renderOverviewReport();
     }
   };
@@ -641,13 +682,13 @@ export default function ReportsPage() {
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-2">
             {[
+              { id: 'complete', label: 'Complete ERP Report', icon: FileText },
               { id: 'overview', label: 'Overview', icon: FileText },
               { id: 'employees', label: 'Employees', icon: Users },
               { id: 'projects', label: 'Projects', icon: Target },
               { id: 'tasks', label: 'Tasks', icon: CheckCircle },
               { id: 'chat', label: 'Communication', icon: MessageSquare },
               { id: 'contacts', label: 'Contacts', icon: Phone },
-
             ].map((report) => {
               const Icon = report.icon;
               return (

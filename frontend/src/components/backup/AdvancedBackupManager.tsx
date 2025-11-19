@@ -13,8 +13,18 @@ import {
   Calendar, 
   Shield, 
   Clock,
-  Settings
+  Settings,
+  Upload,
+  RefreshCw
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import BackupScheduleManager from './BackupScheduleManager';
+import BackupLogsManager from './BackupLogsManager';
+import BackupRestoreManager from './BackupRestoreManager';
 
 interface BackupOptions {
   backupType: 'database' | 'files' | 'full' | 'incremental';
@@ -62,7 +72,7 @@ export default function AdvancedBackupManager() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `backup-${Date.now()}.zip`;
+        a.download = `${options.backupType}-backup-${Date.now()}.zip`;
         a.click();
         window.URL.revokeObjectURL(url);
       }
@@ -186,24 +196,15 @@ export default function AdvancedBackupManager() {
           </TabsContent>
 
           <TabsContent value="scheduled">
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <Calendar className="h-12 w-12 mx-auto mb-4" />
-              <p>Scheduled backup management coming soon</p>
-            </div>
+            <BackupScheduleManager />
           </TabsContent>
 
           <TabsContent value="logs">
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <FileText className="h-12 w-12 mx-auto mb-4" />
-              <p>Backup logs and history coming soon</p>
-            </div>
+            <BackupLogsManager />
           </TabsContent>
 
           <TabsContent value="restore">
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <Settings className="h-12 w-12 mx-auto mb-4" />
-              <p>Backup restore functionality coming soon</p>
-            </div>
+            <BackupRestoreManager />
           </TabsContent>
         </Tabs>
       </CardContent>

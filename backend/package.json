@@ -19,6 +19,7 @@
     "migrate:roles": "npm run validate-env && ts-node scripts/migrateToRoles.ts"
   },
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "archiver": "^7.0.1",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
@@ -43,6 +44,7 @@
     "winston": "^3.8.2"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@types/archiver": "^6.0.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.8",
