@@ -44,7 +44,9 @@ export default function BudgetsPage() {
     try {
       const allBudgets = await getAllBudgets();
       const pendingBudgets = await getPendingApprovals();
-      const combined = [...allBudgets, ...pendingBudgets.filter(pb => !allBudgets.find(ab => ab._id === pb._id))];
+      const allBudgetsArray = Array.isArray(allBudgets) ? allBudgets : [];
+      const pendingBudgetsArray = Array.isArray(pendingBudgets) ? pendingBudgets : [];
+      const combined = [...allBudgetsArray, ...pendingBudgetsArray.filter(pb => !allBudgetsArray.find(ab => ab._id === pb._id))];
       setBudgets(combined);
     } catch (error) {
       console.error('Error fetching budgets:', error);
@@ -227,7 +229,7 @@ export default function BudgetsPage() {
           </div>
         </div>
 
-        {analytics && (
+        {analytics?.summary && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
