@@ -84,35 +84,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Theme Test - Remove after testing */}
-        <div className="mb-6">
-          <div className="flex justify-center">
-            <div className="w-full max-w-md">
-              <div className="bg-card border border-border rounded-xl p-4">
-                <h3 className="text-lg font-semibold mb-4 text-center">🎨 Theme Test</h3>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="h-12 bg-background border border-border rounded flex items-center justify-center text-xs font-medium">
-                      Background
-                    </div>
-                    <div className="h-12 bg-card border border-border rounded flex items-center justify-center text-xs font-medium">
-                      Card
-                    </div>
-                    <div className="h-12 bg-primary text-primary-foreground rounded flex items-center justify-center text-xs font-medium">
-                      Primary
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">
-                      Use the theme toggle in the navbar to test light/dark switching
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Main Dashboard Content */}
         <Suspense fallback={<DashboardLoader />}>
           <UserDashboard />
