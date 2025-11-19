@@ -46,6 +46,9 @@ export const chatAPI = {
   },
 
   markAsRead: async (chatId: string) => {
+    if (!chatId || typeof chatId !== 'string') {
+      throw new Error('Invalid chat ID provided');
+    }
     const response = await api.put(`/chat/chats/${chatId}/read`);
     return response.data;
   },

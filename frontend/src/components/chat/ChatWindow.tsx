@@ -213,14 +213,14 @@ export default function ChatWindow({ chat, onSendMessage }: ChatWindowProps) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
-        {chat.messages.length === 0 ? (
+        {(!chat.messages || chat.messages.length === 0) ? (
           <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
             <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
-          chat.messages.map((msg, index) => {
+          (chat.messages || []).filter(msg => msg && msg.sender).map((msg, index) => {
             const isOwn = msg.sender._id === currentUserId;
-            const showAvatar = index === 0 || chat.messages[index - 1].sender._id !== msg.sender._id;
+            const showAvatar = index === 0 || !chat.messages[index - 1]?.sender || chat.messages[index - 1].sender._id !== msg.sender._id;
 
             return (
               <div
