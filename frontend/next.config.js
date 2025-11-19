@@ -1,34 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  
-  // Disable Turbopack for better stability
-  experimental: {
-    turbo: false,
-  },
-  
-  // Fix React module resolution issues
-  webpack: (config, { dev, isServer }) => {
-    // Ensure React is properly resolved
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'react': require.resolve('react'),
-      'react-dom': require.resolve('react-dom'),
-    };
-
-    // Fix module resolution for client-side
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-      };
-    }
-
-    return config;
-  },
-
   // Image optimization
   images: {
     formats: ['image/webp', 'image/avif'],

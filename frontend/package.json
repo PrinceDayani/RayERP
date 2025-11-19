@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "validate-env": "node validate-env.js",
-    "dev": "npm run validate-env && next dev --turbo=false",
+    "dev": "npm run validate-env && next dev",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
     "build:prod": "NODE_ENV=production next build",
