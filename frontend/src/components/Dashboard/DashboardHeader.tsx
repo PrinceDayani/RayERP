@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Wifi, WifiOff, TrendingUp, BarChart3 } from "lucide-react";
+import { Calendar, Clock, Wifi, WifiOff } from "lucide-react";
 
 interface DashboardHeaderProps {
   user: any;

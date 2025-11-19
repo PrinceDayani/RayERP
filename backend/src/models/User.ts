@@ -77,7 +77,16 @@ userSchema.methods.comparePassword = async function (candidatePassword: string):
 
 // Generate JWT token
 userSchema.methods.generateAuthToken = function (): string {
-  const secretKey = process.env.JWT_SECRET || 'your-secret-key';
+  const secretKey = process.env.JWT_SECRET;
+  const expiresIn = process.env.JWT_EXPIRES_IN;
+  
+  if (!secretKey) {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
+  
+  if (!expiresIn) {
+    throw new Error('JWT_EXPIRES_IN environment variable is required');
+  }
   
   return jwt.sign(
     { 
@@ -86,7 +95,7 @@ userSchema.methods.generateAuthToken = function (): string {
     },
     secretKey,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN || '30d'
+      expiresIn
     } as jwt.SignOptions
   );
 };

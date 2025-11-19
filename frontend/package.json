@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "validate-env": "node validate-env.js",
+    "dev": "npm run validate-env && next dev --turbopack",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
     "build:prod": "NODE_ENV=production next build",
@@ -19,6 +20,7 @@
     "export": "next export",
     "serve": "npx serve out",
     "health-check": "curl -f http://localhost:3000 || exit 1",
+    "test-connection": "node test-connection.js",
     "docker:build": "docker build -t rayerp-frontend .",
     "docker:run": "docker run -p 3000:3000 rayerp-frontend"
   },
