@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// Load environment variables
+require('dotenv').config({ path: '.env.local' });
+require('dotenv').config();
+
 // Environment validation script for frontend
 const requiredEnvVars = [
   'NEXT_PUBLIC_API_URL'
