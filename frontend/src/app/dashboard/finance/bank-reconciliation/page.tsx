@@ -260,7 +260,7 @@ export default function BankReconciliationPage() {
                         <TableBody>
                           {csvData.slice(0, 5).map((row, idx) => (
                             <TableRow key={idx}>
-                              {row.map((cell, cellIdx) => (
+                              {row.map((cell: string, cellIdx: number) => (
                                 <TableCell key={cellIdx} className="text-xs">{cell}</TableCell>
                               ))}
                             </TableRow>
