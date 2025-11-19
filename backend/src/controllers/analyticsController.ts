@@ -4,6 +4,8 @@ import Employee from '../models/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
 import Attendance from '../models/Attendance';
+import DepartmentBudget from '../models/DepartmentBudget';
+import { GLBudget } from '../models/GLBudget';
 
 /**
  * Get dashboard analytics data
@@ -222,9 +224,82 @@ export const getTopPerformers = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Get budget analytics
+ * @route GET /api/analytics/budget-analytics
+ * @access Private
+ */
+export const getBudgetAnalytics = async (req: Request, res: Response) => {
+  try {
+    // Department Budget Analytics
+    const departmentBudgets = await DepartmentBudget.find()
+      .populate('departmentId', 'name')
+      .sort({ createdAt: -1 });
+
+    const totalDepartmentBudget = departmentBudgets.reduce((sum, b) => sum + b.totalBudget, 0);
+    const totalDepartmentSpent = departmentBudgets.reduce((sum, b) => sum + b.spentBudget, 0);
+    const departmentUtilization = totalDepartmentBudget > 0 ? 
+      ((totalDepartmentSpent / totalDepartmentBudget) * 100) : 0;
+
+    // GL Budget Analytics
+    const glBudgets = await GLBudget.find()
+      .populate('accountId', 'name accountNumber')
+      .sort({ createdAt: -1 });
+
+    const totalGLBudget = glBudgets.reduce((sum, b) => sum + b.budgetAmount, 0);
+    const totalGLActual = glBudgets.reduce((sum, b) => sum + (b.actualAmount || 0), 0);
+    const glUtilization = totalGLBudget > 0 ? 
+      ((totalGLActual / totalGLBudget) * 100) : 0;
+
+    // Budget Status Distribution
+    const budgetStatusCounts = {
+      draft: departmentBudgets.filter(b => b.status === 'draft').length,
+      approved: departmentBudgets.filter(b => b.status === 'approved').length,
+      active: departmentBudgets.filter(b => b.status === 'active').length
+    };
+
+    // Top spending departments
+    const topSpendingDepartments = departmentBudgets
+      .map(budget => ({
+        department: (budget.departmentId as any)?.name || 'Unknown',
+        allocated: budget.totalBudget,
+        spent: budget.spentBudget,
+        utilization: budget.totalBudget > 0 ? 
+          ((budget.spentBudget / budget.totalBudget) * 100) : 0
+      }))
+      .sort((a, b) => b.spent - a.spent)
+      .slice(0, 5);
+
+    const budgetAnalytics = {
+      departmentBudgets: {
+        total: totalDepartmentBudget,
+        spent: totalDepartmentSpent,
+        remaining: totalDepartmentBudget - totalDepartmentSpent,
+        utilization: Math.round(departmentUtilization * 100) / 100,
+        count: departmentBudgets.length
+      },
+      glBudgets: {
+        total: totalGLBudget,
+        actual: totalGLActual,
+        variance: totalGLBudget - totalGLActual,
+        utilization: Math.round(glUtilization * 100) / 100,
+        count: glBudgets.length
+      },
+      statusDistribution: budgetStatusCounts,
+      topSpendingDepartments
+    };
+
+    res.json({ success: true, data: budgetAnalytics });
+  } catch (error) {
+    console.error('Error fetching budget analytics:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching budget analytics' });
+  }
+};
+
 export default {
   getDashboardAnalytics,
   getProductivityTrends,
   getProjectDues,
-  getTopPerformers
+  getTopPerformers,
+  getBudgetAnalytics
 };

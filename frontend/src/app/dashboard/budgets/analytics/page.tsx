@@ -79,8 +79,11 @@ export default function BudgetAnalyticsPage() {
       
       if (budgetRes.ok) {
         const data = await budgetRes.json();
-        setBudgets(data);
-        console.log('Budgets loaded:', data.length);
+        console.log('Budgets loaded:', data);
+        // Handle different response formats
+        const budgetsArray = Array.isArray(data) ? data : (data.data || data.budgets || []);
+        setBudgets(budgetsArray);
+        console.log('Budgets array length:', budgetsArray.length);
       } else {
         const errorText = await budgetRes.text();
         console.error('Budget fetch failed:', budgetRes.status, errorText);
@@ -119,15 +122,15 @@ export default function BudgetAnalyticsPage() {
     setFilteredBudgets(filtered);
   };
 
-  const uniqueCategories = Array.from(
-    new Set(budgets.flatMap(b => b.categories.map(c => c.type)))
-  );
+  const uniqueCategories = budgets && budgets.length > 0 ? Array.from(
+    new Set(budgets.flatMap(b => b.categories?.map(c => c.type) || []))
+  ) : [];
 
-  const projectBudgetData = projects.map(project => {
+  const projectBudgetData = (projects && budgets) ? projects.map(project => {
     const projectBudgets = budgets.filter(b => b.projectId === project._id);
-    const totalBudget = projectBudgets.reduce((sum, b) => sum + b.totalBudget, 0);
+    const totalBudget = projectBudgets.reduce((sum, b) => sum + (b.totalBudget || 0), 0);
     const totalSpent = projectBudgets.reduce((sum, b) => 
-      sum + b.categories.reduce((s, c) => s + c.spentAmount, 0), 0
+      sum + (b.categories?.reduce((s, c) => s + (c.spentAmount || 0), 0) || 0), 0
     );
     return {
       name: project.name,
@@ -136,21 +139,21 @@ export default function BudgetAnalyticsPage() {
       remaining: totalBudget - totalSpent,
       utilization: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
     };
-  }).filter(p => p.budget > 0);
+  }).filter(p => p.budget > 0) : [];
 
-  const monthlyTrend = budgets.reduce((acc: any[], budget) => {
+  const monthlyTrend = budgets && budgets.length > 0 ? budgets.reduce((acc: any[], budget) => {
     const month = new Date(budget.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     const existing = acc.find(item => item.month === month);
-    const spent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
+    const spent = budget.categories?.reduce((sum, cat) => sum + (cat.spentAmount || 0), 0) || 0;
     
     if (existing) {
-      existing.allocated += budget.totalBudget;
+      existing.allocated += budget.totalBudget || 0;
       existing.spent += spent;
     } else {
-      acc.push({ month, allocated: budget.totalBudget, spent });
+      acc.push({ month, allocated: budget.totalBudget || 0, spent });
     }
     return acc;
-  }, []);
+  }, []) : [];
 
   const topSpendingProjects = projectBudgetData
     .sort((a, b) => b.spent - a.spent)

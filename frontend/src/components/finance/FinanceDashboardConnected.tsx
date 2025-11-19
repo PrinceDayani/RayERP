@@ -15,7 +15,7 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { testBackendConnection, getFinanceStats } from '@/utils/connectionTest';
+import { testBackendConnection, getFinanceStats, getBudgetAnalytics } from '@/utils/connectionTest';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -23,6 +23,35 @@ interface FinanceStats {
   accounts: number;
   entries: number;
   vouchers: number;
+  budgets: number;
+}
+
+interface BudgetAnalytics {
+  departmentBudgets: {
+    total: number;
+    spent: number;
+    remaining: number;
+    utilization: number;
+    count: number;
+  };
+  glBudgets: {
+    total: number;
+    actual: number;
+    variance: number;
+    utilization: number;
+    count: number;
+  };
+  statusDistribution: {
+    draft: number;
+    approved: number;
+    active: number;
+  };
+  topSpendingDepartments: Array<{
+    department: string;
+    allocated: number;
+    spent: number;
+    utilization: number;
+  }>;
 }
 
 interface ConnectionStatus {
@@ -32,7 +61,8 @@ interface ConnectionStatus {
 }
 
 export default function FinanceDashboardConnected() {
-  const [stats, setStats] = useState<FinanceStats>({ accounts: 0, entries: 0, vouchers: 0 });
+  const [stats, setStats] = useState<FinanceStats>({ accounts: 0, entries: 0, vouchers: 0, budgets: 0 });
+  const [budgetAnalytics, setBudgetAnalytics] = useState<BudgetAnalytics | null>(null);
   const [connection, setConnection] = useState<ConnectionStatus>({
     connected: false,
     message: 'Checking connection...',
@@ -52,6 +82,9 @@ export default function FinanceDashboardConnected() {
     if (result.success) {
       const financeStats = await getFinanceStats();
       setStats(financeStats);
+      
+      const budgetData = await getBudgetAnalytics();
+      setBudgetAnalytics(budgetData);
     }
     setLoading(false);
   };
@@ -141,25 +174,80 @@ export default function FinanceDashboardConnected() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            {connection.connected ? (
-              <CheckCircle className="h-4 w-4 text-green-500" />
-            ) : (
-              <AlertCircle className="h-4 w-4 text-red-500" />
-            )}
+            <CardTitle className="text-sm font-medium">Total Budgets</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              <Badge variant={connection.connected ? 'default' : 'destructive'}>
-                {connection.connected ? 'Online' : 'Offline'}
-              </Badge>
-            </div>
+            <div className="text-2xl font-bold">{stats.budgets}</div>
             <p className="text-xs text-muted-foreground">
-              Backend connection status
+              Department & GL budgets
             </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Budget Analytics */}
+      {budgetAnalytics && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Department Budgets</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total Allocated</span>
+                  <span className="font-bold">₹{budgetAnalytics.departmentBudgets.total.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total Spent</span>
+                  <span className="font-bold">₹{budgetAnalytics.departmentBudgets.spent.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Remaining</span>
+                  <span className="font-bold text-green-600">₹{budgetAnalytics.departmentBudgets.remaining.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Utilization</span>
+                  <Badge variant={budgetAnalytics.departmentBudgets.utilization > 90 ? 'destructive' : 'default'}>
+                    {budgetAnalytics.departmentBudgets.utilization.toFixed(1)}%
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>GL Budgets</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total Budget</span>
+                  <span className="font-bold">₹{budgetAnalytics.glBudgets.total.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Actual</span>
+                  <span className="font-bold">₹{budgetAnalytics.glBudgets.actual.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Variance</span>
+                  <span className={`font-bold ${budgetAnalytics.glBudgets.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ₹{budgetAnalytics.glBudgets.variance.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Utilization</span>
+                  <Badge variant={budgetAnalytics.glBudgets.utilization > 90 ? 'destructive' : 'default'}>
+                    {budgetAnalytics.glBudgets.utilization.toFixed(1)}%
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <Card>

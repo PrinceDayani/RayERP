@@ -38,28 +38,56 @@ export const getFinanceStats = async () => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
-      return { accounts: 0, entries: 0, vouchers: 0 };
+      return { accounts: 0, entries: 0, vouchers: 0, budgets: 0 };
     }
 
-    const [accountsRes, entriesRes] = await Promise.all([
+    const [accountsRes, entriesRes, budgetRes] = await Promise.all([
       fetch(`${API_URL}/api/general-ledger/accounts`, { 
         headers: { Authorization: `Bearer ${token}` } 
       }),
       fetch(`${API_URL}/api/general-ledger/journal-entries?limit=1`, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      }),
+      fetch(`${API_URL}/api/analytics/budget-analytics`, { 
         headers: { Authorization: `Bearer ${token}` } 
       })
     ]);
 
     const accountsData = accountsRes.ok ? await accountsRes.json() : { accounts: [] };
     const entriesData = entriesRes.ok ? await entriesRes.json() : { pagination: { total: 0 } };
+    const budgetData = budgetRes.ok ? await budgetRes.json() : { data: { departmentBudgets: { count: 0 } } };
 
     return {
       accounts: accountsData.accounts?.length || 0,
       entries: entriesData.pagination?.total || 0,
-      vouchers: 0
+      vouchers: 0,
+      budgets: budgetData.data?.departmentBudgets?.count || 0
     };
   } catch (error) {
     console.error('Error fetching finance stats:', error);
-    return { accounts: 0, entries: 0, vouchers: 0 };
+    return { accounts: 0, entries: 0, vouchers: 0, budgets: 0 };
+  }
+};
+
+export const getBudgetAnalytics = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return null;
+    }
+
+    const response = await fetch(`${API_URL}/api/analytics/budget-analytics`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Budget analytics failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error('Error fetching budget analytics:', error);
+    return null;
   }
 };

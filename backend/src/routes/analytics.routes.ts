@@ -24,4 +24,7 @@ router.get('/project-dues', requirePermission('analytics.view'), analyticsContro
 // Get top performing employees
 router.get('/top-performers', requirePermission('analytics.view'), analyticsController.getTopPerformers);
 
+// Get budget analytics
+router.get('/budget-analytics', requirePermission('analytics.view'), analyticsController.getBudgetAnalytics);
+
 export default router;
