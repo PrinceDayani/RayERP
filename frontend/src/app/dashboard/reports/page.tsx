@@ -175,65 +175,72 @@ export default function ReportsPage() {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gray-800 border-gray-700">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-300">Total Employees</CardTitle>
-            <Users className="h-4 w-4 text-blue-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Employees</CardTitle>
+            <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">24</div>
-            <p className="text-xs text-green-400">+2 this month</p>
+            <div className="text-2xl font-bold">24</div>
+            <p className="text-xs text-green-600">+2 this month</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-300">Active Projects</CardTitle>
-            <Target className="h-4 w-4 text-green-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Projects</CardTitle>
+            <Target className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">12</div>
-            <p className="text-xs text-blue-400">3 completing this month</p>
+            <div className="text-2xl font-bold">12</div>
+            <p className="text-xs text-blue-600">3 completing this month</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-300">Total Tasks</CardTitle>
-            <CheckCircle className="h-4 w-4 text-purple-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Tasks</CardTitle>
+            <CheckCircle className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">346</div>
-            <p className="text-xs text-green-400">78% completion rate</p>
+            <div className="text-2xl font-bold">346</div>
+            <p className="text-xs text-green-600">78% completion rate</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-300">Monthly Revenue</CardTitle>
-            <TrendingUp className="h-4 w-4 text-cyan-400" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Revenue</CardTitle>
+            <TrendingUp className="h-4 w-4 text-cyan-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">$189K</div>
-            <p className="text-xs text-green-400">+12% from last month</p>
+            <div className="text-2xl font-bold">$189K</div>
+            <p className="text-xs text-green-600">+12% from last month</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-gray-800 border-gray-700">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white">Monthly Attendance Rate</CardTitle>
+            <CardTitle>Monthly Attendance Rate</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={attendanceData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="month" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#fff' }} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="month" className="text-muted-foreground" />
+                  <YAxis className="text-muted-foreground" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      border: '1px solid hsl(var(--border))', 
+                      borderRadius: '6px',
+                      color: 'hsl(var(--foreground))'
+                    }} 
+                  />
                   <Line type="monotone" dataKey="rate" stroke={COLORS.primary} strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
@@ -241,18 +248,25 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white">Project Progress Trend</CardTitle>
+            <CardTitle>Project Progress Trend</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={projectReports}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="name" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#fff' }} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="name" className="text-muted-foreground" />
+                  <YAxis className="text-muted-foreground" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      border: '1px solid hsl(var(--border))', 
+                      borderRadius: '6px',
+                      color: 'hsl(var(--foreground))'
+                    }} 
+                  />
                   <Area type="monotone" dataKey="progress" stroke={COLORS.success} fill={COLORS.success} fillOpacity={0.3} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -265,10 +279,10 @@ export default function ReportsPage() {
 
   const renderEmployeeReport = () => (
     <div className="space-y-6">
-      <Card className="bg-gray-800 border-gray-700">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-400" />
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-blue-500" />
             Employee Performance Report
           </CardTitle>
         </CardHeader>
@@ -276,30 +290,30 @@ export default function ReportsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left py-3 px-4 text-gray-300">Employee</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Department</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Tasks</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Hours</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Efficiency</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Attendance</th>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-4 text-muted-foreground">Employee</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground">Department</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground">Tasks</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground">Hours</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground">Efficiency</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground">Attendance</th>
                 </tr>
               </thead>
               <tbody>
                 {employeeData.map((employee, index) => (
-                  <tr key={index} className="border-b border-gray-700">
-                    <td className="py-3 px-4 text-white font-medium">{employee.name}</td>
-                    <td className="py-3 px-4 text-gray-300">{employee.department}</td>
-                    <td className="py-3 px-4 text-white">{employee.tasksCompleted}</td>
-                    <td className="py-3 px-4 text-white">{employee.hoursWorked}</td>
+                  <tr key={index} className="border-b">
+                    <td className="py-3 px-4 font-medium">{employee.name}</td>
+                    <td className="py-3 px-4 text-muted-foreground">{employee.department}</td>
+                    <td className="py-3 px-4">{employee.tasksCompleted}</td>
+                    <td className="py-3 px-4">{employee.hoursWorked}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <Progress value={employee.efficiency} className="w-16 h-2" />
-                        <span className="text-white text-xs">{employee.efficiency}%</span>
+                        <span className="text-xs">{employee.efficiency}%</span>
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <Badge className={employee.attendance >= 95 ? 'bg-green-500' : employee.attendance >= 90 ? 'bg-yellow-500' : 'bg-red-500'}>
+                      <Badge variant={employee.attendance >= 95 ? 'default' : 'destructive'}>
                         {employee.attendance}%
                       </Badge>
                     </td>
@@ -315,41 +329,41 @@ export default function ReportsPage() {
 
   const renderProjectReport = () => (
     <div className="space-y-6">
-      <Card className="bg-gray-800 border-gray-700">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Target className="h-5 w-5 text-green-400" />
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-green-500" />
             Project Status & Budget Report
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {projectReports.map((project, index) => (
-              <div key={index} className="bg-gray-700 p-4 rounded-lg">
+              <div key={index} className="bg-muted/50 p-4 rounded-lg">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium text-white">{project.name}</h3>
+                  <h3 className="font-medium">{project.name}</h3>
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${getStatusColor(project.status)}`}></div>
-                    <span className="text-sm text-gray-300">{project.status}</span>
+                    <span className="text-sm text-muted-foreground">{project.status}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-400">Progress</span>
-                    <div className="text-white font-medium">{project.progress}%</div>
+                    <span className="text-muted-foreground">Progress</span>
+                    <div className="font-medium">{project.progress}%</div>
                     <Progress value={project.progress} className="mt-1 h-2" />
                   </div>
                   <div>
-                    <span className="text-gray-400">Budget</span>
-                    <div className="text-white font-medium">${project.budget.toLocaleString()}</div>
+                    <span className="text-muted-foreground">Budget</span>
+                    <div className="font-medium">${project.budget.toLocaleString()}</div>
                   </div>
                   <div>
-                    <span className="text-gray-400">Spent</span>
-                    <div className="text-white font-medium">${project.spent.toLocaleString()}</div>
+                    <span className="text-muted-foreground">Spent</span>
+                    <div className="font-medium">${project.spent.toLocaleString()}</div>
                   </div>
                   <div>
-                    <span className="text-gray-400">Team Size</span>
-                    <div className="text-white font-medium">{project.team} members</div>
+                    <span className="text-muted-foreground">Team Size</span>
+                    <div className="font-medium">{project.team} members</div>
                   </div>
                 </div>
               </div>
@@ -362,10 +376,10 @@ export default function ReportsPage() {
 
   const renderTaskReport = () => (
     <div className="space-y-6">
-      <Card className="bg-gray-800 border-gray-700">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-purple-400" />
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-purple-500" />
             Task Analytics by Category
           </CardTitle>
         </CardHeader>
@@ -373,24 +387,24 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               {taskAnalytics.map((category, index) => (
-                <div key={index} className="bg-gray-700 p-4 rounded-lg">
-                  <h3 className="font-medium text-white mb-3">{category.category}</h3>
+                <div key={index} className="bg-muted/50 p-4 rounded-lg">
+                  <h3 className="font-medium mb-3">{category.category}</h3>
                   <div className="grid grid-cols-4 gap-2 text-center text-sm">
                     <div>
-                      <div className="text-lg font-bold text-blue-400">{category.total}</div>
-                      <div className="text-gray-400">Total</div>
+                      <div className="text-lg font-bold text-blue-600">{category.total}</div>
+                      <div className="text-muted-foreground">Total</div>
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-green-400">{category.completed}</div>
-                      <div className="text-gray-400">Done</div>
+                      <div className="text-lg font-bold text-green-600">{category.completed}</div>
+                      <div className="text-muted-foreground">Done</div>
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-yellow-400">{category.pending}</div>
-                      <div className="text-gray-400">Pending</div>
+                      <div className="text-lg font-bold text-yellow-600">{category.pending}</div>
+                      <div className="text-muted-foreground">Pending</div>
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-red-400">{category.overdue}</div>
-                      <div className="text-gray-400">Overdue</div>
+                      <div className="text-lg font-bold text-red-600">{category.overdue}</div>
+                      <div className="text-muted-foreground">Overdue</div>
                     </div>
                   </div>
                 </div>
@@ -399,10 +413,17 @@ export default function ReportsPage() {
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={taskAnalytics}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="category" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#fff' }} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="category" className="text-muted-foreground" />
+                  <YAxis className="text-muted-foreground" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      border: '1px solid hsl(var(--border))', 
+                      borderRadius: '6px',
+                      color: 'hsl(var(--foreground))'
+                    }} 
+                  />
                   <Bar dataKey="completed" fill={COLORS.success} name="Completed" />
                   <Bar dataKey="pending" fill={COLORS.warning} name="Pending" />
                   <Bar dataKey="overdue" fill={COLORS.danger} name="Overdue" />
@@ -418,10 +439,10 @@ export default function ReportsPage() {
   const renderChatReport = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-gray-800 border-gray-700">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-purple-400" />
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-purple-500" />
               Communication Analytics
             </CardTitle>
           </CardHeader>
@@ -429,10 +450,17 @@ export default function ReportsPage() {
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chatReports}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="week" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', color: '#fff' }} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="week" className="text-muted-foreground" />
+                  <YAxis className="text-muted-foreground" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))', 
+                      border: '1px solid hsl(var(--border))', 
+                      borderRadius: '6px',
+                      color: 'hsl(var(--foreground))'
+                    }} 
+                  />
                   <Line type="monotone" dataKey="messages" stroke={COLORS.purple} strokeWidth={2} name="Messages" />
                   <Line type="monotone" dataKey="files" stroke={COLORS.orange} strokeWidth={2} name="Files" />
                 </LineChart>
@@ -441,22 +469,22 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <FileText className="h-5 w-5 text-cyan-400" />
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-cyan-500" />
               File Sharing Report
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {fileReports.map((file, index) => (
-                <div key={index} className="bg-gray-700 p-3 rounded-lg">
+                <div key={index} className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-white font-medium">{file.type}</h4>
-                    <Badge className="bg-blue-500">{file.shared} shared</Badge>
+                    <h4 className="font-medium">{file.type}</h4>
+                    <Badge variant="secondary">{file.shared} shared</Badge>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-sm text-gray-300">
+                  <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">
                     <span>Downloads: {file.downloaded}</span>
                     <span>Departments: {file.departments}</span>
                     <span>Users: {file.users}</span>
@@ -471,34 +499,34 @@ export default function ReportsPage() {
   );
 
   const renderContactReport = () => (
-    <Card className="bg-gray-800 border-gray-700">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-white flex items-center gap-2">
-          <Phone className="h-5 w-5 text-pink-400" />
+        <CardTitle className="flex items-center gap-2">
+          <Phone className="h-5 w-5 text-pink-500" />
           Contact Management Report
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {contactReports.map((contact, index) => (
-            <div key={index} className="bg-gray-700 p-4 rounded-lg">
-              <h3 className="font-medium text-white mb-3">{contact.category}</h3>
+            <div key={index} className="bg-muted/50 p-4 rounded-lg">
+              <h3 className="font-medium mb-3">{contact.category}</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Total</span>
-                  <span className="text-white font-medium">{contact.total}</span>
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="font-medium">{contact.total}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Active</span>
-                  <span className="text-green-400 font-medium">{contact.active}</span>
+                  <span className="text-muted-foreground">Active</span>
+                  <span className="text-green-600 font-medium">{contact.active}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">New</span>
-                  <span className="text-blue-400 font-medium">{contact.newThisMonth}</span>
+                  <span className="text-muted-foreground">New</span>
+                  <span className="text-blue-600 font-medium">{contact.newThisMonth}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Interactions</span>
-                  <span className="text-purple-400 font-medium">{contact.interactions}</span>
+                  <span className="text-muted-foreground">Interactions</span>
+                  <span className="text-purple-600 font-medium">{contact.interactions}</span>
                 </div>
               </div>
             </div>
@@ -524,17 +552,17 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gray-900 min-h-screen">
+    <div className="p-6 space-y-6 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Reports Dashboard</h1>
-          <p className="text-gray-400 mt-1">Comprehensive ERP system reports and analytics</p>
+          <h1 className="text-3xl font-bold">Reports Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Comprehensive ERP system reports and analytics</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
           <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-32 bg-gray-800 border-gray-700 text-white">
+            <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -545,7 +573,7 @@ export default function ReportsPage() {
           </Select>
           
           <Select value={department} onValueChange={setDepartment}>
-            <SelectTrigger className="w-40 bg-gray-800 border-gray-700 text-white">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Department" />
             </SelectTrigger>
             <SelectContent>
@@ -563,7 +591,6 @@ export default function ReportsPage() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
                 disabled={isExporting}
               >
                 <Download className="h-4 w-4 mr-2" />
@@ -571,10 +598,10 @@ export default function ReportsPage() {
                 <ChevronDown className="h-4 w-4 ml-2" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-gray-800 border-gray-700">
+            <DropdownMenuContent>
               <DropdownMenuItem 
                 onClick={handleExportText} 
-                className="text-white hover:bg-gray-700 cursor-pointer"
+                className="cursor-pointer"
                 disabled={isExporting}
               >
                 <File className="h-4 w-4 mr-2" />
@@ -582,7 +609,7 @@ export default function ReportsPage() {
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={handleExportPDF} 
-                className="text-white hover:bg-gray-700 cursor-pointer"
+                className="cursor-pointer"
                 disabled={isExporting}
               >
                 <FileText className="h-4 w-4 mr-2" />
@@ -590,7 +617,7 @@ export default function ReportsPage() {
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={handleExportExcel} 
-                className="text-white hover:bg-gray-700 cursor-pointer"
+                className="cursor-pointer"
                 disabled={isExporting}
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
@@ -598,7 +625,7 @@ export default function ReportsPage() {
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={handleExportCSV} 
-                className="text-white hover:bg-gray-700 cursor-pointer"
+                className="cursor-pointer"
                 disabled={isExporting}
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
@@ -610,7 +637,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Report Navigation */}
-      <Card className="bg-gray-800 border-gray-700">
+      <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-2">
             {[
@@ -629,10 +656,6 @@ export default function ReportsPage() {
                   variant={selectedReport === report.id ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedReport(report.id)}
-                  className={`${selectedReport === report.id 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
-                  }`}
                 >
                   <Icon className="h-4 w-4 mr-2" />
                   {report.label}
@@ -649,7 +672,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Footer */}
-      <div className="text-center text-gray-400 text-sm py-4">
+      <div className="text-center text-muted-foreground text-sm py-4">
         <p>Report generated on: {new Date().toLocaleString()} • Data updated in real-time</p>
       </div>
     </div>
