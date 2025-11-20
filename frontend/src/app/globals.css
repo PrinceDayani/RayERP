@@ -4,14 +4,14 @@
 
 @layer base {
   :root {
-    /* Enhanced Base theme colors */
+    /* Enhanced Base theme colors with brand #970E2C */
     --background: 0 0% 100%;
     --foreground: 220 13% 18%;
     --card: 0 0% 100%;
     --card-foreground: 220 13% 18%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 13% 18%;
-    --primary: 0 84% 60%;
+    --primary: 348 83% 32%; /* Brand color #970E2C */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 98%;
     --secondary-foreground: 220 13% 18%;
@@ -23,7 +23,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 0 84% 60%;
+    --ring: 348 83% 32%; /* Brand color for focus rings */
     --radius: 0.75rem;
     
     /* Enhanced gradient colors */
@@ -40,12 +40,12 @@
     --bg-navbar: 0 0% 98%;
     --bg-table-even: 0 0% 95%;
     --bg-table-odd: 0 0% 100%;
-    --bg-active: 345 63% 95%;
+    --bg-active: 348 83% 95%;
     
     --text-primary: 0 0% 10%;
     --text-secondary: 0 0% 45%;
     --text-heading: 0 0% 0%;
-    --text-active: 345 63% 40%;
+    --text-active: 348 83% 32%;
     
     --success: 142 76% 36%;
     --success-bg: 142 76% 95%;
@@ -65,7 +65,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222 84% 6%;
     --popover-foreground: 210 40% 98%;
-    --primary: 0 84% 60%;
+    --primary: 348 83% 45%; /* Brand color adjusted for dark theme */
     --primary-foreground: 0 0% 100%;
     --secondary: 217 32% 15%;
     --secondary-foreground: 210 40% 98%;
@@ -77,7 +77,7 @@
     --destructive-foreground: 0 85% 97%;
     --border: 217 32% 20%;
     --input: 217 32% 15%;
-    --ring: 0 84% 60%;
+    --ring: 348 83% 45%; /* Brand color for focus rings in dark theme */
     
     /* Enhanced dark gradient colors */
     --gradient-primary: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(348 83% 47%) 100%);
@@ -93,12 +93,12 @@
     --bg-navbar: 222 84% 5%;
     --bg-table-even: 217 32% 10%;
     --bg-table-odd: 217 32% 12%;
-    --bg-active: 0 84% 15%;
+    --bg-active: 348 83% 15%;
     
     --text-primary: 210 40% 95%;
     --text-secondary: 215 20% 70%;
     --text-heading: 210 40% 98%;
-    --text-active: 0 84% 70%;
+    --text-active: 348 83% 45%;
     
     --success: 142 76% 50%;
     --success-bg: 142 76% 12%;
@@ -372,7 +372,7 @@
   }
   
   .admin-gradient-blue {
-    @apply bg-gradient-to-r from-red-500 to-indigo-500 hover:from-red-600 hover:to-indigo-600 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105;
+    @apply bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105;
   }
   
   .admin-gradient-green {
@@ -388,7 +388,7 @@
   }
   
   .admin-gradient-cyan {
-    @apply bg-gradient-to-r from-cyan-500 to-red-500 hover:from-cyan-600 hover:to-red-600 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105;
+    @apply bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105;
   }
   
   /* Modern Gradient Utilities */
@@ -434,7 +434,7 @@
   
   /* Status border colors */
   .border-t-todo { @apply border-t-gray-500; }
-  .border-t-progress { @apply border-t-red-500; }
+  .border-t-progress { @apply border-t-[#970E2C]; }
   .border-t-review { @apply border-t-yellow-500; }
   .border-t-completed { @apply border-t-green-500; }
   

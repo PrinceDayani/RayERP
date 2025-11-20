@@ -154,17 +154,17 @@ export default function SettingsPage() {
       <div className="container mx-auto py-8 px-4 space-y-8 max-w-7xl">
         {/* Header with Glassmorphism */}
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-3xl blur-3xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#970E2C]/10 via-[#CD2E4F]/10 to-[#E04D68]/10 rounded-3xl blur-3xl"></div>
           <Card className="relative border-0 shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
             <CardContent className="p-8">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
-                    <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg">
+                    <div className="p-3 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-2xl shadow-lg">
                       <Settings className="h-7 w-7 text-white" />
                     </div>
                     <div>
-                      <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      <h1 className="text-4xl font-bold bg-gradient-to-r from-[#970E2C] to-[#CD2E4F] bg-clip-text text-transparent">
                         Settings
                       </h1>
                       <p className="text-muted-foreground text-sm mt-1">
@@ -180,7 +180,7 @@ export default function SettingsPage() {
                     variant="outline" 
                     size="sm"
                     onClick={() => setShowSearch(!showSearch)}
-                    className="gap-2 hover:bg-blue-50 dark:hover:bg-blue-950 transition-all"
+                    className="gap-2 hover:bg-[#970E2C]/10 dark:hover:bg-[#970E2C]/20 transition-all"
                   >
                     <Search className="h-4 w-4" />
                     <span className="hidden sm:inline">Search</span>
@@ -216,7 +216,7 @@ export default function SettingsPage() {
                     size="sm" 
                     onClick={toggleAccountingMode}
                     disabled={switchingMode}
-                    className="gap-2 hover:bg-orange-50 dark:hover:bg-orange-950 transition-all"
+                    className="gap-2 hover:bg-[#970E2C]/10 dark:hover:bg-[#970E2C]/20 transition-all"
                   >
                     {accountingMode === "indian" ? (
                       <><IndianRupee className="h-4 w-4" /> Indian</>
@@ -231,7 +231,7 @@ export default function SettingsPage() {
                     size="sm" 
                     onClick={syncSettings}
                     disabled={!isConnected}
-                    className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all"
+                    className="gap-2 bg-gradient-to-r from-[#970E2C] to-[#CD2E4F] hover:from-[#CD2E4F] hover:to-[#E04D68] shadow-lg hover:shadow-xl transition-all"
                   >
                     <Sparkles className="h-4 w-4" />
                     Sync
@@ -272,7 +272,7 @@ export default function SettingsPage() {
             <TabsList className="grid grid-cols-2 lg:grid-cols-5 w-full max-w-5xl mx-auto p-1.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border shadow-xl rounded-2xl">
               <TabsTrigger 
                 value="profile" 
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
+                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <User className="h-4 w-4" />
                 <span>Profile</span>
@@ -282,7 +282,7 @@ export default function SettingsPage() {
               </TabsTrigger>
               <TabsTrigger 
                 value="notifications" 
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
+                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <Bell className="h-4 w-4" />
                 <span>Notifications</span>
@@ -292,7 +292,7 @@ export default function SettingsPage() {
               </TabsTrigger>
               <TabsTrigger 
                 value="appearance" 
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
+                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <Palette className="h-4 w-4" />
                 <span>Appearance</span>
@@ -302,7 +302,7 @@ export default function SettingsPage() {
               </TabsTrigger>
               <TabsTrigger 
                 value="security" 
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
+                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <Shield className="h-4 w-4" />
                 <span>Security</span>
@@ -312,7 +312,7 @@ export default function SettingsPage() {
               </TabsTrigger>
               <TabsTrigger 
                 value="hierarchy" 
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
+                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <Users className="h-4 w-4" />
                 <span>Hierarchy</span>
@@ -325,10 +325,10 @@ export default function SettingsPage() {
         
           <TabsContent value="profile" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
               <CardHeader className="relative">
                 <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
+                  <div className="p-2 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-xl">
                     <User className="h-5 w-5 text-white" />
                   </div>
                   Profile Settings
@@ -349,10 +349,10 @@ export default function SettingsPage() {
           
           <TabsContent value="appearance" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5 pointer-events-none"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
               <CardHeader className="relative">
                 <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
+                  <div className="p-2 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-xl">
                     <Palette className="h-5 w-5 text-white" />
                   </div>
                   Appearance Settings
@@ -369,10 +369,10 @@ export default function SettingsPage() {
           
           <TabsContent value="security" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-transparent to-orange-500/5 pointer-events-none"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
               <CardHeader className="relative">
                 <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl">
+                  <div className="p-2 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-xl">
                     <Shield className="h-5 w-5 text-white" />
                   </div>
                   Security Settings
@@ -389,10 +389,10 @@ export default function SettingsPage() {
           
           <TabsContent value="hierarchy" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5 pointer-events-none"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
               <CardHeader className="relative">
                 <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-gradient-to-br from-indigo-500 to-cyan-600 rounded-xl">
+                  <div className="p-2 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-xl">
                     <Users className="h-5 w-5 text-white" />
                   </div>
                   Organization Hierarchy
