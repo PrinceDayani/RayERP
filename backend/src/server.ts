@@ -4,13 +4,17 @@ import cors from "cors";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
 import http from "http";
 import path from "path";
-import { Server as SocketServer } from "socket.io";
-import routes from "./routes/index";
-import assignmentRoutes from "./routes/assignment.routes";
-import backupRoutes from "./routes/backupRoutes";
-import errorMiddleware from "./middleware/error.middleware";
+import { Server as SocketServer, Socket } from "socket.io";
+import "express-async-errors";
+
+// Extend Socket interface to include userId
+interface AuthenticatedSocket extends Socket {
+  userId?: string;
+}
 
 dotenv.config();
 
@@ -29,12 +33,32 @@ if (isNaN(Number(process.env.PORT))) {
 }
 
 import { logger } from "./utils/logger";
+import routes from "./routes/index";
+import assignmentRoutes from "./routes/assignment.routes";
+import backupRoutes from "./routes/backupRoutes";
+import errorMiddleware from "./middleware/error.middleware";
 
 const app = express();
 const server = http.createServer(app);
 
 // Trust proxy for secure cookies and proxies
 app.set("trust proxy", 1);
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // limit each IP to 1000 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(limiter);
+
+// Compression middleware
+app.use(compression());
 
 // CORS configuration
 const allowedOrigins = [
@@ -101,8 +125,8 @@ app.use(
 );
 
 // Body parsing middleware
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
 // Serve static files from uploads directory with CORS
@@ -119,7 +143,9 @@ app.get('/api/health', (req, res) => {
     success: true,
     message: 'Server is healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    version: process.version
   });
 });
 
@@ -140,7 +166,7 @@ app.all('*', (req, res) => {
 // Error handling middleware
 app.use(errorMiddleware);
 
-// Socket.IO setup
+// Socket.IO setup with enhanced error handling
 const io = new SocketServer(server, {
   cors: {
     origin: true,
@@ -150,18 +176,26 @@ const io = new SocketServer(server, {
   transports: ["polling", "websocket"],
   allowEIO3: true,
   path: "/socket.io/",
-  pingTimeout: 20000,
-  pingInterval: 10000,
-  upgradeTimeout: 10000,
-  maxHttpBufferSize: 1e6
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e7,
+  connectTimeout: 45000
 });
 
-// Handle socket connections
-io.on("connection", (socket) => {
+// Enhanced socket connection handling with real-time updates
+io.on("connection", (socket: AuthenticatedSocket) => {
   logger.info(`User connected: ${socket.id}`);
   
+  // Send real-time connection status
+  socket.emit("connection_status", {
+    connected: true,
+    socketId: socket.id,
+    timestamp: new Date().toISOString()
+  });
+  
   // Handle user authentication and room joining
-  socket.on("authenticate", (token) => {
+  socket.on("authenticate", async (token) => {
     try {
       if (!token || typeof token !== 'string') {
         socket.emit("auth_error", "Invalid token format");
@@ -169,7 +203,7 @@ io.on("connection", (socket) => {
       }
       
       const jwt = require("jsonwebtoken");
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
       if (!decoded || !decoded.id) {
         socket.emit("auth_error", "Invalid token payload");
@@ -177,8 +211,17 @@ io.on("connection", (socket) => {
       }
       
       socket.join(`user-${decoded.id}`);
+      socket.userId = decoded.id;
+      
       logger.info(`User ${decoded.id} authenticated and joined room`);
-      socket.emit("auth_success", { userId: decoded.id });
+      socket.emit("auth_success", { 
+        userId: decoded.id,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Start real-time data updates for authenticated user
+      startRealTimeUpdates(socket, decoded.id);
+      
     } catch (error) {
       logger.error("Socket authentication failed:", {
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -188,12 +231,26 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Settings events
+  // Real-time data subscription
+  socket.on("subscribe_realtime", (data) => {
+    const { types = [] } = data || {};
+    
+    types.forEach(type => {
+      socket.join(`realtime_${type}`);
+    });
+    
+    socket.emit("realtime_subscribed", {
+      types,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // Settings events with real-time sync
   socket.on("settings:updated", (data) => {
     socket.broadcast.emit("settings:synced", {
       ...data,
       socketId: socket.id,
-      timestamp: new Date()
+      timestamp: new Date().toISOString()
     });
   });
 
@@ -201,103 +258,151 @@ io.on("connection", (socket) => {
     socket.emit("settings:synced", {
       ...data,
       forced: true,
-      timestamp: new Date()
+      timestamp: new Date().toISOString()
     });
   });
 
-  socket.on("settings:tab_changed", (data) => {
-    // Analytics event - could be stored for user behavior analysis
-    logger.info(`User ${socket.id} changed to tab: ${data.tab}`);
-  });
-
-  // Notification events
+  // Real-time notifications
   socket.on("notification:test", (data) => {
-    socket.emit("notification:test", {
+    socket.emit("notification:received", {
       id: `test-${Date.now()}`,
       type: 'info',
-      title: data.title || 'Test Notification',
-      message: data.message || 'This is a test notification to verify your settings.',
+      title: data?.title || 'Test Notification',
+      message: data?.message || 'This is a test notification to verify your settings.',
       priority: 'low',
-      timestamp: new Date()
+      timestamp: new Date().toISOString()
     });
   });
 
-  // Real-time data events
-  socket.on("subscribe:notifications", () => {
-    socket.join("notifications");
-    logger.info(`Socket ${socket.id} subscribed to notifications`);
-  });
-
-  socket.on("unsubscribe:notifications", () => {
-    socket.leave("notifications");
-    logger.info(`Socket ${socket.id} unsubscribed from notifications`);
-  });
-
-  socket.on("ping", (data, callback) => {
-    if (typeof callback === "function") {
-      callback("pong");
-    } else {
-      socket.emit("pong", "pong");
-    }
-  });
-
-  // Chat events
+  // Chat events with real-time updates
   socket.on("join_chat", (chatId) => {
     socket.join(chatId);
+    socket.to(chatId).emit("user_joined_chat", {
+      userId: socket.userId,
+      chatId,
+      timestamp: new Date().toISOString()
+    });
     logger.info(`Socket ${socket.id} joined chat ${chatId}`);
   });
 
   socket.on("leave_chat", (chatId) => {
     socket.leave(chatId);
+    socket.to(chatId).emit("user_left_chat", {
+      userId: socket.userId,
+      chatId,
+      timestamp: new Date().toISOString()
+    });
     logger.info(`Socket ${socket.id} left chat ${chatId}`);
   });
 
   socket.on("typing", (data) => {
     socket.to(data.chatId).emit("user_typing", {
       userId: data.userId,
-      chatId: data.chatId
+      chatId: data.chatId,
+      timestamp: new Date().toISOString()
     });
   });
 
   socket.on("stop_typing", (data) => {
     socket.to(data.chatId).emit("user_stop_typing", {
       userId: data.userId,
-      chatId: data.chatId
+      chatId: data.chatId,
+      timestamp: new Date().toISOString()
     });
   });
 
-  socket.on("disconnect", () => {
-    logger.info(`User disconnected: ${socket.id}`);
+  // Enhanced ping/pong with latency measurement
+  socket.on("ping", (data, callback) => {
+    const timestamp = new Date().toISOString();
+    if (typeof callback === "function") {
+      callback({ pong: true, timestamp, serverTime: Date.now() });
+    } else {
+      socket.emit("pong", { pong: true, timestamp, serverTime: Date.now() });
+    }
+  });
+
+  socket.on("disconnect", (reason) => {
+    logger.info(`User disconnected: ${socket.id}, reason: ${reason}`);
+    
+    // Notify other users in the same rooms
+    if (socket.userId) {
+      socket.broadcast.emit("user_disconnected", {
+        userId: socket.userId,
+        socketId: socket.id,
+        reason,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Error handling for socket events
+  socket.on("error", (error) => {
+    logger.error(`Socket error for ${socket.id}:`, error);
+    socket.emit("socket_error", {
+      message: "An error occurred",
+      timestamp: new Date().toISOString()
+    });
   });
 });
+
+// Real-time data updates function
+function startRealTimeUpdates(socket: AuthenticatedSocket, userId: string) {
+  const updateInterval = setInterval(() => {
+    // Send real-time system stats
+    socket.emit("system_stats", {
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      connections: io.engine.clientsCount
+    });
+  }, 30000); // Every 30 seconds
+
+  socket.on("disconnect", () => {
+    clearInterval(updateInterval);
+  });
+}
 
 // Export for use in other files
 export { io };
 export default app;
 
-// Initialize real-time admin emitter
-import { realTimeAdminEmitter } from './utils/realTimeAdminEmitter';
-realTimeAdminEmitter.initialize(io);
+// Initialize real-time systems
+async function initializeRealTimeSystems() {
+  try {
+    // Initialize real-time admin emitter
+    const { realTimeAdminEmitter } = await import('./utils/realTimeAdminEmitter');
+    realTimeAdminEmitter.initialize(io);
 
-// Initialize real-time data emitter
-import { RealTimeEmitter } from './utils/realTimeEmitter';
-RealTimeEmitter.initialize(io);
-RealTimeEmitter.startIntervals();
+    // Initialize real-time data emitter
+    const { RealTimeEmitter } = await import('./utils/realTimeEmitter');
+    RealTimeEmitter.initialize(io);
+    RealTimeEmitter.startIntervals();
 
-// Initialize cron jobs
-import { initializeCronJobs } from './utils/cronJobs';
-initializeCronJobs();
+    // Initialize cron jobs
+    const { initializeCronJobs } = await import('./utils/cronJobs');
+    initializeCronJobs();
 
-// Initialize recurring job schedulers
-import { initializeSchedulers } from './utils/recurringJobsScheduler';
-initializeSchedulers();
+    // Initialize recurring job schedulers
+    const { initializeSchedulers } = await import('./utils/recurringJobsScheduler');
+    initializeSchedulers();
+
+    logger.info('✅ Real-time systems initialized');
+  } catch (error) {
+    logger.warn('⚠️ Some real-time systems could not be initialized:', error.message);
+  }
+}
 
 // MongoDB connection and server startup
-const PORT = Number(process.env.PORT!);
-const MONGODB_URI = process.env.MONGO_URI!;
+const PORT = Number(process.env.PORT);
+const MONGODB_URI = process.env.MONGO_URI;
 
 mongoose
-  .connect(MONGODB_URI)
+  .connect(MONGODB_URI, {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    bufferCommands: false
+  })
   .then(async () => {
     logger.info("✅ Connected to MongoDB");
     
@@ -375,15 +480,19 @@ mongoose
         const { initializeCompleteFinanceSystem } = await import('./utils/initializeFinanceComplete');
         await initializeCompleteFinanceSystem();
       } catch (error) {
-        logger.warn('⚠️ Complete Finance System initialization skipped:', error);
+        logger.warn('⚠️ Complete Finance System initialization skipped:', error.message);
       }
     } catch (error) {
       logger.error('❌ Error initializing Finance System:', error);
     }
     
+    // Initialize real-time systems
+    await initializeRealTimeSystems();
+    
     server.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
       logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
+      logger.info(`🔗 Socket.IO server initialized`);
       if (allowedOrigins.length > 0) {
         logger.info(`🔒 CORS origins: ${allowedOrigins.join(', ')}`);
       }
@@ -394,10 +503,29 @@ mongoose
     process.exit(1);
   });
 
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (err: Error) => {
+// Enhanced error handling
+process.on("unhandledRejection", (err) => {
   logger.error("Unhandled Promise Rejection:", err);
   if (process.env.NODE_ENV !== "production") {
     process.exit(1);
   }
+});
+
+process.on("uncaughtException", (err) => {
+  logger.error("Uncaught Exception:", err);
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    mongoose.connection.close().then(() => {
+      logger.info('Process terminated');
+      process.exit(0);
+    }).catch((err) => {
+      logger.error('Error closing MongoDB connection:', err);
+      process.exit(1);
+    });
+  });
 });

@@ -1,16 +1,14 @@
-//path: backend/src/middleware/error.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 
-interface ErrorResponse extends Error {
+interface CustomError extends Error {
   statusCode?: number;
-  code?: number;
-  keyValue?: any;
-  errors?: any;
+  status?: string;
+  isOperational?: boolean;
 }
 
 const errorMiddleware = (
-  err: ErrorResponse,
+  err: CustomError,
   req: Request,
   res: Response,
   next: NextFunction
@@ -18,55 +16,54 @@ const errorMiddleware = (
   let error = { ...err };
   error.message = err.message;
 
-  // Enhanced logging
-  logger.error(`Error ${err.message} on ${req.method} ${req.path}`, {
-    error: err,
-    body: req.body,
-    params: req.params,
-    query: req.query
+  // Log error
+  logger.error('Error:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.get('User-Agent')
   });
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
-    const message = 'Invalid ID format';
-    error = new Error(message) as ErrorResponse;
-    error.statusCode = 400;
+    const message = 'Resource not found';
+    error = { ...error, message, statusCode: 404 };
   }
 
   // Mongoose duplicate key
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyValue || {})[0];
-    const message = field ? `${field} already exists` : 'Duplicate field value';
-    error = new Error(message) as ErrorResponse;
-    error.statusCode = 400;
+  if (err.name === 'MongoError' && (err as any).code === 11000) {
+    const message = 'Duplicate field value entered';
+    error = { ...error, message, statusCode: 400 };
   }
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
-    const message = Object.values(err.errors || {})
-      .map((val: any) => val.message)
-      .join(', ');
-    error = new Error(message) as ErrorResponse;
-    error.statusCode = 400;
+    const message = Object.values((err as any).errors).map((val: any) => val.message).join(', ');
+    error = { ...error, message, statusCode: 400 };
   }
 
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
     const message = 'Invalid token';
-    error = new Error(message) as ErrorResponse;
-    error.statusCode = 401;
+    error = { ...error, message, statusCode: 401 };
   }
 
   if (err.name === 'TokenExpiredError') {
     const message = 'Token expired';
-    error = new Error(message) as ErrorResponse;
-    error.statusCode = 401;
+    error = { ...error, message, statusCode: 401 };
+  }
+
+  // CORS errors
+  if (err.message === 'Not allowed by CORS') {
+    error = { ...error, statusCode: 403 };
   }
 
   res.status(error.statusCode || 500).json({
     success: false,
-    message: error.message || 'Internal Server Error',
-    stack: err.stack
+    error: error.message || 'Server Error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 };
 

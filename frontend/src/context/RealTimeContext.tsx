@@ -1,143 +1,246 @@
-//project\frontend\src\context\RealTimeContext.tsx
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useSocketWithStatus, useSocketEvent, OrderCreatedEvent, OrderUpdatedEvent, InventoryUpdatedEvent, NotificationEvent } from '@/lib/socket';
-import { useAuth } from '../contexts/AuthContext';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { toast } from 'react-hot-toast';
 
-interface RealTimeContextProps {
+interface RealTimeContextType {
+  socket: Socket | null;
   isConnected: boolean;
-  connectionError: string | null;
-  notifications: NotificationEvent[];
-  markNotificationAsRead: (id: string) => void;
-  markAllNotificationsAsRead: () => void;
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  lastUpdate: Date | null;
+  subscribe: (event: string, callback: (data: any) => void) => void;
+  unsubscribe: (event: string) => void;
+  emit: (event: string, data?: any) => void;
+  reconnect: () => void;
 }
 
-const RealTimeContext = createContext<RealTimeContextProps>({
-  isConnected: false,
-  connectionError: null,
-  notifications: [],
-  markNotificationAsRead: () => {},
-  markAllNotificationsAsRead: () => {},
-});
+const RealTimeContext = createContext<RealTimeContextType | undefined>(undefined);
 
-export const useRealTime = () => useContext(RealTimeContext);
+export const useRealTime = () => {
+  const context = useContext(RealTimeContext);
+  if (context === undefined) {
+    throw new Error('useRealTime must be used within a RealTimeProvider');
+  }
+  return context;
+};
 
 interface RealTimeProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) => {
-  const { user, isAuthenticated, token } = useAuth();
-  
-  const [socket, isConnected, error] = useSocketWithStatus(token || undefined);
-  const [notifications, setNotifications] = useState<NotificationEvent[]>([]);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
+  const reconnectTimeout = useRef<NodeJS.Timeout>();
 
-  // Connect to socket when user is authenticated
-  useEffect(() => {
-    if (!isAuthenticated || !user) return;
+  const createSocket = useCallback(() => {
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     
-    // Load previous notifications from localStorage
-    const savedNotifications = localStorage.getItem('notifications');
-    if (savedNotifications) {
-      try {
-        setNotifications(JSON.parse(savedNotifications));
-      } catch (e) {
-        console.error('Failed to parse saved notifications');
+    const newSocket = io(backendUrl, {
+      transports: ['polling', 'websocket'],
+      upgrade: true,
+      rememberUpgrade: true,
+      timeout: 20000,
+      forceNew: true,
+      reconnection: true,
+      reconnectionAttempts: maxReconnectAttempts,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      maxReconnectionAttempts: maxReconnectAttempts,
+      randomizationFactor: 0.5
+    });
+
+    // Connection event handlers
+    newSocket.on('connect', () => {
+      console.log('✅ Socket connected:', newSocket.id);
+      setIsConnected(true);
+      setConnectionStatus('connected');
+      setLastUpdate(new Date());
+      reconnectAttempts.current = 0;
+      
+      // Authenticate if token exists
+      const token = localStorage.getItem('auth-token');
+      if (token) {
+        newSocket.emit('authenticate', token);
       }
+      
+      toast.success('Real-time connection established');
+    });
+
+    newSocket.on('disconnect', (reason) => {
+      console.log('❌ Socket disconnected:', reason);
+      setIsConnected(false);
+      setConnectionStatus('disconnected');
+      
+      if (reason === 'io server disconnect') {
+        // Server initiated disconnect, reconnect manually
+        newSocket.connect();
+      }
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('❌ Socket connection error:', error);
+      setConnectionStatus('error');
+      reconnectAttempts.current++;
+      
+      if (reconnectAttempts.current >= maxReconnectAttempts) {
+        toast.error('Failed to establish real-time connection');
+      }
+    });
+
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log(`🔄 Socket reconnected after ${attemptNumber} attempts`);
+      toast.success('Real-time connection restored');
+    });
+
+    newSocket.on('reconnect_error', (error) => {
+      console.error('❌ Socket reconnection error:', error);
+    });
+
+    // Authentication events
+    newSocket.on('auth_success', (data) => {
+      console.log('✅ Socket authenticated:', data);
+      toast.success('Real-time authentication successful');
+    });
+
+    newSocket.on('auth_error', (error) => {
+      console.error('❌ Socket authentication error:', error);
+      toast.error('Real-time authentication failed');
+    });
+
+    // Connection status updates
+    newSocket.on('connection_status', (data) => {
+      setLastUpdate(new Date(data.timestamp));
+    });
+
+    // System stats updates
+    newSocket.on('system_stats', (data) => {
+      setLastUpdate(new Date(data.timestamp));
+    });
+
+    // Real-time notifications
+    newSocket.on('notification:received', (notification) => {
+      const { type, title, message } = notification;
+      
+      switch (type) {
+        case 'success':
+          toast.success(`${title}: ${message}`);
+          break;
+        case 'error':
+          toast.error(`${title}: ${message}`);
+          break;
+        case 'warning':
+          toast(`${title}: ${message}`, { icon: '⚠️' });
+          break;
+        default:
+          toast(`${title}: ${message}`);
+      }
+    });
+
+    // Settings sync events
+    newSocket.on('settings:synced', (data) => {
+      setLastUpdate(new Date(data.timestamp));
+      // Trigger custom event for settings components
+      window.dispatchEvent(new CustomEvent('settings:synced', { detail: data }));
+    });
+
+    // Chat events
+    newSocket.on('user_joined_chat', (data) => {
+      setLastUpdate(new Date(data.timestamp));
+    });
+
+    newSocket.on('user_left_chat', (data) => {
+      setLastUpdate(new Date(data.timestamp));
+    });
+
+    newSocket.on('user_typing', (data) => {
+      setLastUpdate(new Date(data.timestamp));
+    });
+
+    newSocket.on('user_stop_typing', (data) => {
+      setLastUpdate(new Date(data.timestamp));
+    });
+
+    // Error handling
+    newSocket.on('socket_error', (error) => {
+      console.error('Socket error:', error);
+      toast.error('Real-time connection error');
+    });
+
+    return newSocket;
+  }, []);
+
+  const reconnect = useCallback(() => {
+    if (socket) {
+      socket.disconnect();
     }
+    
+    setConnectionStatus('connecting');
+    
+    if (reconnectTimeout.current) {
+      clearTimeout(reconnectTimeout.current);
+    }
+    
+    reconnectTimeout.current = setTimeout(() => {
+      const newSocket = createSocket();
+      setSocket(newSocket);
+    }, 1000);
+  }, [socket, createSocket]);
+
+  const subscribe = useCallback((event: string, callback: (data: any) => void) => {
+    if (socket) {
+      socket.on(event, callback);
+    }
+  }, [socket]);
+
+  const unsubscribe = useCallback((event: string) => {
+    if (socket) {
+      socket.off(event);
+    }
+  }, [socket]);
+
+  const emit = useCallback((event: string, data?: any) => {
+    if (socket && isConnected) {
+      socket.emit(event, data);
+    } else {
+      console.warn('Socket not connected, cannot emit event:', event);
+    }
+  }, [socket, isConnected]);
+
+  useEffect(() => {
+    setConnectionStatus('connecting');
+    const newSocket = createSocket();
+    setSocket(newSocket);
 
     return () => {
-      // Save notifications to localStorage when component unmounts
-      localStorage.setItem('notifications', JSON.stringify(notifications));
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+      if (reconnectTimeout.current) {
+        clearTimeout(reconnectTimeout.current);
+      }
     };
-  }, [isAuthenticated, user]);
+  }, [createSocket]);
 
-  // Save notifications to localStorage when they change
-  useEffect(() => {
-    if (notifications.length > 0) {
-      localStorage.setItem('notifications', JSON.stringify(notifications));
-    }
-  }, [notifications]);
-
-  // Listen for new notifications
-  useSocketEvent<NotificationEvent>('notification', (data) => {
-    setNotifications(prev => [{ ...data, id: data.id || `notif-${Date.now()}` }, ...prev]);
-  });
-
-  // Listen for new orders
-  useSocketEvent<OrderCreatedEvent>('order:new', (data) => {
-    const notification: NotificationEvent = {
-      id: `order-${data._id}-${Date.now()}`,
-      type: 'order_created',
-      message: `New order #${data.orderNumber} has been placed by ${data.customer?.name || 'Unknown'}`,
-      timestamp: new Date().toISOString(),
-      read: false,
-      link: `/dashboard/orders/${data._id}`
-    };
-    
-    setNotifications(prev => [notification, ...prev]);
-  });
-
-  // Listen for order updates
-  useSocketEvent<OrderUpdatedEvent>('order:updated', (data) => {
-    const notification: NotificationEvent = {
-      id: `order-update-${data._id}-${Date.now()}`,
-      type: 'order_updated',
-      message: `Order #${data._id} status changed to ${data.status}`,
-      timestamp: new Date().toISOString(),
-      read: false,
-      link: `/dashboard/orders/${data._id}`
-    };
-    
-    setNotifications(prev => [notification, ...prev]);
-  });
-
-  // Listen for inventory updates
-  useSocketEvent<InventoryUpdatedEvent>('inventory:update', (data) => {
-    if (data.status === 'low-stock' || data.status === 'out-of-stock') {
-      const notification: NotificationEvent = {
-        id: `inventory-${data.productId}-${Date.now()}`,
-        type: 'inventory_alert',
-        message: data.status === 'low-stock' 
-          ? `Product is running low on stock (${data.quantity} remaining)` 
-          : 'Product is out of stock!',
-        timestamp: new Date().toISOString(),
-        read: false,
-        link: `/dashboard/inventory`
-      };
-      
-      setNotifications(prev => [notification, ...prev]);
-    }
-  });
-
-  const markNotificationAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id ? { ...notification, read: true } : notification
-      )
-    );
-  };
-
-  const markAllNotificationsAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
-    );
+  const value: RealTimeContextType = {
+    socket,
+    isConnected,
+    connectionStatus,
+    lastUpdate,
+    subscribe,
+    unsubscribe,
+    emit,
+    reconnect
   };
 
   return (
-    <RealTimeContext.Provider
-      value={{
-        isConnected,
-        connectionError: error,
-        notifications,
-        markNotificationAsRead,
-        markAllNotificationsAsRead,
-      }}
-    >
+    <RealTimeContext.Provider value={value}>
       {children}
     </RealTimeContext.Provider>
   );
 };
-
-export default RealTimeContext;
