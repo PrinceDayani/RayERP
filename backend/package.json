@@ -50,6 +50,7 @@
     "winston": "^3.8.2"
   },
   "devDependencies": {
+    "node-cache": "^5.1.2",
     "@types/adm-zip": "^0.5.7",
     "@types/archiver": "^6.0.4",
     "@types/bcryptjs": "^2.4.6",
@@ -71,8 +72,15 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.0.2"
   },
+  "optionalDependencies": {
+    "fsevents": "^2.3.3"
+  },
   "engines": {
     "node": "22.x",
     "npm": ">=10.0.0"
+  },
+  "volta": {
+    "node": "22.11.0",
+    "npm": "10.9.0"
   }
 }

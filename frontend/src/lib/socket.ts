@@ -62,8 +62,22 @@ export const initializeSocket = async (token?: string): Promise<SocketType | nul
 
   try {
     const config = getSocketConfig();
+    
+    // Safely get token from localStorage if not provided
+    let authToken = token;
+    if (!authToken && typeof window !== 'undefined') {
+      authToken = localStorage.getItem('auth-token') || localStorage.getItem('token') || undefined;
+    }
+    
+    // Validate token before sending
+    const validToken = authToken && 
+                      typeof authToken === 'string' && 
+                      authToken !== 'undefined' && 
+                      authToken !== 'null' && 
+                      authToken.trim() !== '' ? authToken : undefined;
+    
     socket = io(API_URL, {
-      auth: token ? { token } : undefined,
+      auth: validToken ? { token: validToken } : undefined,
       ...config
     });
   } catch (error) {

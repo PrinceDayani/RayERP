@@ -6,6 +6,9 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
+import { connectDB, createIndexes } from "./config/database";
+import { cacheMiddleware } from "./middleware/cache.middleware";
+import { paginationMiddleware } from "./middleware/pagination.middleware";
 import http from "http";
 import path from "path";
 import { Server as SocketServer, Socket } from "socket.io";
@@ -149,6 +152,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Quick fix routes
+app.use("/api/fast", require('./routes/quickfix.routes'));
+
 // API Routes
 app.use("/api", routes);
 app.use("/api", assignmentRoutes);
@@ -183,6 +189,39 @@ const io = new SocketServer(server, {
   connectTimeout: 45000
 });
 
+// Socket authentication middleware
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    
+    if (!token) {
+      // Allow connection without token, authentication can happen later
+      return next();
+    }
+    
+    if (typeof token !== 'string' || token === 'undefined' || token === 'null') {
+      return next(new Error('Invalid token format'));
+    }
+    
+    const jwt = require("jsonwebtoken");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (!decoded || !decoded.id) {
+      return next(new Error('Invalid token payload'));
+    }
+    
+    (socket as AuthenticatedSocket).userId = decoded.id;
+    next();
+  } catch (error) {
+    logger.error("Socket authentication failed:", {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      socketId: socket.id,
+      timestamp: new Date().toISOString()
+    });
+    next(new Error('jwt malformed'));
+  }
+});
+
 // Enhanced socket connection handling with real-time updates
 io.on("connection", (socket: AuthenticatedSocket) => {
   logger.info(`User connected: ${socket.id}`);
@@ -194,7 +233,18 @@ io.on("connection", (socket: AuthenticatedSocket) => {
     timestamp: new Date().toISOString()
   });
   
-  // Handle user authentication and room joining
+  // If user was pre-authenticated during handshake, join their room
+  if (socket.userId) {
+    socket.join(`user-${socket.userId}`);
+    logger.info(`Pre-authenticated user ${socket.userId} joined room`);
+    socket.emit("auth_success", { 
+      userId: socket.userId,
+      timestamp: new Date().toISOString()
+    });
+    startRealTimeUpdates(socket, socket.userId);
+  }
+  
+  // Handle user authentication and room joining (for post-connection auth)
   socket.on("authenticate", async (token) => {
     try {
       if (!token || typeof token !== 'string') {
@@ -396,15 +446,18 @@ async function initializeRealTimeSystems() {
 const PORT = Number(process.env.PORT);
 const MONGODB_URI = process.env.MONGO_URI;
 
-mongoose
-  .connect(MONGODB_URI, {
-    maxPoolSize: 10,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-    bufferCommands: false
-  })
+// Optimize MongoDB connection
+mongoose.set('strictQuery', false);
+mongoose.set('bufferCommands', false);
+
+connectDB()
   .then(async () => {
-    logger.info("✅ Connected to MongoDB");
+    // Create database indexes for performance
+    await createIndexes();
+    
+    // Warm up connection pool
+    await mongoose.connection.db.admin().ping();
+    console.log('✅ Database connection warmed up');
     
     // Initialize onboarding system
     try {

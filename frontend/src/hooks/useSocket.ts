@@ -17,7 +17,14 @@ export const useSocket = (url: string = process.env.NEXT_PUBLIC_API_URL || 'http
 
     try {
       if (!socketRef.current) {
-        const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+        const rawToken = localStorage.getItem('auth-token') || localStorage.getItem('token');
+        
+        // Validate token before sending
+        const token = rawToken && 
+                     typeof rawToken === 'string' && 
+                     rawToken !== 'undefined' && 
+                     rawToken !== 'null' && 
+                     rawToken.trim() !== '' ? rawToken : undefined;
         
         socketRef.current = io(url, {
           transports: ['websocket', 'polling'],
@@ -36,10 +43,18 @@ export const useSocket = (url: string = process.env.NEXT_PUBLIC_API_URL || 'http
             setIsConnected(true);
             setSocket(socketRef.current);
             
-            // Authenticate socket
-            const authToken = localStorage.getItem('auth-token') || localStorage.getItem('token');
-            if (authToken && socketRef.current) {
-              socketRef.current.emit('authenticate', authToken);
+            // Authenticate socket if not already authenticated via handshake
+            if (!token) {
+              const authToken = localStorage.getItem('auth-token') || localStorage.getItem('token');
+              const validAuthToken = authToken && 
+                                   typeof authToken === 'string' && 
+                                   authToken !== 'undefined' && 
+                                   authToken !== 'null' && 
+                                   authToken.trim() !== '' ? authToken : undefined;
+              
+              if (validAuthToken && socketRef.current) {
+                socketRef.current.emit('authenticate', validAuthToken);
+              }
             }
           }
         });
