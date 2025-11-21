@@ -1,6 +1,6 @@
 {
     "watch": ["src"],
     "ext": "ts,json",
-    "exec": "node --import ts-node/register src/server.ts"
+    "exec": "ts-node src/server.ts"
   }
   
