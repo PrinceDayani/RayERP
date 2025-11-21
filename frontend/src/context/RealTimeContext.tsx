@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import { toast } from 'react-hot-toast';
 
 interface RealTimeContextType {

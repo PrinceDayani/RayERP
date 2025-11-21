@@ -23,7 +23,7 @@ export function useUserAssignments() {
     // Fetch user assignments
     const fetchAssignments = async () => {
       try {
-        const data = await apiRequest(`/users/${user.id}/assignments`);
+        const data = await apiRequest(`/users/${(user as any)._id || (user as any).id}/assignments`);
         setAssignments(data);
       } catch (error) {
         console.error('Failed to fetch assignments:', error);

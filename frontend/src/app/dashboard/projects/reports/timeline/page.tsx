@@ -11,9 +11,19 @@ import { getAllProjects } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { format, differenceInDays, isAfter, isBefore } from "date-fns";
 
+interface Project {
+  _id: string;
+  name: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  progress: number;
+  [key: string]: any;
+}
+
 const TimelineReportPage = () => {
   const router = useRouter();
-  const [projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterPeriod, setFilterPeriod] = useState("all");
   const [viewType, setViewType] = useState("overview");
@@ -68,7 +78,7 @@ const TimelineReportPage = () => {
   };
 
   const getTimelineData = () => {
-    const monthlyData = {};
+    const monthlyData: Record<string, { month: string; started: number; completed: number }> = {};
     
     projects.forEach(project => {
       const startMonth = format(new Date(project.startDate), 'MMM yyyy');

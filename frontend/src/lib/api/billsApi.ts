@@ -1,16 +1,16 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-const getAuthHeaders = () => {
+const getAuthHeaders = (): HeadersInit => {
   if (typeof window === 'undefined') return { 'Content-Type': 'application/json' };
   const token = localStorage.getItem('token');
   return {
     'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : ''
+    ...(token && { 'Authorization': `Bearer ${token}` })
   };
 };
 
 export const billsApi = {
-  exportPDF: async (accountId?: string) => {
+  exportPDF: async (accountId?: string): Promise<Blob> => {
     const url = accountId ? `${API_BASE}/api/bills/export/pdf?accountId=${accountId}` : `${API_BASE}/api/bills/export/pdf`;
     const res = await fetch(url, { headers: getAuthHeaders() });
     return res.blob();

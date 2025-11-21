@@ -3,7 +3,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import io from 'socket.io-client';
+
+type Socket = ReturnType<typeof io>;
 
 export const useSocket = (url: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000') => {
   const socketRef = useRef<Socket | null>(null);
@@ -28,7 +30,6 @@ export const useSocket = (url: string = process.env.NEXT_PUBLIC_API_URL || 'http
         
         socketRef.current = io(url, {
           transports: ['websocket', 'polling'],
-          withCredentials: true,
           autoConnect: true,
           reconnection: true,
           reconnectionAttempts: 5,
@@ -66,14 +67,14 @@ export const useSocket = (url: string = process.env.NEXT_PUBLIC_API_URL || 'http
           }
         });
 
-        socketRef.current.on('connect_error', (error) => {
+        socketRef.current.on('connect_error', (error: Error) => {
           console.warn('Socket connection failed:', error.message);
           if (mounted) {
             setIsConnected(false);
           }
         });
 
-        socketRef.current.on('reconnect', (attemptNumber) => {
+        socketRef.current.on('reconnect', (attemptNumber: number) => {
           console.log(`Socket reconnected after ${attemptNumber} attempts`);
           if (mounted) {
             setIsConnected(true);

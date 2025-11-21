@@ -1,11 +1,11 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-const getAuthHeaders = () => {
+const getAuthHeaders = (): HeadersInit => {
   if (typeof window === 'undefined') return { 'Content-Type': 'application/json' };
   const token = localStorage.getItem('token');
   return {
     'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : ''
+    ...(token && { 'Authorization': `Bearer ${token}` })
   };
 };
 
