@@ -78,7 +78,9 @@ export const initializeSocket = async (token?: string): Promise<SocketType | nul
     
     socket = io(API_URL, {
       auth: validToken ? { token: validToken } : undefined,
-      ...config
+      ...config,
+      // In production, prefer polling to avoid WebSocket upgrade issues on AWS App Runner
+      transports: process.env.NODE_ENV === 'production' ? ['polling'] : config.transports
     });
   } catch (error) {
     console.error('Failed to create socket instance:', error);
