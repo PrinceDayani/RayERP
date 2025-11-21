@@ -13,16 +13,28 @@ export const checkServerHealth = async (apiUrl: string): Promise<boolean> => {
       return false;
     }
     
-    // Only allow localhost and specific domains
-    const allowedHosts = ['localhost', '127.0.0.1'];
-    if (!allowedHosts.includes(url.hostname)) {
-      return false;
-    }
-    
-    // Prevent port scanning by restricting ports
-    const allowedPorts = ['3000', '5000', '8000', '8080'];
-    if (url.port && !allowedPorts.includes(url.port)) {
-      return false;
+    // In production, allow AWS App Runner and other production domains
+    if (process.env.NODE_ENV === 'production') {
+      // Allow AWS App Runner domains and other production URLs
+      const isAwsAppRunner = url.hostname.includes('.awsapprunner.com');
+      const isLocalhost = ['localhost', '127.0.0.1'].includes(url.hostname);
+      
+      if (!isAwsAppRunner && !isLocalhost) {
+        // Allow other production domains if needed
+        console.warn('Health check: Unknown production domain', url.hostname);
+      }
+    } else {
+      // In development, only allow localhost
+      const allowedHosts = ['localhost', '127.0.0.1'];
+      if (!allowedHosts.includes(url.hostname)) {
+        return false;
+      }
+      
+      // Prevent port scanning by restricting ports in development
+      const allowedPorts = ['3000', '5000', '8000', '8080'];
+      if (url.port && !allowedPorts.includes(url.port)) {
+        return false;
+      }
     }
     
     const controller = new AbortController();
