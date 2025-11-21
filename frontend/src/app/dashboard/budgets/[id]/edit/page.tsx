@@ -260,7 +260,6 @@ export default function EditBudgetPage() {
                       <div>
                         <label className="text-xs font-medium">Name</label>
                         <Input
-                          size="sm"
                           value={item.name}
                           onChange={(e) => updateItem(categoryIndex, itemIndex, 'name', e.target.value)}
                           placeholder="Item name"
@@ -269,7 +268,6 @@ export default function EditBudgetPage() {
                       <div>
                         <label className="text-xs font-medium">Description</label>
                         <Input
-                          size="sm"
                           value={item.description}
                           onChange={(e) => updateItem(categoryIndex, itemIndex, 'description', e.target.value)}
                           placeholder="Description"
@@ -278,7 +276,6 @@ export default function EditBudgetPage() {
                       <div>
                         <label className="text-xs font-medium">Quantity</label>
                         <Input
-                          size="sm"
                           type="number"
                           value={item.quantity}
                           onChange={(e) => updateItem(categoryIndex, itemIndex, 'quantity', Number(e.target.value))}
@@ -287,7 +284,6 @@ export default function EditBudgetPage() {
                       <div>
                         <label className="text-xs font-medium">Unit Cost</label>
                         <Input
-                          size="sm"
                           type="number"
                           value={item.unitCost}
                           onChange={(e) => updateItem(categoryIndex, itemIndex, 'unitCost', Number(e.target.value))}
@@ -296,7 +292,6 @@ export default function EditBudgetPage() {
                       <div>
                         <label className="text-xs font-medium">Total</label>
                         <Input
-                          size="sm"
                           value={item.totalCost.toFixed(2)}
                           readOnly
                           className="bg-gray-100"

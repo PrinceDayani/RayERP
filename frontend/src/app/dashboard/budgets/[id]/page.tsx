@@ -71,6 +71,11 @@ export default function BudgetDetailPage() {
     return <div className="flex justify-center items-center h-64">Budget not found</div>;
   }
 
+  // Calculate derived values
+  const actualSpent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
+  const remainingBudget = budget.totalBudget - actualSpent;
+  const utilizationPercentage = budget.totalBudget > 0 ? (actualSpent / budget.totalBudget) * 100 : 0;
+
   return (
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
@@ -109,7 +114,7 @@ export default function BudgetDetailPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {budget.actualSpent.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{budget.currency} {actualSpent.toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -119,7 +124,7 @@ export default function BudgetDetailPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {budget.remainingBudget.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{budget.currency} {remainingBudget.toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -129,8 +134,8 @@ export default function BudgetDetailPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.utilizationPercentage.toFixed(1)}%</div>
-              <Progress value={budget.utilizationPercentage} className="mt-2" />
+              <div className="text-2xl font-bold">{utilizationPercentage.toFixed(1)}%</div>
+              <Progress value={utilizationPercentage} className="mt-2" />
             </CardContent>
           </Card>
         </div>
@@ -142,21 +147,12 @@ export default function BudgetDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Fiscal Year:</span>
-                <span className="font-medium">{budget.fiscalYear}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Fiscal Period:</span>
-                <span className="font-medium">{budget.fiscalPeriod}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Budget Type:</span>
-                <span className="font-medium capitalize">{budget.budgetType}</span>
-              </div>
-              <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Currency:</span>
                 <span className="font-medium">{budget.currency}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Status:</span>
+                <span className="font-medium capitalize">{budget.status}</span>
               </div>
               <div className="flex items-center gap-2">
                 <User className="w-4 h-4 text-gray-500" />

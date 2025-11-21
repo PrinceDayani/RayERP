@@ -8,6 +8,9 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   
+  // Turbopack configuration (Next.js 16+)
+  turbopack: {},
+  
   // Bundle analyzer
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     // Optimize bundle size
@@ -67,11 +70,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-<<<<<<< Updated upstream
-        destination: `${process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_HOST}/api/:path*`,
-=======
         destination: `${apiUrl}/api/:path*`,
->>>>>>> Stashed changes
       },
     ];
   },
