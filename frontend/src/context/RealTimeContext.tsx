@@ -40,7 +40,7 @@ export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) 
   const reconnectTimeout = useRef<NodeJS.Timeout>();
 
   const createSocket = useCallback(() => {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
     
     const newSocket = io(backendUrl, {
       transports: ['polling', 'websocket'],

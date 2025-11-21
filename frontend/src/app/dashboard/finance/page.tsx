@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Briefcase, Calculator, FileText, TrendingUp, BarChart3, DollarSign, Receipt, Building2, Users, BookOpen, FolderOpen, Banknote, Repeat, PieChart, Wallet, FileSpreadsheet, ChevronRight, Plus, Globe, Scale, Clock, Lock, Shield, Zap, CheckCircle, FileCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export default function FinancePage() {
   const router = useRouter();

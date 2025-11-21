@@ -4,7 +4,7 @@ export const checkServerStatus = async (): Promise<{
   message: string;
   details?: any;
 }> => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
   
   try {
     const controller = new AbortController();

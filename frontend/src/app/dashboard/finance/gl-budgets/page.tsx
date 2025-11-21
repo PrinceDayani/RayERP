@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, TrendingUp, AlertTriangle, Copy, CheckCircle, XCircle, Clock, Lock } from 'lucide-react';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export default function GLBudgetsPage() {
   const [budgets, setBudgets] = useState<any[]>([]);

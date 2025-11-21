@@ -1,10 +1,10 @@
 // Environment configuration utility
 export const config = {
   // API Configuration
-  apiUrl: process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'http://localhost:5000',
+  apiUrl: process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL,
   
   // Socket Configuration
-  socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+  socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL,
   
   // Environment
   isDevelopment: process.env.NODE_ENV === 'development',

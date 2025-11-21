@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import axios from 'axios';
 import { logger } from './logger';
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:5000';
+const API_BASE = process.env.API_BASE_URL  || process.env.BACKEND_URL;
 
 export const scheduleBillReminders = () => {
   cron.schedule('0 9 * * *', async () => {

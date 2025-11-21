@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 const getAuthHeaders = (): HeadersInit => {
   if (typeof window === 'undefined') return { 'Content-Type': 'application/json' };

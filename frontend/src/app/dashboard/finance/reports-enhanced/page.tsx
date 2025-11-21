@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Download, TrendingUp, TrendingDown, RefreshCw, BarChart3, LineChart, PieChart, Filter } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export default function EnhancedReportsPage() {
   const [reportType, setReportType] = useState('profit-loss');

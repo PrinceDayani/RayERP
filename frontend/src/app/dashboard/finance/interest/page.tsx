@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Calculator, Play, FileText, TrendingUp, DollarSign, Calendar } from 'lucide-react';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export default function InterestCalculationsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);

@@ -36,8 +36,8 @@ services:
       PORT: 5000
       MONGO_URI: mongodb://admin:${MONGO_ROOT_PASSWORD:-rayerp123}@mongodb:27017/rayerp?authSource=admin
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      CORS_ORIGIN: http://localhost:3000,http://frontend:3000
-      FRONTEND_URL: http://localhost:3000
+      CORS_ORIGIN: ${FRONTEND_HOST}
+      FRONTEND_URL: ${FRONTEND_HOST}
     ports:
       - "5000:5000"
     depends_on:
@@ -48,7 +48,7 @@ services:
     volumes:
       - ./backend/uploads:/app/uploads
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ["CMD", "curl", "-f", "${BACKEND_HOST}/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -60,13 +60,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:5000
+        NEXT_PUBLIC_API_URL: ${BACKEND_HOST}
     container_name: rayerp-frontend
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
-      NEXT_PUBLIC_API_URL: http://localhost:5000
+      NEXT_PUBLIC_API_URL: ${BACKEND_HOST}
     ports:
       - "3000:3000"
     depends_on:
@@ -75,7 +75,7 @@ services:
     networks:
       - rayerp-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD", "curl", "-f", "${FRONTEND_HOST}"]
       interval: 30s
       timeout: 10s
       retries: 3

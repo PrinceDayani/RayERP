@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
 
 if (!API_BASE_URL) {
   console.error('API URL not configured. Please set NEXT_PUBLIC_API_URL in your environment.');

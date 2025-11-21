@@ -173,7 +173,7 @@ export function AdminOverview({ isLoading }: AdminOverviewProps) {
   const testApiConnection = async () => {
     try {
       const token = localStorage.getItem('auth-token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
       
       console.log('Testing API connection...');
       console.log('API URL:', API_URL);

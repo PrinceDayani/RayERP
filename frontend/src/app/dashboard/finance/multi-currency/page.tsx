@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Globe, TrendingUp, RefreshCw, Plus, Edit } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 interface Currency {
   _id: string;

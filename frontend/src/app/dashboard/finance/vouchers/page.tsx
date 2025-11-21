@@ -15,7 +15,7 @@ import { Plus, Trash2, FileText, Eye, CheckCircle, XCircle, Search, Filter, Down
 import { Textarea } from '@/components/ui/textarea';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export default function VouchersPage() {
   const [vouchers, setVouchers] = useState<any[]>([]);

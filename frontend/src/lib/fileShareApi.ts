@@ -1,6 +1,6 @@
 //path: frontend/src/lib/fileShareApi.ts
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token');

@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, FileText, Trash2, Upload, Download, Copy, AlertTriangle, CheckCircle, Paperclip, X, Save, Zap, FileSpreadsheet } from 'lucide-react';
 import axios from 'axios';
 import { AccountSelector } from './AccountSelector';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 const JournalEntry = () => {
   const { accounts, loading, fetchAccounts, createJournalEntry } = useGeneralLedger();

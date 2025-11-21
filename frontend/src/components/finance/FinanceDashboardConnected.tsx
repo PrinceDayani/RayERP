@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { testBackendConnection, getFinanceStats, getBudgetAnalytics } from '@/utils/connectionTest';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 interface FinanceStats {
   accounts: number;

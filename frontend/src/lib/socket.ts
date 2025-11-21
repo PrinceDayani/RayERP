@@ -160,7 +160,7 @@ export const useSocket = (url?: string): Socket | null => {
 
     const initSocket = async () => {
       try {
-        const serverUrl = url || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const serverUrl = url || process.env.NEXT_PUBLIC_API_URL;
         
         // Validate URL before connecting
         const urlObj = new URL(serverUrl);

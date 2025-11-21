@@ -30,7 +30,7 @@ export const authFix = {
     console.log('🔍 Auth Debug:', {
       hasToken: !!token,
       isValid: authFix.isTokenValid(token),
-      apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      apiUrl: process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL
     });
   }
 };

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # Frontend Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${BACKEND_HOST}
+    container_name: rayerp-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${BACKEND_HOST}
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - rayerp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "${FRONTEND_HOST}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

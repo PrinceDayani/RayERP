@@ -17,7 +17,7 @@ import { bankReconciliationApi } from '@/lib/api/finance/reportingApi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export default function BankReconciliationPage() {
   const [accounts, setAccounts] = useState<any[]>([]);

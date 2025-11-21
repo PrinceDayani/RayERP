@@ -64,12 +64,15 @@ app.use(limiter);
 app.use(compression());
 
 // CORS configuration
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3001'
-];
+const allowedOrigins = [];
+
+// Add origins from environment variables only
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+if (process.env.CORS_ORIGIN) {
+  allowedOrigins.push(...process.env.CORS_ORIGIN.split(',').filter(Boolean));
+}
 
 // Add environment origins if they exist
 if (process.env.CORS_ORIGIN) {
