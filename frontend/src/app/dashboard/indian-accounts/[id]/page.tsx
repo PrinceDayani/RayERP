@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getLedgerById, getGroupById, getSubGroupById } from '@/lib/api/generalLedgerApi';
+import { getLedgerById, getGroupById, getSubGroupById } from '@/lib/api/generalLedgerAPI';
 import { ArrowLeft } from 'lucide-react';
 
 export default function DetailView() {
