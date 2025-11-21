@@ -65,7 +65,7 @@ export default function EditEmployeePage() {
   const fetchEmployee = async () => {
     try {
       setFetchLoading(true);
-      const employee = await employeesAPI.getById(employeeId);
+      const employee = await employeesAPI.getEmployee(employeeId);
       
       setFormData({
         firstName: employee.firstName || '',
@@ -130,7 +130,7 @@ export default function EditEmployeePage() {
         skills: formData.skills.split(',').map(skill => skill.trim()).filter(Boolean)
       };
 
-      await employeesAPI.update(employeeId, submitData);
+      await employeesAPI.updateEmployee(employeeId, submitData);
       
       toast({
         title: "Success",

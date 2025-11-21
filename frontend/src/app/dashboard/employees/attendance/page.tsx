@@ -113,8 +113,8 @@ const AttendanceManagement = () => {
     };
 
     // Add event listeners if socket is available
-    if (typeof window !== 'undefined' && window.io) {
-      const socket = window.io();
+    if (typeof window !== 'undefined' && (window as any).io) {
+      const socket = (window as any).io();
       socket.on('attendance:checkin', handleAttendanceUpdate);
       socket.on('attendance:checkout', handleAttendanceUpdate);
       socket.on('attendance:marked', handleAttendanceUpdate);

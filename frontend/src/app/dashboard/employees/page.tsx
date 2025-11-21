@@ -127,8 +127,8 @@ const EmployeeManagementDashboard = () => {
       fetchData();
     };
 
-    if (typeof window !== 'undefined' && window.io) {
-      const socket = window.io();
+    if (typeof window !== 'undefined' && (window as any).io) {
+      const socket = (window as any).io();
       socket.on('attendance:updated', handleUpdate);
       socket.on('leave:created', handleUpdate);
       socket.on('leave:updated', handleUpdate);

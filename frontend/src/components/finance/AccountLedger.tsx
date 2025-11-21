@@ -34,9 +34,13 @@ interface Account {
   currentBalance: number;
 }
 
-const AccountLedger = () => {
+interface AccountLedgerProps {
+  accountId?: string;
+}
+
+const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId }) => {
   const params = useParams();
-  const accountId = params.id as string;
+  const accountId = propAccountId || (params.id as string);
   
   const [account, setAccount] = useState<Account | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);

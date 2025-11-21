@@ -78,7 +78,7 @@ export default function CreateEmployeePage() {
 
     try {
       console.log('API object:', api);
-      console.log('API employees:', api.employees);
+      console.log('API employees:', (api as any).employees);
       
       const submitData = {
         ...formData,
@@ -86,8 +86,8 @@ export default function CreateEmployeePage() {
         skills: formData.skills.split(',').map(skill => skill.trim()).filter(Boolean)
       };
 
-      if (api.employees && api.employees.create) {
-        await api.employees.create(submitData);
+      if ((api as any).employees && (api as any).employees.create) {
+        await (api as any).employees.create(submitData);
       } else {
         // Fallback to direct apiRequest
         await apiRequest('/api/employees', {

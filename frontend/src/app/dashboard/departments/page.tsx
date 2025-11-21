@@ -164,7 +164,7 @@ export default function DepartmentsPage() {
       
       let managerId = "";
       if (dept.manager?.email) {
-        const managerEmp = allEmps.find(e => e.email === dept.manager.email);
+        const managerEmp = allEmps.find((e: Employee) => e.email === dept.manager.email);
         if (managerEmp) {
           managerId = managerEmp._id;
         }
