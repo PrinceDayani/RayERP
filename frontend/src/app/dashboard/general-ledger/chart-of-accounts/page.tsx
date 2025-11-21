@@ -47,7 +47,7 @@ export default function ChartOfAccountsPage() {
     const [formData, setFormData] = useState({
       name: '',
       code: '',
-      type: 'asset' as const,
+      type: 'asset',
       parentId: '',
       isGroup: false,
       description: ''
@@ -161,7 +161,7 @@ export default function ChartOfAccountsPage() {
     const [formData, setFormData] = useState({
       name: selectedAccount?.name || '',
       code: selectedAccount?.code || '',
-      type: (selectedAccount?.type || 'asset') as const,
+      type: selectedAccount?.type || 'asset',
       parentId: selectedAccount?.parentId || '',
       isGroup: selectedAccount?.isGroup || false,
       description: selectedAccount?.description || ''

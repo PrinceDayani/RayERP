@@ -522,9 +522,12 @@ const ProjectDetailPage = () => {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {typeof project.manager === 'object' && project.manager.firstName && project.manager.lastName
-                            ? `${project.manager.firstName} ${project.manager.lastName}`
-                            : 'Project Manager'}
+                          {(() => {
+                            const manager = project.manager as any;
+                            return typeof manager === 'object' && manager?.firstName && manager?.lastName
+                              ? `${manager.firstName} ${manager.lastName}`
+                              : 'Project Manager';
+                          })()}
                         </p>
                         <p className="text-sm text-muted-foreground">Manager</p>
                       </div>
@@ -533,14 +536,14 @@ const ProjectDetailPage = () => {
                   
                   
                   {project.team && project.team.length > 0 ? (
-                    project.team.map((member: any, index) => (
+                    (project.team as any[]).map((member: any, index) => (
                       <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
                         <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
                           <Users className="h-4 w-4 text-gray-600" />
                         </div>
                         <div>
                           <p className="font-medium">
-                            {typeof member === 'object' && member.firstName && member.lastName 
+                            {typeof member === 'object' && member?.firstName && member?.lastName 
                               ? `${member.firstName} ${member.lastName}` 
                               : `Team Member ${index + 1}`}
                           </p>
