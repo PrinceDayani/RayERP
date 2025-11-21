@@ -74,7 +74,7 @@ const AdminControls = () => {
                 </div>
               </div>
               <Badge variant="secondary" className="px-3 py-1">
-                {user?.role}
+                {typeof user?.role === 'string' ? user.role : user?.role?.name || 'N/A'}
               </Badge>
             </div>
           </div>
