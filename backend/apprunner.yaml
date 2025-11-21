@@ -3,7 +3,7 @@ runtime: nodejs18
 build:
   commands:
     pre-build:
-      - npm ci --omit=dev
+      - npm ci
     build:
       - npm run build:apprunner
 run:
