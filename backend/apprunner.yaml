@@ -6,14 +6,10 @@ build:
       - npm ci --omit=dev
     build:
       - npm run build:apprunner
-    post-build:
-      - echo "Build completed"
 run:
-  runtime-version: 20
   command: node dist/server.js
   network:
     port: 5000
-    env: PORT
   env:
     - name: NODE_ENV
       value: "production"
