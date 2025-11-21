@@ -77,56 +77,62 @@ export default function ApprovedBudgetsPage() {
     }
   };
 
-  const BudgetCard = ({ budget }: { budget: Budget }) => (
-    <Card className="hover:shadow-lg transition-shadow">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-lg font-semibold">{budget.projectName}</h3>
-            <p className="text-sm text-gray-600">
-              Created: {new Date(budget.createdAt).toLocaleDateString()}
-            </p>
-          </div>
-          <Badge className={budget.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-            {budget.status === 'approved' ? <CheckCircle className="w-4 h-4 mr-1" /> : <XCircle className="w-4 h-4 mr-1" />}
-            {budget.status.charAt(0).toUpperCase() + budget.status.slice(1)}
-          </Badge>
-        </div>
+  const BudgetCard = ({ budget }: { budget: Budget }) => {
+    const actualSpent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
+    const remainingBudget = budget.totalBudget - actualSpent;
+    const utilizationPercentage = budget.totalBudget > 0 ? (actualSpent / budget.totalBudget) * 100 : 0;
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <div>
-            <span className="text-sm text-gray-600">Total Budget</span>
-            <p className="font-semibold">{budget.currency} {budget.totalBudget.toLocaleString()}</p>
+    return (
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">{budget.projectName}</h3>
+              <p className="text-sm text-gray-600">
+                Created: {new Date(budget.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+            <Badge className={budget.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+              {budget.status === 'approved' ? <CheckCircle className="w-4 h-4 mr-1" /> : <XCircle className="w-4 h-4 mr-1" />}
+              {budget.status.charAt(0).toUpperCase() + budget.status.slice(1)}
+            </Badge>
           </div>
-          <div>
-            <span className="text-sm text-gray-600">Spent</span>
-            <p className="font-semibold">{budget.currency} {budget.actualSpent.toLocaleString()}</p>
-          </div>
-          <div>
-            <span className="text-sm text-gray-600">Remaining</span>
-            <p className="font-semibold">{budget.currency} {budget.remainingBudget.toLocaleString()}</p>
-          </div>
-          <div>
-            <span className="text-sm text-gray-600">Utilization</span>
-            <p className="font-semibold">{budget.utilizationPercentage.toFixed(1)}%</p>
-          </div>
-        </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/budgets/${budget._id}`)}>
-            <Eye className="w-4 h-4 mr-1" />
-            View
-          </Button>
-          {(user?.role === 'root' || user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'manager') && (
-            <Button variant="outline" size="sm" onClick={() => budget.status === 'approved' ? handleUnapprove(budget._id) : handleUnreject(budget._id)}>
-              <RotateCcw className="w-4 h-4 mr-1" />
-              {budget.status === 'approved' ? 'Unapprove' : 'Unreject'}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <span className="text-sm text-gray-600">Total Budget</span>
+              <p className="font-semibold">{budget.currency} {budget.totalBudget.toLocaleString()}</p>
+            </div>
+            <div>
+              <span className="text-sm text-gray-600">Spent</span>
+              <p className="font-semibold">{budget.currency} {actualSpent.toLocaleString()}</p>
+            </div>
+            <div>
+              <span className="text-sm text-gray-600">Remaining</span>
+              <p className="font-semibold">{budget.currency} {remainingBudget.toLocaleString()}</p>
+            </div>
+            <div>
+              <span className="text-sm text-gray-600">Utilization</span>
+              <p className="font-semibold">{utilizationPercentage.toFixed(1)}%</p>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/budgets/${budget._id}`)}>
+              <Eye className="w-4 h-4 mr-1" />
+              View
             </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+            {(user?.role.name === 'Root' || user?.role.name === 'Super Admin' || user?.role.name === 'Admin' || user?.role.name === 'Manager') && (
+              <Button variant="outline" size="sm" onClick={() => budget.status === 'approved' ? handleUnapprove(budget._id) : handleUnreject(budget._id)}>
+                <RotateCcw className="w-4 h-4 mr-1" />
+                {budget.status === 'approved' ? 'Unapprove' : 'Unreject'}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
