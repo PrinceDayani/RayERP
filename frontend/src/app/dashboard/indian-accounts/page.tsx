@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAccountHierarchy } from '@/lib/api/generalLedgerApi';
+import { getAccountHierarchy } from '@/lib/api/generalLedgerAPI';
 import { AccountHierarchy } from '@/types/finance/generalLedger.types';
 
 export default function IndianAccountsPage() {
