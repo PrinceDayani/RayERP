@@ -162,7 +162,7 @@ export default function BudgetsPage() {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Budget Management</h1>
           <div className="flex gap-2">
-            {(user?.role === 'root' || user?.role === 'super_admin' || user?.role === 'admin' || user?.role === 'manager') && (
+            {(user?.role.name === 'Root' || user?.role.name === 'Super Admin' || user?.role.name === 'Admin' || user?.role.name === 'Manager') && (
               <Button variant="outline" onClick={handleSyncBudgets}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Sync Projects
@@ -301,49 +301,47 @@ export default function BudgetsPage() {
         </div>
 
         <div className="space-y-4">
-          {filteredBudgets.map((budget) => (
-            <Card key={budget._id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold">{budget.projectName}</h3>
-                    <p className="text-sm text-gray-600">
-                      Created: {new Date(budget.createdAt).toLocaleDateString()}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Fiscal Year: {budget.fiscalYear} | Type: {budget.budgetType}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(budget.status)}
-                    <Badge className={getStatusColor(budget.status)}>
-                      {budget.status.charAt(0).toUpperCase() + budget.status.slice(1)}
-                    </Badge>
-                  </div>
-                </div>
+          {filteredBudgets.map((budget) => {
+            const actualSpent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
+            const remainingBudget = budget.totalBudget - actualSpent;
+            const utilizationPercentage = budget.totalBudget > 0 ? (actualSpent / budget.totalBudget) * 100 : 0;
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-                  <div>
-                    <span className="text-sm text-gray-600">Project</span>
-                    <p className="font-semibold">{typeof budget.projectId === 'object' ? budget.projectId?.name : 'N/A'}</p>
+            return (
+              <Card key={budget._id} className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold">{budget.projectName}</h3>
+                      <p className="text-sm text-gray-600">
+                        Created: {new Date(budget.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(budget.status)}
+                      <Badge className={getStatusColor(budget.status)}>
+                        {budget.status.charAt(0).toUpperCase() + budget.status.slice(1)}
+                      </Badge>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Total Budget</span>
-                    <p className="font-semibold">{budget.currency} {budget.totalBudget.toLocaleString()}</p>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <span className="text-sm text-gray-600">Total Budget</span>
+                      <p className="font-semibold">{budget.currency} {budget.totalBudget.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Spent</span>
+                      <p className="font-semibold">{budget.currency} {actualSpent.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Remaining</span>
+                      <p className="font-semibold">{budget.currency} {remainingBudget.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Utilization</span>
+                      <p className="font-semibold">{utilizationPercentage.toFixed(1)}%</p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Spent</span>
-                    <p className="font-semibold">{budget.currency} {budget.actualSpent.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Remaining</span>
-                    <p className="font-semibold">{budget.currency} {budget.remainingBudget.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Utilization</span>
-                    <p className="font-semibold">{budget.utilizationPercentage.toFixed(1)}%</p>
-                  </div>
-                </div>
 
                 {budget.approvals && budget.approvals.length > 0 && (
                   <div className="mb-4 p-3 bg-gray-50 rounded">
@@ -395,10 +393,11 @@ export default function BudgetsPage() {
                       Review Approval
                     </Button>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {filteredBudgets.length === 0 && (
