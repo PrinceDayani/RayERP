@@ -24,6 +24,6 @@ run:
     - name: JWT_SECRET
       value: "88efc1e90fdab0a26b8bc1f017ba3b52b0e6a2b1e752d1a0b360f12a32bf4c1e9d97547af3f24d48765a9ae03183fd5d950ce9ef828e1b6fe0ec2dc83b049ab91c7c4a21cd533ccd6d2df49e804c8f1435166a508488cc13c5ba709ad1230af1fc1caa1fc42d51e4db199a3929a00a7b58c2490ec1ffac211ab6407219f67be28679e4624f3c78c12cd7becf4f401f579da281d9577fcf4935aa93a660e2e73aee07ffa7aa97c0d459dcbb0ea530c208f6a13c939ef3fe0d19572840bb64d2ef88304d228ea11684ec0e81d57eb54c457520dfe32eea6359e472f9637b8b2288bde60c991e86f69c32c6ad43ff7f4ce736c9ac9474540c23c4e57e578afcc711"
     - name: CORS_ORIGIN
-      value: "https://jmrwe3zhia.us-east-1.awsapprunner.com"
+      value: "https://ray-erp.vercel.app,https://jmrwe3zhia.us-east-1.awsapprunner.com"
     - name: FRONTEND_URL
-      value: "https://jmrwe3zhia.us-east-1.awsapprunner.com"
+      value: "https://ray-erp.vercel.app"

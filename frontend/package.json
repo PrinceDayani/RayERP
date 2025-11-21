@@ -18,7 +18,7 @@
     "serve": "npx serve out",
     "docker:build": "docker build -t rayerp-frontend .",
     "docker:run": "docker run -p 3000:3000 rayerp-frontend",
-    "preinstall": "npx only-allow npm",
+
     "postinstall": "npm run type-check"
   },
   "dependencies": {
@@ -65,7 +65,7 @@
     "papaparse": "^5.5.2",
     "react": "^19.2.0",
     "react-colorful": "^5.6.1",
-    "react-day-picker": "^8.10.1",
+    "react-day-picker": "^9.4.3",
     "react-dom": "^19.2.0",
     "react-error-boundary": "^6.0.0",
     "react-hook-form": "^7.62.0",
