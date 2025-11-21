@@ -158,7 +158,7 @@ export default function BudgetDetailPage() {
                 <User className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">Created by:</span>
                 <span className="font-medium">
-                  {typeof budget.createdBy === 'string' ? budget.createdBy : budget.createdBy?.name || 'Unknown'}
+                  {budget.createdBy || 'Unknown'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
