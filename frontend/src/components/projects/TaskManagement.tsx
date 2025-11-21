@@ -113,8 +113,8 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
         status: taskForm.status,
         priority: taskForm.priority,
         assignedTo: taskForm.assignedTo,
-        assignedBy: user?._id || user?.id,
-        project: projectId,
+        assignedBy: user?._id || '',
+        project: projectId || '',
         dueDate: taskForm.dueDate?.toISOString(),
         estimatedHours: taskForm.estimatedHours,
       };
@@ -154,12 +154,11 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
       const taskData = {
         title: taskForm.title,
         description: taskForm.description,
-        status: taskForm.status,
-        priority: taskForm.priority,
         assignedTo: taskForm.assignedTo,
+        priority: taskForm.priority,
         dueDate: taskForm.dueDate?.toISOString(),
         estimatedHours: taskForm.estimatedHours,
-        updatedBy: user?._id || user?.id,
+        updatedBy: user?._id || '',
       };
 
       await tasksAPI.update(selectedTask._id, taskData);
@@ -204,7 +203,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
 
   const handleStatusChange = async (taskId: string, newStatus: Task["status"]) => {
     try {
-      const userId = user?._id || user?.id;
+      const userId = user?._id || '';
       await tasksAPI.updateStatus(taskId, newStatus, userId);
       toast({
         title: "Success",
@@ -258,7 +257,8 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
     if (typeof task.assignedTo === 'object' && task.assignedTo) {
       return `${task.assignedTo.firstName} ${task.assignedTo.lastName}`;
     }
-    const employee = employees.find(emp => emp._id === task.assignedTo);
+    const assignedToId = typeof task.assignedTo === 'string' ? task.assignedTo : (task.assignedTo as any)?._id;
+    const employee = employees.find(emp => emp._id === assignedToId);
     return employee ? `${employee.firstName} ${employee.lastName}` : 'Unassigned';
   };
 

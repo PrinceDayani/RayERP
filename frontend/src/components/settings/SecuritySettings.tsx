@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import toast from 'react-hot-toast';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRealTimeSetting } from '@/lib/realTimeSettings';
 import { Eye, EyeOff, ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 // Extended security settings type with additional properties
 interface ExtendedSecuritySettings {
@@ -170,7 +170,10 @@ export default function SecuritySettings() {
   };
   
   const handleSaveSettings = async () => {
-    toast.success('Security settings are automatically saved');
+    toast({
+      title: "Success",
+      description: 'Security settings are automatically saved',
+    });
     setHasUnsavedChanges(false);
   };
   
@@ -199,14 +202,21 @@ export default function SecuritySettings() {
       setShowQrCode(false);
       setTwoFactorCode('');
       
-      toast.success('Two-factor authentication enabled successfully');
+      toast({
+        title: "Success",
+        description: 'Two-factor authentication enabled successfully',
+      });
       
       // Save the updated settings
       await handleSaveSettings();
       
     } catch (error) {
       console.error('Failed to verify 2FA code:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to verify 2FA code');
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to verify 2FA code',
+        variant: "destructive",
+      });
       
       // Revert 2FA setting since verification failed
       updateSettings({ twoFactorEnabled: false });
@@ -246,7 +256,10 @@ export default function SecuritySettings() {
       setNewPassword('');
       setConfirmPassword('');
       
-      toast.success('Password changed successfully');
+      toast({
+        title: "Success",
+        description: 'Password changed successfully',
+      });
       
       // Password change successful
       
@@ -254,7 +267,11 @@ export default function SecuritySettings() {
       
     } catch (error) {
       console.error('Failed to change password:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to change password');
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to change password',
+        variant: "destructive",
+      });
     } finally {
       setIsChangingPassword(false);
     }

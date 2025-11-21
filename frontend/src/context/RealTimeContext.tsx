@@ -37,7 +37,7 @@ export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) 
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
-  const reconnectTimeout = useRef<NodeJS.Timeout>();
+  const reconnectTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const createSocket = useCallback(() => {
     const backendUrl = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
@@ -52,7 +52,6 @@ export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) 
       reconnectionAttempts: maxReconnectAttempts,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      maxReconnectionAttempts: maxReconnectAttempts,
       randomizationFactor: 0.5
     });
 

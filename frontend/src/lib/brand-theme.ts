@@ -107,7 +107,7 @@ export const brandTheme = {
 // Utility function to get theme-aware colors
 export const getThemeColor = (colorPath: string, isDark: boolean = false) => {
   const theme = isDark ? brandTheme.colors.dark : brandTheme.colors.light;
-  return colorPath.split('.').reduce((obj, key) => obj?.[key], theme);
+  return colorPath.split('.').reduce((obj: any, key: string) => obj?.[key], theme as any);
 };
 
 // CSS-in-JS helper for brand colors

@@ -32,11 +32,17 @@ export const useProjectTasks = (projectId: string) => {
 
     try {
       setError(null);
+      const assignedToValue = typeof taskData.assignedTo === 'string' 
+        ? taskData.assignedTo 
+        : (typeof taskData.assignedTo === 'object' && taskData.assignedTo?._id) 
+          ? taskData.assignedTo._id 
+          : user._id;
+      
       const newTask = await projectsAPI.createTask(projectId, {
         ...taskData,
-        assignedTo: taskData.assignedTo || user._id,
+        assignedTo: assignedToValue,
         assignedBy: user._id,
-      });
+      } as any);
       
       setTasks(prev => [...prev, newTask]);
       return newTask;
@@ -55,8 +61,7 @@ export const useProjectTasks = (projectId: string) => {
       setError(null);
       const updatedTask = await projectsAPI.updateTask(projectId, taskId, {
         ...taskData,
-        updatedBy: user._id,
-      });
+      } as any);
       
       setTasks(prev => prev.map(task => 
         task._id === taskId ? updatedTask : task

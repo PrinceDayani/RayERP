@@ -4,7 +4,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { initializeSocket, getSocket } from '@/lib/socket';
-import { getOrderStats, getCustomerStats, getInventorySummary } from '@/lib/api/index';
+import reportsAPI from '@/lib/api/reportsAPI';
+import analyticsAPI from '@/lib/api/analyticsAPI';
 import { toast } from '@/components/ui/use-toast';
 
 interface DashboardContextProps {
@@ -37,10 +38,10 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     totalCustomers: 0,
     totalProducts: 0,
   });
-  const [salesData, setSalesData] = useState([]);
-  const [productData, setProductData] = useState([]);
-  const [inventoryData, setInventoryData] = useState([]);
-  const [recentOrders, setRecentOrders] = useState([]);
+  const [salesData, setSalesData] = useState<any[]>([]);
+  const [productData, setProductData] = useState<any[]>([]);
+  const [inventoryData, setInventoryData] = useState<any[]>([]);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [socketConnected, setSocketConnected] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -52,15 +53,15 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       // Fetch all data in parallel for better performance
       const [orderStatsData, customerStatsData, inventorySummaryData] = await Promise.all([
-        getOrderStats().catch(err => {
+        reportsAPI.getOrderStatus().catch((err: any) => {
           console.error("Error fetching order stats:", err);
           return {};
         }),
-        getCustomerStats().catch(err => {
+        analyticsAPI.getDashboardStats().catch((err: any) => {
           console.error("Error fetching customer stats:", err);
           return {};
         }),
-        getInventorySummary().catch(err => {
+        reportsAPI.getInventoryStatus().catch((err: any) => {
           console.error("Error fetching inventory summary:", err);
           return {};
         })
@@ -78,7 +79,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       // Set sales data
       if (orderStatsData.monthlySales && Array.isArray(orderStatsData.monthlySales)) {
-        setSalesData(orderStatsData.monthlySales.map(item => ({
+        setSalesData(orderStatsData.monthlySales.map((item: any) => ({
           name: item.month,
           sales: item.orderCount,
           revenue: item.revenue
@@ -87,7 +88,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       // Set product category data
       if (orderStatsData.categoryDistribution && Array.isArray(orderStatsData.categoryDistribution)) {
-        setProductData(orderStatsData.categoryDistribution.map(item => ({
+        setProductData(orderStatsData.categoryDistribution.map((item: any) => ({
           name: item.category || 'Unknown',
           value: item.percentage || 0
         })));
@@ -125,9 +126,11 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return;
     }
     
-    const socket = initializeSocket();
+    const socketPromise = initializeSocket();
     
-    if (socket) {
+    socketPromise.then(socket => {
+      if (!socket) return;
+      
       // Connection events
       socket.on("connect", () => {
         console.log("Socket connected in context");
@@ -146,7 +149,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
       });
 
-      socket.on("disconnect", (reason) => {
+      socket.on("disconnect", (reason: any) => {
         console.log("Socket disconnected in context:", reason);
         setSocketConnected(false);
         
@@ -157,7 +160,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
       });
 
-      socket.on("connect_error", (err) => {
+      socket.on("connect_error", (err: any) => {
         console.error("Socket connection error in context:", err.message);
         setSocketConnected(false);
         
@@ -169,7 +172,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
 
       // Order events
-      socket.on("order:new", (order) => {
+      socket.on("order:new", (order: any) => {
         console.log("New order received:", order);
         
         // Update recent orders
@@ -193,7 +196,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
       });
 
-      socket.on("order:updated", (order) => {
+      socket.on("order:updated", (order: any) => {
         // Update recent orders list
         setRecentOrders((prev) => {
           const orderExists = prev.some(o => o._id === order._id);
@@ -224,7 +227,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
       });
 
-      socket.on("order:deleted", (data) => {
+      socket.on("order:deleted", (data: any) => {
         // Check if the deleted order is in our recent orders
         setRecentOrders(prev => {
           const orderToDelete = prev.find(o => o._id === data._id);
@@ -263,10 +266,10 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           pollingIntervalRef.current = null;
         }
       };
-    } else {
+    }).catch(() => {
       // If socket initialization failed, fall back to regular data fetching
       fetchDashboardData();
-    }
+    });
   }, [fetchDashboardData]);
 
   return (

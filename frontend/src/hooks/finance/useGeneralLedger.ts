@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { generalLedgerAPI } from '@/lib/api/generalLedgerAPI';
-import { Account, JournalEntry } from '@/types/finance/generalLedger.types';
+import { AccountLedger as Account, JournalEntry } from '@/types/finance/generalLedger.types';
 
 export const useGeneralLedger = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);

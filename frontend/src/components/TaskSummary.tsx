@@ -22,7 +22,7 @@ export default function TaskSummary() {
     try {
       const allTasks = await tasksAPI.getAll();
       // Filter tasks assigned to current user
-      const myTasks = allTasks.filter(task => 
+      const myTasks = allTasks.filter((task: Task) => 
         task.assignedTo && 
         (typeof task.assignedTo === 'object' ? task.assignedTo._id === user?._id : task.assignedTo === user?._id)
       );

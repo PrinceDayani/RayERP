@@ -26,6 +26,8 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  permissions?: string[];
+  roles?: Role[];
   createdAt: string;
   updatedAt: string;
 }

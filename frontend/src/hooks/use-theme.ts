@@ -1,4 +1,6 @@
 "use client";
 
-export { useTheme } from 'next-themes';
+import { useTheme } from 'next-themes';
+
+export { useTheme };
 export default useTheme;

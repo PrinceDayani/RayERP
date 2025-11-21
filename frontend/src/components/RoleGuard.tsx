@@ -28,7 +28,7 @@ const RoleGuard: React.FC<RoleGuardProps> = ({
     if (userRoleName === 'root') return true;
     
     return roles.some(role => {
-      const roleName = typeof role === 'string' ? role : role.toString();
+      const roleName = typeof role === 'string' ? role : String(role);
       return userRoleName === roleName.toLowerCase().trim();
     });
   };

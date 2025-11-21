@@ -95,7 +95,8 @@ export function useAdminPermissions() {
       return { level: 'none', score: 0 };
     }
 
-    const userRole = user.role?.toLowerCase() || 'none';
+    const roleName = typeof user.role === 'string' ? user.role : user.role?.name || 'none';
+    const userRole = roleName.toLowerCase();
     const score = PERMISSION_HIERARCHY[userRole as keyof typeof PERMISSION_HIERARCHY] || 0;
     
     return {
@@ -181,7 +182,8 @@ export function useAdminPermissions() {
         return;
       }
 
-      const userRole = user.role?.toLowerCase();
+      const roleName = typeof user.role === 'string' ? user.role : user.role?.name || 'none';
+      const userRole = roleName.toLowerCase();
       const userPermissions = user.permissions || [];
       const userRoles = user.roles || [];
 
@@ -360,6 +362,6 @@ export function useAdminPermissions() {
     getResourcePermissions,
     isAdmin: permissionLevel.score >= PERMISSION_HIERARCHY.admin,
     isSuperAdmin: permissionLevel.score >= PERMISSION_HIERARCHY.super_admin,
-    isRoot: permissionLevel.level === 'root'
+    isRoot: permissionLevel.score >= PERMISSION_HIERARCHY.root
   };
 }

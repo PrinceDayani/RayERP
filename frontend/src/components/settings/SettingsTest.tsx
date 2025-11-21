@@ -68,7 +68,7 @@ export default function SettingsTest() {
 
     // Test 3: Settings API
     try {
-      const settings = await settingsAPI.getSettings('user');
+      const settings = await settingsAPI.getSettings('user' as any);
       updateTest('Settings API', 'success', `Retrieved ${Array.isArray(settings) ? settings.length : 0} settings`);
     } catch (error) {
       updateTest('Settings API', 'error', 'Failed to fetch settings', error instanceof Error ? error.message : 'Unknown error');

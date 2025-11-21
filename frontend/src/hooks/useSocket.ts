@@ -7,7 +7,7 @@ import io from 'socket.io-client';
 
 type Socket = ReturnType<typeof io>;
 
-export const useSocket = (url: string = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL) => {
+export const useSocket = (url: string = (process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL || 'http://localhost:5000')) => {
   const socketRef = useRef<Socket | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);

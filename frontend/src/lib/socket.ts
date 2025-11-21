@@ -1,11 +1,11 @@
 // path: frontend/src/lib/socket.ts
-import io from "socket.io-client";
+import io, { Socket } from "socket.io-client";
 import { useEffect, useState } from "react";
 import { checkServerHealth } from "../utils/socketHealth";
 import { logServerStatus } from "../utils/serverStatus";
 import { getSocketConfig, shouldEnableSocket } from "./socketConfig";
 
-type SocketType = ReturnType<typeof io>;
+type SocketType = Socket;
 
 import config from './config';
 
@@ -123,7 +123,7 @@ export const initializeSocket = async (token?: string): Promise<SocketType | nul
     console.error("❌ Socket reconnection error:", {
       message: err.message,
       type: err.name,
-      attempt: socket?.io?.engine?.upgradeTimeout
+      attempt: (socket as any)?.io?.engine?.upgradeTimeout
     });
   });
 
@@ -149,21 +149,21 @@ export const disconnectSocket = (): void => {
 export const getSocket = (): SocketType | null => socket;
 
 // Hook for socket state
-export const useSocket = (url?: string): Socket | null => {
-  const [socketInstance, setSocketInstance] = useState<Socket | null>(null);
+export const useSocket = (url?: string): SocketType | null => {
+  const [socketInstance, setSocketInstance] = useState<SocketType | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     let mounted = true;
-    let newSocket: Socket | null = null;
+    let newSocket: SocketType | null = null;
 
     const initSocket = async () => {
       try {
         const serverUrl = url || process.env.NEXT_PUBLIC_API_URL;
         
         // Validate URL before connecting
-        const urlObj = new URL(serverUrl);
+        const urlObj = new URL(serverUrl || 'http://localhost:5000');
         if (!['localhost', '127.0.0.1'].includes(urlObj.hostname) && process.env.NODE_ENV === 'development') {
           console.warn('Invalid socket URL in development:', serverUrl);
           return;

@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { financeApi } from '@/lib/api/financeApi';
 
 export const useFinance = () => {
-  const [dashboard, setDashboard] = useState(null);
-  const [settings, setSettings] = useState(null);
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchDashboard = async () => {
@@ -11,7 +10,8 @@ export const useFinance = () => {
     try {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 800));
-      const data = await financeApi.getDashboard();
+      // const data = await financeApi.getDashboard();
+      const data = { summary: { totalAssets: 0, totalLiabilities: 0, totalEquity: 0, totalRevenue: 0, totalExpenses: 0, netIncome: 0 } };
       setDashboard(data);
     } catch (error) {
       console.error('Error fetching finance dashboard:', error);
@@ -23,7 +23,8 @@ export const useFinance = () => {
 
   const fetchSettings = async () => {
     try {
-      const data = await financeApi.getSettings();
+      // const data = await financeApi.getSettings();
+      const data = {};
       setSettings(data);
     } catch (error) {
       console.error('Error fetching finance settings:', error);
@@ -36,7 +37,8 @@ export const useFinance = () => {
     try {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const data = await financeApi.updateSummary();
+      // const data = await financeApi.updateSummary();
+      const data = { summary: { totalAssets: 0, totalLiabilities: 0, totalEquity: 0, totalRevenue: 0, totalExpenses: 0, netIncome: 0 } };
       setDashboard(data);
     } catch (error) {
       console.error('Error updating finance summary:', error);

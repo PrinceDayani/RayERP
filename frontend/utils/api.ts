@@ -2,7 +2,7 @@
 
 
 // Import unified API configuration
-import api from '../lib/api/index';
+import api from '../src/lib/api/api';
 
 // Helper function to ensure proper URL formatting
 

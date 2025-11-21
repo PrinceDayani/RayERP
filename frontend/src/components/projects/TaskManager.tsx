@@ -60,7 +60,10 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskCreate, onTa
     }
 
     const taskData = {
-      ...formData,
+      title: formData.title,
+      description: formData.description,
+      status: formData.status as 'todo' | 'in-progress' | 'review' | 'completed',
+      priority: formData.priority as 'low' | 'medium' | 'high' | 'critical',
       dueDate: dueDate.toISOString(),
       estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined,
       assignedTo: user?._id || '',
@@ -69,7 +72,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskCreate, onTa
 
     try {
       if (editingTask) {
-        await updateTask(editingTask._id, taskData);
+        await updateTask(editingTask._id, taskData as any);
         onTaskUpdate?.(editingTask._id, taskData);
         setEditingTask(null);
         toast({
@@ -77,7 +80,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskCreate, onTa
           description: "Task updated successfully"
         });
       } else {
-        await createTask(taskData);
+        await createTask(taskData as any);
         onTaskCreate?.(taskData);
         setIsCreateDialogOpen(false);
         toast({
