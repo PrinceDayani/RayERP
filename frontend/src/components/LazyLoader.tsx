@@ -17,7 +17,7 @@ export const LazyDashboard = createLazyComponent(() => import('../app/dashboard/
 export const LazyProjects = createLazyComponent(() => import('../components/projects/ProjectList'));
 export const LazyFinance = createLazyComponent(() => import('../components/finance/FinanceDashboardConnected'));
 export const LazyReports = createLazyComponent(() => import('../components/finance/FinancialReports'));
-export const LazyUsers = createLazyComponent(() => import('../components/admin/UserManagement'));
+export const LazyUsers = createLazyComponent(() => import('../components/admin/UserManagement').then(module => ({ default: (module as any).default || module })) as any);
 export const LazySettings = createLazyComponent(() => import('../app/dashboard/settings/page'));
 
 // Dynamic import helper

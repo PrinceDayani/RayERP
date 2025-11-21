@@ -20,7 +20,8 @@ export function PermissionGate({
   fallback = null,
   role
 }: PermissionGateProps) {
-  const { can, canAny, canAll, isAdmin } = usePermissions();
+  const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions();
+  const isAdmin = false; // Placeholder for admin check
 
   // Role-based access
   if (role && role === 'admin' && !isAdmin) {
@@ -28,15 +29,15 @@ export function PermissionGate({
   }
 
   // Single permission check
-  if (permission && !can(permission as any)) {
+  if (permission && !hasPermission(permission)) {
     return <>{fallback}</>;
   }
 
   // Multiple permissions check
   if (permissions.length > 0) {
     const hasAccess = requireAll 
-      ? canAll(permissions as any[])
-      : canAny(permissions as any[]);
+      ? hasAllPermissions(permissions)
+      : hasAnyPermission(permissions);
     
     if (!hasAccess) {
       return <>{fallback}</>;

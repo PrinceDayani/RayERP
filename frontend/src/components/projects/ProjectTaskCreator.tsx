@@ -77,7 +77,7 @@ export default function ProjectTaskCreator({ projectId, projectName, onTaskCreat
         status: 'todo' as const
       };
 
-      const createdTask = await createProjectTask(projectId, newTaskData);
+      const createdTask = await createProjectTask(projectId, newTaskData as any);
       
       onTaskCreated(createdTask);
       

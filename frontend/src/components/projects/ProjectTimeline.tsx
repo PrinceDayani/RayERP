@@ -101,8 +101,8 @@ const ProjectTimeline: React.FC<ProjectTimelineProps> = ({ projectId }) => {
           <div className="flex justify-center p-8">Loading timeline...</div>
         ) : (
           <div className="space-y-6">
-            {timelineEvents.map((event, index) => (
-            <div key={event._id || event.id} className="relative">
+            {timelineEvents.map((event: any, index) => (
+            <div key={event._id || event.id || index} className="relative">
               {/* Timeline line */}
               {index < timelineEvents.length - 1 && (
                 <div className="absolute left-6 top-12 w-0.5 h-16 bg-gray-200"></div>
