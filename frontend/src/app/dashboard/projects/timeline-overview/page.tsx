@@ -45,7 +45,7 @@ const TimelineOverviewPage: React.FC = () => {
     progress: task.status === 'completed' ? 100 : task.status === 'in-progress' ? 50 : 0,
     status: task.status,
     priority: task.priority,
-    assignees: task.assignedTo
+    assignees: Array.isArray(task.assignedTo) ? task.assignedTo.map((a: any) => typeof a === 'string' ? a : a._id) : []
   }));
 
   if (loading) {
@@ -134,7 +134,7 @@ const TimelineOverviewPage: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Pending</span>
                 <Badge className="bg-yellow-100 text-yellow-700">
-                  {allTasks.filter(t => t.status === 'pending').length}
+                  {allTasks.filter(t => t.status === 'todo').length}
                 </Badge>
               </div>
             </div>

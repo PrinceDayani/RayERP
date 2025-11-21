@@ -39,10 +39,10 @@ const PerformanceReportPage = () => {
 
   const getPerformanceMetrics = () => {
     const total = projects.length;
-    const completed = projects.filter(p => p.status === 'completed').length;
-    const active = projects.filter(p => p.status === 'active').length;
-    const onHold = projects.filter(p => p.status === 'on-hold').length;
-    const avgProgress = projects.reduce((sum, p) => sum + (p.progress || 0), 0) / total || 0;
+    const completed = projects.filter((p: any) => p.status === 'completed').length;
+    const active = projects.filter((p: any) => p.status === 'active').length;
+    const onHold = projects.filter((p: any) => p.status === 'on-hold').length;
+    const avgProgress = projects.reduce((sum, p: any) => sum + (p.progress || 0), 0) / total || 0;
     
     return {
       total,
@@ -55,7 +55,7 @@ const PerformanceReportPage = () => {
   };
 
   const getStatusData = () => {
-    const statusCounts = projects.reduce((acc, project) => {
+    const statusCounts = projects.reduce((acc: any, project: any) => {
       acc[project.status] = (acc[project.status] || 0) + 1;
       return acc;
     }, {});
@@ -63,7 +63,7 @@ const PerformanceReportPage = () => {
     return Object.entries(statusCounts).map(([status, count]) => ({
       status: status.charAt(0).toUpperCase() + status.slice(1),
       count,
-      percentage: ((count / projects.length) * 100).toFixed(1)
+      percentage: (((count as number) / projects.length) * 100).toFixed(1)
     }));
   };
 
@@ -77,7 +77,7 @@ const PerformanceReportPage = () => {
     
     return ranges.map(({ range, min, max }) => ({
       range,
-      count: projects.filter(p => p.progress >= min && p.progress <= max).length
+      count: projects.filter((p: any) => p.progress >= min && p.progress <= max).length
     }));
   };
 
@@ -242,7 +242,7 @@ const PerformanceReportPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {projects.map((project) => (
+                {projects.map((project: any) => (
                   <tr key={project._id} className="border-b hover:bg-muted/50">
                     <td className="p-2 font-medium">{project.name}</td>
                     <td className="p-2">

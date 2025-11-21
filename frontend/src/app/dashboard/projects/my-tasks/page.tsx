@@ -28,9 +28,9 @@ export default function MyTasksPage() {
     try {
       const allTasks = await tasksAPI.getAll();
       // Filter tasks assigned to current user
-      const myTasks = allTasks.filter(task => 
+      const myTasks = allTasks.filter((task: Task) => 
         task.assignedTo && 
-        (typeof task.assignedTo === 'object' ? task.assignedTo._id === user?._id : task.assignedTo === user?._id)
+        (typeof task.assignedTo === 'object' ? (task.assignedTo as any)._id === user?._id : task.assignedTo === user?._id)
       );
       setTasks(myTasks);
     } catch (error) {

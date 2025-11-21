@@ -42,11 +42,11 @@ const BudgetAnalysisPage = () => {
   };
 
   const getBudgetMetrics = () => {
-    const totalBudget = budgets.reduce((sum, b) => sum + (b.totalBudget || 0), 0);
-    const totalSpent = budgets.reduce((sum, b) => sum + (b.actualSpent || 0), 0);
-    const totalRemaining = budgets.reduce((sum, b) => sum + (b.remainingBudget || 0), 0);
-    const avgUtilization = budgets.reduce((sum, b) => sum + (b.utilizationPercentage || 0), 0) / budgets.length || 0;
-    const overBudgetCount = budgets.filter(b => (b.utilizationPercentage || 0) > 100).length;
+    const totalBudget = budgets.reduce((sum, b: any) => sum + (b.totalBudget || 0), 0);
+    const totalSpent = budgets.reduce((sum, b: any) => sum + (b.actualSpent || 0), 0);
+    const totalRemaining = budgets.reduce((sum, b: any) => sum + (b.remainingBudget || 0), 0);
+    const avgUtilization = budgets.reduce((sum, b: any) => sum + (b.utilizationPercentage || 0), 0) / budgets.length || 0;
+    const overBudgetCount = budgets.filter((b: any) => (b.utilizationPercentage || 0) > 100).length;
     
     return {
       totalBudget,
@@ -59,7 +59,7 @@ const BudgetAnalysisPage = () => {
   };
 
   const getBudgetStatusData = () => {
-    const statusCounts = budgets.reduce((acc, budget) => {
+    const statusCounts = budgets.reduce((acc: any, budget: any) => {
       acc[budget.status] = (acc[budget.status] || 0) + 1;
       return acc;
     }, {});
@@ -67,12 +67,12 @@ const BudgetAnalysisPage = () => {
     return Object.entries(statusCounts).map(([status, count]) => ({
       status: status.charAt(0).toUpperCase() + status.slice(1),
       count,
-      value: budgets.filter(b => b.status === status).reduce((sum, b) => sum + (b.totalBudget || 0), 0)
+      value: budgets.filter((b: any) => b.status === status).reduce((sum, b: any) => sum + (b.totalBudget || 0), 0)
     }));
   };
 
   const getUtilizationData = () => {
-    return budgets.map(budget => ({
+    return budgets.map((budget: any) => ({
       name: budget.projectName || 'Unknown Project',
       budgeted: budget.totalBudget || 0,
       spent: budget.actualSpent || 0,
@@ -262,7 +262,7 @@ const BudgetAnalysisPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {budgets.map((budget) => (
+                {budgets.map((budget: any) => (
                   <tr key={budget._id} className="border-b hover:bg-muted/50">
                     <td className="p-2 font-medium">{budget.projectName}</td>
                     <td className="p-2">

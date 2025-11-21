@@ -46,7 +46,7 @@ const ProjectTimelinePage: React.FC = () => {
     progress: task.status === 'completed' ? 100 : task.status === 'in-progress' ? 50 : 0,
     status: task.status,
     priority: task.priority,
-    assignees: task.assignedTo
+    assignees: Array.isArray(task.assignedTo) ? task.assignedTo.map((a: any) => typeof a === 'string' ? a : a._id) : []
   }));
 
   if (loading) {
@@ -106,9 +106,9 @@ const ProjectTimelinePage: React.FC = () => {
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Pending</p>
+              <p className="text-sm text-muted-foreground">To Do</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {tasks.filter(t => t.status === 'pending').length}
+                {tasks.filter(t => t.status === 'todo').length}
               </p>
             </div>
           </div>
