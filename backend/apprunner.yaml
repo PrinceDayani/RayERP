@@ -5,7 +5,7 @@ build:
     pre-build:
       - npm install
     build:
-      - npx tsc --skipLibCheck
+      - npx tsc -p tsconfig.build.json
 run:
   command: node dist/server.js
   network:
