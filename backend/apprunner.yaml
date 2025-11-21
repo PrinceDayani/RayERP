@@ -3,9 +3,9 @@ runtime: nodejs18
 build:
   commands:
     pre-build:
-      - npm ci
+      - npm install
     build:
-      - npm run build:apprunner
+      - npx tsc --skipLibCheck
 run:
   command: node dist/server.js
   network:
