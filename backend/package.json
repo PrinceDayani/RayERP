@@ -7,6 +7,7 @@
     "validate-env": "node validate-env.js",
     "dev": "npm run validate-env && nodemon --exec ts-node src/server.ts",
     "build": "npm run validate-env && tsc --skipLibCheck",
+    "build:apprunner": "tsc --skipLibCheck",
     "build:prod": "npm run validate-env && tsc -p tsconfig.prod.json",
     "start": "npm run validate-env && node dist/server.js",
     "start:prod": "NODE_ENV=production npm run validate-env && node dist/server.js",
