@@ -12,11 +12,11 @@ import { Plus } from 'lucide-react';
 
 export default function ResourceManagementPage() {
   const [showForm, setShowForm] = useState(false);
-  const [allocations, setAllocations] = useState([]);
-  const [capacityData, setCapacityData] = useState([]);
-  const [skillMatrix, setSkillMatrix] = useState({ matrix: [], allSkills: [] });
-  const [employees, setEmployees] = useState([]);
-  const [projects, setProjects] = useState([]);
+  const [allocations, setAllocations] = useState<any[]>([]);
+  const [capacityData, setCapacityData] = useState<any[]>([]);
+  const [skillMatrix, setSkillMatrix] = useState<{ matrix: any[]; allSkills: any[] }>({ matrix: [], allSkills: [] });
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
 
   useEffect(() => {
     loadData();

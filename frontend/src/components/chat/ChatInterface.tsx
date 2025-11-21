@@ -123,7 +123,7 @@ export default function ChatInterface() {
         <ChatSidebar
           chats={chats}
           selectedChat={selectedChat}
-          onSelectChat={handleSelectChat}
+          onSelectChat={handleSelectChat as any}
           onRefresh={loadChats}
         />
         {selectedChat ? (

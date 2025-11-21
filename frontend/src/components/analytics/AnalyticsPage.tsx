@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Users, FolderKanban, CheckSquare, TrendingUp, Activity, Target } from "lucide-react";
 import DateRangePicker from "@/components/analytics/DateRangePicker";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { analyticsApi } from "@/lib/api";
 import { ApiError } from "@/lib/api/analyticsAPI";
 

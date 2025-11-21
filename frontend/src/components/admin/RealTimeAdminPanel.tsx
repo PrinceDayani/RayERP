@@ -86,8 +86,8 @@ export function RealTimeAdminPanel() {
   // Check user permissions
   useEffect(() => {
     const checkPermissions = () => {
-      const userRole = user?.role?.toLowerCase();
-      const isAdmin = ['admin', 'super_admin', 'root'].includes(userRole || '');
+      const userRole = user?.role ? String(user.role).toLowerCase() : '';
+      const isAdmin = ['admin', 'super_admin', 'root'].includes(userRole);
       
       setPermissions({
         canViewUsers: isAdmin,

@@ -59,7 +59,7 @@ export function UserRoleAssignment({ isLoading }: UserRoleAssignmentProps) {
         console.log('Fetched users:', usersData);
         console.log('Fetched roles:', rolesData);
         
-        setUsers(usersData);
+        setUsers(usersData as unknown as User[]);
         setRoles(rolesData);
       } catch (error: any) {
         console.error("Failed to fetch data:", error);
@@ -142,7 +142,7 @@ export function UserRoleAssignment({ isLoading }: UserRoleAssignmentProps) {
       
       setUsers(prevUsers => 
         prevUsers.map(u => 
-          u._id === user._id ? updatedUser : u
+          u._id === user._id ? (updatedUser as unknown as User) : u
         )
       );
       

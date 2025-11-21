@@ -35,6 +35,7 @@ interface User {
   role: string;
   roles?: Role[];
   status: string;
+  [key: string]: any;
 }
 
 interface Permission {
@@ -81,7 +82,7 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
           adminAPI.getPermissions()
         ]);
         setRoles(rolesData);
-        setUsers(usersData);
+        setUsers(usersData as unknown as User[]);
         setPermissions(permissionsData);
       } catch (error) {
         toast({

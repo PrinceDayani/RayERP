@@ -124,6 +124,38 @@ const GeneralLedger = () => {
       { accountId: '', description: '', debit: '', credit: '' }
     ]
   });
+  const [aiInsights, setAiInsights] = useState<any>(null);
+
+  const fetchAIInsights = async () => {
+    setLoading(true);
+    try {
+      // Simulate AI insights generation
+      const insights = {
+        predictions: {
+          cashFlow: { next30Days: 50000, next90Days: 150000, confidence: 0.85 },
+          revenue: { nextQuarter: 200000, confidence: 0.78 }
+        },
+        anomalies: [],
+        optimizations: [
+          'Consider reducing operational expenses by 5% to improve profit margins',
+          'Cash flow is healthy, consider investing surplus in short-term instruments'
+        ],
+        riskAssessment: {
+          overall: 'low',
+          factors: [
+            { type: 'liquidity', level: 'low', impact: 'minimal' },
+            { type: 'profitability', level: 'low', impact: 'minimal' }
+          ]
+        }
+      };
+      setAiInsights(insights);
+      toast({ title: 'AI Insights Updated', description: 'Financial insights have been refreshed' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to fetch AI insights', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchAccounts();

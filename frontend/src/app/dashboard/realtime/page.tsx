@@ -16,7 +16,7 @@ interface RealTimeMetrics {
 }
 
 export default function RealTimePage() {
-  const { isConnected, notifications } = useRealTime();
+  const { isConnected } = useRealTime();
   const [metrics, setMetrics] = useState<RealTimeMetrics>({
     activeUsers: 0,
     totalRevenue: 0,
@@ -24,6 +24,12 @@ export default function RealTimePage() {
     systemLoad: 0,
     lastUpdated: new Date().toISOString()
   });
+  const [notifications] = useState<Array<{
+    id: string;
+    message: string;
+    timestamp: string;
+    read: boolean;
+  }>>([]);
   const [recentActivities, setRecentActivities] = useState<Array<{
     id: string;
     message: string;

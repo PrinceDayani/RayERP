@@ -18,12 +18,13 @@ interface Chat {
   lastMessageTime?: string;
   isGroup: boolean;
   groupName?: string;
+  messages?: any[];
 }
 
 interface ChatSidebarProps {
   chats: Chat[];
   selectedChat: Chat | null;
-  onSelectChat: (chat: Chat) => void;
+  onSelectChat: (chat: Chat) => Promise<void>;
   onRefresh: () => void;
 }
 
@@ -39,7 +40,7 @@ export default function ChatSidebar({ chats, selectedChat, onSelectChat, onRefre
       const chatName = chat.isGroup
         ? chat.groupName
         : chat.participants.find((p) => p._id !== user?._id)?.name || '';
-      return chatName.toLowerCase().includes(searchQuery.toLowerCase());
+      return (chatName || '').toLowerCase().includes(searchQuery.toLowerCase());
     });
     setFilteredChats(filtered);
   }, [searchQuery, chats, user]);

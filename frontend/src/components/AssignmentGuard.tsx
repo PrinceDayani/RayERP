@@ -31,7 +31,7 @@ export function AssignmentGuard({
   }
 
   // Admin users see everything
-  if (['admin', 'super_admin', 'root'].includes(user.role?.toLowerCase() || '')) {
+  if (['admin', 'super_admin', 'root'].includes(user.role ? String(user.role).toLowerCase() : '')) {
     return <>{children}</>;
   }
 
