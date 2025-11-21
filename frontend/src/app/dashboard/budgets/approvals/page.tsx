@@ -164,7 +164,7 @@ export default function BudgetApprovalsPage() {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-semibold">{budget.projectName}</h3>
-                  <p className="text-sm text-gray-600">Created by: {typeof budget.createdBy === 'string' ? budget.createdBy : budget.createdBy?.name || 'Unknown'}</p>
+                  <p className="text-sm text-gray-600">Created by: {budget.createdBy || 'Unknown'}</p>
                   <p className="text-sm text-gray-600">
                     Created: {new Date(budget.createdAt).toLocaleDateString()}
                   </p>
