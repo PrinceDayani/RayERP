@@ -3,18 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   
   // Performance optimizations
-  swcMinify: true,
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
   },
   
   // Bundle analyzer
@@ -72,10 +63,15 @@ const nextConfig = {
 
   // API rewrites
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     return [
       {
         source: '/api/:path*',
+<<<<<<< Updated upstream
         destination: `${process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_HOST}/api/:path*`,
+=======
+        destination: `${apiUrl}/api/:path*`,
+>>>>>>> Stashed changes
       },
     ];
   },
