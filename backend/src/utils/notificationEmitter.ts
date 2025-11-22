@@ -14,17 +14,33 @@ export interface NotificationData {
 
 export class NotificationEmitter {
   // Send notification to specific user
-  static sendToUser(userId: string, notification: NotificationData) {
-    const notificationWithId = {
-      id: notification.id || `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      ...notification,
-      priority: notification.priority || 'medium',
-      timestamp: new Date(),
-      userId
-    };
+  static async sendToUser(userId: string, notification: NotificationData) {
+    try {
+      const Notification = (await import('../models/Notification')).default;
+      
+      const dbNotification = await Notification.create({
+        userId,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        priority: notification.priority || 'medium',
+        actionUrl: notification.actionUrl,
+        metadata: notification.metadata
+      });
 
-    io.to(`user-${userId}`).emit('notification:received', notificationWithId);
-    logger.info(`Notification sent to user ${userId}: ${notification.title}`);
+      const notificationWithId = {
+        id: dbNotification._id.toString(),
+        ...notification,
+        priority: notification.priority || 'medium',
+        timestamp: dbNotification.createdAt,
+        userId
+      };
+
+      io.to(`user-${userId}`).emit('notification:received', notificationWithId);
+      logger.info(`Notification sent to user ${userId}: ${notification.title}`);
+    } catch (error) {
+      logger.error('Error saving notification:', error);
+    }
   }
 
   // Send notification to all users

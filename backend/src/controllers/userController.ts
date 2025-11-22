@@ -322,11 +322,68 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 };
 
+// Get complete profile with employee data and projects
+export const getCompleteProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const user = await User.findById(userId).populate('role').select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    const Employee = (await import('../models/Employee')).default;
+    const Project = (await import('../models/Project')).default;
+    
+    const employee = await Employee.findOne({ user: userId });
+    
+    let projects = [];
+    if (employee) {
+      projects = await Project.find({
+        $or: [
+          { members: userId },
+          { team: employee._id }
+        ]
+      }).select('name description status priority startDate endDate progress').lean();
+    }
+    
+    const completeProfile = {
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      },
+      employee: employee ? {
+        _id: employee._id,
+        employeeId: employee.employeeId,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        phone: employee.phone,
+        department: employee.department,
+        position: employee.position,
+        hireDate: employee.hireDate,
+        status: employee.status,
+        skills: employee.skills || [],
+        avatarUrl: (employee as any).avatarUrl,
+        address: employee.address
+      } : null,
+      projects: projects
+    };
+    
+    res.status(200).json(completeProfile);
+  } catch (error: any) {
+    logger.error(`Get complete profile error: ${error.message}`);
+    res.status(500).json({ success: false, message: 'Error retrieving complete profile' });
+  }
+};
+
 // Update current user profile
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
-    const { name, phone } = req.body;
+    const { name, phone, avatarUrl, skills, address } = req.body;
     
     const user = await User.findById(userId);
     if (!user) {
@@ -338,8 +395,11 @@ export const updateProfile = async (req: Request, res: Response) => {
     
     const Employee = (await import('../models/Employee')).default;
     const employee = await Employee.findOne({ user: userId });
-    if (employee && phone) {
-      employee.phone = phone;
+    if (employee) {
+      if (phone) employee.phone = phone;
+      if (avatarUrl !== undefined) (employee as any).avatarUrl = avatarUrl;
+      if (skills) employee.skills = skills;
+      if (address) employee.address = address;
       await employee.save();
     }
     
@@ -387,6 +447,36 @@ export const changePassword = async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error(`Change password error: ${error.message}`);
     res.status(500).json({ success: false, message: 'Error changing password' });
+  }
+};
+
+// Upload avatar
+export const uploadAvatar = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    
+    const Employee = (await import('../models/Employee')).default;
+    const employee = await Employee.findOne({ user: userId });
+    
+    if (employee) {
+      (employee as any).avatarUrl = avatarUrl;
+      await employee.save();
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Avatar uploaded successfully',
+      avatarUrl: avatarUrl
+    });
+  } catch (error: any) {
+    logger.error(`Upload avatar error: ${error.message}`);
+    res.status(500).json({ success: false, message: 'Error uploading avatar' });
   }
 };
 

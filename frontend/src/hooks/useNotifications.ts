@@ -27,27 +27,27 @@ export const useNotifications = () => {
   const [pushNotifications] = useRealTimeSetting('pushNotifications', true);
   const [emailNotifications] = useRealTimeSetting('emailNotifications', true);
 
-  // Load notifications from localStorage on mount
+  // Load notifications from server on mount
   useEffect(() => {
-    const saved = localStorage.getItem('notifications');
-    if (saved) {
+    const loadNotifications = async () => {
       try {
-        const parsed = JSON.parse(saved).map((n: any) => ({
-          ...n,
-          createdAt: new Date(n.createdAt)
-        }));
-        setNotifications(parsed);
-        setUnreadCount(parsed.filter((n: Notification) => !n.read).length);
+        const { notificationApi } = await import('@/lib/api/notifications');
+        const response = await notificationApi.getAll({ limit: 100 });
+        if (response.data.success) {
+          const serverNotifications = response.data.data.map((n: any) => ({
+            ...n,
+            id: n._id,
+            createdAt: new Date(n.createdAt)
+          }));
+          setNotifications(serverNotifications);
+          setUnreadCount(response.data.unreadCount);
+        }
       } catch (error) {
-        console.error('Failed to parse saved notifications:', error);
+        console.error('Failed to load notifications:', error);
       }
-    }
+    };
+    loadNotifications();
   }, []);
-
-  // Save notifications to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-  }, [notifications]);
 
   // Socket event listeners
   useEffect(() => {
@@ -148,7 +148,11 @@ export const useNotifications = () => {
   }, [socket]);
 
   const addNotification = useCallback((notification: Notification) => {
-    setNotifications(prev => [notification, ...prev.slice(0, 99)]); // Keep max 100
+    setNotifications(prev => {
+      const exists = prev.find(n => n.id === notification.id);
+      if (exists) return prev;
+      return [notification, ...prev];
+    });
     setUnreadCount(prev => prev + 1);
 
     // Play sound if enabled
@@ -215,46 +219,71 @@ export const useNotifications = () => {
     }
   }, []);
 
-  const markAsRead = useCallback((id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  }, []);
-
-  const markAllAsRead = useCallback(() => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
-    setUnreadCount(0);
-  }, []);
-
-  const deleteNotification = useCallback((id: string) => {
-    setNotifications(prev => {
-      const notification = prev.find(n => n.id === id);
-      if (notification && !notification.read) {
-        setUnreadCount(count => Math.max(0, count - 1));
-      }
-      return prev.filter(n => n.id !== id);
-    });
-  }, []);
-
-  const clearAllNotifications = useCallback(() => {
-    setNotifications([]);
-    setUnreadCount(0);
-  }, []);
-
-  const sendTestNotification = useCallback(() => {
-    if (socket) {
-      socket.emit('notification:test', {
-        title: 'Test Notification',
-        message: 'This is a test notification to verify your settings are working correctly.',
-        type: 'info'
-      });
+  const markAsRead = useCallback(async (id: string) => {
+    try {
+      const { notificationApi } = await import('@/lib/api/notifications');
+      await notificationApi.markAsRead(id);
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === id ? { ...notif, read: true } : notif
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Failed to mark as read:', error);
     }
-  }, [socket]);
+  }, []);
+
+  const markAllAsRead = useCallback(async () => {
+    try {
+      const { notificationApi } = await import('@/lib/api/notifications');
+      await notificationApi.markAllAsRead();
+      setNotifications(prev => 
+        prev.map(notif => ({ ...notif, read: true }))
+      );
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  }, []);
+
+  const deleteNotification = useCallback(async (id: string) => {
+    try {
+      const { notificationApi } = await import('@/lib/api/notifications');
+      await notificationApi.delete(id);
+      setNotifications(prev => {
+        const notification = prev.find(n => n.id === id);
+        if (notification && !notification.read) {
+          setUnreadCount(count => Math.max(0, count - 1));
+        }
+        return prev.filter(n => n.id !== id);
+      });
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+    }
+  }, []);
+
+  const clearAllNotifications = useCallback(async () => {
+    try {
+      const { notificationApi } = await import('@/lib/api/notifications');
+      await notificationApi.deleteAll();
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Failed to clear notifications:', error);
+    }
+  }, []);
+
+  const sendTestNotification = useCallback(async () => {
+    try {
+      const { notificationApi } = await import('@/lib/api/notifications');
+      await notificationApi.sendTest();
+      toast.success('Test notification sent!');
+    } catch (error) {
+      console.error('Failed to send test notification:', error);
+      toast.error('Failed to send test notification');
+    }
+  }, []);
 
   return {
     notifications,

@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -41,12 +41,12 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { initializeSocket, getSocket } from "@/lib/socket";
 import { hasPermission, hasMinimumLevel, PERMISSIONS, ROLE_LEVELS } from "@/lib/permissions";
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from "recharts";
-import { EmployeeList } from "@/components/employee";
+const AnalyticsCharts = lazy(() => import('@/components/Dashboard/AnalyticsCharts'));
+const EmployeeList = lazy(() => import('@/components/employee').then(m => ({ default: m.EmployeeList })));
+const ProjectList = lazy(() => import('@/components/projects').then(m => ({ default: m.ProjectList })));
+const TaskList = lazy(() => import('@/components/tasks').then(m => ({ default: m.TaskList })));
 import { employeesAPI } from "@/lib/api/employeesAPI";
-import { ProjectList } from "@/components/projects";
 import { projectsAPI } from "@/lib/api/projectsAPI";
-import { TaskList } from "@/components/tasks";
 import { tasksAPI } from "@/lib/api/tasksAPI";
 
 // Enhanced interfaces
@@ -96,7 +96,7 @@ const Dashboard = () => {
       // Generate analytics based on real stats
       const randomVariation = () => Math.floor(Math.random() * 3) + 1;
       
-      setAnalytics({
+      const newAnalytics = {
         projectProgress: [
           { name: "Website Redesign", progress: Math.min(85 + randomVariation(), 100), status: "active" },
           { name: "Mobile App", progress: Math.min(60 + randomVariation(), 100), status: "active" },
@@ -127,7 +127,8 @@ const Dashboard = () => {
           { id: "3", type: "employee", description: "New employee 'John Doe' added", time: "5 hours ago" },
           { id: "4", type: "project", description: "Project 'Mobile App' milestone reached", time: "1 day ago" },
         ],
-      });
+      };
+      setAnalytics(newAnalytics);
     } catch (error) {
       console.error("Error generating analytics:", error);
     }
@@ -135,7 +136,7 @@ const Dashboard = () => {
 
   // Update analytics when stats change
   useEffect(() => {
-    if (isAuthenticated && stats.totalEmployees > 0) {
+    if (isAuthenticated) {
       fetchAnalyticsData();
     }
   }, [isAuthenticated, stats, fetchAnalyticsData]);
@@ -147,7 +148,7 @@ const Dashboard = () => {
 
 
   // Role-specific welcome components
-  const RoleWelcomeCard = ({ role, icon: Icon, title, description, colorScheme }: {
+  const RoleWelcomeCard = memo(({ role, icon: Icon, title, description, colorScheme }: {
     role: string;
     icon: any;
     title: string;
@@ -189,10 +190,10 @@ const Dashboard = () => {
         </div>
       </CardContent>
     </Card>
-  );
+  ));
 
   // Connection status component
-  const ConnectionStatus = () => (
+  const ConnectionStatus = memo(() => (
     <Card className={`
       theme-card theme-shadow theme-transition mb-4
       ${socketConnected 
@@ -239,7 +240,7 @@ const Dashboard = () => {
         </div>
       </CardContent>
     </Card>
-  );
+  ));
 
   // Helper function to check minimum level
   const checkMinimumLevel = (minLevel: number): boolean => {
@@ -508,51 +509,13 @@ const Dashboard = () => {
                 </div>
 
                 {/* Charts Section - Compact */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center"><BarChart4 className="h-4 w-4 mr-2" />Revenue vs Expenses</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={analytics.monthlyRevenue}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" style={{ fontSize: '12px' }} />
-                          <YAxis style={{ fontSize: '12px' }} />
-                          <Tooltip />
-                          <Area type="monotone" dataKey="revenue" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
-                          <Area type="monotone" dataKey="expenses" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center"><Activity className="h-4 w-4 mr-2" />Task Distribution</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <ResponsiveContainer width="100%" height={200}>
-                        <PieChart>
-                          <Pie
-                            data={analytics.taskDistribution}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            dataKey="value"
-                          >
-                            {analytics.taskDistribution.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={['#10b981', '#3b82f6', '#f59e0b'][index % 3]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                </div>
+                <Suspense fallback={<div className="h-[200px] flex items-center justify-center"><RefreshCw className="h-6 w-6 animate-spin" /></div>}>
+                  <AnalyticsCharts 
+                    monthlyRevenue={analytics.monthlyRevenue}
+                    taskDistribution={analytics.taskDistribution}
+                    teamProductivity={analytics.teamProductivity}
+                  />
+                </Suspense>
 
                 {/* Project Progress & Team Productivity - Compact */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -573,23 +536,6 @@ const Dashboard = () => {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center"><Users className="h-4 w-4 mr-2" />Team Productivity</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <ResponsiveContainer width="100%" height={180}>
-                        <BarChart data={analytics.teamProductivity}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" style={{ fontSize: '11px' }} />
-                          <YAxis style={{ fontSize: '11px' }} />
-                          <Tooltip />
-                          <Bar dataKey="completed" fill="#10b981" />
-                          <Bar dataKey="pending" fill="#f59e0b" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
                 </div>
 
                 {/* Recent Activity - Compact */}
@@ -1007,10 +953,12 @@ const TaskSection = ({ router }: { router: any }) => {
           <CardTitle>Recent Tasks</CardTitle>
         </CardHeader>
         <CardContent>
-          <TaskList 
-            tasks={tasks}
-            onView={(id) => router.push(`/dashboard/tasks/${id}`)}
-          />
+          <Suspense fallback={<RefreshCw className="h-6 w-6 animate-spin mx-auto" />}>
+            <TaskList 
+              tasks={tasks}
+              onView={(id) => router.push(`/dashboard/tasks/${id}`)}
+            />
+          </Suspense>
         </CardContent>
       </Card>
     </div>
@@ -1105,11 +1053,13 @@ const ProjectSection = ({ router }: { router: any }) => {
           <CardTitle>Recent Projects</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProjectList 
-            projects={projects}
-            onView={(id) => router.push(`/dashboard/projects/${id}`)}
-            onEdit={(id) => router.push(`/dashboard/projects/${id}/edit`)}
-          />
+          <Suspense fallback={<RefreshCw className="h-6 w-6 animate-spin mx-auto" />}>
+            <ProjectList 
+              projects={projects}
+              onView={(id) => router.push(`/dashboard/projects/${id}`)}
+              onEdit={(id) => router.push(`/dashboard/projects/${id}/edit`)}
+            />
+          </Suspense>
         </CardContent>
       </Card>
     </div>
@@ -1206,10 +1156,12 @@ const EmployeeSection = ({ router }: { router: any }) => {
           <CardTitle>Recent Employees</CardTitle>
         </CardHeader>
         <CardContent>
-          <EmployeeList 
-            employees={employees}
-            onEdit={(id) => router.push(`/dashboard/employees/${id}/edit`)}
-          />
+          <Suspense fallback={<RefreshCw className="h-6 w-6 animate-spin mx-auto" />}>
+            <EmployeeList 
+              employees={employees}
+              onEdit={(id) => router.push(`/dashboard/employees/${id}/edit`)}
+            />
+          </Suspense>
         </CardContent>
       </Card>
     </div>

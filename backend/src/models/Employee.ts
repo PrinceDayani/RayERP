@@ -25,6 +25,7 @@ export interface IEmployee extends Document {
     phone: string;
   };
   skills: string[];
+  avatarUrl?: string;
   manager?: mongoose.Types.ObjectId;
   user: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -56,6 +57,7 @@ const employeeSchema = new Schema<IEmployee>({
     phone: String
   },
   skills: [String],
+  avatarUrl: { type: String },
   manager: { type: Schema.Types.ObjectId, ref: 'Employee' },
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });

@@ -1,7 +1,7 @@
 //project\frontend\src\components\Dashboard\StatsCards.tsx
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ interface StatsCardsProps {
   loading: boolean;
 }
 
-const StatsCards: React.FC<StatsCardsProps> = ({ stats, isAuthenticated, loading }) => {
+const StatsCards: React.FC<StatsCardsProps> = memo(({ stats, isAuthenticated, loading }) => {
   const formatCurrency = (value: number) => {
     try {
       if (typeof value !== 'number' || isNaN(value)) {
@@ -133,6 +133,8 @@ const StatsCards: React.FC<StatsCardsProps> = ({ stats, isAuthenticated, loading
       ))}
     </div>
   );
-};
+});
+
+StatsCards.displayName = 'StatsCards';
 
 export default StatsCards;

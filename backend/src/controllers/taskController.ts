@@ -178,6 +178,17 @@ export const createTask = async (req: Request, res: Response) => {
     io.emit('task:created', task);
     await emitProjectStats();
     
+    // Send notification if task is assigned
+    if (task.assignedTo) {
+      const { NotificationEmitter } = await import('../utils/notificationEmitter');
+      const Employee = (await import('../models/Employee')).default;
+      const employee = await Employee.findById(task.assignedTo).populate('user');
+      if (employee?.user) {
+        const userId = typeof employee.user === 'object' ? employee.user._id.toString() : employee.user.toString();
+        await NotificationEmitter.taskAssigned(task, userId);
+      }
+    }
+    
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();

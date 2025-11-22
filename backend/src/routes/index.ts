@@ -62,6 +62,7 @@ import projectFinanceEnhanced from './projectFinanceEnhanced';
 import financialReportsEnhanced from './financialReportsEnhanced';
 
 import backupRoutes from './backupRoutes';
+import notificationRoutes from './notification.routes';
 
 const router = express.Router();
 
@@ -94,6 +95,7 @@ router.use('/file-shares', fileShareRoutes);
 router.use('/chat', chatRoutes);
 router.use('/broadcast', broadcastRoutes);
 router.use('/backup', backupRoutes);
+router.use('/notifications', notificationRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);

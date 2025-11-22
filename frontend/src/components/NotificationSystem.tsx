@@ -191,8 +191,8 @@ const NotificationSystem: React.FC<NotificationProps> = ({ isAuthenticated }) =>
           
           <CardContent className="p-0">
             {/* Action buttons */}
-            {notifications.length > 0 && (
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 flex justify-between">
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 flex justify-between items-center">
+              <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -203,17 +203,28 @@ const NotificationSystem: React.FC<NotificationProps> = ({ isAuthenticated }) =>
                   <CheckCheck className="h-3 w-3 mr-1" />
                   Mark all read
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearAllNotifications}
-                  className="text-xs text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Clear all
-                </Button>
+                {notifications.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllNotifications}
+                    className="text-xs text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Clear all
+                  </Button>
+                )}
               </div>
-            )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={sendTestNotification}
+                className="text-xs"
+              >
+                <Bell className="h-3 w-3 mr-1" />
+                Send Test
+              </Button>
+            </div>
             
             {/* Notifications list */}
             <div className="max-h-96 overflow-y-auto">

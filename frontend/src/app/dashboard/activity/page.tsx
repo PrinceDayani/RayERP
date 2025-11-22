@@ -65,6 +65,7 @@ export default function ActivityPage() {
   const { token } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -76,6 +77,7 @@ export default function ActivityPage() {
     
     try {
       setLoading(true);
+      setError(null);
       const filterParam = filter !== 'all' ? `&resourceType=${filter}` : '';
       const dateParams = `${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`;
       const response = await fetch(
@@ -92,9 +94,12 @@ export default function ActivityPage() {
         const data = await response.json();
         setActivities(data.data);
         setTotalPages(data.pagination.pages);
+      } else {
+        setError(`Server error: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
       console.error('Error fetching activities:', error);
+      setError('Cannot connect to backend server. Please ensure the backend is running on http://localhost:5000');
     } finally {
       setLoading(false);
     }
@@ -177,7 +182,20 @@ export default function ActivityPage() {
         </CardContent>
       </Card>
 
-      {loading ? (
+      {error ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center h-64">
+            <div className="text-destructive mb-4 text-center">
+              <p className="text-lg font-semibold mb-2">⚠️ Connection Error</p>
+              <p className="text-sm">{error}</p>
+            </div>
+            <Button onClick={fetchActivities} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      ) : loading ? (
         <Card>
           <CardContent className="flex justify-center items-center h-64">
             <div className="text-center">

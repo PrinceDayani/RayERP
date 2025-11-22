@@ -48,12 +48,18 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
   const [socketConnected, setSocketConnected] = useState(false);
   const socketRef = useRef<any>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFetchRef = useRef<number>(0);
+  const FETCH_COOLDOWN = 5000;
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async (force = false) => {
     if (!isAuthenticated) {
       setLoading(false);
       return;
     }
+
+    const now = Date.now();
+    if (!force && now - lastFetchRef.current < FETCH_COOLDOWN) return;
+    lastFetchRef.current = now;
 
     try {
       const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
@@ -64,7 +70,8 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
       }
 
       const response = await axios.get(`${API_URL}/api/dashboard/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
       });
       
       if (response.data.success) {
@@ -74,10 +81,10 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
     } catch (err: any) {
       console.error('Error fetching dashboard stats:', err);
       if (err.response?.status === 401) {
-        setError('Authentication failed. Please log in again.');
+        setError('Authentication failed');
         localStorage.removeItem('token');
       } else {
-        setError('Failed to fetch dashboard data');
+        setError('Failed to fetch data');
       }
     } finally {
       setLoading(false);
@@ -102,9 +109,8 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
         const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
         const socket = await initializeSocket(token || undefined);
         if (!mounted || !socket) {
-          // Fallback to polling if socket fails
           if (!pollingIntervalRef.current) {
-            pollingIntervalRef.current = setInterval(fetchStats, 15000);
+            pollingIntervalRef.current = setInterval(() => fetchStats(true), 60000);
           }
           return;
         }
@@ -133,7 +139,7 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
             console.log('Dashboard socket disconnected');
             setSocketConnected(false);
             if (!pollingIntervalRef.current) {
-              pollingIntervalRef.current = setInterval(fetchStats, 15000);
+              pollingIntervalRef.current = setInterval(() => fetchStats(true), 60000);
             }
           }
         });
@@ -165,7 +171,7 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
       } catch (err) {
         console.warn('Socket initialization failed, using polling:', err);
         if (mounted && !pollingIntervalRef.current) {
-          pollingIntervalRef.current = setInterval(fetchStats, 15000);
+          pollingIntervalRef.current = setInterval(() => fetchStats(true), 60000);
         }
       }
     };

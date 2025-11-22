@@ -1,56 +1,51 @@
 'use client';
 
-import { Suspense } from 'react';
-import UserDashboard from '@/components/admin/UserDashboard';
+import { Suspense, lazy, memo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-// Loading component for the dashboard
-const DashboardLoader = () => (
+const UserDashboard = lazy(() => import('@/components/admin/UserDashboard').then(m => ({ default: m.default })));
+
+// Loading component for the dashboard - Memoized
+const DashboardLoader = memo(() => (
   <div className="flex items-center justify-center min-h-[60vh]">
     <LoadingSpinner 
       size="lg" 
-      text="Loading your dashboard..." 
+      text="Loading dashboard..." 
       variant="default"
     />
   </div>
-);
+));
+DashboardLoader.displayName = 'DashboardLoader';
 
-// Error fallback for dashboard
-const DashboardError = () => (
+// Error fallback for dashboard - Memoized
+const DashboardError = memo(() => (
   <div className="flex items-center justify-center min-h-[60vh]">
     <div className="text-center space-y-4">
       <h2 className="text-xl font-semibold text-foreground">Dashboard Unavailable</h2>
       <p className="text-muted-foreground">
-        We're having trouble loading your dashboard. Please try refreshing the page.
+        Having trouble loading dashboard. Please refresh.
       </p>
     </div>
   </div>
-);
+));
+DashboardError.displayName = 'DashboardError';
 
 export default function Dashboard() {
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to login if not authenticated after loading completes
     if (!loading && !isAuthenticated) {
-      router.push('/login');
+      router.replace('/login');
     }
   }, [isAuthenticated, loading, router]);
 
-  // Show loading state while authentication is being verified
-  if (loading) {
-    return <DashboardLoader />;
-  }
-
-  // Don't render anything if not authenticated (will redirect)
-  if (!isAuthenticated || !user) {
-    return null;
-  }
+  if (loading) return <DashboardLoader />;
+  if (!isAuthenticated || !user) return null;
 
   return (
     <ErrorBoundary fallback={<DashboardError />}>

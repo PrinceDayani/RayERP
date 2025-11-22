@@ -1,7 +1,7 @@
 //project\frontend\src\components\Dashboard\QuickActions.tsx
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { 
   Card, 
   CardHeader, 
@@ -24,7 +24,7 @@ interface QuickActionProps {
   badgeText: string;
 }
 
-const QuickAction: React.FC<QuickActionProps> = ({
+const QuickAction: React.FC<QuickActionProps> = memo(({
   title,
   description,
   href,
@@ -50,14 +50,16 @@ const QuickAction: React.FC<QuickActionProps> = ({
       <p className="text-xs text-muted-foreground mt-1">{description}</p>
     </Button>
   );
-};
+});
+
+QuickAction.displayName = 'QuickAction';
 
 interface QuickActionsProps {
   isAuthenticated: boolean;
   router: AppRouterInstance;
 }
 
-const QuickActions: React.FC<QuickActionsProps> = ({ isAuthenticated, router }) => {
+const QuickActions: React.FC<QuickActionsProps> = memo(({ isAuthenticated, router }) => {
   const actions = [
     {
       title: "Add Employee",
@@ -141,6 +143,8 @@ const QuickActions: React.FC<QuickActionsProps> = ({ isAuthenticated, router }) 
       </CardContent>
     </Card>
   );
-};
+});
+
+QuickActions.displayName = 'QuickActions';
 
 export default QuickActions;

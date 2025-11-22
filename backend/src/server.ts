@@ -11,13 +11,9 @@ import { cacheMiddleware } from "./middleware/cache.middleware";
 import { paginationMiddleware } from "./middleware/pagination.middleware";
 import http from "http";
 import path from "path";
-import { Server as SocketServer, Socket } from "socket.io";
+import { Server as SocketServer } from "socket.io";
 import "express-async-errors";
-
-// Extend Socket interface to include userId
-interface AuthenticatedSocket extends Socket {
-  userId?: string;
-}
+import { setupSocketAuth, setupSocketHandlers } from "./socket";
 
 dotenv.config();
 
@@ -192,228 +188,9 @@ const io = new SocketServer(server, {
   connectTimeout: 45000
 });
 
-// Socket authentication middleware
-io.use(async (socket, next) => {
-  try {
-    const token = socket.handshake.auth?.token;
-    
-    if (!token) {
-      // Allow connection without token, authentication can happen later
-      return next();
-    }
-    
-    if (typeof token !== 'string' || token === 'undefined' || token === 'null') {
-      return next(new Error('Invalid token format'));
-    }
-    
-    const jwt = require("jsonwebtoken");
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    if (!decoded || !decoded.id) {
-      return next(new Error('Invalid token payload'));
-    }
-    
-    (socket as AuthenticatedSocket).userId = decoded.id;
-    next();
-  } catch (error) {
-    logger.error("Socket authentication failed:", {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      socketId: socket.id,
-      timestamp: new Date().toISOString()
-    });
-    next(new Error('jwt malformed'));
-  }
-});
-
-// Enhanced socket connection handling with real-time updates
-io.on("connection", (socket: AuthenticatedSocket) => {
-  logger.info(`User connected: ${socket.id}`);
-  
-  // Send real-time connection status
-  socket.emit("connection_status", {
-    connected: true,
-    socketId: socket.id,
-    timestamp: new Date().toISOString()
-  });
-  
-  // If user was pre-authenticated during handshake, join their room
-  if (socket.userId) {
-    socket.join(`user-${socket.userId}`);
-    logger.info(`Pre-authenticated user ${socket.userId} joined room`);
-    socket.emit("auth_success", { 
-      userId: socket.userId,
-      timestamp: new Date().toISOString()
-    });
-    startRealTimeUpdates(socket, socket.userId);
-  }
-  
-  // Handle user authentication and room joining (for post-connection auth)
-  socket.on("authenticate", async (token) => {
-    try {
-      if (!token || typeof token !== 'string') {
-        socket.emit("auth_error", "Invalid token format");
-        return;
-      }
-      
-      const jwt = require("jsonwebtoken");
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      if (!decoded || !decoded.id) {
-        socket.emit("auth_error", "Invalid token payload");
-        return;
-      }
-      
-      socket.join(`user-${decoded.id}`);
-      socket.userId = decoded.id;
-      
-      logger.info(`User ${decoded.id} authenticated and joined room`);
-      socket.emit("auth_success", { 
-        userId: decoded.id,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Start real-time data updates for authenticated user
-      startRealTimeUpdates(socket, decoded.id);
-      
-    } catch (error) {
-      logger.error("Socket authentication failed:", {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        socketId: socket.id
-      });
-      socket.emit("auth_error", "Authentication failed");
-    }
-  });
-
-  // Real-time data subscription
-  socket.on("subscribe_realtime", (data) => {
-    const { types = [] } = data || {};
-    
-    types.forEach(type => {
-      socket.join(`realtime_${type}`);
-    });
-    
-    socket.emit("realtime_subscribed", {
-      types,
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  // Settings events with real-time sync
-  socket.on("settings:updated", (data) => {
-    socket.broadcast.emit("settings:synced", {
-      ...data,
-      socketId: socket.id,
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  socket.on("settings:force_sync", (data) => {
-    socket.emit("settings:synced", {
-      ...data,
-      forced: true,
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  // Real-time notifications
-  socket.on("notification:test", (data) => {
-    socket.emit("notification:received", {
-      id: `test-${Date.now()}`,
-      type: 'info',
-      title: data?.title || 'Test Notification',
-      message: data?.message || 'This is a test notification to verify your settings.',
-      priority: 'low',
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  // Chat events with real-time updates
-  socket.on("join_chat", (chatId) => {
-    socket.join(chatId);
-    socket.to(chatId).emit("user_joined_chat", {
-      userId: socket.userId,
-      chatId,
-      timestamp: new Date().toISOString()
-    });
-    logger.info(`Socket ${socket.id} joined chat ${chatId}`);
-  });
-
-  socket.on("leave_chat", (chatId) => {
-    socket.leave(chatId);
-    socket.to(chatId).emit("user_left_chat", {
-      userId: socket.userId,
-      chatId,
-      timestamp: new Date().toISOString()
-    });
-    logger.info(`Socket ${socket.id} left chat ${chatId}`);
-  });
-
-  socket.on("typing", (data) => {
-    socket.to(data.chatId).emit("user_typing", {
-      userId: data.userId,
-      chatId: data.chatId,
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  socket.on("stop_typing", (data) => {
-    socket.to(data.chatId).emit("user_stop_typing", {
-      userId: data.userId,
-      chatId: data.chatId,
-      timestamp: new Date().toISOString()
-    });
-  });
-
-  // Enhanced ping/pong with latency measurement
-  socket.on("ping", (data, callback) => {
-    const timestamp = new Date().toISOString();
-    if (typeof callback === "function") {
-      callback({ pong: true, timestamp, serverTime: Date.now() });
-    } else {
-      socket.emit("pong", { pong: true, timestamp, serverTime: Date.now() });
-    }
-  });
-
-  socket.on("disconnect", (reason) => {
-    logger.info(`User disconnected: ${socket.id}, reason: ${reason}`);
-    
-    // Notify other users in the same rooms
-    if (socket.userId) {
-      socket.broadcast.emit("user_disconnected", {
-        userId: socket.userId,
-        socketId: socket.id,
-        reason,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
-  // Error handling for socket events
-  socket.on("error", (error) => {
-    logger.error(`Socket error for ${socket.id}:`, error);
-    socket.emit("socket_error", {
-      message: "An error occurred",
-      timestamp: new Date().toISOString()
-    });
-  });
-});
-
-// Real-time data updates function
-function startRealTimeUpdates(socket: AuthenticatedSocket, userId: string) {
-  const updateInterval = setInterval(() => {
-    // Send real-time system stats
-    socket.emit("system_stats", {
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      connections: io.engine.clientsCount
-    });
-  }, 30000); // Every 30 seconds
-
-  socket.on("disconnect", () => {
-    clearInterval(updateInterval);
-  });
-}
+// Setup socket authentication and handlers
+setupSocketAuth(io);
+setupSocketHandlers(io);
 
 // Export for use in other files
 export { io };
@@ -457,6 +234,10 @@ connectDB()
   .then(async () => {
     // Create database indexes for performance
     await createIndexes();
+    
+    // Create dashboard-specific indexes
+    const { createDashboardIndexes } = await import('./utils/dashboardIndexes');
+    await createDashboardIndexes();
     
     // Warm up connection pool
     await mongoose.connection.db.admin().ping();

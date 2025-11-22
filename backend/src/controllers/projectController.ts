@@ -251,6 +251,10 @@ export const updateProject = async (req: Request, res: Response) => {
     io.emit('project:updated', project);
     await emitProjectStats();
     
+    // Send notification
+    const { NotificationEmitter } = await import('../utils/notificationEmitter');
+    NotificationEmitter.projectUpdated(project);
+    
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();

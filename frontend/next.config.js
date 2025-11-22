@@ -1,38 +1,73 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: true,
   
   // Performance optimizations
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    optimizePackageImports: ['lucide-react', 'recharts', 'chart.js', 'framer-motion', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+    turbo: {
+      resolveAlias: {
+        canvas: './empty-module.ts',
+      },
+    },
+    webpackBuildWorker: true,
+    parallelServerCompiles: true,
+    parallelServerBuildTraces: true,
   },
   
-  // Turbopack configuration (Next.js 16+)
-  turbopack: {},
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
   
-  // Bundle analyzer
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // Optimize bundle size
+  // Webpack optimizations
+  webpack: (config, { dev, isServer }) => {
+    config.cache = { 
+      type: 'filesystem',
+      cacheDirectory: '.next/cache/webpack',
+      buildDependencies: {
+        config: [__filename],
+      },
+    };
+    
+    if (dev) {
+      config.watchOptions = {
+        poll: false,
+        aggregateTimeout: 300,
+      };
+    }
+    
     if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-          },
-          common: {
-            name: 'common',
-            minChunks: 2,
-            chunks: 'all',
-            enforce: true,
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'deterministic',
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            framework: {
+              name: 'framework',
+              chunks: 'all',
+              test: /[\\/]node_modules[\\/](react|react-dom|next)[\\/]/,
+              priority: 40,
+              enforce: true,
+            },
+            lib: {
+              test: /[\\/]node_modules[\\/]/,
+              name(module) {
+                const match = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
+                return match ? `npm.${match[1].replace('@', '')}` : 'npm';
+              },
+              priority: 30,
+              minChunks: 1,
+              reuseExistingChunk: true,
+            },
           },
         },
       };
     }
-    
     return config;
   },
   // Image optimization
@@ -124,19 +159,28 @@ const nextConfig = {
   output: 'standalone',
   compress: true,
   poweredByHeader: false,
-  generateEtags: true,
-  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+  generateEtags: false,
+  pageExtensions: ['tsx', 'ts'],
   trailingSlash: false,
 
   // TypeScript configuration
   typescript: {
     ignoreBuildErrors: false,
+    tsconfigPath: './tsconfig.json',
   },
 
   // Development indicators
   devIndicators: {
-    position: 'bottom-right',
+    buildActivity: true,
+    buildActivityPosition: 'bottom-right',
   },
 };
 
-module.exports = nextConfig;
+if (process.env.ANALYZE === 'true') {
+  const withBundleAnalyzer = require('@next/bundle-analyzer')({
+    enabled: true,
+  });
+  module.exports = withBundleAnalyzer(nextConfig);
+} else {
+  module.exports = nextConfig;
+}

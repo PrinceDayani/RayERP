@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Navbar from "./Navbar";
@@ -36,6 +36,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import BackendStatus from "@/components/BackendStatus";
+import RealTimeNotifications from "@/components/RealTimeNotifications";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -68,7 +69,7 @@ export default function Layout({ children }: LayoutProps) {
   const isAdmin = roleName.toLowerCase() === "admin";
   const isManager = roleName.toLowerCase() === "manager" || isAdmin || isSuperAdmin || isRoot;
 
-  const menuSections = [
+  const menuSections = useMemo(() => [
     {
       title: "Overview",
       items: [
@@ -123,7 +124,7 @@ export default function Layout({ children }: LayoutProps) {
         { path: "/dashboard/admin", name: "Admin Panel", icon: Shield, description: "Advanced system controls", access: isAdmin || isSuperAdmin || isRoot } as MenuItem & { icon: any; description: string },
       ]
     }
-  ];
+  ], [isAdmin, isSuperAdmin, isRoot, isManager]);
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -155,13 +156,13 @@ export default function Layout({ children }: LayoutProps) {
     }
   };
 
-  const toggleMenu = (path: string) => {
+  const toggleMenu = useCallback((path: string) => {
     setExpandedMenus(prev => 
       prev.includes(path) 
         ? prev.filter(p => p !== path)
         : [...prev, path]
     );
-  };
+  }, []);
 
   const isMenuExpanded = (path: string) => expandedMenus.includes(path);
 
@@ -273,10 +274,10 @@ export default function Layout({ children }: LayoutProps) {
                           {hasSubItems ? (
                             <button
                               onClick={() => toggleMenu(item.path)}
-                              className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 group ${
+                              className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl group ${
                                 isActive
                                   ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg"
-                                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white hover:shadow-md"
+                                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
                               }`}
                             >
                               <div className="flex items-center">
@@ -296,15 +297,15 @@ export default function Layout({ children }: LayoutProps) {
                               )}
                             </button>
                           ) : (
-                            <Link href={item.path} className="block">
+                            <Link href={item.path} prefetch={false}>
                               <div
-                                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 group cursor-pointer ${
+                                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl group cursor-pointer ${
                                   isActive
                                     ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg"
-                                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white hover:shadow-md"
+                                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
                                 }`}
                               >
-                                <Icon className={`w-5 h-5 ${collapsed ? 'mx-auto' : ''} transition-colors`} />
+                                <Icon className={`w-5 h-5 ${collapsed ? 'mx-auto' : ''}`} />
                                 {!collapsed && (
                                   <span className="ml-3 font-medium">{item.name}</span>
                                 )}
@@ -316,9 +317,9 @@ export default function Layout({ children }: LayoutProps) {
                           {hasSubItems && isExpanded && !collapsed && item.subItems && (
                             <div className="ml-8 mt-1 space-y-1">
                               {item.subItems.map((subItem: SubMenuItem) => (
-                                <Link key={subItem.path} href={subItem.path}>
+                                <Link key={subItem.path} href={subItem.path} prefetch={false}>
                                   <div
-                                    className={`flex items-center px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
+                                    className={`flex items-center px-3 py-2 text-sm rounded-lg ${
                                       pathname === subItem.path
                                         ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 font-medium"
                                         : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
@@ -411,6 +412,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
+        <RealTimeNotifications />
         <div className="sticky top-0 z-10">
           <Navbar toggleSidebar={toggleSidebar} isMobile={isMobile} />
         </div>

@@ -7,32 +7,62 @@ import { io } from '../server';
 
 const router = express.Router();
 
-// Get real-time dashboard stats
+// In-memory cache with 30s TTL
+let statsCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL = 30000;
+
+// Get real-time dashboard stats - OPTIMIZED
 router.get('/stats', protect, async (req, res) => {
   try {
-    const [employees, projects, tasks] = await Promise.all([
-      Employee.find(),
-      Project.find(),
-      Task.find()
+    // Return cached data if fresh
+    if (statsCache && Date.now() - statsCache.timestamp < CACHE_TTL) {
+      return res.json({ success: true, data: statsCache.data, cached: true });
+    }
+
+    // Use aggregation for ultra-fast counting
+    const [employeeStats, projectStats, taskStats] = await Promise.all([
+      Employee.aggregate([
+        { $facet: {
+          total: [{ $count: 'count' }],
+          active: [{ $match: { status: 'active' } }, { $count: 'count' }]
+        }}
+      ]),
+      Project.aggregate([
+        { $facet: {
+          total: [{ $count: 'count' }],
+          active: [{ $match: { status: 'active' } }, { $count: 'count' }],
+          completed: [{ $match: { status: 'completed' } }, { $count: 'count' }],
+          financials: [{ $group: { _id: null, revenue: { $sum: '$budget' }, expenses: { $sum: '$spentBudget' } } }]
+        }}
+      ]),
+      Task.aggregate([
+        { $facet: {
+          total: [{ $count: 'count' }],
+          completed: [{ $match: { status: 'completed' } }, { $count: 'count' }],
+          inProgress: [{ $match: { status: 'in-progress' } }, { $count: 'count' }],
+          pending: [{ $match: { status: 'todo' } }, { $count: 'count' }]
+        }}
+      ])
     ]);
 
     const stats = {
-      totalEmployees: employees.length,
-      activeEmployees: employees.filter(e => e.status === 'active').length,
-      totalProjects: projects.length,
-      activeProjects: projects.filter(p => p.status === 'active').length,
-      completedProjects: projects.filter(p => p.status === 'completed').length,
-      totalTasks: tasks.length,
-      completedTasks: tasks.filter(t => t.status === 'completed').length,
-      inProgressTasks: tasks.filter(t => t.status === 'in-progress').length,
-      pendingTasks: tasks.filter(t => t.status === 'todo').length,
-      revenue: projects.reduce((sum, p) => sum + (p.budget || 0), 0),
-      expenses: projects.reduce((sum, p) => sum + (p.spentBudget || 0), 0),
-      profit: 0,
+      totalEmployees: employeeStats[0].total[0]?.count || 0,
+      activeEmployees: employeeStats[0].active[0]?.count || 0,
+      totalProjects: projectStats[0].total[0]?.count || 0,
+      activeProjects: projectStats[0].active[0]?.count || 0,
+      completedProjects: projectStats[0].completed[0]?.count || 0,
+      totalTasks: taskStats[0].total[0]?.count || 0,
+      completedTasks: taskStats[0].completed[0]?.count || 0,
+      inProgressTasks: taskStats[0].inProgress[0]?.count || 0,
+      pendingTasks: taskStats[0].pending[0]?.count || 0,
+      revenue: projectStats[0].financials[0]?.revenue || 0,
+      expenses: projectStats[0].financials[0]?.expenses || 0,
+      profit: (projectStats[0].financials[0]?.revenue || 0) - (projectStats[0].financials[0]?.expenses || 0),
       timestamp: new Date().toISOString()
     };
 
-    stats.profit = stats.revenue - stats.expenses;
+    // Cache the result
+    statsCache = { data: stats, timestamp: Date.now() };
 
     res.json({ success: true, data: stats });
   } catch (error) {
@@ -40,37 +70,46 @@ router.get('/stats', protect, async (req, res) => {
   }
 });
 
-// Get real-time analytics
+// Get real-time analytics - OPTIMIZED
 router.get('/analytics', protect, async (req, res) => {
   try {
-    const [projects, tasks] = await Promise.all([
-      Project.find().populate('tasks'),
-      Task.find()
+    const [projects, taskDistribution] = await Promise.all([
+      Project.find().select('name progress status').lean().limit(5).sort({ updatedAt: -1 }),
+      Task.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ])
     ]);
 
-    const projectProgress = projects.slice(0, 5).map(p => ({
+    const projectProgress = projects.map(p => ({
       name: p.name,
       progress: p.progress || 0,
       status: p.status
     }));
 
-    const taskDistribution = [
-      { name: 'Completed', value: tasks.filter(t => t.status === 'completed').length },
-      { name: 'In Progress', value: tasks.filter(t => t.status === 'in-progress').length },
-      { name: 'Pending', value: tasks.filter(t => t.status === 'todo').length }
+    const taskMap = taskDistribution.reduce((acc, t) => ({ ...acc, [t._id]: t.count }), {} as any);
+    const taskDist = [
+      { name: 'Completed', value: taskMap['completed'] || 0 },
+      { name: 'In Progress', value: taskMap['in-progress'] || 0 },
+      { name: 'Pending', value: taskMap['todo'] || 0 }
     ];
 
     res.json({
       success: true,
       data: {
         projectProgress,
-        taskDistribution,
+        taskDistribution: taskDist,
         timestamp: new Date().toISOString()
       }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch analytics' });
   }
+});
+
+// Clear cache endpoint (for admin)
+router.post('/clear-cache', protect, (req, res) => {
+  statsCache = null;
+  res.json({ success: true, message: 'Cache cleared' });
 });
 
 export default router;
