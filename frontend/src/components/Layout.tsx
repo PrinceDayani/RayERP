@@ -60,6 +60,7 @@ export default function Layout({ children }: LayoutProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [isClient, setIsClient] = useState(false);
   const pathname = usePathname();
   const { user } = useAuth();
 
@@ -127,6 +128,7 @@ export default function Layout({ children }: LayoutProps) {
   ], [isAdmin, isSuperAdmin, isRoot, isManager]);
 
   useEffect(() => {
+    setIsClient(true);
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
       if (window.innerWidth < 768) {
@@ -189,6 +191,35 @@ export default function Layout({ children }: LayoutProps) {
   };
 
 
+
+  if (!isClient) {
+    return (
+      <div className="flex h-screen overflow-hidden bg-background">
+        <div className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-red-50 to-red-100 dark:from-gray-800 dark:to-gray-700">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center justify-center">
+                  <div className="h-10 w-10 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center shadow-lg">
+                    <Building2 className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="ml-3">
+                    <span className="text-lg font-bold text-gray-900 dark:text-white">RayERP</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Enterprise Solution</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+            <div className="p-4">{children}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

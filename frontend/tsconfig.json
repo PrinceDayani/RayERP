@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "lib": [
       "dom",
       "dom.iterable",
@@ -20,6 +20,7 @@
     "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
     "forceConsistentCasingInFileNames": true,
     "assumeChangesOnlyAffectDirectDependencies": true,
+    "verbatimModuleSyntax": false,
     "plugins": [
       {
         "name": "next"

@@ -43,21 +43,34 @@ const server = http.createServer(app);
 // Trust proxy for secure cookies and proxies
 app.set("trust proxy", 1);
 
-// Rate limiting
+// Optimized rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // limit each IP to 1000 requests per windowMs
+  max: 2000, // increased limit for better performance
   message: {
     error: 'Too many requests from this IP, please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for health checks and static files
+    return req.path === '/api/health' || req.path.startsWith('/uploads/');
+  },
 });
 
 app.use(limiter);
 
-// Compression middleware
-app.use(compression());
+// Enhanced compression middleware
+app.use(compression({
+  level: 6,
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
 
 // CORS configuration
 const allowedOrigins = [];
@@ -126,9 +139,16 @@ app.use(
   })
 );
 
-// Body parsing middleware
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// Optimized body parsing middleware
+app.use(express.json({ 
+  limit: "10mb",
+  type: ['application/json', 'text/plain']
+}));
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: "10mb",
+  parameterLimit: 1000
+}));
 app.use(cookieParser());
 
 // Serve static files from uploads directory with CORS
@@ -171,21 +191,25 @@ app.all('*', (req, res) => {
 // Error handling middleware
 app.use(errorMiddleware);
 
-// Socket.IO setup with enhanced error handling
+// Optimized Socket.IO setup
 const io = new SocketServer(server, {
   cors: {
-    origin: true,
+    origin: process.env.NODE_ENV === 'development' ? true : allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["polling", "websocket"],
-  allowEIO3: true,
+  transports: ["websocket", "polling"],
+  allowEIO3: false,
   path: "/socket.io/",
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  upgradeTimeout: 30000,
-  maxHttpBufferSize: 1e7,
-  connectTimeout: 45000
+  pingTimeout: 30000,
+  pingInterval: 15000,
+  upgradeTimeout: 10000,
+  maxHttpBufferSize: 1e6, // Reduced from 10MB to 1MB
+  connectTimeout: 20000,
+  compression: true,
+  perMessageDeflate: {
+    threshold: 1024,
+  }
 });
 
 // Setup socket authentication and handlers

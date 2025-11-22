@@ -6,7 +6,12 @@ const nextConfig = {
   // Performance optimizations
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['lucide-react', 'recharts', 'chart.js', 'framer-motion', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+    optimizePackageImports: [
+      'lucide-react', 'recharts', 'chart.js', 'framer-motion', 
+      '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', 
+      '@radix-ui/react-select', '@radix-ui/react-toast', 
+      '@radix-ui/react-popover', 'react-hook-form', 'zod'
+    ],
     turbo: {
       resolveAlias: {
         canvas: './empty-module.ts',
@@ -15,6 +20,7 @@ const nextConfig = {
     webpackBuildWorker: true,
     parallelServerCompiles: true,
     parallelServerBuildTraces: true,
+    serverComponentsExternalPackages: ['mongoose', 'bcryptjs'],
   },
   
   compiler: {
@@ -23,27 +29,39 @@ const nextConfig = {
   
   // Webpack optimizations
   webpack: (config, { dev, isServer }) => {
+    // Enhanced caching
     config.cache = { 
       type: 'filesystem',
       cacheDirectory: '.next/cache/webpack',
       buildDependencies: {
         config: [__filename],
       },
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     };
     
+    // Development optimizations
     if (dev) {
       config.watchOptions = {
         poll: false,
         aggregateTimeout: 300,
+        ignored: /node_modules/,
       };
+      config.optimization.removeAvailableModules = false;
+      config.optimization.removeEmptyChunks = false;
+      config.optimization.splitChunks = false;
     }
     
-    if (!dev && !isServer) {
+    // Production optimizations
+    if (!dev) {
       config.optimization = {
         ...config.optimization,
         moduleIds: 'deterministic',
+        usedExports: true,
+        sideEffects: false,
         splitChunks: {
           chunks: 'all',
+          minSize: 20000,
+          maxSize: 244000,
           cacheGroups: {
             default: false,
             vendors: false,
@@ -54,13 +72,25 @@ const nextConfig = {
               priority: 40,
               enforce: true,
             },
+            radix: {
+              name: 'radix',
+              test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
+              priority: 35,
+              reuseExistingChunk: true,
+            },
+            charts: {
+              name: 'charts',
+              test: /[\\/]node_modules[\\/](recharts|chart\.js|react-chartjs-2)[\\/]/,
+              priority: 30,
+              reuseExistingChunk: true,
+            },
             lib: {
               test: /[\\/]node_modules[\\/]/,
               name(module) {
                 const match = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
                 return match ? `npm.${match[1].replace('@', '')}` : 'npm';
               },
-              priority: 30,
+              priority: 20,
               minChunks: 1,
               reuseExistingChunk: true,
             },
@@ -68,6 +98,13 @@ const nextConfig = {
         },
       };
     }
+    
+    // Tree shaking optimizations
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'lodash': 'lodash-es',
+    };
+    
     return config;
   },
   // Image optimization

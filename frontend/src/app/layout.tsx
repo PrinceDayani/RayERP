@@ -2,10 +2,18 @@ import React from 'react';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { PerformanceMonitor } from '@/components/PerformanceMonitor';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true
+});
 
-
+export const metadata = {
+  title: 'RayERP - Enterprise Resource Planning',
+  description: 'Modern ERP solution for business management'
+};
 
 export default function RootLayout({
   children,
@@ -14,7 +22,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-background text-foreground transition-colors duration-300`} suppressHydrationWarning>
+      <body className={`${inter.className} bg-background text-foreground`} suppressHydrationWarning>
+        <PerformanceMonitor />
         <Providers>{children}</Providers>
       </body>
     </html>

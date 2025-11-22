@@ -914,7 +914,7 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
             </div>
           ) : (
             <div className="space-y-3">
-              {budgets.slice(0, 10).map((budget) => (
+              {(Array.isArray(budgets) ? budgets : []).slice(0, 10).map((budget) => (
                 <Card key={budget._id} className="hover:shadow-md transition-shadow cursor-pointer"
                       onClick={() => router.push(`/dashboard/finance/budgets/${budget._id}`)}>
                   <CardContent className="p-4">

@@ -11,7 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRealTimeSetting } from '@/lib/realTimeSettings';
 import { Eye, EyeOff, ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 // Extended security settings type with additional properties
 interface ExtendedSecuritySettings {

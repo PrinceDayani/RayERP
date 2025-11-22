@@ -1,6 +1,21 @@
 {
-    "watch": ["src"],
-    "ext": "ts,json",
-    "exec": "ts-node src/server.ts"
-  }
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": [
+    "src/**/*.test.ts", 
+    "src/**/*.spec.ts",
+    "node_modules",
+    "dist",
+    "uploads",
+    "public",
+    "*.log"
+  ],
+  "exec": "ts-node --transpile-only src/server.ts",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 500,
+  "restartable": "rs",
+  "verbose": false
+}
   
