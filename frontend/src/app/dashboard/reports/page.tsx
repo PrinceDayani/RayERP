@@ -30,6 +30,7 @@ export default function ReportsPage() {
   const [department, setDepartment] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [overviewData, setOverviewData] = useState<any>(null);
   const [employeeReportsData, setEmployeeReportsData] = useState<any>(null);
   const [projectReportsData, setProjectReportsData] = useState<any>(null);
   const [taskReportsData, setTaskReportsData] = useState<any>(null);
@@ -65,13 +66,15 @@ export default function ReportsPage() {
     try {
       const dateParams = getDateRange();
       
-      const [employeeRes, projectRes, taskRes, productivityRes] = await Promise.all([
+      const [overviewRes, employeeRes, projectRes, taskRes, productivityRes] = await Promise.all([
+        reportsAPI.getOverview(dateParams),
         reportsAPI.getEmployeeReports(dateParams),
         reportsAPI.getProjectReports(dateParams),
         reportsAPI.getTaskReports(dateParams),
         reportsAPI.getTeamProductivity(dateParams)
       ]);
       
+      setOverviewData(overviewRes.data);
       setEmployeeReportsData(employeeRes.data);
       setProjectReportsData(projectRes.data);
       setTaskReportsData(taskRes.data);
@@ -192,7 +195,7 @@ export default function ReportsPage() {
   const chatReports: any[] = [];
   const fileReports: any[] = [];
   const contactReports: any[] = [];
-  const attendanceData: any[] = [];
+  const attendanceData = overviewData?.attendanceData || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -213,7 +216,7 @@ export default function ReportsPage() {
             <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{teamProductivityData.length}</div>
+            <div className="text-2xl font-bold">{overviewData?.totalEmployees || 0}</div>
             <p className="text-xs text-green-600">Active employees</p>
           </CardContent>
         </Card>
@@ -224,7 +227,7 @@ export default function ReportsPage() {
             <Target className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{projectReportsData?.progress?.totalProjects || 0}</div>
+            <div className="text-2xl font-bold">{overviewData?.totalProjects || 0}</div>
             <p className="text-xs text-blue-600">{projectReportsData?.progress?.completedProjects || 0} completed</p>
           </CardContent>
         </Card>
@@ -235,8 +238,8 @@ export default function ReportsPage() {
             <CheckCircle className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{taskReportsData?.statusBreakdown?.reduce((sum: number, t: any) => sum + t.count, 0) || 0}</div>
-            <p className="text-xs text-green-600">{taskReportsData?.overdueTasks || 0} overdue</p>
+            <div className="text-2xl font-bold">{overviewData?.totalTasks || 0}</div>
+            <p className="text-xs text-green-600">{overviewData?.completionRate || 0}% completion rate</p>
           </CardContent>
         </Card>
 

@@ -37,4 +37,12 @@ router.get(
   reportController.getTeamProductivity
 );
 
+// Get overview statistics
+router.get(
+  '/overview',
+  protect,
+  authorize('Admin', 'Superadmin', 'Root'),
+  reportController.getOverviewStats
+);
+
 export default router;

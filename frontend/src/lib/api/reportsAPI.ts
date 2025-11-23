@@ -9,6 +9,15 @@ const getAuthHeaders = () => {
 };
 
 export const reportsAPI = {
+  getOverview: async (params?: { from?: string; to?: string }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    const response = await fetch(`${API_URL}/api/reports/overview?${queryParams}`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to fetch overview');
+    return response.json();
+  },
+
   getEmployeeReports: async (params?: { from?: string; to?: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();
     const response = await fetch(`${API_URL}/api/reports/employees?${queryParams}`, {

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Project from '../models/Project';
 import Task from '../models/Task';
 import Employee from '../models/Employee';
+import Attendance from '../models/Attendance';
 import mongoose from 'mongoose';
 
 /**
@@ -309,6 +310,82 @@ export const getEmployeeReports = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching employee reports',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+/**
+ * @desc    Get overview statistics
+ * @route   GET /api/reports/overview
+ * @access  Private
+ */
+export const getOverviewStats = async (req: Request, res: Response) => {
+  try {
+    const { from, to } = req.query;
+    
+    const matchFilter: any = {};
+    if (from && to) {
+      matchFilter.createdAt = {
+        $gte: new Date(from as string),
+        $lte: new Date(to as string)
+      };
+    }
+
+    const [totalEmployees, totalProjects, totalTasks, completedTasks] = await Promise.all([
+      Employee.countDocuments({ status: 'active' }),
+      Project.countDocuments(matchFilter),
+      Task.countDocuments(matchFilter),
+      Task.countDocuments({ ...matchFilter, status: 'completed' })
+    ]);
+
+    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    const fiveMonthsAgo = new Date();
+    fiveMonthsAgo.setMonth(fiveMonthsAgo.getMonth() - 5);
+
+    const attendanceData = await Attendance.aggregate([
+      { $match: { date: { $gte: fiveMonthsAgo } } },
+      {
+        $group: {
+          _id: { month: { $month: '$date' }, year: { $year: '$date' } },
+          present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+          total: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          month: '$_id.month',
+          year: '$_id.year',
+          rate: { $multiply: [{ $divide: ['$present', '$total'] }, 100] }
+        }
+      },
+      { $sort: { year: 1, month: 1 } },
+      { $limit: 5 }
+    ]);
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const formattedAttendance = attendanceData.map(item => ({
+      month: monthNames[item.month - 1],
+      rate: Math.round(item.rate * 10) / 10
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalEmployees,
+        totalProjects,
+        totalTasks,
+        completedTasks,
+        completionRate,
+        attendanceData: formattedAttendance
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching overview statistics',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
