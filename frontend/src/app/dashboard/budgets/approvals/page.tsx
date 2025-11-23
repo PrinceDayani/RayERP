@@ -12,6 +12,7 @@ import { Budget } from "@/types/budget";
 import { getPendingApprovals, approveBudget, rejectBudget, getAllBudgets } from "@/lib/api/budgetAPI";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
+import { formatCurrency } from "@/utils/currency";
 
 export default function BudgetApprovalsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -194,7 +195,7 @@ export default function BudgetApprovalsPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 <div>
                   <span className="text-sm text-gray-600">Total Budget</span>
-                  <p className="font-semibold">{budget.currency} {budget.totalBudget.toLocaleString()}</p>
+                  <p className="font-semibold">{formatCurrency(budget.totalBudget, budget.currency)}</p>
                 </div>
                 <div>
                   <span className="text-sm text-gray-600">Categories</span>

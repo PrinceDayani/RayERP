@@ -6,10 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Budget } from "@/types/budget";
 import BudgetAnalytics from "@/components/budget/BudgetAnalytics";
-import { RefreshCw, TrendingUp, Calendar, DollarSign, Target } from "lucide-react";
+import { RefreshCw, TrendingUp, Calendar, DollarSign, Target, ExternalLink } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from "recharts";
 import { checkBackendHealth, checkAuthToken } from "@/utils/healthCheck";
+import Link from "next/link";
 
 export default function BudgetAnalyticsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -127,7 +128,12 @@ export default function BudgetAnalyticsPage() {
   ) : [];
 
   const projectBudgetData = (projects && budgets) ? projects.map(project => {
-    const projectBudgets = budgets.filter(b => b.projectId === project._id);
+    const projectBudgets = budgets.filter(b => 
+      b.projectId === project._id || 
+      b.projectId === project._id?.toString() ||
+      b.projectName === project.name
+    );
+    console.log(`Project: ${project.name}, ID: ${project._id}, Matched budgets:`, projectBudgets.length);
     const totalBudget = projectBudgets.reduce((sum, b) => sum + (b.totalBudget || 0), 0);
     const totalSpent = projectBudgets.reduce((sum, b) => 
       sum + ((b.categories || []).reduce((s, c) => s + (c.spentAmount || 0), 0) || 0), 0
@@ -137,9 +143,18 @@ export default function BudgetAnalyticsPage() {
       budget: totalBudget,
       spent: totalSpent,
       remaining: totalBudget - totalSpent,
-      utilization: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
+      utilization: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0,
+      projectId: project._id
     };
   }).filter(p => p.budget > 0) : [];
+  
+  console.log('Final projectBudgetData:', projectBudgetData);
+  if (budgets.length > 0) {
+    console.log('Sample budget projectId:', budgets[0].projectId, 'projectName:', budgets[0].projectName);
+  }
+  if (projects.length > 0) {
+    console.log('Sample project _id:', projects[0]._id, 'name:', projects[0].name);
+  }
 
   const monthlyTrend = budgets && budgets.length > 0 ? budgets.reduce((acc: any[], budget) => {
     const month = new Date(budget.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -337,10 +352,19 @@ export default function BudgetAnalyticsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {projectBudgetData.map((project, idx) => (
+                {projectBudgetData.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No projects with budgets found. Create budgets for your projects to see analytics.</p>
+                ) : projectBudgetData.map((project, idx) => (
                   <div key={idx} className="p-4 border rounded-lg">
                     <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-semibold">{project.name}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold">{project.name}</h4>
+                        <Link href={`/dashboard/projects/${project.projectId}/budget`}>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        </Link>
+                      </div>
                       <span className="text-sm font-medium">
                         {project.utilization.toFixed(1)}% utilized
                       </span>

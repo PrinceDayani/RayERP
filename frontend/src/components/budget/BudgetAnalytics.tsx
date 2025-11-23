@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { TrendingUp, TrendingDown, AlertTriangle, DollarSign, Target, Activity, Percent } from "lucide-react";
 import { Budget } from "@/types/budget";
+import { formatCurrency } from "@/utils/currency";
 
 interface BudgetAnalyticsProps {
   budgets: Budget[];
@@ -82,7 +83,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{totalBudget.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalBudget, 'INR')}</div>
             <p className="text-xs text-muted-foreground">Across all projects</p>
           </CardContent>
         </Card>
@@ -93,7 +94,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{totalSpent.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalSpent, 'INR')}</div>
             <p className="text-xs text-muted-foreground">{spentPercentage.toFixed(1)}% of total budget</p>
           </CardContent>
         </Card>
@@ -115,7 +116,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
             <Target className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">₹{totalRemaining.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalRemaining, 'INR')}</div>
             <p className="text-xs text-muted-foreground">{((totalRemaining / totalBudget) * 100).toFixed(1)}% available</p>
           </CardContent>
         </Card>
@@ -181,7 +182,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
                 <Tooltip 
                   formatter={(value, name) => {
                     if (name === 'utilization') return [`${value}%`, 'Utilization'];
-                    return [`₹${Number(value).toLocaleString()}`, name];
+                    return [formatCurrency(Number(value), 'INR'), name];
                   }} 
                 />
                 <Legend />
@@ -233,7 +234,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
                   <span className="font-medium capitalize">{category.type}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">
-                      ₹{category.spent.toLocaleString()} / ₹{category.allocated.toLocaleString()}
+                      {formatCurrency(category.spent, 'INR')} / {formatCurrency(category.allocated, 'INR')}
                     </span>
                     <Badge 
                       variant={Number(category.utilization) > 100 ? "destructive" : Number(category.utilization) > 80 ? "default" : "secondary"}
@@ -273,7 +274,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
                       <div>
                         <p className="font-medium">{budget.projectName}</p>
                         <p className="text-sm text-gray-600">
-                          Over by ₹{overAmount.toLocaleString()} ({overPercentage.toFixed(1)}%)
+                          Over by {formatCurrency(overAmount, budget.currency)} ({overPercentage.toFixed(1)}%)
                         </p>
                       </div>
                       <Badge variant="destructive">Over Budget</Badge>
@@ -307,7 +308,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
                       <div>
                         <p className="font-medium">{budget.projectName}</p>
                         <p className="text-sm text-gray-600">
-                          ₹{remaining.toLocaleString()} remaining ({utilization.toFixed(1)}%)
+                          {formatCurrency(remaining, budget.currency)} remaining ({utilization.toFixed(1)}%)
                         </p>
                       </div>
                       <Badge className="bg-orange-500">At Risk</Badge>
@@ -338,7 +339,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
                     <span className="font-medium">{budget.projectName}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">
-                        ₹{spent.toLocaleString()} / ₹{budget.totalBudget.toLocaleString()}
+                        {formatCurrency(spent, budget.currency)} / {formatCurrency(budget.totalBudget, budget.currency)}
                       </span>
                       <Badge 
                         variant={utilization > 100 ? "destructive" : utilization > 80 ? "default" : "secondary"}

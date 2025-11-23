@@ -11,6 +11,7 @@ import { Budget } from '@/types/budget';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatCurrency } from '@/utils/currency';
 
 export default function ApprovedBudgetsPage() {
   const [approvedBudgets, setApprovedBudgets] = useState<Budget[]>([]);
@@ -101,15 +102,15 @@ export default function ApprovedBudgetsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div>
               <span className="text-sm text-gray-600">Total Budget</span>
-              <p className="font-semibold">{budget.currency} {budget.totalBudget.toLocaleString()}</p>
+              <p className="font-semibold">{formatCurrency(budget.totalBudget, budget.currency)}</p>
             </div>
             <div>
               <span className="text-sm text-gray-600">Spent</span>
-              <p className="font-semibold">{budget.currency} {actualSpent.toLocaleString()}</p>
+              <p className="font-semibold">{formatCurrency(actualSpent, budget.currency)}</p>
             </div>
             <div>
               <span className="text-sm text-gray-600">Remaining</span>
-              <p className="font-semibold">{budget.currency} {remainingBudget.toLocaleString()}</p>
+              <p className="font-semibold">{formatCurrency(remainingBudget, budget.currency)}</p>
             </div>
             <div>
               <span className="text-sm text-gray-600">Utilization</span>

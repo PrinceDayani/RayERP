@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { getAllBudgets, createBudget, deleteBudget, submitForApproval, getBudget
 import { Budget } from '@/types/budget';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency, formatCurrencySmart } from '@/utils/currency';
 
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -239,7 +240,7 @@ export default function BudgetsPage() {
               <CardContent>
                 <div className="text-2xl font-bold">{analytics.summary.totalBudgets}</div>
                 <p className="text-xs text-muted-foreground">
-                  ₹{analytics.summary.totalBudgetAmount.toLocaleString()}
+                  {formatCurrencySmart(analytics.summary.totalBudgetAmount, 'INR')}
                 </p>
               </CardContent>
             </Card>
@@ -270,7 +271,7 @@ export default function BudgetsPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">₹{analytics.summary.totalSpent.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{formatCurrencySmart(analytics.summary.totalSpent, 'INR')}</div>
               </CardContent>
             </Card>
           </div>
@@ -327,15 +328,15 @@ export default function BudgetsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div>
                       <span className="text-sm text-gray-600">Total Budget</span>
-                      <p className="font-semibold">{budget.currency} {budget.totalBudget.toLocaleString()}</p>
+                      <p className="font-semibold">{formatCurrency(budget.totalBudget, budget.currency)}</p>
                     </div>
                     <div>
                       <span className="text-sm text-gray-600">Spent</span>
-                      <p className="font-semibold">{budget.currency} {actualSpent.toLocaleString()}</p>
+                      <p className="font-semibold">{formatCurrency(actualSpent, budget.currency)}</p>
                     </div>
                     <div>
                       <span className="text-sm text-gray-600">Remaining</span>
-                      <p className="font-semibold">{budget.currency} {remainingBudget.toLocaleString()}</p>
+                      <p className="font-semibold">{formatCurrency(remainingBudget, budget.currency)}</p>
                     </div>
                     <div>
                       <span className="text-sm text-gray-600">Utilization</span>

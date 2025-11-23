@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Edit, Send, CheckCircle, XCircle, Clock, DollarSign, TrendingUp, Calendar, User } from 'lucide-react';
 import { getBudget, submitForApproval } from '@/lib/api/budgetAPI';
 import { Budget } from '@/types/budget';
+import { formatCurrency, formatCurrencySmart } from '@/utils/currency';
 
 export default function BudgetDetailPage() {
   const [budget, setBudget] = useState<Budget | null>(null);
@@ -109,7 +110,7 @@ export default function BudgetDetailPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {(budget.totalBudget || 0).toLocaleString()}</div>
+              <div className="text-2xl font-bold">{formatCurrencySmart(budget.totalBudget, budget.currency)}</div>
             </CardContent>
           </Card>
 
@@ -119,7 +120,7 @@ export default function BudgetDetailPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {(actualSpent || 0).toLocaleString()}</div>
+              <div className="text-2xl font-bold">{formatCurrencySmart(actualSpent, budget.currency)}</div>
             </CardContent>
           </Card>
 
@@ -129,7 +130,7 @@ export default function BudgetDetailPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {(budget.remainingBudget || 0).toLocaleString()}</div>
+              <div className="text-2xl font-bold">{formatCurrencySmart(remainingBudget, budget.currency)}</div>
             </CardContent>
           </Card>
 
@@ -190,11 +191,11 @@ export default function BudgetDetailPage() {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Allocated:</span>
-                          <p className="font-medium">{budget.currency} {category.allocatedAmount.toLocaleString()}</p>
+                          <p className="font-medium">{formatCurrency(category.allocatedAmount, budget.currency)}</p>
                         </div>
                         <div>
                           <span className="text-gray-600">Spent:</span>
-                          <p className="font-medium">{budget.currency} {category.spentAmount.toLocaleString()}</p>
+                          <p className="font-medium">{formatCurrency(category.spentAmount, budget.currency)}</p>
                         </div>
                       </div>
                       {category.items.length > 0 && (
@@ -204,7 +205,7 @@ export default function BudgetDetailPage() {
                             {category.items.slice(0, 3).map((item, itemIndex) => (
                               <div key={itemIndex} className="text-xs text-gray-600 flex justify-between">
                                 <span>{item.name}</span>
-                                <span>{budget.currency} {item.totalCost.toLocaleString()}</span>
+                                <span>{formatCurrency(item.totalCost, budget.currency, true, true)}</span>
                               </div>
                             ))}
                             {category.items.length > 3 && (

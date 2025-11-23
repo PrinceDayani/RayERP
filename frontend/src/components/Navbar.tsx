@@ -12,14 +12,7 @@ import {
   Bell, 
   User, 
   Shield,
-  Briefcase,
-  DollarSign,
-  Users,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  Info,
-  TrendingUp
+  
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 import { BudgetCategory, BudgetItem, BudgetTemplate, Currency } from "@/types/budget";
+import { formatCurrency, getCurrencySymbol } from "@/utils/currency";
 
 interface BudgetDialogProps {
   open: boolean;
@@ -598,7 +599,7 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
                             onChange={(e) => updateItem(category._id, item._id, "unitCost", Number(e.target.value))}
                           />
                           <div className="text-sm font-medium">
-                            {formData.currency} {item.totalCost.toLocaleString()}
+                            {formatCurrency(item.totalCost, formData.currency)}
                           </div>
                           <Button
                             type="button"
@@ -627,14 +628,14 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
                   <div className="space-y-4">
                     <div className="flex justify-between text-lg font-semibold">
                       <span>Total Budget:</span>
-                      <span>{formData.currency} {calculateTotalBudget().toLocaleString()}</span>
+                      <span>{formatCurrency(calculateTotalBudget(), formData.currency)}</span>
                     </div>
                     {categories.map((category) => {
                       const categoryTotal = category.items.reduce((sum, item) => sum + item.totalCost, 0);
                       return (
                         <div key={category._id} className="flex justify-between">
                           <span className="capitalize">{category.name || category.type}:</span>
-                          <span>{formData.currency} {categoryTotal.toLocaleString()}</span>
+                          <span>{formatCurrency(categoryTotal, formData.currency)}</span>
                         </div>
                       );
                     })}

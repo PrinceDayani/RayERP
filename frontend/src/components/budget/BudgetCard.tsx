@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Eye, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { Budget } from "@/types/budget";
+import { formatCurrency } from "@/utils/currency";
 
 interface BudgetCardProps {
   budget: Budget;
@@ -56,12 +57,12 @@ export default function BudgetCard({ budget, onUpdate }: BudgetCardProps) {
       <CardContent className="space-y-4">
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Total Budget</span>
-          <span className="font-semibold">{budget.currency} {budget.totalBudget.toLocaleString()}</span>
+          <span className="font-semibold">{formatCurrency(budget.totalBudget, budget.currency)}</span>
         </div>
         
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Spent</span>
-          <span className="font-semibold">{budget.currency} {totalSpent.toLocaleString()}</span>
+          <span className="font-semibold">{formatCurrency(totalSpent, budget.currency)}</span>
         </div>
 
         <div className="space-y-2">
@@ -76,7 +77,7 @@ export default function BudgetCard({ budget, onUpdate }: BudgetCardProps) {
           {budget.categories.slice(0, 4).map((category) => (
             <div key={category._id} className="flex justify-between">
               <span className="text-gray-600 capitalize">{category.type}</span>
-              <span>{budget.currency} {category.allocatedAmount.toLocaleString()}</span>
+              <span>{formatCurrency(category.allocatedAmount, budget.currency, true, true)}</span>
             </div>
           ))}
         </div>
