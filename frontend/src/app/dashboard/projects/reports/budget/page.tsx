@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,7 +58,7 @@ const BudgetAnalysisPage = () => {
     };
   };
 
-  const getBudgetStatusData = () => {
+  const getBudgetStatINRata = () => {
     const statusCounts = budgets.reduce((acc: any, budget: any) => {
       acc[budget.status] = (acc[budget.status] || 0) + 1;
       return acc;
@@ -81,7 +81,7 @@ const BudgetAnalysisPage = () => {
   };
 
   const metrics = getBudgetMetrics();
-  const statusData = getBudgetStatusData();
+  const statINRata = getBudgetStatINRata();
   const utilizationData = getUtilizationData();
 
   if (loading) {
@@ -186,7 +186,7 @@ const BudgetAnalysisPage = () => {
             <ResponsiveContainer width="100%" height={300}>
               <RechartsPieChart>
                 <Pie
-                  data={statusData}
+                  data={statINRata}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -195,7 +195,7 @@ const BudgetAnalysisPage = () => {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {statusData.map((entry, index) => (
+                  {statINRata.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

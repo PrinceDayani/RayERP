@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+﻿import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -504,9 +504,9 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
             title: 'Financial Metrics', 
             color: [6, 182, 212], 
             items: [
-              'Monthly Revenue: $189K (+12% growth)',
+              'Monthly Revenue: ₹189K (+12% growth)',
               'Budget Utilization: 85% (Optimal range)',
-              'Cost per Employee: $7,875',
+              'Cost per Employee: ₹7,875',
               'ROI: 145% (Excellent performance)'
             ]
           }
@@ -967,7 +967,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
       pdf.setTextColor(51, 65, 85);
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
-      pdf.text('Monthly Revenue: $189K (+12% growth)', 25, y + 10);
+      pdf.text('Monthly Revenue: ₹189K (+12% growth)', 25, y + 10);
       pdf.text('Profit & Loss: Balance Sheet, Cash Flow available', 25, y + 16);
       pdf.text('Bank Reconciliation: All accounts reconciled', 25, y + 22);
       
@@ -1377,7 +1377,7 @@ export const exportToExcel = (data: ExportData): void => {
             { Metric: 'Total Employees', Value: 24, Change: '+2 this month' },
             { Metric: 'Active Projects', Value: 12, Change: '3 completing this month' },
             { Metric: 'Total Tasks', Value: 346, Change: '78% completion rate' },
-            { Metric: 'Monthly Revenue', Value: '$189K', Change: '+12% from last month' }
+            { Metric: 'Monthly Revenue', Value: '₹189K', Change: '+12% from last month' }
           ];
           const overviewWs = XLSX.utils.json_to_sheet(overviewData);
           XLSX.utils.book_append_sheet(wb, overviewWs, 'Overview');
@@ -1514,7 +1514,7 @@ export const exportToCSV = (data: ExportData): void => {
           { Metric: 'Total Employees', Value: '24', Change: '+2 this month' },
           { Metric: 'Active Projects', Value: '12', Change: '3 completing this month' },
           { Metric: 'Total Tasks', Value: '346', Change: '78% completion rate' },
-          { Metric: 'Monthly Revenue', Value: '$189K', Change: '+12% from last month' }
+          { Metric: 'Monthly Revenue', Value: '₹189K', Change: '+12% from last month' }
         ];
     }
 
@@ -1661,7 +1661,7 @@ export const exportToText = (data: ExportData): void => {
         content += '   • Completion Rate: 78%\n';
         content += '   • Overdue Tasks: 15\n\n';
         content += '💰 FINANCIAL METRICS\n';
-        content += '   • Monthly Revenue: $189K (+12% growth)\n';
+        content += '   • Monthly Revenue: ₹189K (+12% growth)\n';
         content += '   • Budget Utilization: 85%\n';
         content += '   • Cost Efficiency: 92%\n\n';
     }

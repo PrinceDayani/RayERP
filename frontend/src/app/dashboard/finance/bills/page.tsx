@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -198,7 +198,7 @@ export default function BillsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const statusData = [
+  const statINRata = [
     { name: 'Paid', value: bills.filter(b => b.status === 'paid').length },
     { name: 'Partial', value: bills.filter(b => b.status === 'partial').length },
     { name: 'Unpaid', value: bills.filter(b => b.status === 'unpaid').length }
@@ -416,8 +416,8 @@ export default function BillsPage() {
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
-                    <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                      {statusData.map((entry, index) => (
+                    <Pie data={statINRata} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                      {statINRata.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index]} />
                       ))}
                     </Pie>

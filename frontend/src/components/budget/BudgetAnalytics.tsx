@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -40,7 +40,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
     utilization: item.allocated > 0 ? ((item.spent / item.allocated) * 100).toFixed(1) : 0
   }));
 
-  const statusData = [
+  const statINRata = [
     { name: 'Approved', value: budgets.filter(b => b.status === 'approved').length, color: '#10B981' },
     { name: 'Pending', value: budgets.filter(b => b.status === 'pending').length, color: '#F59E0B' },
     { name: 'Rejected', value: budgets.filter(b => b.status === 'rejected').length, color: '#EF4444' },
@@ -201,7 +201,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={statusData}
+                  data={statINRata}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -210,7 +210,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {statusData.map((entry, index) => (
+                  {statINRata.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>

@@ -209,6 +209,16 @@ export const login = async (req: Request, res: Response) => {
 
     logger.info(`User logged in successfully: ${email}`);
 
+    // Emit login activity
+    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+    await RealTimeEmitter.emitActivityLog({
+      type: 'auth',
+      message: `${user.name} logged in`,
+      user: user.name,
+      userId: user._id.toString(),
+      metadata: { email: user.email, role: (user.role as any)?.name }
+    });
+
     return res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -265,7 +275,7 @@ export const checkAuth = async (req: Request, res: Response) => {
 };
 
 // Logout user
-export const logout = (req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response) => {
   try {
     res.cookie('token', 'none', {
       expires: new Date(Date.now() + 10 * 1000), // Expires in 10 seconds
@@ -273,6 +283,18 @@ export const logout = (req: Request, res: Response) => {
     });
 
     logger.info('User logged out');
+
+    // Emit logout activity
+    if (req.user) {
+      const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+      await RealTimeEmitter.emitActivityLog({
+        type: 'auth',
+        message: `${req.user.name} logged out`,
+        user: req.user.name,
+        userId: req.user._id.toString(),
+        metadata: { email: req.user.email }
+      });
+    }
 
     res.status(200).json({
       success: true,

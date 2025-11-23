@@ -32,7 +32,6 @@ import {
   Activity,
   Clock,
   Target,
-  DollarSign,
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
@@ -41,6 +40,7 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import { initializeSocket, getSocket } from "@/lib/socket";
 import { hasPermission, hasMinimumLevel, PERMISSIONS, ROLE_LEVELS } from "@/lib/permissions";
+import { useCurrency } from "@/contexts/CurrencyContext";
 const AnalyticsCharts = lazy(() => import('@/components/Dashboard/AnalyticsCharts'));
 const EmployeeList = lazy(() => import('@/components/employee').then(m => ({ default: m.EmployeeList })));
 const ProjectList = lazy(() => import('@/components/projects').then(m => ({ default: m.ProjectList })));
@@ -48,6 +48,8 @@ const TaskList = lazy(() => import('@/components/tasks').then(m => ({ default: m
 import { employeesAPI } from "@/lib/api/employeesAPI";
 import { projectsAPI } from "@/lib/api/projectsAPI";
 import { tasksAPI } from "@/lib/api/tasksAPI";
+import { trendsAPI, TrendsResponse } from "@/lib/api/trendsAPI";
+import { analyticsAPI, AnalyticsResponse } from "@/lib/api/analyticsAPI";
 
 // Enhanced interfaces
 interface DashboardStats {
@@ -71,6 +73,7 @@ interface AnalyticsData {
 }
 
 const Dashboard = () => {
+  const { currency, formatAmount } = useCurrency();
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
   
@@ -84,62 +87,119 @@ const Dashboard = () => {
     teamProductivity: [],
     recentActivity: [],
   });
+  const [trends, setTrends] = useState<TrendsResponse | null>(null);
   
   // Refs
   const socketRef = useRef<any>(null);
 
-  // Memoized data fetching function for analytics
-  const fetchAnalyticsData = useCallback(async () => {
+  // Fetch analytics and trends
+  useEffect(() => {
     if (!isAuthenticated) return;
     
-    try {
-      // Generate analytics based on real stats
-      const randomVariation = () => Math.floor(Math.random() * 3) + 1;
-      
-      const newAnalytics = {
-        projectProgress: [
-          { name: "Website Redesign", progress: Math.min(85 + randomVariation(), 100), status: "active" },
-          { name: "Mobile App", progress: Math.min(60 + randomVariation(), 100), status: "active" },
-          { name: "API Integration", progress: Math.min(40 + randomVariation(), 100), status: "planning" },
-          { name: "Database Migration", progress: 100, status: "completed" },
-        ],
-        taskDistribution: [
-          { name: "Completed", value: stats.completedTasks },
-          { name: "In Progress", value: (stats.inProgressTasks || 0) + (stats.pendingTasks || 0) },
-        ],
-        monthlyRevenue: [
-          { month: "Jan", revenue: 65000, expenses: 45000 },
-          { month: "Feb", revenue: 72000, expenses: 48000 },
-          { month: "Mar", revenue: 68000, expenses: 46000 },
-          { month: "Apr", revenue: 85000, expenses: 52000 },
-          { month: "May", revenue: 92000, expenses: 58000 },
-          { month: "Jun", revenue: stats.revenue || 103000, expenses: stats.expenses || 76000 },
-        ],
-        teamProductivity: [
-          { name: "Development", completed: 45 + randomVariation(), pending: Math.max(12 - randomVariation(), 0) },
-          { name: "Design", completed: 28 + randomVariation(), pending: Math.max(8 - randomVariation(), 0) },
-          { name: "Marketing", completed: 15 + randomVariation(), pending: 5 },
-          { name: "Sales", completed: 10 + randomVariation(), pending: 3 },
-        ],
-        recentActivity: [
-          { id: "1", type: "project", description: "New project 'Website Redesign' created", time: "2 hours ago" },
-          { id: "2", type: "task", description: "Task 'API Documentation' completed", time: "4 hours ago" },
-          { id: "3", type: "employee", description: "New employee 'John Doe' added", time: "5 hours ago" },
-          { id: "4", type: "project", description: "Project 'Mobile App' milestone reached", time: "1 day ago" },
-        ],
-      };
-      setAnalytics(newAnalytics);
-    } catch (error) {
-      console.error("Error generating analytics:", error);
-    }
-  }, [isAuthenticated, stats]);
+    let mounted = true;
+    
+    Promise.all([
+      analyticsAPI.getAnalytics(),
+      trendsAPI.getTrends()
+    ]).then(([analyticsData, trendsData]) => {
+      console.log('Analytics Data:', analyticsData);
+      console.log('Trends Data:', trendsData);
+      if (mounted && analyticsData) {
+        // Ensure all required fields exist
+        const completeData = {
+          projectProgress: analyticsData.projectProgress || [],
+          taskDistribution: analyticsData.taskDistribution || [],
+          monthlyRevenue: analyticsData.monthlyRevenue || [
+            { month: 'Jan', revenue: 0, expenses: 0 },
+            { month: 'Feb', revenue: 0, expenses: 0 },
+            { month: 'Mar', revenue: 0, expenses: 0 },
+            { month: 'Apr', revenue: 0, expenses: 0 },
+            { month: 'May', revenue: 0, expenses: 0 },
+            { month: 'Jun', revenue: 0, expenses: 0 },
+            { month: 'Jul', revenue: 0, expenses: 0 },
+            { month: 'Aug', revenue: 0, expenses: 0 },
+            { month: 'Sep', revenue: 0, expenses: 0 },
+            { month: 'Oct', revenue: 0, expenses: 0 },
+            { month: 'Nov', revenue: 0, expenses: 0 },
+            { month: 'Dec', revenue: 0, expenses: 0 }
+          ],
+          teamProductivity: analyticsData.teamProductivity || [
+            { name: 'Development', completed: 0, pending: 0 },
+            { name: 'Design', completed: 0, pending: 0 },
+            { name: 'Marketing', completed: 0, pending: 0 },
+            { name: 'Sales', completed: 0, pending: 0 }
+          ],
+          recentActivity: analyticsData.recentActivity || []
+        };
+        setAnalytics(completeData);
+        if (trendsData) setTrends(trendsData);
+      }
+    }).catch(error => {
+      console.error("Error fetching analytics:", error);
+    });
+    
+    return () => { mounted = false; };
+  }, [isAuthenticated]);
 
-  // Update analytics when stats change
+  // Real-time activity feed listener
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchAnalyticsData();
-    }
-  }, [isAuthenticated, stats, fetchAnalyticsData]);
+    if (!isAuthenticated) return;
+    
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleActivityLog = (activity: any) => {
+      setAnalytics(prev => ({
+        ...prev,
+        recentActivity: [
+          {
+            id: activity.id || Date.now().toString(),
+            type: activity.type || 'system',
+            description: activity.message || activity.description,
+            time: new Date(activity.timestamp).toLocaleString(),
+            priority: activity.priority || 'normal',
+            user: activity.user,
+            metadata: activity.metadata
+          },
+          ...prev.recentActivity.slice(0, 19)
+        ]
+      }));
+    };
+
+    const handleRootActivity = (activity: any) => {
+      // Root users get high-priority activities
+      setAnalytics(prev => ({
+        ...prev,
+        recentActivity: [
+          {
+            id: activity.id || Date.now().toString(),
+            type: activity.type || 'system',
+            description: `🔴 ${activity.message || activity.description}`,
+            time: new Date(activity.timestamp).toLocaleString(),
+            priority: 'high',
+            user: activity.user,
+            metadata: activity.metadata
+          },
+          ...prev.recentActivity.slice(0, 19)
+        ]
+      }));
+      
+      // Show toast notification for Root users
+      toast({
+        title: "System Activity",
+        description: activity.message,
+        variant: "default"
+      });
+    };
+
+    socket.on('activity_log', handleActivityLog);
+    socket.on('root:activity', handleRootActivity);
+
+    return () => {
+      socket.off('activity_log', handleActivityLog);
+      socket.off('root:activity', handleRootActivity);
+    };
+  }, [isAuthenticated]);
 
 
 
@@ -473,10 +533,16 @@ const Dashboard = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-xs text-muted-foreground">Revenue</p>
-                          <h3 className="text-xl font-bold">₹{(stats.revenue || 0).toLocaleString()}</h3>
-                          <span className="text-xs text-green-600 flex items-center"><ArrowUpRight className="h-3 w-3" />12.5%</span>
+                          <h3 className="text-xl font-bold">{formatAmount(stats.revenue || 0)}</h3>
+                          {trends?.revenue && (
+                            <span className={`text-xs flex items-center ${
+                              trends.revenue.direction === 'up' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {trends.revenue.direction === 'up' ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                              {trends.revenue.value}%
+                            </span>
+                          )}
                         </div>
-                        <DollarSign className="h-8 w-8 text-green-600" />
                       </div>
                     </CardContent>
                   </Card>
@@ -486,8 +552,15 @@ const Dashboard = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-xs text-muted-foreground">Expenses</p>
-                          <h3 className="text-xl font-bold">₹{(stats.expenses || 0).toLocaleString()}</h3>
-                          <span className="text-xs text-orange-600 flex items-center"><ArrowUpRight className="h-3 w-3" />8.2%</span>
+                          <h3 className="text-xl font-bold">{formatAmount(stats.expenses || 0)}</h3>
+                          {trends?.expenses && (
+                            <span className={`text-xs flex items-center ${
+                              trends.expenses.direction === 'up' ? 'text-orange-600' : 'text-green-600'
+                            }`}>
+                              {trends.expenses.direction === 'up' ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                              {trends.expenses.value}%
+                            </span>
+                          )}
                         </div>
                         <TrendingDown className="h-8 w-8 text-orange-600" />
                       </div>
@@ -499,8 +572,15 @@ const Dashboard = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-xs text-muted-foreground">Profit</p>
-                          <h3 className="text-xl font-bold">₹{(stats.profit || 0).toLocaleString()}</h3>
-                          <span className="text-xs text-red-600 flex items-center"><ArrowUpRight className="h-3 w-3" />18.3%</span>
+                          <h3 className="text-xl font-bold">{formatAmount(stats.profit || 0)}</h3>
+                          {trends?.profit && (
+                            <span className={`text-xs flex items-center ${
+                              trends.profit.direction === 'up' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {trends.profit.direction === 'up' ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                              {trends.profit.value}%
+                            </span>
+                          )}
                         </div>
                         <Target className="h-8 w-8 text-red-600" />
                       </div>
@@ -511,9 +591,9 @@ const Dashboard = () => {
                 {/* Charts Section - Compact */}
                 <Suspense fallback={<div className="h-[200px] flex items-center justify-center"><RefreshCw className="h-6 w-6 animate-spin" /></div>}>
                   <AnalyticsCharts 
-                    monthlyRevenue={analytics.monthlyRevenue}
-                    taskDistribution={analytics.taskDistribution}
-                    teamProductivity={analytics.teamProductivity}
+                    monthlyRevenue={analytics.monthlyRevenue || []}
+                    taskDistribution={analytics.taskDistribution || []}
+                    teamProductivity={analytics.teamProductivity || []}
                   />
                 </Suspense>
 
@@ -524,7 +604,7 @@ const Dashboard = () => {
                       <CardTitle className="text-sm flex items-center"><Briefcase className="h-4 w-4 mr-2" />Active Projects</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3 pt-0">
-                      {analytics.projectProgress.map((project, index) => (
+                      {analytics.projectProgress?.length > 0 ? analytics.projectProgress.map((project, index) => (
                         <div key={index} className="space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-medium">{project.name}</span>
@@ -532,7 +612,9 @@ const Dashboard = () => {
                           </div>
                           <Progress value={project.progress} className="h-1.5" />
                         </div>
-                      ))}
+                      )) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No active projects</p>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -545,7 +627,7 @@ const Dashboard = () => {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-2">
-                      {analytics.recentActivity.map((activity) => (
+                      {analytics.recentActivity?.length > 0 ? analytics.recentActivity.map((activity) => (
                         <div key={activity.id} className="flex items-center space-x-3 py-2 border-b last:border-0">
                           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                             {activity.type === 'project' && <Briefcase className="h-4 w-4 text-primary" />}
@@ -557,7 +639,9 @@ const Dashboard = () => {
                             <p className="text-xs text-muted-foreground">{activity.time}</p>
                           </div>
                         </div>
-                      ))}
+                      )) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -565,7 +649,8 @@ const Dashboard = () => {
             )}
 
             <StatsCards 
-              stats={stats} 
+              stats={stats}
+              trends={trends ? { employees: trends.employees, projects: trends.projects } : undefined}
               isAuthenticated={isAuthenticated} 
               loading={dataLoading} 
             />

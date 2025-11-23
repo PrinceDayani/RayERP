@@ -24,26 +24,21 @@ const ActivityLogSchema = new Schema<IActivityLog>({
   },
   user: {
     type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: 'User'
   },
   userName: {
     type: String,
-    required: true
+    default: 'System'
   },
   action: {
     type: String,
-    required: true,
-    enum: ['login', 'logout', 'create', 'update', 'delete', 'view', 'export', 'import', 'share', 'comment', 'assign', 'complete']
+    required: true
   },
   resource: {
-    type: String,
-    required: true
+    type: String
   },
   resourceType: {
     type: String,
-    required: true,
-    enum: ['project', 'task', 'file', 'comment', 'employee', 'budget', 'other'],
     default: 'other'
   },
   resourceId: {
@@ -60,15 +55,19 @@ const ActivityLogSchema = new Schema<IActivityLog>({
     default: 'success'
   },
   details: {
-    type: String,
-    required: true
+    type: String
+  },
+  description: {
+    type: String
+  },
+  type: {
+    type: String
   },
   metadata: {
     type: Schema.Types.Mixed
   },
   ipAddress: {
-    type: String,
-    required: true
+    type: String
   },
   visibility: {
     type: String,

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,7 +44,7 @@ export default function MultiCurrency() {
         <CardHeader><CardTitle>Add Currency</CardTitle></CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex gap-4">
-            <Input placeholder="Code (USD)" value={form.code} onChange={e => setForm({...form, code: e.target.value})} required />
+            <Input placeholder="Code (INR)" value={form.code} onChange={e => setForm({...form, code: e.target.value})} required />
             <Input placeholder="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required />
             <Input placeholder="Symbol ($)" value={form.symbol} onChange={e => setForm({...form, symbol: e.target.value})} required />
             <Button type="submit"><Plus className="w-4 h-4 mr-2" />Add</Button>

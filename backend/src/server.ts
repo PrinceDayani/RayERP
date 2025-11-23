@@ -206,7 +206,6 @@ const io = new SocketServer(server, {
   upgradeTimeout: 10000,
   maxHttpBufferSize: 1e6, // Reduced from 10MB to 1MB
   connectTimeout: 20000,
-  compression: true,
   perMessageDeflate: {
     threshold: 1024,
   }
@@ -240,6 +239,10 @@ async function initializeRealTimeSystems() {
     const { initializeSchedulers } = await import('./utils/recurringJobsScheduler');
     initializeSchedulers();
 
+    // Initialize notification cleanup
+    const { initializeNotificationCleanup } = await import('./utils/notificationCleanup');
+    initializeNotificationCleanup();
+
     logger.info('✅ Real-time systems initialized');
   } catch (error) {
     logger.warn('⚠️ Some real-time systems could not be initialized:', error.message);
@@ -262,6 +265,10 @@ connectDB()
     // Create dashboard-specific indexes
     const { createDashboardIndexes } = await import('./utils/dashboardIndexes');
     await createDashboardIndexes();
+    
+    // Create analytics indexes
+    const { createAnalyticsIndexes } = await import('./utils/createAnalyticsIndexes');
+    await createAnalyticsIndexes();
     
     // Warm up connection pool
     await mongoose.connection.db.admin().ping();

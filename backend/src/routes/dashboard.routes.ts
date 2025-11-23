@@ -73,10 +73,14 @@ router.get('/stats', protect, async (req, res) => {
 // Get real-time analytics - OPTIMIZED
 router.get('/analytics', protect, async (req, res) => {
   try {
-    const [projects, taskDistribution] = await Promise.all([
+    const currentYear = new Date().getFullYear();
+    const [projects, taskDistribution, employees] = await Promise.all([
       Project.find().select('name progress status').lean().limit(5).sort({ updatedAt: -1 }),
       Task.aggregate([
         { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      Employee.aggregate([
+        { $group: { _id: '$department', count: { $sum: 1 } } }
       ])
     ]);
 
@@ -93,11 +97,70 @@ router.get('/analytics', protect, async (req, res) => {
       { name: 'Pending', value: taskMap['todo'] || 0 }
     ];
 
+    // Generate monthly revenue data for all 12 months
+    const monthlyRevenue = await Project.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: new Date(currentYear, 0, 1) }
+        }
+      },
+      {
+        $group: {
+          _id: { $month: '$createdAt' },
+          revenue: { $sum: '$budget' },
+          expenses: { $sum: '$spentBudget' }
+        }
+      }
+    ]);
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const revenueMap = monthlyRevenue.reduce((acc, m) => ({ ...acc, [m._id]: m }), {} as any);
+    const monthlyRevenueData = monthNames.map((month, idx) => ({
+      month,
+      revenue: revenueMap[idx + 1]?.revenue || 0,
+      expenses: revenueMap[idx + 1]?.expenses || 0
+    }));
+
+    // Generate team productivity data
+    const teamProductivity = await Task.aggregate([
+      {
+        $lookup: {
+          from: 'employees',
+          localField: 'assignedTo',
+          foreignField: '_id',
+          as: 'employee'
+        }
+      },
+      { $unwind: { path: '$employee', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: '$employee.department',
+          completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+          pending: { $sum: { $cond: [{ $ne: ['$status', 'completed'] }, 1, 0] } }
+        }
+      },
+      { $match: { _id: { $ne: null } } }
+    ]);
+
+    const teamProductivityData = teamProductivity.length > 0 ? teamProductivity.map(t => ({
+      name: t._id || 'Unassigned',
+      completed: t.completed,
+      pending: t.pending
+    })) : [
+      { name: 'Development', completed: 0, pending: 0 },
+      { name: 'Design', completed: 0, pending: 0 },
+      { name: 'Marketing', completed: 0, pending: 0 },
+      { name: 'Sales', completed: 0, pending: 0 }
+    ];
+
     res.json({
       success: true,
       data: {
         projectProgress,
         taskDistribution: taskDist,
+        monthlyRevenue: monthlyRevenueData,
+        teamProductivity: teamProductivityData,
+        recentActivity: [],
         timestamp: new Date().toISOString()
       }
     });

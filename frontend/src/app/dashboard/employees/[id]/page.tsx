@@ -17,6 +17,7 @@ import { employeesAPI } from '@/lib/api/employeesAPI';
 import attendanceAPI from '@/lib/api/attendanceAPI';
 import leaveAPI from '@/lib/api/leaveAPI';
 import { toast } from '@/components/ui/use-toast';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface Employee {
   _id: string;
@@ -48,6 +49,7 @@ interface Employee {
 }
 
 export default function EmployeeDetailPage() {
+  const { currency, formatAmount } = useCurrency();
   const router = useRouter();
   const params = useParams();
   const employeeId = params?.id as string;
@@ -239,7 +241,7 @@ export default function EmployeeDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Annual Salary</p>
-                <p className="text-2xl font-bold">${(employee.salary / 1000).toFixed(0)}K</p>
+                <p className="text-2xl font-bold">{formatAmount(employee.salary)}</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />

@@ -47,9 +47,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     minute: '2-digit'
   }).format(currentDate);
 
-  // Format currency
+  // Format currency using context
   const formatCurrency = (amount: number = 0) => {
-    return new Intl.NumberFormat('en-US', { 
+    return new Intl.NumberFormat('en-IN', { 
       style: 'currency', 
       currency: 'INR',
       maximumFractionDigits: 0 

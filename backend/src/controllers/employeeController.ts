@@ -72,6 +72,13 @@ export const createEmployee = async (req: Request, res: Response) => {
       
       const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
       await RealTimeEmitter.emitDashboardStats();
+      await RealTimeEmitter.emitActivityLog({
+        type: 'employee',
+        message: `New employee ${employee.firstName} ${employee.lastName} added`,
+        user: req.user?.name || 'System',
+        userId: req.user?._id?.toString(),
+        metadata: { employeeId: employee._id, employeeName: `${employee.firstName} ${employee.lastName}` }
+      });
       
       res.status(201).json(employee);
     } catch (employeeError: any) {
@@ -136,6 +143,13 @@ export const updateEmployee = async (req: Request, res: Response) => {
     
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'employee',
+      message: `Employee ${employee.firstName} ${employee.lastName} updated`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { employeeId: employee._id, employeeName: `${employee.firstName} ${employee.lastName}` }
+    });
     
     res.json(employee);
   } catch (error: any) {
@@ -158,6 +172,13 @@ export const deleteEmployee = async (req: Request, res: Response) => {
     
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'employee',
+      message: `Employee ${employee.firstName} ${employee.lastName} deleted`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { employeeId: employee._id, employeeName: `${employee.firstName} ${employee.lastName}` }
+    });
     
     res.json({ message: 'Employee and associated user deleted successfully' });
   } catch (error: any) {

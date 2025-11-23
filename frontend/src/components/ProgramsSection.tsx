@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,7 @@ export default function ProgramsSection() {
   const programs = [
     {
       title: 'Starter Plan',
-      price: '$29',
+      price: '₹29',
       period: '/month',
       description: 'Perfect for small businesses getting started',
       features: ['Up to 10 users', 'Basic HR management', 'Financial reporting', 'Email support'],
@@ -16,7 +16,7 @@ export default function ProgramsSection() {
     },
     {
       title: 'Professional Plan',
-      price: '$79',
+      price: '₹79',
       period: '/month',
       description: 'Ideal for growing businesses',
       features: ['Up to 50 users', 'Advanced HR features', 'Project management', 'Priority support', 'Custom reports'],
@@ -24,7 +24,7 @@ export default function ProgramsSection() {
     },
     {
       title: 'Enterprise Plan',
-      price: '$199',
+      price: '₹199',
       period: '/month',
       description: 'For large organizations',
       features: ['Unlimited users', 'Full feature access', 'Advanced analytics', '24/7 support', 'Custom integrations'],

@@ -56,14 +56,46 @@ export class RealTimeEmitter {
     });
   }
 
-  static emitActivityLog(activity: { type: string; message: string; user?: string }) {
+  static async emitActivityLog(activity: { type: string; message: string; user?: string; userId?: string; metadata?: any }) {
     if (!this.ioInstance) return;
     
-    this.ioInstance.emit('activity_log', {
-      id: Date.now().toString(),
-      ...activity,
-      timestamp: new Date().toISOString()
-    });
+    try {
+      const activityData = {
+        id: Date.now().toString(),
+        type: activity.type,
+        message: activity.message,
+        user: activity.user || 'System',
+        userId: activity.userId,
+        metadata: activity.metadata,
+        timestamp: new Date().toISOString(),
+        priority: 'normal'
+      };
+
+      // Broadcast to all connected clients
+      this.ioInstance.emit('activity_log', activityData);
+
+      // Send high-priority notification to Root users room
+      this.ioInstance.to('root-users').emit('root:activity', {
+        ...activityData,
+        priority: 'high'
+      });
+
+      // Store in database for history
+      const ActivityLog = (await import('../models/ActivityLog')).default;
+      await ActivityLog.create({
+        type: activity.type,
+        action: activity.type,
+        description: activity.message,
+        user: activity.userId,
+        userName: activity.user,
+        metadata: activity.metadata,
+        timestamp: new Date(),
+        status: 'success',
+        visibility: 'all'
+      }).catch(err => console.error('Failed to store activity:', err));
+    } catch (error) {
+      console.error('Error emitting activity log:', error);
+    }
   }
 
   static emitSystemStatus(status: { database: string; api: string; socket: string }) {

@@ -16,11 +16,15 @@ interface StatsCardsProps {
     totalTasks: number;
     completedTasks: number;
   };
+  trends?: {
+    employees?: { value: number; direction: 'up' | 'down' };
+    projects?: { value: number; direction: 'up' | 'down' };
+  };
   isAuthenticated: boolean;
   loading: boolean;
 }
 
-const StatsCards: React.FC<StatsCardsProps> = memo(({ stats, isAuthenticated, loading }) => {
+const StatsCards: React.FC<StatsCardsProps> = memo(({ stats, trends, isAuthenticated, loading }) => {
   const formatCurrency = (value: number) => {
     try {
       if (typeof value !== 'number' || isNaN(value)) {
@@ -54,9 +58,9 @@ const StatsCards: React.FC<StatsCardsProps> = memo(({ stats, isAuthenticated, lo
     {
       title: "Total Employees",
       value: formatNumber(stats.totalEmployees),
-      trend: "+5.2%",
+      trend: trends?.employees ? `${trends.employees.direction === 'up' ? '+' : '-'}${trends.employees.value}%` : undefined,
       description: "from last period",
-      trendColorClass: "text-theme-success",
+      trendColorClass: trends?.employees?.direction === 'up' ? "text-theme-success" : "text-red-600",
       badgeVariant: "default" as const
     },
     {
@@ -69,9 +73,9 @@ const StatsCards: React.FC<StatsCardsProps> = memo(({ stats, isAuthenticated, lo
     {
       title: "Total Projects",
       value: formatNumber(stats.totalProjects),
-      trend: "+12.3%",
+      trend: trends?.projects ? `${trends.projects.direction === 'up' ? '+' : '-'}${trends.projects.value}%` : undefined,
       description: "from last period",
-      trendColorClass: "text-theme-success",
+      trendColorClass: trends?.projects?.direction === 'up' ? "text-theme-success" : "text-red-600",
       badgeVariant: "outline" as const
     },
     {

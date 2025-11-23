@@ -1,4 +1,4 @@
-import api from './api';
+﻿import api from './api';
 
 export interface Leave {
   _id: string;
@@ -47,8 +47,8 @@ export const leaveAPI = {
     return response.data;
   },
 
-  updateStatus: async (id: string, statusData: { status: string; approvedBy?: string; rejectionReason?: string }) => {
-    const response = await api.put(`/leaves/${id}/status`, statusData);
+  updateStatus: async (id: string, statINRata: { status: string; approvedBy?: string; rejectionReason?: string }) => {
+    const response = await api.put(`/leaves/${id}/status`, statINRata);
     return response.data;
   },
 

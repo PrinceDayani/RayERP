@@ -136,6 +136,22 @@ export const useNotifications = () => {
       });
     });
 
+    // Root user priority notifications
+    socket.on('root:notification', (data: any) => {
+      const notification: Notification = {
+        id: data.id || `notif-${Date.now()}`,
+        type: data.type || 'system',
+        title: `🔴 ${data.title}`,
+        message: data.message,
+        read: false,
+        priority: 'urgent',
+        createdAt: new Date(data.timestamp || new Date()),
+        actionUrl: data.actionUrl,
+        metadata: data.metadata
+      };
+      addNotification(notification);
+    });
+
     return () => {
       socket.off('notification:received', handleNotificationReceived);
       socket.off('order:new');
@@ -144,8 +160,9 @@ export const useNotifications = () => {
       socket.off('task:assigned');
       socket.off('budget:alert');
       socket.off('system:alert');
+      socket.off('root:notification');
     };
-  }, [socket]);
+  }, [socket, addNotification]);
 
   const addNotification = useCallback((notification: Notification) => {
     setNotifications(prev => {

@@ -23,13 +23,28 @@ export default function CurrencyConverter({ onConvert }: CurrencyConverterProps)
 
   const currencies: Currency[] = [
     { code: "INR", name: "Indian Rupee", symbol: "₹", exchangeRate: 1 },
-    { code: "INR", name: "US Dollar", symbol: "$", exchangeRate: 83.12 },
+    { code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 83.12 },
     { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 90.45 },
     { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 105.23 },
     { code: "JPY", name: "Japanese Yen", symbol: "¥", exchangeRate: 0.56 },
     { code: "CAD", name: "Canadian Dollar", symbol: "C$", exchangeRate: 61.34 },
     { code: "AUD", name: "Australian Dollar", symbol: "A$", exchangeRate: 54.78 },
-    { code: "CHF", name: "Swiss Franc", symbol: "CHF", exchangeRate: 95.67 }
+    { code: "CHF", name: "Swiss Franc", symbol: "CHF", exchangeRate: 95.67 },
+    { code: "AED", name: "UAE Dirham", symbol: "د.إ", exchangeRate: 22.63 },
+    { code: "SAR", name: "Saudi Riyal", symbol: "ر.س", exchangeRate: 22.17 },
+    { code: "QAR", name: "Qatari Riyal", symbol: "ر.ق", exchangeRate: 22.83 },
+    { code: "KWD", name: "Kuwaiti Dinar", symbol: "د.ك", exchangeRate: 270.45 },
+    { code: "BHD", name: "Bahraini Dinar", symbol: "د.ب", exchangeRate: 220.34 },
+    { code: "OMR", name: "Omani Rial", symbol: "ر.ع", exchangeRate: 216.12 },
+    { code: "JOD", name: "Jordanian Dinar", symbol: "د.ا", exchangeRate: 117.23 },
+    { code: "ILS", name: "Israeli Shekel", symbol: "₪", exchangeRate: 22.45 },
+    { code: "LBP", name: "Lebanese Pound", symbol: "ل.ل", exchangeRate: 0.055 },
+    { code: "EGP", name: "Egyptian Pound", symbol: "ج.م", exchangeRate: 2.67 },
+    { code: "IQD", name: "Iraqi Dinar", symbol: "ع.د", exchangeRate: 0.063 },
+    { code: "SYP", name: "Syrian Pound", symbol: "ل.س", exchangeRate: 0.033 },
+    { code: "YER", name: "Yemeni Rial", symbol: "ر.ي", exchangeRate: 0.33 },
+    { code: "TRY", name: "Turkish Lira", symbol: "₺", exchangeRate: 2.56 },
+    { code: "IRR", name: "Iranian Rial", symbol: "﷼", exchangeRate: 0.002 }
   ];
 
   useEffect(() => {

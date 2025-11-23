@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -78,7 +78,7 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
   const [templates, setTemplates] = useState<BudgetTemplate[]>([]);
   const [currencies] = useState<Currency[]>([
     { code: "INR", name: "Indian Rupee", symbol: "₹", exchangeRate: 1 },
-    { code: "USD", name: "US Dollar", symbol: "$", exchangeRate: 83.12 },
+    { code: "INR", name: "US Dollar", symbol: "$", exchangeRate: 83.12 },
     { code: "EUR", name: "Euro", symbol: "€", exchangeRate: 90.45 },
     { code: "GBP", name: "British Pound", symbol: "£", exchangeRate: 105.23 }
   ]);

@@ -60,6 +60,8 @@ import invoiceTemplateNewRoutes from './invoiceTemplate.routes';
 import journalEntryTemplateRoutes from './journalEntryTemplate.routes';
 import projectFinanceEnhanced from './projectFinanceEnhanced';
 import financialReportsEnhanced from './financialReportsEnhanced';
+import trendsRoutes from './trends';
+import analyticsDataRoutes from './analytics';
 
 import backupRoutes from './backupRoutes';
 import notificationRoutes from './notification.routes';
@@ -90,6 +92,8 @@ router.use('/departments', departmentRoutes);
 router.use('/department-budgets', departmentBudgetRoutes);
 router.use('/onboarding', onboardingRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/dashboard', trendsRoutes);
+router.use('/dashboard', analyticsDataRoutes);
 
 router.use('/file-shares', fileShareRoutes);
 router.use('/chat', chatRoutes);

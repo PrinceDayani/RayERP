@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { CurrencyProvider } from '@/contexts/CurrencyContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isClient, setIsClient] = useState(false);
@@ -13,14 +14,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
   if (!isClient) {
     return (
       <AuthProvider>
-        {children}
+        <CurrencyProvider>
+          {children}
+        </CurrencyProvider>
       </AuthProvider>
     );
   }
 
   return (
     <AuthProvider>
-      {children}
+      <CurrencyProvider>
+        {children}
+      </CurrencyProvider>
     </AuthProvider>
   );
 }

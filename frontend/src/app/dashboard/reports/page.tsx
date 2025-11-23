@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -214,7 +214,7 @@ export default function ReportsPage() {
             <TrendingUp className="h-4 w-4 text-cyan-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$189K</div>
+            <div className="text-2xl font-bold">₹189K</div>
             <p className="text-xs text-green-600">+12% from last month</p>
           </CardContent>
         </Card>

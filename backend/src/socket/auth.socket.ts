@@ -22,7 +22,19 @@ export const setupAuthHandlers = (socket: AuthenticatedSocket) => {
       }
       
       socket.join(`user-${decoded.id}`);
+      socket.join(`user:${decoded.id}`);
       socket.userId = decoded.id;
+      
+      // Check if user is Root and join Root room
+      const User = (await import('../models/User')).default;
+      const user = await User.findById(decoded.id).populate('role');
+      if (user) {
+        const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+        if (roleName === 'Root') {
+          socket.join('root-users');
+          logger.info(`Root user ${decoded.id} joined root-users room`);
+        }
+      }
       
       logger.info(`User ${decoded.id} authenticated and joined room`);
       socket.emit("auth_success", { 

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Plus, CheckCircle, DollarSign, TrendingUp, AlertCircle, FileText, Download, RefreshCw, XCircle, Check } from 'lucide-react';
@@ -275,7 +275,7 @@ function PaymentForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             <input type="number" step="0.01" placeholder="Amount" className="border rounded px-3 py-2" value={formData.totalAmount} onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })} required />
             <select className="border rounded px-3 py-2" value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })}>
               <option value="INR">INR</option>
-              <option value="USD">USD</option>
+              <option value="INR">INR</option>
               <option value="EUR">EUR</option>
               <option value="GBP">GBP</option>
             </select>

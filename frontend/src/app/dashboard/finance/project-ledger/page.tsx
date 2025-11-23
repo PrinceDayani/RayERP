@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -748,15 +748,15 @@ const ProjectLedgerPage = () => {
                     <div className="grid grid-cols-4 gap-4">
                       <Card className="p-4">
                         <p className="text-sm text-muted-foreground">Total Budget</p>
-                        <p className="text-2xl font-bold">$100,000</p>
+                        <p className="text-2xl font-bold">₹100,000</p>
                       </Card>
                       <Card className="p-4">
                         <p className="text-sm text-muted-foreground">Actual Spend</p>
-                        <p className="text-2xl font-bold text-blue-600">$75,000</p>
+                        <p className="text-2xl font-bold text-blue-600">₹75,000</p>
                       </Card>
                       <Card className="p-4">
                         <p className="text-sm text-muted-foreground">Remaining</p>
-                        <p className="text-2xl font-bold text-green-600">$25,000</p>
+                        <p className="text-2xl font-bold text-green-600">₹25,000</p>
                       </Card>
                       <Card className="p-4">
                         <p className="text-sm text-muted-foreground">Utilization</p>
@@ -778,15 +778,15 @@ const ProjectLedgerPage = () => {
                   <div className="grid grid-cols-3 gap-6">
                     <div className="p-6 bg-green-50 rounded">
                       <p className="text-sm text-muted-foreground">Revenue</p>
-                      <p className="text-3xl font-bold text-green-600">$150,000</p>
+                      <p className="text-3xl font-bold text-green-600">₹150,000</p>
                     </div>
                     <div className="p-6 bg-red-50 rounded">
                       <p className="text-sm text-muted-foreground">Costs</p>
-                      <p className="text-3xl font-bold text-red-600">$100,000</p>
+                      <p className="text-3xl font-bold text-red-600">₹100,000</p>
                     </div>
                     <div className="p-6 bg-blue-50 rounded">
                       <p className="text-sm text-muted-foreground">Gross Profit</p>
-                      <p className="text-3xl font-bold text-blue-600">$50,000</p>
+                      <p className="text-3xl font-bold text-blue-600">₹50,000</p>
                       <p className="text-sm mt-2">33.33% margin</p>
                     </div>
                   </div>
@@ -817,15 +817,15 @@ const ProjectLedgerPage = () => {
                       <TableRow>
                         <TableCell>John Doe</TableCell>
                         <TableCell>160</TableCell>
-                        <TableCell>$50/hr</TableCell>
-                        <TableCell className="font-bold">$8,000</TableCell>
+                        <TableCell>₹50/hr</TableCell>
+                        <TableCell className="font-bold">₹8,000</TableCell>
                         <TableCell><Badge className="bg-green-600">Yes</Badge></TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell>Jane Smith</TableCell>
                         <TableCell>120</TableCell>
-                        <TableCell>$50/hr</TableCell>
-                        <TableCell className="font-bold">$6,000</TableCell>
+                        <TableCell>₹50/hr</TableCell>
+                        <TableCell className="font-bold">₹6,000</TableCell>
                         <TableCell><Badge className="bg-green-600">Yes</Badge></TableCell>
                       </TableRow>
                     </TableBody>

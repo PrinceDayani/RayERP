@@ -192,6 +192,13 @@ export const createTask = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'task',
+      message: `New task "${task.title}" created`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { taskId: task._id, taskTitle: task.title, status: task.status }
+    });
     
     res.status(201).json(task);
   } catch (error) {
@@ -259,6 +266,13 @@ export const updateTask = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'task',
+      message: `Task "${task.title}" updated`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { taskId: task._id, taskTitle: task.title, status: task.status }
+    });
     
     res.json(task);
   } catch (error) {
@@ -295,6 +309,13 @@ export const deleteTask = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'task',
+      message: `Task "${task.title}" deleted`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { taskId: task._id, taskTitle: task.title }
+    });
     
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
@@ -479,6 +500,13 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'task',
+      message: `Task "${task.title}" status changed to ${status}`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { taskId: task._id, taskTitle: task.title, oldStatus: oldStatus, newStatus: status }
+    });
     
     res.json(task);
   } catch (error) {

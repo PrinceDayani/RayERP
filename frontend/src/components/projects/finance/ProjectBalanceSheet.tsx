@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,15 +38,15 @@ export default function ProjectBalanceSheet({ projectId }: ProjectBalanceSheetPr
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>Cash</span>
-                      <span>$25,000</span>
+                      <span>₹25,000</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Accounts Receivable</span>
-                      <span>$30,000</span>
+                      <span>₹30,000</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Work in Progress</span>
-                      <span>$15,000</span>
+                      <span>₹15,000</span>
                     </div>
                   </div>
                 </div>
@@ -55,18 +55,18 @@ export default function ProjectBalanceSheet({ projectId }: ProjectBalanceSheetPr
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>Equipment</span>
-                      <span>$50,000</span>
+                      <span>₹50,000</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Software</span>
-                      <span>$10,000</span>
+                      <span>₹10,000</span>
                     </div>
                   </div>
                 </div>
                 <div className="border-t pt-2">
                   <div className="flex justify-between font-bold">
                     <span>Total Assets</span>
-                    <span>$130,000</span>
+                    <span>₹130,000</span>
                   </div>
                 </div>
               </div>
@@ -86,11 +86,11 @@ export default function ProjectBalanceSheet({ projectId }: ProjectBalanceSheetPr
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>Accounts Payable</span>
-                      <span>$15,000</span>
+                      <span>₹15,000</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Accrued Expenses</span>
-                      <span>$5,000</span>
+                      <span>₹5,000</span>
                     </div>
                   </div>
                 </div>
@@ -99,7 +99,7 @@ export default function ProjectBalanceSheet({ projectId }: ProjectBalanceSheetPr
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>Equipment Loan</span>
-                      <span>$25,000</span>
+                      <span>₹25,000</span>
                     </div>
                   </div>
                 </div>
@@ -108,18 +108,18 @@ export default function ProjectBalanceSheet({ projectId }: ProjectBalanceSheetPr
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>Project Capital</span>
-                      <span>$50,000</span>
+                      <span>₹50,000</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Retained Earnings</span>
-                      <span>$35,000</span>
+                      <span>₹35,000</span>
                     </div>
                   </div>
                 </div>
                 <div className="border-t pt-2">
                   <div className="flex justify-between font-bold">
                     <span>Total Liabilities & Equity</span>
-                    <span>$130,000</span>
+                    <span>₹130,000</span>
                   </div>
                 </div>
               </div>

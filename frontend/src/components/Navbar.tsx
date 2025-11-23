@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { useAuth } from "@/contexts/AuthContext";
-import NotificationSystem from "@/components/NotificationSystem";
+import { NotificationCenter } from "@/components/NotificationCenter";
 
 interface NavbarProps {
   toggleSidebar: () => void;
@@ -154,7 +154,7 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
           </TooltipProvider>
 
           {/* Notifications */}
-          <NotificationSystem isAuthenticated={!!user} />
+          <NotificationCenter />
 
           {/* Theme Switcher */}
           <ThemeSwitcher />

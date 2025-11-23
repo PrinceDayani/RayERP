@@ -10,6 +10,7 @@ import authAPIDefault from './authAPI';
 import employeesAPIDefault from './employeesAPI';
 import contactsAPIDefault from './contactsAPI';
 import analyticsAPIDefault from './analyticsAPI';
+import trendsAPIDefault from './trendsAPI';
 import reportsAPIDefault from './reportsAPI';
 import settingsAPIDefault from './settingsAPI';
 import adminAPIDefault from './adminAPI'; // Added admin API import
@@ -26,6 +27,7 @@ export {
   employeesAPIDefault as employeesAPI,
   contactsAPIDefault as contactsAPI,
   analyticsAPIDefault as analyticsAPI,
+  trendsAPIDefault as trendsAPI,
   reportsAPIDefault as reportsAPI,
   settingsAPIDefault as settingsAPI,
   projectsAPIDefault as projectsAPI,
@@ -47,6 +49,9 @@ export * from './contactsAPI';
 
 // Analytics API exports
 export * from './analyticsAPI';
+
+// Trends API exports
+export * from './trendsAPI';
 
 // Reports API exports
 export * from './reportsAPI';
@@ -73,6 +78,7 @@ const combinedAPI = {
   employees: employeesAPIDefault,
   contacts: contactsAPIDefault,
   analytics: analyticsAPIDefault,
+  trends: trendsAPIDefault,
   reports: reportsAPIDefault,
   settings: settingsAPIDefault,
   admin: adminAPIDefault, // Added admin to combined API

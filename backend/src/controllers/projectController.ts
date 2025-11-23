@@ -181,6 +181,13 @@ export const createProject = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'project',
+      message: `New project "${project.name}" created`,
+      user: user.name || 'System',
+      userId: user._id?.toString(),
+      metadata: { projectId: project._id, projectName: project.name, status: project.status }
+    });
     
     res.status(201).json(project);
   } catch (error) {
@@ -258,6 +265,13 @@ export const updateProject = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'project',
+      message: `Project "${project.name}" updated`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { projectId: project._id, projectName: project.name, status: project.status }
+    });
     
     res.json(project);
   } catch (error) {
@@ -355,6 +369,13 @@ export const deleteProject = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'project',
+      message: `Project "${project.name}" deleted`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { projectId: project._id, projectName: project.name }
+    });
     
     res.json({ message: 'Project deleted successfully' });
   } catch (error) {
@@ -464,6 +485,13 @@ export const createProjectTask = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'task',
+      message: `New task "${task.title}" created in project "${project.name}"`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { taskId: task._id, taskTitle: task.title, projectId: project._id, projectName: project.name }
+    });
     
     res.status(201).json(transformedTask);
   } catch (error) {
@@ -807,6 +835,13 @@ export const updateProjectTask = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'task',
+      message: `Task "${task.title}" updated`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { taskId: task._id, taskTitle: task.title, status: task.status }
+    });
     
     res.json(transformedTask);
   } catch (error) {
@@ -855,6 +890,13 @@ export const deleteProjectTask = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+    await RealTimeEmitter.emitActivityLog({
+      type: 'task',
+      message: `Task "${task.title}" deleted`,
+      user: req.user?.name || 'System',
+      userId: req.user?._id?.toString(),
+      metadata: { taskId: task._id, taskTitle: task.title }
+    });
     
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {

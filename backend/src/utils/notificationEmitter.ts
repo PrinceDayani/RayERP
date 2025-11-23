@@ -36,6 +36,7 @@ export class NotificationEmitter {
         userId
       };
 
+      io.to(`user:${userId}`).emit('notification:received', notificationWithId);
       io.to(`user-${userId}`).emit('notification:received', notificationWithId);
       logger.info(`Notification sent to user ${userId}: ${notification.title}`);
     } catch (error) {
@@ -44,7 +45,7 @@ export class NotificationEmitter {
   }
 
   // Send notification to all users
-  static sendToAll(notification: NotificationData) {
+  static async sendToAll(notification: NotificationData) {
     const notificationWithId = {
       id: notification.id || `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       ...notification,
@@ -53,7 +54,27 @@ export class NotificationEmitter {
     };
 
     io.emit('notification:received', notificationWithId);
+    
+    // Send high-priority to Root users
+    io.to('root-users').emit('root:notification', {
+      ...notificationWithId,
+      priority: 'high'
+    });
+    
     logger.info(`Broadcast notification sent: ${notification.title}`);
+  }
+
+  // Send notification to Root users only
+  static sendToRoot(notification: NotificationData) {
+    const notificationWithId = {
+      id: notification.id || `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      ...notification,
+      priority: notification.priority || 'urgent',
+      timestamp: new Date()
+    };
+
+    io.to('root-users').emit('root:notification', notificationWithId);
+    logger.info(`Root notification sent: ${notification.title}`);
   }
 
   // Send notification to users in a specific room

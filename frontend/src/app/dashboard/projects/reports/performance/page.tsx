@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,7 +54,7 @@ const PerformanceReportPage = () => {
     };
   };
 
-  const getStatusData = () => {
+  const getStatINRata = () => {
     const statusCounts = projects.reduce((acc: any, project: any) => {
       acc[project.status] = (acc[project.status] || 0) + 1;
       return acc;
@@ -82,7 +82,7 @@ const PerformanceReportPage = () => {
   };
 
   const metrics = getPerformanceMetrics();
-  const statusData = getStatusData();
+  const statINRata = getStatINRata();
   const progressData = getProgressData();
 
   if (loading) {
@@ -186,7 +186,7 @@ const PerformanceReportPage = () => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={statusData}
+                  data={statINRata}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -195,7 +195,7 @@ const PerformanceReportPage = () => {
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {statusData.map((entry, index) => (
+                  {statINRata.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

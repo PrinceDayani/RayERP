@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,7 +41,7 @@ interface BudgetAnalytics {
     utilization: number;
     count: number;
   };
-  statusDistribution: {
+  statINRistribution: {
     draft: number;
     approved: number;
     active: number;

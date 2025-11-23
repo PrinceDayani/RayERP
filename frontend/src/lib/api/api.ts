@@ -1,4 +1,4 @@
-// path: frontend/src/lib/api.ts
+﻿// path: frontend/src/lib/api.ts
 import axios from "axios";
 
 // Use environment variable for API URL - no defaults
@@ -30,7 +30,7 @@ api.interceptors.request.use(
     
     // Fix for URL path handling
     if (config.url) {
-      config.url = config.url.replace(/([^:])\/\//g, '$1/');
+      config.url = config.url.replace(/([^:])\/\//g, '₹1/');
     }
     
     // Add timeout to prevent hanging requests

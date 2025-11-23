@@ -14,8 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { departmentApi, Department, DepartmentStats, Employee, employeeApi } from "@/lib/api/departments";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 export default function DepartmentsPage() {
+  const { currency, formatAmount } = useCurrency();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [stats, setStats] = useState<DepartmentStats | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -334,7 +336,7 @@ export default function DepartmentsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Budget</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${(stats.totalBudget / 1000).toFixed(0)}K</div>
+              <div className="text-2xl font-bold">{formatAmount(stats.totalBudget)}</div>
               <p className="text-xs text-muted-foreground mt-1">Annual allocation</p>
             </CardContent>
           </Card>
@@ -434,7 +436,7 @@ export default function DepartmentsPage() {
                   </div>
                   <div className="text-center p-2 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground">Budget</p>
-                    <p className="text-lg font-bold">${(dept.budget / 1000).toFixed(0)}K</p>
+                    <p className="text-lg font-bold">{formatAmount(dept.budget)}</p>
                   </div>
                   <div className="text-center p-2 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground">Permissions</p>

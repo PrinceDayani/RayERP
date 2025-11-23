@@ -9,4 +9,9 @@ export const APP_CONFIG = {
     tokenKey: 'rayerp_token',
     refreshTokenKey: 'rayerp_refresh_token',
   },
+  currency: {
+    default: 'INR',
+    symbol: '₹',
+    locale: 'en-IN',
+  },
 } as const;

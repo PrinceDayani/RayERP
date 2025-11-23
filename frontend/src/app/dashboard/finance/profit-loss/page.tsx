@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -346,7 +346,7 @@ const ProfitLossPage = () => {
                   <div className="space-y-4">
                     {['revenue', 'expenses', 'netIncome'].map((key) => (
                       <div key={key} className="grid grid-cols-5 gap-4 p-3 bg-gray-50 rounded">
-                        <div className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1')}</div>
+                        <div className="font-medium capitalize">{key.replace(/([A-Z])/g, ' ₹1')}</div>
                         <div className="text-green-600">₹{budgetData[key]?.actual?.toLocaleString()}</div>
                         <div>₹{budgetData[key]?.budget?.toLocaleString()}</div>
                         <div className={budgetData[key]?.variance > 0 ? 'text-green-600' : 'text-red-600'}>
