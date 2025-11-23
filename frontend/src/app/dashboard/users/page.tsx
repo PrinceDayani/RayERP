@@ -213,7 +213,12 @@ const UserManagement = () => {
     
     // Filter by role tab
     if (activeTab !== 'all') {
-      result = result.filter(user => getRoleName(user.role) === activeTab);
+      result = result.filter(user => {
+        const roleName = getRoleName(user.role);
+        const normalizedRole = roleName.toLowerCase().replace(/\s+/g, '');
+        const normalizedTab = activeTab.toLowerCase().replace(/\s+/g, '');
+        return normalizedRole === normalizedTab;
+      });
     }
     
     setFilteredUsers(result);

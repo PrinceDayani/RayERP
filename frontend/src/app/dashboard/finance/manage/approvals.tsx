@@ -15,13 +15,13 @@ export default function ApprovalWorkflows() {
   useEffect(() => { fetchApprovals(); }, []);
 
   const fetchApprovals = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     const res = await fetch(`${API_URL}/api/finance-advanced/approvals`, { headers: { Authorization: `Bearer ${token}` } });
     setApprovals((await res.json()).approvals || []);
   };
 
   const updateStatus = async (id: string, status: string) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     await fetch(`${API_URL}/api/finance-advanced/approvals/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

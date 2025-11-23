@@ -17,6 +17,7 @@ import { costCenterAPI } from '@/lib/api/costCenterAPI';
 export default function CostCentersPage() {
   const [costCenters, setCostCenters] = useState<any[]>([]);
   const [showDialog, setShowDialog] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ 
     name: '', 
     code: '', 
@@ -33,24 +34,54 @@ export default function CostCentersPage() {
 
   const fetchCostCenters = async () => {
     try {
-      const data = await costCenterAPI.getAll({ hierarchy: true });
-      setCostCenters(data.data || []);
+      const response = await costCenterAPI.getAll({ hierarchy: true });
+      console.log('Fetch response:', response);
+      const centers = response.success ? response.data : (response.data || response || []);
+      setCostCenters(Array.isArray(centers) ? centers : []);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Fetch error:', error);
+      toast({ title: 'Error', description: 'Failed to fetch cost centers', variant: 'destructive' });
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await costCenterAPI.create(formData);
-      toast({ title: 'Success', description: 'Cost center created' });
+      if (editingId) {
+        const response = await costCenterAPI.update(editingId, formData);
+        if (response.success || response.data) {
+          toast({ title: 'Success', description: 'Cost center updated' });
+        }
+      } else {
+        const response = await costCenterAPI.create(formData);
+        if (response.success || response.data) {
+          toast({ title: 'Success', description: 'Cost center created' });
+        }
+      }
       setShowDialog(false);
+      setEditingId(null);
       setFormData({ name: '', code: '', description: '', budget: '', budgetPeriod: 'yearly', costType: 'direct' });
-      fetchCostCenters();
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to create', variant: 'destructive' });
+      await fetchCostCenters();
+    } catch (error: any) {
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to save cost center', 
+        variant: 'destructive' 
+      });
     }
+  };
+
+  const handleEdit = (cc: any) => {
+    setEditingId(cc._id);
+    setFormData({
+      name: cc.name,
+      code: cc.code,
+      description: cc.description || '',
+      budget: cc.budget?.toString() || '',
+      budgetPeriod: cc.budgetPeriod || 'yearly',
+      costType: cc.costType || 'direct'
+    });
+    setShowDialog(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -167,7 +198,7 @@ export default function CostCentersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="ghost"><Edit className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(cc)}><Edit className="w-4 h-4" /></Button>
                         <Button size="sm" variant="ghost" onClick={() => handleDelete(cc._id)}>
                           <Trash2 className="w-4 h-4 text-red-600" />
                         </Button>
@@ -184,7 +215,7 @@ export default function CostCentersPage() {
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Cost Center</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit' : 'Create'} Cost Center</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -226,8 +257,8 @@ export default function CostCentersPage() {
               </Select>
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
-              <Button type="submit">Create</Button>
+              <Button type="button" variant="outline" onClick={() => { setShowDialog(false); setEditingId(null); }}>Cancel</Button>
+              <Button type="submit">{editingId ? 'Update' : 'Create'}</Button>
             </div>
           </form>
         </DialogContent>

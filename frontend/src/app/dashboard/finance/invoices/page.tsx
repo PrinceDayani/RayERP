@@ -26,7 +26,7 @@ export default function InvoicesPage() {
   const fetchInvoices = async () => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/invoices`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setInvoices(data.data || []);
@@ -120,7 +120,7 @@ function InvoiceForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify(formData)
       });

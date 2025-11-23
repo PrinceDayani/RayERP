@@ -39,7 +39,7 @@ export default function RecurringEntriesPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       const [allRes, failedRes, pendingRes] = await Promise.all([
         fetch(`${API_URL}/api/recurring-entries`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/api/recurring-entries/failed`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -64,16 +64,18 @@ export default function RecurringEntriesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Creating recurring entry:', formData);
     try {
       const res = await fetch(`${API_URL}/api/recurring-entries`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify(formData)
       });
       const data = await res.json();
+      console.log('Response:', { status: res.status, data });
       if (data.success) {
         toast({ title: 'Success', description: 'Recurring entry created' });
         setShowDialog(false);
@@ -82,6 +84,7 @@ export default function RecurringEntriesPage() {
         toast({ title: 'Error', description: data.message, variant: 'destructive' });
       }
     } catch (error) {
+      console.error('Error creating recurring entry:', error);
       toast({ title: 'Error', description: 'Failed to create entry', variant: 'destructive' });
     }
   };
@@ -90,7 +93,7 @@ export default function RecurringEntriesPage() {
     try {
       const res = await fetch(`${API_URL}/api/recurring-entries/${id}/skip-next`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       if (data.success) {
@@ -106,7 +109,7 @@ export default function RecurringEntriesPage() {
     try {
       const res = await fetch(`${API_URL}/api/recurring-entries/${id}/retry`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       if (data.success) {
@@ -122,7 +125,7 @@ export default function RecurringEntriesPage() {
     try {
       const res = await fetch(`${API_URL}/api/recurring-entries/${id}/approve`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       if (data.success) {
@@ -141,7 +144,7 @@ export default function RecurringEntriesPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify({ entryIds: ids })
       });
@@ -160,7 +163,7 @@ export default function RecurringEntriesPage() {
     try {
       const res = await fetch(`${API_URL}/api/recurring-entries/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       if (res.ok) {
         toast({ title: 'Success', description: 'Entry deleted' });
@@ -407,6 +410,10 @@ export default function RecurringEntriesPage() {
             <div>
               <Label>Description</Label>
               <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} />
+            </div>
+            <div>
+              <Label>End Date (Optional)</Label>
+              <Input type="date" value={formData.endDate} onChange={(e) => setFormData({...formData, endDate: e.target.value})} />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>

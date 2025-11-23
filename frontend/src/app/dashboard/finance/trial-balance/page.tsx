@@ -22,7 +22,7 @@ export default function TrialBalancePage() {
   const fetchTrialBalance = async () => {
     try {
       const res = await fetch(`${API_URL}/api/general-ledger/accounts`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setAccounts(data.accounts || []);
@@ -39,7 +39,7 @@ export default function TrialBalancePage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Trial Balance</h1>
-          <p className="text-gray-600 mt-1">Verify account balances and double-entry accuracy</p>
+          <p className="text-muted-foreground mt-1">Verify account balances and double-entry accuracy</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline"><FileSpreadsheet className="w-4 h-4 mr-2" />Export Excel</Button>
@@ -88,18 +88,18 @@ export default function TrialBalancePage() {
                   </TableCell>
                 </TableRow>
               ))}
-              <TableRow className="font-bold bg-gray-50">
+              <TableRow className="font-bold bg-muted/50">
                 <TableCell colSpan={3} className="text-right">Total</TableCell>
                 <TableCell className="text-right">₹{totalDebit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
                 <TableCell className="text-right">₹{totalCredit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
               </TableRow>
-              <TableRow className={`font-bold ${Math.abs(totalDebit - totalCredit) < 0.01 ? 'bg-green-50' : 'bg-red-50'}`}>
+              <TableRow className={`font-bold ${Math.abs(totalDebit - totalCredit) < 0.01 ? 'bg-green-500/10 dark:bg-green-500/20' : 'bg-red-500/10 dark:bg-red-500/20'}`}>
                 <TableCell colSpan={3} className="text-right">Difference</TableCell>
                 <TableCell colSpan={2} className="text-center">
                   {Math.abs(totalDebit - totalCredit) < 0.01 ? (
-                    <span className="text-green-600">✓ Balanced</span>
+                    <span className="text-green-600 dark:text-green-400">✓ Balanced</span>
                   ) : (
-                    <span className="text-red-600">₹{Math.abs(totalDebit - totalCredit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span className="text-red-600 dark:text-red-400">₹{Math.abs(totalDebit - totalCredit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   )}
                 </TableCell>
               </TableRow>
@@ -111,20 +111,20 @@ export default function TrialBalancePage() {
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-600">Total Debit</p>
+            <p className="text-sm text-muted-foreground">Total Debit</p>
             <p className="text-2xl font-bold">₹{totalDebit.toLocaleString('en-IN')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-600">Total Credit</p>
+            <p className="text-sm text-muted-foreground">Total Credit</p>
             <p className="text-2xl font-bold">₹{totalCredit.toLocaleString('en-IN')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-gray-600">Status</p>
-            <p className={`text-2xl font-bold ${Math.abs(totalDebit - totalCredit) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
+            <p className="text-sm text-muted-foreground">Status</p>
+            <p className={`text-2xl font-bold ${Math.abs(totalDebit - totalCredit) < 0.01 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {Math.abs(totalDebit - totalCredit) < 0.01 ? 'Balanced' : 'Unbalanced'}
             </p>
           </CardContent>

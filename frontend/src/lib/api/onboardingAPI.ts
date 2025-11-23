@@ -18,7 +18,7 @@ export const onboardingAPI = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
       },
       body: JSON.stringify(data)
     });
@@ -34,7 +34,7 @@ export const onboardingAPI = {
   async getResources() {
     const response = await fetch(`${API_BASE_URL}/onboarding/resources`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
       }
     });
 
@@ -50,7 +50,7 @@ export const onboardingAPI = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
       },
       body: JSON.stringify({ userId, projectId, accessLevel })
     });
@@ -66,7 +66,7 @@ export const onboardingAPI = {
   async getUserProjects(userId: string) {
     const response = await fetch(`${API_BASE_URL}/onboarding/user/${userId}/projects`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
       }
     });
 
@@ -81,7 +81,7 @@ export const onboardingAPI = {
     const response = await fetch(`${API_BASE_URL}/onboarding/user/${userId}/project/${projectId}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
       }
     });
 

@@ -43,49 +43,49 @@ const ProfitLossPage = () => {
       if (response.success) setProfitLossData(response.data);
       
       const compRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports/comparative?reportType=profit-loss&period1Start=${startDate}&period1End=${endDate}&period2Start=${getPreviousYearDate(startDate)}&period2End=${getPreviousYearDate(endDate)}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const compData = await compRes.json();
       if (compData.success) setComparison(compData.data);
       
       const multiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports/multi-period?startDate=${startDate}&endDate=${endDate}&periodType=monthly`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const multiData = await multiRes.json();
       if (multiData.success) setMultiPeriod(multiData.data);
       
       const forecastRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports/forecast?months=3`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const forecastData = await forecastRes.json();
       if (forecastData.success) setForecast(forecastData.data);
       
       const budgetRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports-enhanced/profit-loss-budget?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const budgetJson = await budgetRes.json();
       if (budgetJson.success) setBudgetData(budgetJson.data);
       
       const waterfallRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports-enhanced/profit-loss-waterfall?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const waterfallJson = await waterfallRes.json();
       if (waterfallJson.success) setWaterfallData(waterfallJson.data);
       
       const insightsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports-enhanced/profit-loss-insights?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const insightsJson = await insightsRes.json();
       if (insightsJson.success) setInsights(insightsJson.data);
       
       const ratiosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports-enhanced/profit-loss-ratios?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const ratiosJson = await ratiosRes.json();
       if (ratiosJson.success) setRatios(ratiosJson.data);
       
       const scenariosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports-enhanced/profit-loss-scenarios?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const scenariosJson = await scenariosRes.json();
       if (scenariosJson.success) setScenarios(scenariosJson.data);
@@ -105,7 +105,7 @@ const ProfitLossPage = () => {
   const drillDown = async (accountId: string, accountName: string, accountCode: string) => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports/account-transactions/${accountId}?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       if (data.success) {

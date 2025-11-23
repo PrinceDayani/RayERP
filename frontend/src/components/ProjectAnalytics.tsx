@@ -21,7 +21,7 @@ export default function ProjectAnalytics({ projectId }: AnalyticsProps) {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+        const token = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
         if (!token) {
           setError('Authentication required');
           setLoading(false);

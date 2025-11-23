@@ -122,7 +122,7 @@ export default function GeneralLedgerPage() {
 
   const fetchAccountingMode = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/accounting-settings`, {
         headers: { Authorization: `Bearer ${token}` }
       });

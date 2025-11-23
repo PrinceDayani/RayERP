@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, TrendingUp, AlertTriangle, Copy, CheckCircle, XCircle, Clock, Lock } from 'lucide-react';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function GLBudgetsPage() {
   const [budgets, setBudgets] = useState<any[]>([]);
@@ -44,7 +44,7 @@ export default function GLBudgetsPage() {
   const fetchBudgets = async () => {
     try {
       const res = await fetch(`${API_URL}/api/gl-budgets`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setBudgets(data.data || []);
@@ -56,9 +56,10 @@ export default function GLBudgetsPage() {
   const fetchAccounts = async () => {
     try {
       const res = await fetch(`${API_URL}/api/general-ledger/accounts`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
+      console.log('Fetched accounts:', data);
       setAccounts(data.accounts || []);
     } catch (error) {
       console.error('Error:', error);
@@ -68,7 +69,7 @@ export default function GLBudgetsPage() {
   const fetchAlerts = async () => {
     try {
       const res = await fetch(`${API_URL}/api/gl-budgets/alerts`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setAlerts(data.data || []);
@@ -79,24 +80,42 @@ export default function GLBudgetsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.accountId) {
+      toast({ title: 'Error', description: 'Please select an account', variant: 'destructive' });
+      return;
+    }
+    if (!formData.budgetAmount || parseFloat(formData.budgetAmount) <= 0) {
+      toast({ title: 'Error', description: 'Please enter a valid budget amount', variant: 'destructive' });
+      return;
+    }
+    
     try {
       const res = await fetch(`${API_URL}/api/gl-budgets`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify(formData)
       });
       if (res.ok) {
         toast({ title: 'Success', description: 'Budget created' });
         setShowDialog(false);
+        setFormData({
+          accountId: '',
+          fiscalYear: new Date().getFullYear().toString(),
+          budgetAmount: '',
+          period: 'yearly',
+          periodBreakdown: []
+        });
         fetchBudgets();
       } else {
         const error = await res.json();
         toast({ title: 'Error', description: error.message || 'Failed to create budget', variant: 'destructive' });
       }
     } catch (error) {
+      console.error('Error creating budget:', error);
       toast({ title: 'Error', description: 'Failed to create budget', variant: 'destructive' });
     }
   };
@@ -107,7 +126,7 @@ export default function GLBudgetsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify(revisionData)
       });
@@ -127,7 +146,7 @@ export default function GLBudgetsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify({ level, comments: 'Approved' })
       });
@@ -144,7 +163,7 @@ export default function GLBudgetsPage() {
     try {
       const res = await fetch(`${API_URL}/api/gl-budgets/${budgetId}/freeze`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       if (res.ok) {
         toast({ title: 'Success', description: 'Budget frozen' });
@@ -162,7 +181,7 @@ export default function GLBudgetsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify({
           fromYear: (currentYear - 1).toString(),

@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { resourceApi } from '@/lib/api/resources';
+import { employeesAPI } from '@/lib/api/employeesAPI';
+import { projectsAPI } from '@/lib/api/projectsAPI';
 import ResourceAllocationForm from '@/components/resources/ResourceAllocationForm';
 import CapacityPlanningView from '@/components/resources/CapacityPlanningView';
 import SkillMatrixView from '@/components/resources/SkillMatrixView';
@@ -20,6 +22,7 @@ export default function ResourceManagementPage() {
 
   useEffect(() => {
     loadData();
+    loadEmployeesAndProjects();
   }, []);
 
   const loadData = async () => {
@@ -32,11 +35,26 @@ export default function ResourceManagementPage() {
         }),
         resourceApi.getSkillMatrix()
       ]);
-      setAllocations(allocRes.data);
-      setCapacityData(capacityRes.data);
-      setSkillMatrix(skillRes.data);
+      setAllocations(allocRes?.data || []);
+      setCapacityData(capacityRes?.data || []);
+      setSkillMatrix(skillRes?.data || { matrix: [], allSkills: [] });
     } catch (error) {
       console.error('Failed to load resource data:', error);
+    }
+  };
+
+  const loadEmployeesAndProjects = async () => {
+    try {
+      const [empRes, projRes] = await Promise.all([
+        employeesAPI.getAll({ status: 'active' }),
+        projectsAPI.getAll({ status: 'active' })
+      ]);
+      setEmployees(Array.isArray(empRes?.data) ? empRes.data : Array.isArray(empRes) ? empRes : []);
+      setProjects(Array.isArray(projRes?.data) ? projRes.data : Array.isArray(projRes) ? projRes : []);
+    } catch (error) {
+      console.error('Failed to load employees and projects:', error);
+      setEmployees([]);
+      setProjects([]);
     }
   };
 

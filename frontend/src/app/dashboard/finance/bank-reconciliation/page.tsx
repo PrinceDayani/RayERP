@@ -66,7 +66,7 @@ export default function BankReconciliationPage() {
   const fetchBankAccounts = async () => {
     try {
       const res = await fetch(`${API_URL}/api/general-ledger/accounts`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setAccounts((data.accounts || []).filter((a: any) => a.type === 'asset' && a.name.toLowerCase().includes('bank')));

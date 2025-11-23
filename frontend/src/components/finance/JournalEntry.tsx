@@ -51,7 +51,7 @@ const JournalEntry = () => {
 
   const fetchTemplates = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       const res = await axios.get(`${API_URL}/api/journal-entry-templates`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -61,12 +61,16 @@ const JournalEntry = () => {
 
   const fetchRecentEntries = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
+      if (!token) return;
       const res = await axios.get(`${API_URL}/api/journal-entries`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setRecentEntries((res.data.data || []).slice(0, 5));
-    } catch (error) {}
+      const entries = res.data.data || res.data || [];
+      setRecentEntries(entries.slice(0, 5));
+    } catch (error) {
+      console.error('Failed to fetch recent entries:', error);
+    }
   };
 
   const validateEntry = async () => {
@@ -117,7 +121,7 @@ const JournalEntry = () => {
     const templateName = prompt('Enter template name:');
     if (!templateName) return;
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       if (!token) return alert('Authentication required');
       await axios.post(`${API_URL}/api/journal-entry-templates`, {
         name: templateName,
@@ -164,7 +168,7 @@ const JournalEntry = () => {
   const handleBatchImport = async () => {
     if (!csvFile) return alert('Please select a CSV file');
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       if (!token) return alert('Authentication required. Please login.');
       const formData = new FormData();
       formData.append('file', csvFile);
@@ -202,12 +206,17 @@ const JournalEntry = () => {
     if (validLines.length < 2) return alert('At least 2 valid lines required');
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       if (!token) return alert('Authentication required. Please login.');
       const res = await axios.post(`${API_URL}/api/journal-entries`, {
         ...formData,
         entryDate: formData.date,
-        lines: validLines,
+        lines: validLines.map(line => ({
+          account: line.accountId,
+          debit: line.debit,
+          credit: line.credit,
+          description: line.description
+        })),
         totalDebit: totalDebits,
         totalCredit: totalCredits
       }, { headers: { Authorization: `Bearer ${token}` } });
@@ -225,8 +234,8 @@ const JournalEntry = () => {
       }
 
       alert('Journal entry created successfully!');
+      await fetchRecentEntries();
       resetForm();
-      fetchRecentEntries();
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Failed to create journal entry');
     }
@@ -273,15 +282,15 @@ const JournalEntry = () => {
                   <DialogHeader><DialogTitle>Load Template</DialogTitle></DialogHeader>
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {templates.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className="text-center py-8 text-muted-foreground">
                         <p>No templates found. Create your first template by saving an entry.</p>
                       </div>
                     ) : templates.map(template => (
-                      <Card key={template._id} className="p-4 hover:bg-gray-50 cursor-pointer" onClick={() => loadTemplate(template._id)}>
+                      <Card key={template._id} className="p-4 hover:bg-muted/50 cursor-pointer" onClick={() => loadTemplate(template._id)}>
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-semibold">{template.name}</h3>
-                            <p className="text-sm text-gray-600">{template.description}</p>
+                            <p className="text-sm text-muted-foreground">{template.description}</p>
                             <Badge className="mt-2">{template.category}</Badge>
                           </div>
                           <Button size="sm" variant="ghost">Load</Button>
@@ -331,19 +340,19 @@ const JournalEntry = () => {
             <TabsContent value="entry">
               <form onSubmit={handleSubmit} className="space-y-6">
                 {duplicateWarning && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600" />
-                    <span className="text-yellow-800">{duplicateWarning}</span>
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                    <span className="text-yellow-800 dark:text-yellow-200">{duplicateWarning}</span>
                   </div>
                 )}
 
                 {budgetWarnings.length > 0 && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
-                    <div className="flex items-center gap-2 font-semibold text-red-800">
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 space-y-2">
+                    <div className="flex items-center gap-2 font-semibold text-red-800 dark:text-red-200">
                       <AlertTriangle className="w-5 h-5" />Budget Impact Warnings
                     </div>
                     {budgetWarnings.map((warning, idx) => (
-                      <div key={idx} className="text-sm text-red-700 ml-7">
+                      <div key={idx} className="text-sm text-red-700 dark:text-red-300 ml-7">
                         {warning.message} (Variance: ${warning.variance?.toFixed(2)})
                       </div>
                     ))}
@@ -468,22 +477,22 @@ const JournalEntry = () => {
               <Label className="text-lg font-semibold flex items-center gap-2">
                 <Paperclip className="w-5 h-5" />Attachments
               </Label>
-              <div className="border-2 border-dashed rounded-lg p-6 text-center">
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center bg-muted/20">
                 <input type="file" multiple onChange={handleFileUpload} className="hidden" id="file-upload" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
                 <label htmlFor="file-upload" className="cursor-pointer">
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                  <p className="text-xs text-gray-500 mt-1">PDF, Images, Documents (Max 10MB)</p>
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Click to upload or drag and drop</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">PDF, Images, Documents (Max 10MB)</p>
                 </label>
               </div>
               {attachments.length > 0 && (
                 <div className="space-y-2">
                   {attachments.map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                    <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded border border-border">
                       <div className="flex items-center gap-3">
-                        <Paperclip className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm">{file.name}</span>
-                        <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                        <Paperclip className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-foreground">{file.name}</span>
+                        <span className="text-xs text-muted-foreground">({(file.size / 1024).toFixed(1)} KB)</span>
                       </div>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeAttachment(idx)}>
                         <X className="w-4 h-4" />
@@ -528,7 +537,7 @@ const JournalEntry = () => {
         <TabsContent value="quick">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {quickTemplates.map((template, idx) => (
-              <Card key={idx} className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => {
+              <Card key={idx} className="p-6 hover:shadow-lg transition-shadow cursor-pointer bg-card border-border" onClick={() => {
                 setFormData({
                   ...formData,
                   description: template.name,
@@ -541,10 +550,10 @@ const JournalEntry = () => {
                 });
               }}>
                 <div className="flex items-center gap-3 mb-3">
-                  <Zap className="w-6 h-6 text-blue-600" />
+                  <Zap className="w-6 h-6 text-primary" />
                   <h3 className="font-semibold text-lg">{template.name}</h3>
                 </div>
-                <p className="text-sm text-gray-600">Quick entry for {template.name.toLowerCase()}</p>
+                <p className="text-sm text-muted-foreground">Quick entry for {template.name.toLowerCase()}</p>
               </Card>
             ))}
           </div>
@@ -553,12 +562,12 @@ const JournalEntry = () => {
         <TabsContent value="recent">
           <div className="space-y-3">
             {recentEntries.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-muted-foreground">
                 <p className="text-lg">No recent entries found</p>
                 <p className="text-sm mt-2">Create your first journal entry to see it here</p>
               </div>
             ) : recentEntries.map((entry) => (
-              <Card key={entry._id} className="p-4 hover:bg-gray-50">
+              <Card key={entry._id} className="p-4 hover:bg-muted/30 bg-card border-border">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
@@ -566,7 +575,7 @@ const JournalEntry = () => {
                       <span className="font-semibold">{entry.description}</span>
                       <Badge variant="outline">{entry.status}</Badge>
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       Date: {new Date(entry.entryDate || entry.date).toLocaleDateString()} | 
                       Debit: ${entry.totalDebit?.toFixed(2)} | 
                       Credit: ${entry.totalCredit?.toFixed(2)}

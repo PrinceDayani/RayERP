@@ -12,24 +12,24 @@ interface BudgetAnalyticsProps {
 }
 
 export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
-  const totalBudget = budgets.reduce((sum, budget) => sum + budget.totalBudget, 0);
+  const totalBudget = budgets.reduce((sum, budget) => sum + (budget.totalBudget || 0), 0);
   const totalSpent = budgets.reduce((sum, budget) => 
-    sum + budget.categories.reduce((catSum, cat) => catSum + cat.spentAmount, 0), 0
+    sum + (budget.categories || []).reduce((catSum, cat) => catSum + (cat.spentAmount || 0), 0), 0
   );
   const spentPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
   const totalRemaining = totalBudget - totalSpent;
 
   const categoryData = budgets.reduce((acc, budget) => {
-    budget.categories.forEach(category => {
+    (budget.categories || []).forEach(category => {
       const existing = acc.find(item => item.type === category.type);
       if (existing) {
-        existing.allocated += category.allocatedAmount;
-        existing.spent += category.spentAmount;
+        existing.allocated += (category.allocatedAmount || 0);
+        existing.spent += (category.spentAmount || 0);
       } else {
         acc.push({
           type: category.type,
-          allocated: category.allocatedAmount,
-          spent: category.spentAmount
+          allocated: category.allocatedAmount || 0,
+          spent: category.spentAmount || 0
         });
       }
     });
@@ -48,25 +48,25 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
   ];
 
   const overBudgetProjects = budgets.filter(budget => {
-    const spent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
-    return spent > budget.totalBudget;
+    const spent = (budget.categories || []).reduce((sum, cat) => sum + (cat.spentAmount || 0), 0);
+    return spent > (budget.totalBudget || 0);
   });
 
   const underBudgetProjects = budgets.filter(budget => {
-    const spent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
+    const spent = (budget.categories || []).reduce((sum, cat) => sum + (cat.spentAmount || 0), 0);
     const utilization = budget.totalBudget > 0 ? (spent / budget.totalBudget) * 100 : 0;
     return utilization < 80 && budget.status === 'approved';
   });
 
   const atRiskProjects = budgets.filter(budget => {
-    const spent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
+    const spent = (budget.categories || []).reduce((sum, cat) => sum + (cat.spentAmount || 0), 0);
     const utilization = budget.totalBudget > 0 ? (spent / budget.totalBudget) * 100 : 0;
     return utilization >= 90 && utilization <= 100;
   });
 
   const avgUtilization = budgets.length > 0 
     ? budgets.reduce((sum, budget) => {
-        const spent = budget.categories.reduce((s, cat) => s + cat.spentAmount, 0);
+        const spent = (budget.categories || []).reduce((s, cat) => s + (cat.spentAmount || 0), 0);
         return sum + (budget.totalBudget > 0 ? (spent / budget.totalBudget) * 100 : 0);
       }, 0) / budgets.length
     : 0;
@@ -264,9 +264,9 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
             {overBudgetProjects.length > 0 ? (
               <div className="space-y-3">
                 {overBudgetProjects.slice(0, 5).map((budget) => {
-                  const spent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
-                  const overAmount = spent - budget.totalBudget;
-                  const overPercentage = ((spent / budget.totalBudget) - 1) * 100;
+                  const spent = (budget.categories || []).reduce((sum, cat) => sum + (cat.spentAmount || 0), 0);
+                  const overAmount = spent - (budget.totalBudget || 0);
+                  const overPercentage = budget.totalBudget > 0 ? ((spent / budget.totalBudget) - 1) * 100 : 0;
                   
                   return (
                     <div key={budget._id} className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
@@ -298,9 +298,9 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
             {atRiskProjects.length > 0 ? (
               <div className="space-y-3">
                 {atRiskProjects.slice(0, 5).map((budget) => {
-                  const spent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
-                  const utilization = (spent / budget.totalBudget) * 100;
-                  const remaining = budget.totalBudget - spent;
+                  const spent = (budget.categories || []).reduce((sum, cat) => sum + (cat.spentAmount || 0), 0);
+                  const utilization = budget.totalBudget > 0 ? (spent / budget.totalBudget) * 100 : 0;
+                  const remaining = (budget.totalBudget || 0) - spent;
                   
                   return (
                     <div key={budget._id} className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
@@ -329,7 +329,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
         <CardContent>
           <div className="space-y-4">
             {budgets.slice(0, 10).map((budget) => {
-              const spent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
+              const spent = (budget.categories || []).reduce((sum, cat) => sum + (cat.spentAmount || 0), 0);
               const utilization = budget.totalBudget > 0 ? (spent / budget.totalBudget) * 100 : 0;
               
               return (

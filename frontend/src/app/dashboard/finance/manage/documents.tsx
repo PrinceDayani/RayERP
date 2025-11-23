@@ -17,14 +17,14 @@ export default function DocumentManager() {
   useEffect(() => { fetchDocuments(); }, []);
 
   const fetchDocuments = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     const res = await fetch(`${API_URL}/api/finance-advanced/documents`, { headers: { Authorization: `Bearer ${token}` } });
     setDocuments((await res.json()).documents || []);
   };
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     await fetch(`${API_URL}/api/finance-advanced/documents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

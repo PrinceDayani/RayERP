@@ -14,7 +14,7 @@ export default function AgingAnalysis() {
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     const [rec, pay] = await Promise.all([
       fetch(`${API_URL}/api/finance-advanced/aging-analysis?type=receivables`, { headers: { Authorization: `Bearer ${token}` } }),
       fetch(`${API_URL}/api/finance-advanced/aging-analysis?type=payables`, { headers: { Authorization: `Bearer ${token}` } })

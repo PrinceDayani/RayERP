@@ -15,7 +15,7 @@ export default function AuditTrail() {
   useEffect(() => { fetchLogs(); }, []);
 
   const fetchLogs = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     const res = await fetch(`${API_URL}/api/finance-advanced/audit-logs?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
     setLogs((await res.json()).logs || []);
   };

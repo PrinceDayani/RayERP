@@ -62,7 +62,7 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
     lastFetchRef.current = now;
 
     try {
-      const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
       if (!token) {
         setError('No authentication token found');
         setLoading(false);
@@ -106,7 +106,7 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
 
     const initSocket = async () => {
       try {
-        const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+        const token = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
         const socket = await initializeSocket(token || undefined);
         if (!mounted || !socket) {
           if (!pollingIntervalRef.current) {

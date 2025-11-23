@@ -47,7 +47,7 @@ export default function ProjectAccessManager() {
     try {
       // Fetch users
       const usersResponse = await fetch('/api/users', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth-token')}` }
       });
       if (usersResponse.ok) {
         const usersData = await usersResponse.json();

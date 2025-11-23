@@ -31,7 +31,7 @@ export default function EnhancedReportsPage() {
   const generateReport = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       const [reportRes, varianceRes] = await Promise.all([
         fetch(`${API_URL}/api/financial-reports-enhanced/profit-loss-budget?startDate=${startDate}&endDate=${endDate}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -57,7 +57,7 @@ export default function EnhancedReportsPage() {
 
   const exportReport = async (format: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       const res = await fetch(
         `${API_URL}/api/financial-reports-enhanced/export?reportType=${reportType}&format=${format}&startDate=${startDate}&endDate=${endDate}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -73,7 +73,7 @@ export default function EnhancedReportsPage() {
 
   const scheduleEmail = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       const res = await fetch(`${API_URL}/api/financial-reports-enhanced/schedule-email`, {
         method: 'POST',
         headers: {

@@ -13,7 +13,12 @@ export const authAPI = {
   },
 
   getProfile: async () => {
-    const response = await api.get("/api/auth/profile");
+    const response = await api.get("/auth/me");
+    return response.data;
+  },
+
+  getCurrentUser: async () => {
+    const response = await api.get("/auth/me");
     return response.data;
   },
 };

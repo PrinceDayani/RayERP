@@ -35,7 +35,7 @@ export function GroupSelector({ value, onValueChange, groups, onGroupCreated, pl
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify(formData)
       });

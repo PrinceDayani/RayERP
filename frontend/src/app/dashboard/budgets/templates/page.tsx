@@ -70,7 +70,14 @@ export default function BudgetTemplatesPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setTemplates(data.data || []);
+        const templates = (data.data || []).map((t: BudgetTemplate) => ({
+          ...t,
+          categories: (t.categories || []).map(cat => ({
+            ...cat,
+            items: cat.items || []
+          }))
+        }));
+        setTemplates(templates);
       }
     } catch (error) {
       console.error("Error fetching templates:", error);
@@ -95,7 +102,7 @@ export default function BudgetTemplatesPage() {
     setFormData(prev => ({
       ...prev,
       categories: prev.categories.map(cat => 
-        cat._id === id ? { ...cat, [field]: value } : cat
+        cat._id === id ? { ...cat, [field]: value, items: cat.items || [] } : cat
       )
     }));
   };
@@ -230,7 +237,14 @@ export default function BudgetTemplatesPage() {
 
   const handleEdit = (template: BudgetTemplate) => {
     setEditingTemplate(template);
-    setFormData(template);
+    const normalizedTemplate = {
+      ...template,
+      categories: (template.categories || []).map(cat => ({
+        ...cat,
+        items: cat.items || []
+      }))
+    };
+    setFormData(normalizedTemplate);
     setShowForm(true);
   };
 
@@ -270,9 +284,10 @@ export default function BudgetTemplatesPage() {
 
   const getTotalAmount = (template: BudgetTemplate) => {
     if (!template.categories || !Array.isArray(template.categories)) return 0;
-    return template.categories.reduce((sum, cat) => 
-      sum + (cat.items || []).reduce((catSum, item) => catSum + (item.totalCost || 0), 0), 0
-    );
+    return template.categories.reduce((sum, cat) => {
+      const items = Array.isArray(cat.items) ? cat.items : [];
+      return sum + items.reduce((catSum, item) => catSum + (item.totalCost || 0), 0);
+    }, 0);
   };
 
   const createTestTemplate = async () => {
@@ -393,8 +408,8 @@ export default function BudgetTemplatesPage() {
                     </Button>
                   </div>
 
-                  {formData.categories.map((category) => (
-                    <Card key={category._id}>
+                  {(formData.categories || []).map((category, catIndex) => (
+                    <Card key={category._id || `category-${catIndex}`}>
                       <CardHeader className="pb-3">
                         <div className="flex justify-between items-center">
                           <div className="grid grid-cols-3 gap-4 flex-1">
@@ -437,8 +452,8 @@ export default function BudgetTemplatesPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
-                          {category.items.map((item) => (
-                            <div key={item._id} className="grid grid-cols-6 gap-2 items-center">
+                          {(category.items || []).map((item, itemIndex) => (
+                            <div key={item._id || `item-${itemIndex}`} className="grid grid-cols-6 gap-2 items-center">
                               <Input
                                 placeholder="Item name"
                                 value={item.name}
@@ -495,8 +510,8 @@ export default function BudgetTemplatesPage() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map((template) => (
-            <Card key={template._id}>
+          {(templates || []).map((template, templateIndex) => (
+            <Card key={template._id || `template-${templateIndex}`}>
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>

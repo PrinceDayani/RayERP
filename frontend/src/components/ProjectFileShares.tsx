@@ -53,7 +53,7 @@ export default function ProjectFileShares({ projectId }: ProjectFileSharesProps)
     try {
       const response = await fetch(`/api/file-shares/projects/${projectId}/shares`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
       });
       const data = await response.json();

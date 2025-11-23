@@ -14,7 +14,7 @@ export default function RecurringEntryManager() {
   }, []);
 
   const loadData = async () => {
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('auth-token') || '';
     const [allRes, failedRes, pendingRes] = await Promise.all([
       recurringEntryAPI.getAll(token),
       recurringEntryAPI.getFailed(token),
@@ -27,7 +27,7 @@ export default function RecurringEntryManager() {
   };
 
   const handleSkipNext = async (id: string) => {
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('auth-token') || '';
     const res = await recurringEntryAPI.skipNext(token, id);
     if (res.success) {
       alert('Next occurrence skipped');
@@ -36,7 +36,7 @@ export default function RecurringEntryManager() {
   };
 
   const handleRetry = async (id: string) => {
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('auth-token') || '';
     const res = await recurringEntryAPI.retry(token, id);
     if (res.success) {
       alert('Retry initiated');
@@ -45,7 +45,7 @@ export default function RecurringEntryManager() {
   };
 
   const handleApprove = async (id: string) => {
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('auth-token') || '';
     const res = await recurringEntryAPI.approve(token, id);
     if (res.success) {
       alert('Entry approved');
@@ -54,7 +54,7 @@ export default function RecurringEntryManager() {
   };
 
   const handleBatchApprove = async () => {
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('auth-token') || '';
     const ids = pending.map(e => e._id);
     const res = await recurringEntryAPI.batchApprove(token, ids);
     if (res.success) {

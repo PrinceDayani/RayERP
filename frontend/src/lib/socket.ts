@@ -66,7 +66,7 @@ export const initializeSocket = async (token?: string): Promise<SocketType | nul
     // Safely get token from localStorage if not provided
     let authToken = token;
     if (!authToken && typeof window !== 'undefined') {
-      authToken = localStorage.getItem('auth-token') || localStorage.getItem('token') || undefined;
+      authToken = localStorage.getItem('auth-token') || localStorage.getItem('auth-token') || undefined;
     }
     
     // Validate token before sending

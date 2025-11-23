@@ -25,7 +25,8 @@ export default function BudgetDetailPage() {
 
   const fetchBudget = async () => {
     try {
-      const data = await getBudget(budgetId);
+      const response = await getBudget(budgetId);
+      const data = response?.data || response;
       setBudget(data);
     } catch (error) {
       console.error('Error fetching budget:', error);
@@ -92,7 +93,7 @@ export default function BudgetDetailPage() {
           <div className="flex items-center gap-2">
             {getStatusIcon(budget.status)}
             <Badge className={getStatusColor(budget.status)}>
-              {budget.status.charAt(0).toUpperCase() + budget.status.slice(1)}
+              {budget.status ? budget.status.charAt(0).toUpperCase() + budget.status.slice(1) : 'Unknown'}
             </Badge>
           </div>
         </div>
@@ -104,7 +105,7 @@ export default function BudgetDetailPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {budget.totalBudget.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{budget.currency} {(budget.totalBudget || 0).toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -114,7 +115,7 @@ export default function BudgetDetailPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {actualSpent.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{budget.currency} {(actualSpent || 0).toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -124,7 +125,7 @@ export default function BudgetDetailPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {remainingBudget.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{budget.currency} {budget.remainingBudget.toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -134,8 +135,8 @@ export default function BudgetDetailPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{utilizationPercentage.toFixed(1)}%</div>
-              <Progress value={utilizationPercentage} className="mt-2" />
+              <div className="text-2xl font-bold">{budget.utilizationPercentage.toFixed(1)}%</div>
+              <Progress value={budget.utilizationPercentage} className="mt-2" />
             </CardContent>
           </Card>
         </div>
@@ -174,7 +175,7 @@ export default function BudgetDetailPage() {
               <CardTitle>Budget Categories</CardTitle>
             </CardHeader>
             <CardContent>
-              {budget.categories.length > 0 ? (
+              {budget.categories && budget.categories.length > 0 ? (
                 <div className="space-y-4">
                   {budget.categories.map((category, index) => (
                     <div key={index} className="border rounded-lg p-4">
@@ -218,7 +219,7 @@ export default function BudgetDetailPage() {
           </Card>
         </div>
 
-        {budget.approvals.length > 0 && (
+        {budget.approvals && budget.approvals.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Approval History</CardTitle>

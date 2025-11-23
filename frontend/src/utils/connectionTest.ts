@@ -14,7 +14,7 @@ export const testBackendConnection = async () => {
     console.log('✅ Backend health check passed:', healthData);
     
     // Test finance routes
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     if (token) {
       const financeResponse = await fetch(`${API_URL}/api/general-ledger/accounts`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -36,7 +36,7 @@ export const testBackendConnection = async () => {
 
 export const getFinanceStats = async () => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     if (!token) {
       return { accounts: 0, entries: 0, vouchers: 0, budgets: 0 };
     }
@@ -71,7 +71,7 @@ export const getFinanceStats = async () => {
 
 export const getBudgetAnalytics = async () => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     if (!token) {
       return null;
     }

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import archiver from 'archiver';
+// import archiver from 'archiver'; // Temporarily disabled
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -27,172 +27,13 @@ import BackupSchedule from '../models/BackupSchedule';
 
 // Enhanced backup creation with logging and advanced options
 export const createSystemBackup = async (req: Request, res: Response) => {
-  const startTime = new Date();
-  const backupId = crypto.randomUUID();
-  
-  // Create backup log entry
-  const backupLog = new BackupLog({
-    backupId,
-    type: 'manual',
-    backupType: req.query.backupType || 'full',
-    status: 'in-progress',
-    startTime,
-    isEncrypted: req.query.encrypt === 'true',
-    createdBy: {
-      id: req.user.id,
-      name: req.user.name,
-      email: req.user.email
-    },
-    modules: req.query.modules ? req.query.modules.toString().split(',') : []
-  });
-  
   try {
-    await backupLog.save();
-    
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupType = req.query.backupType as string || 'full';
-    const backupFileName = `${backupType}-backup-${timestamp}.zip`;
-    
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${backupFileName}"`);
-    
-    const archive = archiver('zip', { zlib: { level: 9 } });
-    let totalSize = 0;
-    
-    archive.on('progress', (progress) => {
-      totalSize = progress.entries.processed;
+    res.status(503).json({ 
+      message: 'Backup functionality temporarily disabled - archiver package not installed',
+      error: 'Please install archiver package to enable backup functionality'
     });
-    
-    archive.on('error', async (err) => {
-      await BackupLog.findByIdAndUpdate(backupLog._id, {
-        status: 'failed',
-        endTime: new Date(),
-        errorMessage: err.message
-      });
-      throw err;
-    });
-    
-    archive.pipe(res);
-    
-    // Selective data fetching based on modules
-    const modules = req.query.modules ? req.query.modules.toString().split(',') : ['hr', 'projects', 'finance', 'contacts', 'users', 'system'];
-    
-    let dataToBackup: any = {};
-    
-    if (backupType === 'database' || backupType === 'full') {
-      if (modules.includes('hr')) {
-        const [employees, attendance, leaves] = await Promise.all([
-          Employee.find().lean(),
-          Attendance.find().lean(),
-          Leave.find().lean()
-        ]);
-        dataToBackup = { ...dataToBackup, employees, attendance, leaves };
-      }
-      
-      if (modules.includes('projects')) {
-        const [projects, tasks] = await Promise.all([
-          Project.find().lean(),
-          Task.find().lean()
-        ]);
-        dataToBackup = { ...dataToBackup, projects, tasks };
-      }
-      
-      if (modules.includes('finance')) {
-        const [budgets, accounts, transactions, invoices, payments, expenses] = await Promise.all([
-          Budget.find().lean(),
-          Account.find().lean(),
-          Transaction.find().lean(),
-          Invoice.find().lean(),
-          Payment.find().lean(),
-          Expense.find().lean()
-        ]);
-        dataToBackup = { ...dataToBackup, budgets, accounts, transactions, invoices, payments, expenses };
-      }
-      
-      if (modules.includes('contacts')) {
-        const contacts = await Contact.find().lean();
-        dataToBackup = { ...dataToBackup, contacts };
-      }
-      
-      if (modules.includes('users')) {
-        const [users, roles] = await Promise.all([
-          User.find().select('-password').lean(),
-          Role.find().lean()
-        ]);
-        dataToBackup = { ...dataToBackup, users, roles };
-      }
-      
-      if (modules.includes('system')) {
-        const [departments, settings, activityLogs, chats] = await Promise.all([
-          Department.find().lean(),
-          Settings.find().lean(),
-          ActivityLog.find().lean(),
-          Chat.find().lean()
-        ]);
-        dataToBackup = { ...dataToBackup, departments, settings, activityLogs, chats };
-      }
-      
-      // Add data files to archive
-      for (const [key, data] of Object.entries(dataToBackup)) {
-        let content = JSON.stringify(data, null, 2);
-        if (req.query.encrypt === 'true') {
-          const cipher = crypto.createCipher('aes-256-cbc', process.env.BACKUP_ENCRYPTION_KEY || 'default-key');
-          content = cipher.update(content, 'utf8', 'hex') + cipher.final('hex');
-        }
-        archive.append(content, { name: `${key}.json` });
-      }
-    }
-    
-    // Add files if requested
-    if (backupType === 'files' || backupType === 'full') {
-      const uploadsPath = path.join(__dirname, '../../uploads');
-      if (fs.existsSync(uploadsPath)) {
-        archive.directory(uploadsPath, 'uploads');
-      }
-      
-      const publicUploadsPath = path.join(__dirname, '../../public/uploads');
-      if (fs.existsSync(publicUploadsPath)) {
-        archive.directory(publicUploadsPath, 'public-uploads');
-      }
-    }
-    
-    // Add metadata
-    const metadata = {
-      backupId,
-      backupDate: startTime.toISOString(),
-      version: '2.0.0',
-      backupType,
-      modules,
-      isEncrypted: req.query.encrypt === 'true',
-      createdBy: req.user.name,
-      totalRecords: Object.keys(dataToBackup).reduce((acc, key) => {
-        acc[key] = Array.isArray(dataToBackup[key]) ? dataToBackup[key].length : 0;
-        return acc;
-      }, {} as any)
-    };
-    archive.append(JSON.stringify(metadata, null, 2), { name: 'backup-info.json' });
-    
-    // Finalize and update log
-    archive.on('end', async () => {
-      const endTime = new Date();
-      await BackupLog.findByIdAndUpdate(backupLog._id, {
-        status: 'success',
-        endTime,
-        duration: endTime.getTime() - startTime.getTime(),
-        size: archive.pointer()
-      });
-    });
-    
-    await archive.finalize();
-    
   } catch (error) {
-    console.error('Backup creation error:', error);
-    await BackupLog.findByIdAndUpdate(backupLog._id, {
-      status: 'failed',
-      endTime: new Date(),
-      errorMessage: error.message
-    });
-    res.status(500).json({ message: 'Failed to create backup', error: error.message });
+    res.status(500).json({ message: 'Backup service unavailable', error: error.message });
   }
 };
 

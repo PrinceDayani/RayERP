@@ -13,7 +13,12 @@ export const createBudget = async (req: Request, res: Response) => {
       createdBy: req.user.id
     };
 
-    // Validate project exists
+    // Remove empty projectId
+    if (!budgetData.projectId || budgetData.projectId === '') {
+      delete budgetData.projectId;
+    }
+
+    // Validate project exists if projectId is provided
     if (budgetData.projectId) {
       const project = await Project.findById(budgetData.projectId);
       if (!project) {
@@ -165,28 +170,36 @@ export const approveBudget = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Budget not found' });
     }
 
+    const mongoose = require('mongoose');
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+
     // Find the current approval level
-    const currentApproval = budget.approvals.find(
+    const currentApproval = budget.approvals?.find(
       approval => approval.userId.toString() === req.user!.id && approval.status === 'pending'
     );
 
-    if (!currentApproval) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No pending approval found for this user' 
-      });
-    }
+    if (currentApproval) {
+      // Update existing approval
+      currentApproval.status = 'approved';
+      currentApproval.approvedAt = new Date();
+      currentApproval.comments = comments;
 
-    // Update approval
-    currentApproval.status = 'approved';
-    currentApproval.approvedAt = new Date();
-    currentApproval.comments = comments;
-
-    // Check if all approvals are complete
-    const allApproved = budget.approvals.every(approval => approval.status === 'approved');
-    
-    if (allApproved) {
-      budget.status = 'approved';
+      // Check if all approvals are complete
+      const allApproved = budget.approvals.every(approval => approval.status === 'approved');
+      
+      if (allApproved) {
+        budget.status = 'approved';
+      }
+    } else {
+      // No approval workflow, add new approval record and approve directly
+      budget.approvals = budget.approvals || [];
+      budget.approvals.push({
+        userId: userId,
+        userName: req.user.name || req.user.email,
+        status: 'approved',
+        approvedAt: new Date(),
+        comments
+      } as any);
       budget.status = 'approved';
     }
 
@@ -198,6 +211,7 @@ export const approveBudget = async (req: Request, res: Response) => {
       message: 'Budget approved successfully'
     });
   } catch (error: any) {
+    console.error('Approve budget error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -215,24 +229,31 @@ export const rejectBudget = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Budget not found' });
     }
 
+    const mongoose = require('mongoose');
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+
     // Find the current approval level
-    const currentApproval = budget.approvals.find(
+    const currentApproval = budget.approvals?.find(
       approval => approval.userId.toString() === req.user!.id && approval.status === 'pending'
     );
 
-    if (!currentApproval) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No pending approval found for this user' 
-      });
+    if (currentApproval) {
+      // Update existing approval
+      currentApproval.status = 'rejected';
+      currentApproval.approvedAt = new Date();
+      currentApproval.comments = comments;
+    } else {
+      // No approval workflow, add new approval record
+      budget.approvals = budget.approvals || [];
+      budget.approvals.push({
+        userId: userId,
+        userName: req.user.name || req.user.email,
+        status: 'rejected',
+        approvedAt: new Date(),
+        comments
+      } as any);
     }
 
-    // Update approval
-    currentApproval.status = 'rejected';
-    currentApproval.approvedAt = new Date();
-    currentApproval.comments = comments;
-
-    budget.status = 'rejected';
     budget.status = 'rejected';
 
     await budget.save();
@@ -243,6 +264,7 @@ export const rejectBudget = async (req: Request, res: Response) => {
       message: 'Budget rejected'
     });
   } catch (error: any) {
+    console.error('Reject budget error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

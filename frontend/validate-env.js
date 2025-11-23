@@ -3,25 +3,26 @@
 const fs = require('fs');
 const path = require('path');
 
-// Load environment variables from .env files
-function loadEnvFile(filePath) {
+function loadEnvFile(filename) {
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    content.split('\n').forEach(line => {
-      const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith('#')) {
-        const [key, ...valueParts] = trimmed.split('=');
-        if (key && valueParts.length > 0) {
-          process.env[key] = valueParts.join('=');
+    const envPath = path.join(__dirname, filename);
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      envContent.split('\n').forEach(line => {
+        line = line.trim();
+        if (line && !line.startsWith('#') && !line.startsWith('//')) {
+          const [key, ...valueParts] = line.split('=');
+          if (key && valueParts.length > 0) {
+            process.env[key.trim()] = valueParts.join('=').trim();
+          }
         }
-      }
-    });
+      });
+    }
   } catch (error) {
-    // File doesn't exist, ignore
+    // Ignore errors
   }
 }
 
-// Load .env files in order of precedence
 loadEnvFile('.env');
 loadEnvFile('.env.local');
 
