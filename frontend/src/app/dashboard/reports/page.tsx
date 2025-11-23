@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { Download, FileText, Users, Target, MessageSquare, Phone, Calendar, TrendingUp, TrendingDown, Clock, AlertCircle, CheckCircle, Star, ChevronDown, FileSpreadsheet, File } from 'lucide-react';
 import { exportToPDF, exportToExcel, exportToCSV, exportToText, ExportData } from '@/lib/exportUtils';
 import toast from 'react-hot-toast';
+import { reportsAPI } from '@/lib/api/reportsAPI';
 
 const COLORS = {
   primary: '#3b82f6',
@@ -28,17 +29,71 @@ export default function ReportsPage() {
   const [dateRange, setDateRange] = useState('30d');
   const [department, setDepartment] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [employeeReportsData, setEmployeeReportsData] = useState<any>(null);
+  const [projectReportsData, setProjectReportsData] = useState<any>(null);
+  const [taskReportsData, setTaskReportsData] = useState<any>(null);
+  const [teamProductivityData, setTeamProductivityData] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchAllReports();
+  }, [dateRange]);
+
+  const getDateRange = () => {
+    const to = new Date().toISOString();
+    const from = new Date();
+    
+    switch (dateRange) {
+      case '7d':
+        from.setDate(from.getDate() - 7);
+        break;
+      case '30d':
+        from.setDate(from.getDate() - 30);
+        break;
+      case '90d':
+        from.setDate(from.getDate() - 90);
+        break;
+      default:
+        from.setDate(from.getDate() - 30);
+    }
+    
+    return { from: from.toISOString(), to };
+  };
+
+  const fetchAllReports = async () => {
+    setLoading(true);
+    try {
+      const dateParams = getDateRange();
+      
+      const [employeeRes, projectRes, taskRes, productivityRes] = await Promise.all([
+        reportsAPI.getEmployeeReports(dateParams),
+        reportsAPI.getProjectReports(dateParams),
+        reportsAPI.getTaskReports(dateParams),
+        reportsAPI.getTeamProductivity(dateParams)
+      ]);
+      
+      setEmployeeReportsData(employeeRes.data);
+      setProjectReportsData(projectRes.data);
+      setTaskReportsData(taskRes.data);
+      setTeamProductivityData(productivityRes.data || []);
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      toast.error('Failed to load reports data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Prepare export data
   const getExportData = (): ExportData => ({
     selectedReport,
     dateRange,
     department,
-    employeeData,
-    projectReports,
-    taskAnalytics,
-    chatReports,
-    contactReports
+    employeeData: teamProductivityData,
+    projectReports: projectReportsData,
+    taskAnalytics: taskReportsData,
+    chatReports: [],
+    contactReports: []
   });
 
   // Export handlers
@@ -106,61 +161,38 @@ export default function ReportsPage() {
     }
   };
 
-  // Employee Reports Data
-  const employeeData = [
-    { name: 'Sarah Johnson', department: 'Development', tasksCompleted: 28, hoursWorked: 160, efficiency: 94, attendance: 98 },
-    { name: 'Mike Chen', department: 'Design', tasksCompleted: 25, hoursWorked: 155, efficiency: 91, attendance: 95 },
-    { name: 'Emily Davis', department: 'Marketing', tasksCompleted: 23, hoursWorked: 158, efficiency: 89, attendance: 97 },
-    { name: 'John Smith', department: 'Development', tasksCompleted: 21, hoursWorked: 152, efficiency: 87, attendance: 92 }
-  ];
+  // Transform API data for display
+  const employeeData = teamProductivityData.map(emp => ({
+    name: emp.name,
+    department: department !== 'all' ? department : 'N/A',
+    tasksCompleted: emp.completedTasks,
+    hoursWorked: 0,
+    efficiency: Math.round(emp.efficiency),
+    attendance: Math.round(emp.completionRate)
+  }));
 
-  // Project Reports Data
-  const projectReports = [
-    { name: 'ERP Module Update', status: 'On Track', progress: 85, budget: 50000, spent: 42500, team: 8, dueDate: '2025-11-15' },
-    { name: 'Mobile App Development', status: 'At Risk', progress: 45, budget: 75000, spent: 38000, team: 6, dueDate: '2025-11-20' },
-    { name: 'Database Migration', status: 'Delayed', progress: 30, budget: 30000, spent: 25000, team: 4, dueDate: '2025-11-12' },
-    { name: 'UI/UX Redesign', status: 'On Track', progress: 72, budget: 40000, spent: 28000, team: 5, dueDate: '2025-11-25' }
-  ];
+  const projectReports = projectReportsData?.statusBreakdown?.map((proj: any) => ({
+    name: proj.status,
+    status: proj.status,
+    progress: projectReportsData?.progress?.avgProgress || 0,
+    budget: proj.totalBudget || 0,
+    spent: proj.spentBudget || 0,
+    team: 0,
+    dueDate: new Date().toISOString()
+  })) || [];
 
-  // Task Reports Data
-  const taskAnalytics = [
-    { category: 'Development', total: 145, completed: 128, pending: 12, overdue: 5 },
-    { category: 'Design', total: 89, completed: 76, pending: 8, overdue: 5 },
-    { category: 'Marketing', total: 67, completed: 58, pending: 6, overdue: 3 },
-    { category: 'Testing', total: 45, completed: 38, pending: 5, overdue: 2 }
-  ];
+  const taskAnalytics = taskReportsData?.statusBreakdown?.map((task: any) => ({
+    category: task.status,
+    total: task.count,
+    completed: task.status === 'completed' ? task.count : 0,
+    pending: task.status === 'pending' ? task.count : 0,
+    overdue: taskReportsData?.overdueTasks || 0
+  })) || [];
 
-  // Chat & Communication Reports
-  const chatReports = [
-    { week: 'W1', messages: 1245, files: 89, activeUsers: 24, avgResponseTime: 12 },
-    { week: 'W2', messages: 1189, files: 76, activeUsers: 22, avgResponseTime: 15 },
-    { week: 'W3', messages: 1356, files: 95, activeUsers: 26, avgResponseTime: 10 },
-    { week: 'W4', messages: 1278, files: 82, activeUsers: 25, avgResponseTime: 13 }
-  ];
-
-  // File Sharing Reports
-  const fileReports = [
-    { type: 'Documents', shared: 156, downloaded: 423, departments: 5, users: 18 },
-    { type: 'Images', shared: 89, downloaded: 267, departments: 4, users: 15 },
-    { type: 'PDFs', shared: 67, downloaded: 189, departments: 3, users: 12 },
-    { type: 'Spreadsheets', shared: 45, downloaded: 134, departments: 4, users: 10 }
-  ];
-
-  // Contact Reports
-  const contactReports = [
-    { category: 'Clients', total: 156, active: 142, newThisMonth: 12, interactions: 89 },
-    { category: 'Vendors', total: 89, active: 78, newThisMonth: 5, interactions: 45 },
-    { category: 'Partners', total: 34, active: 32, newThisMonth: 2, interactions: 23 },
-    { category: 'Leads', total: 67, active: 45, newThisMonth: 18, interactions: 34 }
-  ];
-
-  const attendanceData = [
-    { month: 'Jul', rate: 94.5 },
-    { month: 'Aug', rate: 92.8 },
-    { month: 'Sep', rate: 96.2 },
-    { month: 'Oct', rate: 93.7 },
-    { month: 'Nov', rate: 95.1 }
-  ];
+  const chatReports: any[] = [];
+  const fileReports: any[] = [];
+  const contactReports: any[] = [];
+  const attendanceData: any[] = [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -181,8 +213,8 @@ export default function ReportsPage() {
             <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-green-600">+2 this month</p>
+            <div className="text-2xl font-bold">{teamProductivityData.length}</div>
+            <p className="text-xs text-green-600">Active employees</p>
           </CardContent>
         </Card>
 
@@ -192,8 +224,8 @@ export default function ReportsPage() {
             <Target className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-blue-600">3 completing this month</p>
+            <div className="text-2xl font-bold">{projectReportsData?.progress?.totalProjects || 0}</div>
+            <p className="text-xs text-blue-600">{projectReportsData?.progress?.completedProjects || 0} completed</p>
           </CardContent>
         </Card>
 
@@ -203,8 +235,8 @@ export default function ReportsPage() {
             <CheckCircle className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">346</div>
-            <p className="text-xs text-green-600">78% completion rate</p>
+            <div className="text-2xl font-bold">{taskReportsData?.statusBreakdown?.reduce((sum: number, t: any) => sum + t.count, 0) || 0}</div>
+            <p className="text-xs text-green-600">{taskReportsData?.overdueTasks || 0} overdue</p>
           </CardContent>
         </Card>
 
@@ -300,7 +332,13 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {employeeData.map((employee, index) => (
+                {employeeData.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                      No employee data available
+                    </td>
+                  </tr>
+                ) : employeeData.map((employee, index) => (
                   <tr key={index} className="border-b">
                     <td className="py-3 px-4 font-medium">{employee.name}</td>
                     <td className="py-3 px-4 text-muted-foreground">{employee.department}</td>
@@ -338,7 +376,11 @@ export default function ReportsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {projectReports.map((project, index) => (
+            {projectReports.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No project data available
+              </div>
+            ) : projectReports.map((project, index) => (
               <div key={index} className="bg-muted/50 p-4 rounded-lg">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-medium">{project.name}</h3>
@@ -386,7 +428,11 @@ export default function ReportsPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              {taskAnalytics.map((category, index) => (
+              {taskAnalytics.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No task data available
+                </div>
+              ) : taskAnalytics.map((category, index) => (
                 <div key={index} className="bg-muted/50 p-4 rounded-lg">
                   <h3 className="font-medium mb-3">{category.category}</h3>
                   <div className="grid grid-cols-4 gap-2 text-center text-sm">
@@ -592,6 +638,15 @@ export default function ReportsPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <p className="text-muted-foreground">Loading reports...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 min-h-screen">
       {/* Header */}
@@ -602,6 +657,11 @@ export default function ReportsPage() {
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={fetchAllReports} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          
           <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="w-32">
               <SelectValue />
