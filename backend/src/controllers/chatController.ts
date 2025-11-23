@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import Chat from '../models/Chat';
 import User from '../models/User';
+import ActivityLog from '../models/ActivityLog';
+import Notification from '../models/Notification';
 import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
@@ -65,7 +67,7 @@ export const chatController = {
   sendMessage: async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.id;
-      const { chatId, content, type = 'text', fileUrl, location } = req.body;
+      const { chatId, content, type = 'text', fileData, fileName, fileSize, mimeType, location } = req.body;
 
       const chat = await Chat.findById(chatId);
       if (!chat) {
@@ -89,6 +91,11 @@ export const chatController = {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
 
+      // Validate file size (5MB limit for Base64 storage)
+      if (fileSize && fileSize > 5 * 1024 * 1024) {
+        return res.status(400).json({ success: false, message: 'File size exceeds 5MB limit' });
+      }
+
       const userAgent = req.headers['user-agent'] || '';
       const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
@@ -100,7 +107,10 @@ export const chatController = {
         timestamp: new Date(),
         read: false,
         type,
-        fileUrl,
+        fileData,
+        fileName,
+        fileSize,
+        mimeType,
         metadata: {
           ipAddress: typeof ipAddress === 'string' ? ipAddress : ipAddress?.[0],
           userAgent,
@@ -125,8 +135,56 @@ export const chatController = {
         .populate('participants', 'name email')
         .populate('messages.sender', 'name email');
 
+      // Create activity log for file/image messages
+      if (type === 'file' || type === 'image') {
+        await ActivityLog.create({
+          user: userId,
+          userName: currentUser.name,
+          action: type === 'image' ? 'sent_image' : 'sent_file',
+          resource: fileName || content,
+          resourceType: 'file',
+          status: 'success',
+          details: `Sent ${type} in chat: ${fileName || content} (${fileSize ? (fileSize / 1024).toFixed(2) + 'KB' : 'unknown size'})`,
+          metadata: { chatId, fileName, fileSize, mimeType },
+          ipAddress: typeof ipAddress === 'string' ? ipAddress : ipAddress?.[0] || 'unknown',
+          visibility: 'private'
+        });
+      }
+
+      // Send notifications to other participants
+      const otherParticipants = chat.participants.filter((p: any) => p.toString() !== userId);
+      for (const participantId of otherParticipants) {
+        let notificationMessage = content;
+        if (type === 'image') {
+          notificationMessage = `📷 ${currentUser.name} sent an image${content !== fileName ? ': ' + content : ''}`;
+        } else if (type === 'file') {
+          notificationMessage = `📎 ${currentUser.name} sent a file: ${fileName || content}`;
+        } else {
+          notificationMessage = `${currentUser.name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`;
+        }
+
+        await Notification.create({
+          userId: participantId,
+          type: 'info',
+          title: 'New Message',
+          message: notificationMessage,
+          priority: 'medium',
+          actionUrl: `/dashboard/chat?chatId=${chatId}`,
+          metadata: { chatId, messageType: type, senderId: userId }
+        });
+      }
+
       const { io } = await import('../server');
       io.to(chatId).emit('chat:message', { chatId, message: populatedChat?.messages[populatedChat.messages.length - 1] });
+
+      // Emit notifications to other participants
+      for (const participantId of otherParticipants) {
+        io.to(participantId.toString()).emit('notification', {
+          type: 'chat',
+          message: `New message from ${currentUser.name}`,
+          chatId
+        });
+      }
 
       res.json({ success: true, data: populatedChat });
     } catch (error: any) {
@@ -134,29 +192,7 @@ export const chatController = {
     }
   },
 
-  // Upload file for chat
-  uploadFile: async (req: Request, res: Response) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ success: false, message: 'No file uploaded' });
-      }
 
-      const fileUrl = `/uploads/chat/${req.file.filename}`;
-      const fileType = req.file.mimetype.startsWith('image/') ? 'image' : 'file';
-
-      res.json({ 
-        success: true, 
-        data: { 
-          fileUrl, 
-          type: fileType,
-          filename: req.file.originalname,
-          size: req.file.size
-        } 
-      });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message });
-    }
-  },
 
   // Get messages for a chat
   getMessages: async (req: Request, res: Response) => {

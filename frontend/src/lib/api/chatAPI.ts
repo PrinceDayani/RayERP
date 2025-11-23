@@ -11,7 +11,7 @@ export const chatAPI = {
     return response.data;
   },
 
-  sendMessage: async (chatId: string, content: string, type = 'text', fileUrl?: string) => {
+  sendMessage: async (chatId: string, content: string, type = 'text', fileData?: string, fileName?: string, fileSize?: number, mimeType?: string) => {
     let location;
     if (navigator.geolocation && navigator.permissions) {
       try {
@@ -34,7 +34,10 @@ export const chatAPI = {
       chatId,
       content,
       type,
-      fileUrl,
+      fileData,
+      fileName,
+      fileSize,
+      mimeType,
       location
     });
     return response.data;

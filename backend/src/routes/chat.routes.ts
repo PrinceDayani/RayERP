@@ -36,7 +36,6 @@ router.use(protect);
 router.get('/chats', chatController.getChats);
 router.post('/chats', chatController.getOrCreateChat);
 router.post('/chats/message', chatController.sendMessage);
-router.post('/chats/upload', upload.single('file'), chatController.uploadFile);
 router.get('/chats/:chatId/messages', chatController.getMessages);
 router.put('/chats/:chatId/read', chatController.markAsRead);
 router.get('/users', chatController.getUsers);

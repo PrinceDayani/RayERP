@@ -26,8 +26,14 @@ export default function BudgetDetailPage() {
   const fetchBudget = async () => {
     try {
       const response = await getBudget(budgetId);
-      const data = response?.data || response;
-      setBudget(data);
+      const budgetData = response?.data || response;
+      
+      // Calculate derived properties
+      const actualSpent = budgetData.categories.reduce((sum: number, cat: any) => sum + cat.spentAmount, 0);
+      budgetData.remainingBudget = budgetData.totalBudget - actualSpent;
+      budgetData.utilizationPercentage = budgetData.totalBudget > 0 ? (actualSpent / budgetData.totalBudget) * 100 : 0;
+      
+      setBudget(budgetData);
     } catch (error) {
       console.error('Error fetching budget:', error);
     } finally {
@@ -72,10 +78,8 @@ export default function BudgetDetailPage() {
     return <div className="flex justify-center items-center h-64">Budget not found</div>;
   }
 
-  // Calculate derived values
+  // Calculate derived values for display
   const actualSpent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
-  const remainingBudget = budget.totalBudget - actualSpent;
-  const utilizationPercentage = budget.totalBudget > 0 ? (actualSpent / budget.totalBudget) * 100 : 0;
 
   return (
       <div className="p-6 space-y-6">
@@ -125,7 +129,7 @@ export default function BudgetDetailPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {budget.remainingBudget.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{budget.currency} {(budget.remainingBudget || 0).toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -135,8 +139,8 @@ export default function BudgetDetailPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.utilizationPercentage.toFixed(1)}%</div>
-              <Progress value={budget.utilizationPercentage} className="mt-2" />
+              <div className="text-2xl font-bold">{(budget.utilizationPercentage || 0).toFixed(1)}%</div>
+              <Progress value={budget.utilizationPercentage || 0} className="mt-2" />
             </CardContent>
           </Card>
         </div>
