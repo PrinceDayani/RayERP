@@ -91,7 +91,7 @@ const budgetApprovalSchema = new Schema<IBudgetApproval>({
 });
 
 const budgetSchema = new Schema<IBudget>({
-  projectId: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
+  projectId: { type: Schema.Types.ObjectId, ref: 'Project' },
   projectName: String,
   fiscalYear: { type: Number, required: true, default: () => new Date().getFullYear() },
   fiscalPeriod: { type: String, required: true, default: 'Q1' },
@@ -126,16 +126,25 @@ budgetSchema.pre('save', function(next) {
     // Calculate actual spent from categories
     this.actualSpent = this.categories.reduce((sum, cat) => sum + (cat.spentAmount || 0), 0);
     
-    // If totalBudget is 0, calculate it from categories
-    if (this.totalBudget === 0) {
+    // If totalBudget is 0 or not set, calculate it from categories
+    if (!this.totalBudget || this.totalBudget === 0) {
       this.totalBudget = this.categories.reduce((sum, cat) => {
+        // Use allocatedAmount if available, otherwise calculate from items
+        if (cat.allocatedAmount && cat.allocatedAmount > 0) {
+          return sum + cat.allocatedAmount;
+        }
         const categoryTotal = cat.items ? cat.items.reduce((itemSum, item) => itemSum + (item.totalCost || 0), 0) : 0;
         return sum + categoryTotal;
       }, 0);
     }
     
     this.remainingBudget = this.totalBudget - this.actualSpent;
-    this.utilizationPercentage = this.totalBudget > 0 ? (this.actualSpent / this.totalBudget) * 100 : 0;
+    this.utilizationPercentage = this.totalBudget > 0 ? Math.min((this.actualSpent / this.totalBudget) * 100, 100) : 0;
+  } else {
+    // No categories, ensure defaults
+    this.actualSpent = this.actualSpent || 0;
+    this.remainingBudget = this.totalBudget - this.actualSpent;
+    this.utilizationPercentage = this.totalBudget > 0 ? Math.min((this.actualSpent / this.totalBudget) * 100, 100) : 0;
   }
   
   next();

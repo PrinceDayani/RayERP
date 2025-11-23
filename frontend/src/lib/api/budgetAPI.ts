@@ -20,7 +20,6 @@ export interface CreateBudgetRequest {
 }
 
 export interface ApprovalRequest {
-  status: 'approved' | 'rejected';
   comments?: string;
 }
 

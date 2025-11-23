@@ -18,7 +18,7 @@ export default function FinancialReportViewer() {
   }, [chartType, dateRange]);
 
   const loadData = async () => {
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('auth-token') || '';
     const [chartRes, varianceRes] = await Promise.all([
       financialReportsAPI.getChartData(token, chartType, dateRange.start, dateRange.end),
       financialReportsAPI.getVarianceAnalysis(token, dateRange.start, dateRange.end, '2023-01-01')
@@ -29,7 +29,7 @@ export default function FinancialReportViewer() {
   };
 
   const handleExport = async (format: string) => {
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('auth-token') || '';
     const res = await financialReportsAPI.exportReport(token, 'profit-loss', format, dateRange.start, dateRange.end);
     if (res.success) {
       alert(`Report exported as ${format}`);

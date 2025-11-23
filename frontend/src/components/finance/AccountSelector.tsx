@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 interface AccountSelectorProps {
   value: string;
@@ -28,26 +28,50 @@ export function AccountSelector({ value, onValueChange, accounts, onAccountCreat
     type: 'asset',
     description: ''
   });
+  
+  console.log('AccountSelector - accounts:', accounts.length, accounts);
 
   const handleCreate = async () => {
+    const token = localStorage.getItem('auth-token');
+    if (!token) {
+      alert('Please login to continue');
+      window.location.href = '/login';
+      return;
+    }
+    
     try {
       const res = await fetch(`${API_URL}/api/general-ledger/accounts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(formData)
       });
+      
+      if (res.status === 401) {
+        alert('Session expired. Please login again');
+        localStorage.removeItem('auth-token');
+        window.location.href = '/login';
+        return;
+      }
+      
       if (res.ok) {
         const data = await res.json();
-        onValueChange(data.account._id);
         setShowDialog(false);
         setFormData({ code: '', name: '', type: 'asset', description: '' });
-        onAccountCreated?.();
+        if (onAccountCreated) {
+          await onAccountCreated();
+        }
+        onValueChange(data._id);
+      } else {
+        const error = await res.json();
+        console.error('Error creating account:', error.message);
+        alert(error.message || 'Failed to create account');
       }
     } catch (error) {
       console.error('Error creating account:', error);
+      alert('Failed to create account');
     }
   };
 
@@ -58,12 +82,16 @@ export function AccountSelector({ value, onValueChange, accounts, onAccountCreat
           <SelectTrigger className={className}>
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
-          <SelectContent>
-            {accounts.map((acc) => (
-              <SelectItem key={acc._id} value={acc._id}>
-                {acc.code} - {acc.name}
-              </SelectItem>
-            ))}
+          <SelectContent className="max-h-[300px] overflow-y-auto" position="popper" sideOffset={5}>
+            {!accounts || accounts.length === 0 ? (
+              <div className="p-2 text-sm text-muted-foreground">No accounts available. Click + to create one.</div>
+            ) : (
+              accounts.map((acc) => (
+                <SelectItem key={acc._id} value={acc._id}>
+                  {acc.code} - {acc.name}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
         <Button type="button" size="icon" variant="outline" onClick={() => setShowDialog(true)}>

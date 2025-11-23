@@ -115,7 +115,7 @@ export default function BudgetAnalyticsPage() {
 
     if (categoryFilter !== "all") {
       filtered = filtered.filter(budget => 
-        budget.categories.some(cat => cat.type === categoryFilter)
+        (budget.categories || []).some(cat => cat.type === categoryFilter)
       );
     }
 
@@ -123,17 +123,17 @@ export default function BudgetAnalyticsPage() {
   };
 
   const uniqueCategories = budgets && budgets.length > 0 ? Array.from(
-    new Set(budgets.flatMap(b => b.categories?.map(c => c.type) || []))
+    new Set(budgets.flatMap(b => (b.categories || []).map(c => c.type).filter(Boolean)))
   ) : [];
 
   const projectBudgetData = (projects && budgets) ? projects.map(project => {
     const projectBudgets = budgets.filter(b => b.projectId === project._id);
     const totalBudget = projectBudgets.reduce((sum, b) => sum + (b.totalBudget || 0), 0);
     const totalSpent = projectBudgets.reduce((sum, b) => 
-      sum + (b.categories?.reduce((s, c) => s + (c.spentAmount || 0), 0) || 0), 0
+      sum + ((b.categories || []).reduce((s, c) => s + (c.spentAmount || 0), 0) || 0), 0
     );
     return {
-      name: project.name,
+      name: project.name || 'Unnamed Project',
       budget: totalBudget,
       spent: totalSpent,
       remaining: totalBudget - totalSpent,
@@ -144,7 +144,7 @@ export default function BudgetAnalyticsPage() {
   const monthlyTrend = budgets && budgets.length > 0 ? budgets.reduce((acc: any[], budget) => {
     const month = new Date(budget.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     const existing = acc.find(item => item.month === month);
-    const spent = budget.categories?.reduce((sum, cat) => sum + (cat.spentAmount || 0), 0) || 0;
+    const spent = (budget.categories || []).reduce((sum, cat) => sum + (cat.spentAmount || 0), 0) || 0;
     
     if (existing) {
       existing.allocated += budget.totalBudget || 0;

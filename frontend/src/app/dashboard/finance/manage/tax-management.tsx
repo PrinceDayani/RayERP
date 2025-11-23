@@ -17,14 +17,14 @@ export default function TaxManagement() {
   useEffect(() => { fetchTaxes(); }, []);
 
   const fetchTaxes = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     const res = await fetch(`${API_URL}/api/finance-advanced/taxes`, { headers: { Authorization: `Bearer ${token}` } });
     setTaxes((await res.json()).taxes || []);
   };
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     await fetch(`${API_URL}/api/finance-advanced/taxes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

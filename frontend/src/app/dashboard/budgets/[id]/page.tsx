@@ -25,8 +25,15 @@ export default function BudgetDetailPage() {
 
   const fetchBudget = async () => {
     try {
-      const data = await getBudget(budgetId);
-      setBudget(data);
+      const response = await getBudget(budgetId);
+      const budgetData = response?.data || response;
+      
+      // Calculate derived properties
+      const actualSpent = budgetData.categories.reduce((sum: number, cat: any) => sum + cat.spentAmount, 0);
+      budgetData.remainingBudget = budgetData.totalBudget - actualSpent;
+      budgetData.utilizationPercentage = budgetData.totalBudget > 0 ? (actualSpent / budgetData.totalBudget) * 100 : 0;
+      
+      setBudget(budgetData);
     } catch (error) {
       console.error('Error fetching budget:', error);
     } finally {
@@ -71,10 +78,8 @@ export default function BudgetDetailPage() {
     return <div className="flex justify-center items-center h-64">Budget not found</div>;
   }
 
-  // Calculate derived values
+  // Calculate derived values for display
   const actualSpent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
-  const remainingBudget = budget.totalBudget - actualSpent;
-  const utilizationPercentage = budget.totalBudget > 0 ? (actualSpent / budget.totalBudget) * 100 : 0;
 
   return (
       <div className="p-6 space-y-6">
@@ -92,7 +97,7 @@ export default function BudgetDetailPage() {
           <div className="flex items-center gap-2">
             {getStatusIcon(budget.status)}
             <Badge className={getStatusColor(budget.status)}>
-              {budget.status.charAt(0).toUpperCase() + budget.status.slice(1)}
+              {budget.status ? budget.status.charAt(0).toUpperCase() + budget.status.slice(1) : 'Unknown'}
             </Badge>
           </div>
         </div>
@@ -104,7 +109,7 @@ export default function BudgetDetailPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {budget.totalBudget.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{budget.currency} {(budget.totalBudget || 0).toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -114,7 +119,7 @@ export default function BudgetDetailPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {actualSpent.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{budget.currency} {(actualSpent || 0).toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -124,7 +129,7 @@ export default function BudgetDetailPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{budget.currency} {remainingBudget.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{budget.currency} {(budget.remainingBudget || 0).toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -134,8 +139,8 @@ export default function BudgetDetailPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{utilizationPercentage.toFixed(1)}%</div>
-              <Progress value={utilizationPercentage} className="mt-2" />
+              <div className="text-2xl font-bold">{(budget.utilizationPercentage || 0).toFixed(1)}%</div>
+              <Progress value={budget.utilizationPercentage || 0} className="mt-2" />
             </CardContent>
           </Card>
         </div>
@@ -174,7 +179,7 @@ export default function BudgetDetailPage() {
               <CardTitle>Budget Categories</CardTitle>
             </CardHeader>
             <CardContent>
-              {budget.categories.length > 0 ? (
+              {budget.categories && budget.categories.length > 0 ? (
                 <div className="space-y-4">
                   {budget.categories.map((category, index) => (
                     <div key={index} className="border rounded-lg p-4">
@@ -218,7 +223,7 @@ export default function BudgetDetailPage() {
           </Card>
         </div>
 
-        {budget.approvals.length > 0 && (
+        {budget.approvals && budget.approvals.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Approval History</CardTitle>

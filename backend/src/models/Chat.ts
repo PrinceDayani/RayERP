@@ -8,7 +8,10 @@ export interface IMessage {
   timestamp: Date;
   read: boolean;
   type: 'text' | 'file' | 'image';
-  fileUrl?: string;
+  fileData?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
   metadata?: {
     ipAddress?: string;
     userAgent?: string;
@@ -44,7 +47,10 @@ const messageSchema = new Schema<IMessage>({
   timestamp: { type: Date, default: Date.now },
   read: { type: Boolean, default: false },
   type: { type: String, enum: ['text', 'file', 'image'], default: 'text' },
-  fileUrl: { type: String },
+  fileData: { type: String },
+  fileName: { type: String },
+  fileSize: { type: Number },
+  mimeType: { type: String },
   metadata: {
     ipAddress: { type: String },
     userAgent: { type: String },

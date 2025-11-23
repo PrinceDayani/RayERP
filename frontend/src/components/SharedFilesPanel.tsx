@@ -39,7 +39,7 @@ export default function SharedFilesPanel() {
     try {
       const response = await fetch('/api/file-shares/shared', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
       });
       const data = await response.json();
@@ -56,7 +56,7 @@ export default function SharedFilesPanel() {
       await fetch(`/api/file-shares/shares/${shareId}/viewed`, {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
       });
       fetchSharedFiles();
@@ -70,13 +70,13 @@ export default function SharedFilesPanel() {
       await fetch(`/api/file-shares/shares/${shareId}/downloaded`, {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
       });
 
       const response = await fetch(`/api/projects/files/${fileId}/download`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
       });
       

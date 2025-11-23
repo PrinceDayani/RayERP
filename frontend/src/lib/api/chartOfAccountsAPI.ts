@@ -1,6 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
-const getToken = () => localStorage.getItem('token');
+const getToken = () => localStorage.getItem('auth-token');
 
 export const chartOfAccountsAPI = {
   getTemplates: async () => {

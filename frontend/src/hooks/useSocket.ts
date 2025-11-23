@@ -19,7 +19,7 @@ export const useSocket = (url: string = (process.env.NEXT_PUBLIC_API_URL  || pro
 
     try {
       if (!socketRef.current) {
-        const rawToken = localStorage.getItem('auth-token') || localStorage.getItem('token');
+        const rawToken = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
         
         // Validate token before sending
         const token = rawToken && 
@@ -46,7 +46,7 @@ export const useSocket = (url: string = (process.env.NEXT_PUBLIC_API_URL  || pro
             
             // Authenticate socket if not already authenticated via handshake
             if (!token) {
-              const authToken = localStorage.getItem('auth-token') || localStorage.getItem('token');
+              const authToken = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
               const validAuthToken = authToken && 
                                    typeof authToken === 'string' && 
                                    authToken !== 'undefined' && 

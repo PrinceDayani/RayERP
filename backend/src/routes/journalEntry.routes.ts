@@ -144,9 +144,10 @@ router.get('/', async (req, res) => {
     if (fromDate) filter.entryDate.$gte = new Date(fromDate as string);
     if (toDate) filter.entryDate.$lte = new Date(toDate as string);
     
-    const entries = await JournalEntry.find(filter).populate('lines.account lines.costCenter').sort({ entryDate: -1 });
+    const entries = await JournalEntry.find(filter).sort({ entryDate: -1 }).lean();
     res.json({ success: true, data: entries });
   } catch (error: any) {
+    console.error('Journal entries fetch error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

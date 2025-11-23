@@ -19,7 +19,7 @@ export default function FinancePage() {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       const [accountsRes, entriesRes] = await Promise.all([
         fetch(`${API_URL}/api/general-ledger/accounts`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/api/general-ledger/journal-entries?limit=1`, { headers: { Authorization: `Bearer ${token}` } })

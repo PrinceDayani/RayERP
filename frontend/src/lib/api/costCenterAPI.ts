@@ -1,14 +1,21 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
-const getToken = () => localStorage.getItem('token');
+const getToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
+};
 
 export const costCenterAPI = {
   getAll: async (params?: { hierarchy?: boolean; departmentId?: string; projectId?: string }) => {
+    const token = getToken();
+    if (!token) throw new Error('Authentication required - no token found');
     const query = new URLSearchParams(params as any).toString();
     const res = await fetch(`${API_URL}/api/cost-centers?${query}`, {
-      headers: { Authorization: `Bearer ${getToken()}` }
+      headers: { Authorization: `Bearer ${token}` }
     });
-    return res.json();
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
+    return json;
   },
 
   getById: async (id: string) => {
@@ -19,29 +26,43 @@ export const costCenterAPI = {
   },
 
   create: async (data: any) => {
+    const token = getToken();
+    if (!token) throw new Error('Authentication required - no token found');
     const res = await fetch(`${API_URL}/api/cost-centers`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(data)
     });
-    return res.json();
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.message || `HTTP ${res.status}`);
+    }
+    return json;
   },
 
   update: async (id: string, data: any) => {
+    const token = getToken();
+    if (!token) throw new Error('Authentication required - no token found');
     const res = await fetch(`${API_URL}/api/cost-centers/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(data)
     });
-    return res.json();
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
+    return json;
   },
 
   delete: async (id: string) => {
+    const token = getToken();
+    if (!token) throw new Error('Authentication required - no token found');
     const res = await fetch(`${API_URL}/api/cost-centers/${id}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${getToken()}` }
+      headers: { Authorization: `Bearer ${token}` }
     });
-    return res.json();
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
+    return json;
   },
 
   allocate: async (data: any) => {

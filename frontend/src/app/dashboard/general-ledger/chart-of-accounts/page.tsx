@@ -167,6 +167,20 @@ export default function ChartOfAccountsPage() {
       description: selectedAccount?.description || ''
     });
 
+    // Update form data when selectedAccount changes
+    useEffect(() => {
+      if (selectedAccount) {
+        setFormData({
+          name: selectedAccount.name || '',
+          code: selectedAccount.code || '',
+          type: selectedAccount.type || 'asset',
+          parentId: selectedAccount.parentId || '',
+          isGroup: selectedAccount.isGroup || false,
+          description: selectedAccount.description || ''
+        });
+      }
+    }, [selectedAccount]);
+
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!selectedAccount) return;  

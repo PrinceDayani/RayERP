@@ -17,7 +17,10 @@ interface Message {
   timestamp: string;
   read: boolean;
   type: 'text' | 'image' | 'file';
-  fileUrl?: string;
+  fileData?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
   metadata?: {
     ipAddress?: string;
     device?: string;
@@ -42,7 +45,7 @@ interface Chat {
 
 interface ChatWindowProps {
   chat: Chat;
-  onSendMessage: (content: string, type?: string, fileUrl?: string) => void;
+  onSendMessage: (content: string, type?: string, fileData?: string, fileName?: string, fileSize?: number, mimeType?: string) => void;
 }
 
 export default function ChatWindow({ chat, onSendMessage }: ChatWindowProps) {
@@ -98,6 +101,15 @@ export default function ChatWindow({ chat, onSendMessage }: ChatWindowProps) {
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -110,29 +122,34 @@ export default function ChatWindow({ chat, onSendMessage }: ChatWindowProps) {
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
+      // Validate file size (5MB limit)
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        setUploading(false);
+        return;
+      }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/chats/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
-        },
-        body: formData
-      });
+      const fileBase64 = await fileToBase64(selectedFile);
+      const fileType = selectedFile.type.startsWith('image/') ? 'image' : 'file';
+      const content = message.trim() || selectedFile.name;
 
-      const data = await response.json();
-      if (data.success) {
-        const content = message.trim() || selectedFile.name;
-        await onSendMessage(content, data.data.type, data.data.fileUrl);
-        setSelectedFile(null);
-        setMessage('');
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
+      await onSendMessage(
+        content,
+        fileType,
+        fileBase64,
+        selectedFile.name,
+        selectedFile.size,
+        selectedFile.type
+      );
+
+      setSelectedFile(null);
+      setMessage('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
     } catch (error) {
       console.error('File upload failed:', error);
+      alert('Failed to send file. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -253,26 +270,35 @@ export default function ChatWindow({ chat, onSendMessage }: ChatWindowProps) {
                         : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-bl-sm'
                     }`}
                   >
-                    {msg.type === 'image' && msg.fileUrl ? (
+                    {msg.type === 'image' && msg.fileData ? (
                       <div className="space-y-2">
                         <img 
-                          src={`${process.env.NEXT_PUBLIC_API_URL}${msg.fileUrl}`} 
+                          src={msg.fileData} 
                           alt={msg.content}
                           className="max-w-xs rounded-lg cursor-pointer hover:opacity-90"
-                          onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL}${msg.fileUrl}`, '_blank')}
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = msg.fileData!;
+                            link.download = msg.fileName || 'image';
+                            link.click();
+                          }}
                         />
                         {msg.content && <p className="text-sm break-words">{msg.content}</p>}
                       </div>
-                    ) : msg.type === 'file' && msg.fileUrl ? (
-                      <a 
-                        href={`${process.env.NEXT_PUBLIC_API_URL}${msg.fileUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    ) : msg.type === 'file' && msg.fileData ? (
+                      <button
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = msg.fileData!;
+                          link.download = msg.fileName || 'file';
+                          link.click();
+                        }}
                         className="flex items-center gap-2 hover:underline"
                       >
                         <FileText className="w-4 h-4" />
-                        <span className="text-sm break-words">{msg.content}</span>
-                      </a>
+                        <span className="text-sm break-words">{msg.fileName || msg.content}</span>
+                        {msg.fileSize && <span className="text-xs opacity-70">({(msg.fileSize / 1024).toFixed(1)}KB)</span>}
+                      </button>
                     ) : (
                       <p className="text-sm break-words">{msg.content}</p>
                     )}

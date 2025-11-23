@@ -277,7 +277,7 @@ export default function AgingAnalysisPage() {
               <div className="text-right">
                 <div className="font-bold">₹{stats.current.toLocaleString()}</div>
                 <div className="text-sm text-muted-foreground">
-                  {((stats.current / stats.totalOutstanding) * 100).toFixed(1)}%
+                  {stats.totalOutstanding > 0 ? ((stats.current / stats.totalOutstanding) * 100).toFixed(1) : '0.0'}%
                 </div>
               </div>
             </div>
@@ -290,7 +290,7 @@ export default function AgingAnalysisPage() {
               <div className="text-right">
                 <div className="font-bold">₹{stats.overdue30.toLocaleString()}</div>
                 <div className="text-sm text-muted-foreground">
-                  {((stats.overdue30 / stats.totalOutstanding) * 100).toFixed(1)}%
+                  {stats.totalOutstanding > 0 ? ((stats.overdue30 / stats.totalOutstanding) * 100).toFixed(1) : '0.0'}%
                 </div>
               </div>
             </div>
@@ -303,7 +303,7 @@ export default function AgingAnalysisPage() {
               <div className="text-right">
                 <div className="font-bold">₹{stats.overdue60.toLocaleString()}</div>
                 <div className="text-sm text-muted-foreground">
-                  {((stats.overdue60 / stats.totalOutstanding) * 100).toFixed(1)}%
+                  {stats.totalOutstanding > 0 ? ((stats.overdue60 / stats.totalOutstanding) * 100).toFixed(1) : '0.0'}%
                 </div>
               </div>
             </div>
@@ -316,7 +316,7 @@ export default function AgingAnalysisPage() {
               <div className="text-right">
                 <div className="font-bold">₹{stats.overdue90.toLocaleString()}</div>
                 <div className="text-sm text-muted-foreground">
-                  {((stats.overdue90 / stats.totalOutstanding) * 100).toFixed(1)}%
+                  {stats.totalOutstanding > 0 ? ((stats.overdue90 / stats.totalOutstanding) * 100).toFixed(1) : '0.0'}%
                 </div>
               </div>
             </div>

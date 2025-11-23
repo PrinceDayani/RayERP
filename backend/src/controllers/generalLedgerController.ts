@@ -325,16 +325,33 @@ export const createAccount = async (req: Request, res: Response) => {
 // Update account
 export const updateAccount = async (req: Request, res: Response) => {
   try {
+    console.log('=== UPDATE ACCOUNT REQUEST ===');
+    console.log('Account ID:', req.params.id);
+    console.log('Updates:', JSON.stringify(req.body, null, 2));
+    
     const { id } = req.params;
     const updates = req.body;
 
+    // Check if account exists
+    const existingAccount = await Account.findById(id);
+    if (!existingAccount) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+
     // Don't allow updating code if it would create a duplicate
-    if (updates.code) {
-      const existing = await Account.findOne({ code: updates.code, _id: { $ne: id } });
-      if (existing) {
+    if (updates.code && updates.code !== existingAccount.code) {
+      const duplicate = await Account.findOne({ code: updates.code, _id: { $ne: id } });
+      if (duplicate) {
         return res.status(400).json({ message: 'Account code already exists' });
       }
     }
+
+    // Clean up parentId if it's 'none' or empty
+    if (updates.parentId === 'none' || updates.parentId === '') {
+      updates.parentId = null;
+    }
+
+    console.log('Cleaned updates:', JSON.stringify(updates, null, 2));
 
     const account = await Account.findByIdAndUpdate(
       id,
@@ -342,12 +359,11 @@ export const updateAccount = async (req: Request, res: Response) => {
       { new: true, runValidators: true }
     ).populate('parentId', 'name code');
 
-    if (!account) {
-      return res.status(404).json({ message: 'Account not found' });
-    }
-
+    console.log('Updated account:', account?._id);
     res.json(account);
   } catch (error) {
+    console.error('=== ERROR UPDATING ACCOUNT ===');
+    console.error('Error:', error);
     logger.error('Error updating account:', error);
     res.status(500).json({ 
       message: 'Error updating account',
@@ -376,7 +392,7 @@ export const getJournalEntry = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const entry = await JournalEntry.findById(id)
-      .populate('lines.ledgerId', 'code name')
+      .populate('lines.account', 'code name')
       .populate('createdBy', 'name email');
     
     if (!entry) {
@@ -406,7 +422,7 @@ export const getJournalEntries = async (req: Request, res: Response) => {
     const skip = (Number(page) - 1) * Number(limit);
     
     const journalEntries = await JournalEntry.find(query)
-      .populate('lines.ledgerId', 'code name')
+      .populate('lines.account', 'code name')
       .populate('createdBy', 'name email')
       .sort({ date: -1, entryNumber: -1 })
       .limit(Number(limit))
@@ -462,7 +478,8 @@ export const createJournalEntry = async (req: Request, res: Response) => {
       }
       
       sanitizedLines.push({
-        ledgerId: account._id,
+        account: account._id,
+        accountId: account._id,
         debit: Number(line.debit) || 0,
         credit: Number(line.credit) || 0,
         description: line.description?.trim() || description
@@ -496,7 +513,7 @@ export const createJournalEntry = async (req: Request, res: Response) => {
     await journalEntry.save();
     
     await journalEntry.populate([
-      { path: 'lines.ledgerId', select: 'code name' },
+      { path: 'lines.account', select: 'code name' },
       { path: 'createdBy', select: 'name email' }
     ]);
 
@@ -555,7 +572,7 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
       id,
       updateData,
       { new: true, runValidators: true }
-    ).populate('lines.ledgerId', 'code name').populate('createdBy', 'name email');
+    ).populate('lines.account', 'code name').populate('createdBy', 'name email');
     
     res.json(updated);
   } catch (error) {

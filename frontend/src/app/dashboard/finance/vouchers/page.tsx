@@ -56,7 +56,7 @@ export default function VouchersPage() {
       if (searchTerm) params.append('search', searchTerm);
       
       const res = await fetch(`${API_URL}/api/vouchers?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setVouchers(data.data || []);
@@ -68,7 +68,7 @@ export default function VouchersPage() {
   const fetchAccounts = async () => {
     try {
       const res = await fetch(`${API_URL}/api/general-ledger/accounts`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setAccounts(data.accounts || data.data || []);
@@ -80,7 +80,7 @@ export default function VouchersPage() {
   const fetchStats = async () => {
     try {
       const res = await fetch(`${API_URL}/api/vouchers/stats`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setStats(data.data || {});
@@ -89,14 +89,30 @@ export default function VouchersPage() {
     }
   };
 
-  const handleCreateVoucher = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateVoucher = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    console.log('handleCreateVoucher called', { lines, formData });
 
-    const totalDebit = lines.reduce((sum, l) => sum + (l.debit || 0), 0);
-    const totalCredit = lines.reduce((sum, l) => sum + (l.credit || 0), 0);
+    // Validate lines
+    const validLines = lines.filter(l => l.accountId && (parseFloat(String(l.debit)) > 0 || parseFloat(String(l.credit)) > 0));
+    console.log('Valid lines:', validLines);
+    
+    if (validLines.length === 0) {
+      toast({ title: 'Error', description: 'Please add at least one valid transaction line', variant: 'destructive' });
+      return;
+    }
+
+    const totalDebit = validLines.reduce((sum, l) => sum + (parseFloat(String(l.debit)) || 0), 0);
+    const totalCredit = validLines.reduce((sum, l) => sum + (parseFloat(String(l.credit)) || 0), 0);
+    console.log('Totals:', { totalDebit, totalCredit });
 
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
-      toast({ title: 'Error', description: 'Debits must equal credits', variant: 'destructive' });
+      toast({ title: 'Error', description: `Debits (₹${totalDebit.toFixed(2)}) must equal credits (₹${totalCredit.toFixed(2)})`, variant: 'destructive' });
+      return;
+    }
+
+    if (!formData.narration.trim()) {
+      toast({ title: 'Error', description: 'Please enter narration', variant: 'destructive' });
       return;
     }
 
@@ -106,7 +122,12 @@ export default function VouchersPage() {
         date: formData.date,
         reference: formData.reference,
         narration: formData.narration,
-        lines: lines.filter(l => l.accountId)
+        lines: validLines.map(l => ({
+          accountId: l.accountId,
+          debit: parseFloat(String(l.debit)) || 0,
+          credit: parseFloat(String(l.credit)) || 0,
+          description: l.description || ''
+        }))
       };
 
       if (['payment', 'receipt'].includes(selectedType)) {
@@ -123,16 +144,18 @@ export default function VouchersPage() {
         payload.invoiceDate = formData.invoiceDate;
       }
 
+      console.log('Sending payload:', payload);
       const res = await fetch(`${API_URL}/api/vouchers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify(payload)
       });
 
       const data = await res.json();
+      console.log('Response:', { status: res.status, data });
 
       if (res.ok) {
         toast({ title: 'Success', description: 'Voucher created successfully' });
@@ -144,6 +167,7 @@ export default function VouchersPage() {
         toast({ title: 'Error', description: data.message || 'Failed to create voucher', variant: 'destructive' });
       }
     } catch (error) {
+      console.error('Error creating voucher:', error);
       toast({ title: 'Error', description: 'Failed to create voucher', variant: 'destructive' });
     }
   };
@@ -169,7 +193,12 @@ export default function VouchersPage() {
 
   const updateLine = (index: number, field: string, value: any) => {
     const updated = [...lines];
-    updated[index] = { ...updated[index], [field]: value };
+    if (field === 'debit' || field === 'credit') {
+      const numValue = parseFloat(value) || 0;
+      updated[index] = { ...updated[index], [field]: numValue };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
     setLines(updated);
   };
 
@@ -183,7 +212,7 @@ export default function VouchersPage() {
     try {
       const res = await fetch(`${API_URL}/api/vouchers/${id}/post`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
 
       if (res.ok) {
@@ -208,7 +237,7 @@ export default function VouchersPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify({ reason })
       });
@@ -229,7 +258,7 @@ export default function VouchersPage() {
     try {
       const res = await fetch(`${API_URL}/api/vouchers/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
 
       if (res.ok) {
@@ -245,7 +274,7 @@ export default function VouchersPage() {
   const viewVoucher = async (id: string) => {
     try {
       const res = await fetch(`${API_URL}/api/vouchers/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setSelectedVoucher(data.data);
@@ -280,7 +309,7 @@ export default function VouchersPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Voucher Management</h1>
-          <p className="text-gray-600 mt-1">Complete voucher system for all transaction types</p>
+          <p className="text-muted-foreground mt-1">Complete voucher system for all transaction types</p>
         </div>
         <Button onClick={() => { resetForm(); setShowCreateDialog(true); }} size="lg">
           <Plus className="w-4 h-4 mr-2" />
@@ -300,7 +329,7 @@ export default function VouchersPage() {
                 </div>
                 <h3 className="font-semibold text-sm">{type.label}</h3>
                 <p className="text-2xl font-bold mt-1">₹{(stat.totalAmount || 0).toLocaleString('en-IN')}</p>
-                <p className="text-xs text-gray-500 mt-1">{stat.posted} posted</p>
+                <p className="text-xs text-muted-foreground mt-1">{stat.posted} posted</p>
               </CardContent>
             </Card>
           );
@@ -313,7 +342,7 @@ export default function VouchersPage() {
             <CardTitle>All Vouchers</CardTitle>
             <div className="flex gap-2">
               <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search vouchers..."
                   value={searchTerm}
@@ -361,7 +390,7 @@ export default function VouchersPage() {
             <TableBody>
               {vouchers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No vouchers found
                   </TableCell>
                 </TableRow>
@@ -449,7 +478,7 @@ export default function VouchersPage() {
             </div>
 
             {['payment', 'receipt'].includes(selectedType) && (
-              <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
                 <div>
                   <Label>Party Name</Label>
                   <Input 
@@ -498,7 +527,7 @@ export default function VouchersPage() {
             )}
 
             {['sales', 'purchase', 'debit_note', 'credit_note'].includes(selectedType) && (
-              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
                 <div>
                   <Label>Invoice Number</Label>
                   <Input 
@@ -538,7 +567,7 @@ export default function VouchersPage() {
               </div>
               
               <div className="border rounded-lg overflow-hidden">
-                <div className="grid grid-cols-12 gap-2 bg-gray-100 p-2 text-sm font-semibold">
+                <div className="grid grid-cols-12 gap-2 bg-muted/50 p-2 text-sm font-semibold">
                   <div className="col-span-5">Account</div>
                   <div className="col-span-2 text-right">Debit</div>
                   <div className="col-span-2 text-right">Credit</div>
@@ -547,7 +576,7 @@ export default function VouchersPage() {
                 </div>
                 
                 {lines.map((line, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2 p-2 border-t items-center hover:bg-gray-50">
+                  <div key={idx} className="grid grid-cols-12 gap-2 p-2 border-t border-border items-center hover:bg-muted/20">
                     <div className="col-span-5">
                       <AccountSelector
                         value={line.accountId}
@@ -564,7 +593,7 @@ export default function VouchersPage() {
                         min="0"
                         placeholder="0.00"
                         value={line.debit || ''}
-                        onChange={(e) => updateLine(idx, 'debit', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateLine(idx, 'debit', e.target.value)}
                         className="h-9 text-right"
                       />
                     </div>
@@ -575,7 +604,7 @@ export default function VouchersPage() {
                         min="0"
                         placeholder="0.00"
                         value={line.credit || ''}
-                        onChange={(e) => updateLine(idx, 'credit', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => updateLine(idx, 'credit', e.target.value)}
                         className="h-9 text-right"
                       />
                     </div>
@@ -597,20 +626,20 @@ export default function VouchersPage() {
                   </div>
                 ))}
                 
-                <div className="grid grid-cols-12 gap-2 bg-gray-50 p-2 border-t font-semibold">
+                <div className="grid grid-cols-12 gap-2 bg-muted/30 p-2 border-t border-border font-semibold">
                   <div className="col-span-5 text-right">Total:</div>
                   <div className="col-span-2 text-right">
-                    ₹{lines.reduce((sum, l) => sum + (l.debit || 0), 0).toFixed(2)}
+                    ₹{lines.reduce((sum, l) => sum + (parseFloat(String(l.debit)) || 0), 0).toFixed(2)}
                   </div>
                   <div className="col-span-2 text-right">
-                    ₹{lines.reduce((sum, l) => sum + (l.credit || 0), 0).toFixed(2)}
+                    ₹{lines.reduce((sum, l) => sum + (parseFloat(String(l.credit)) || 0), 0).toFixed(2)}
                   </div>
                   <div className="col-span-3"></div>
                 </div>
               </div>
               
-              {Math.abs(lines.reduce((sum, l) => sum + (l.debit || 0), 0) - lines.reduce((sum, l) => sum + (l.credit || 0), 0)) > 0.01 && (
-                <p className="text-sm text-red-600">⚠ Debits and credits must be equal</p>
+              {Math.abs(lines.reduce((sum, l) => sum + (parseFloat(String(l.debit)) || 0), 0) - lines.reduce((sum, l) => sum + (parseFloat(String(l.credit)) || 0), 0)) > 0.01 && (
+                <p className="text-sm text-destructive">⚠ Debits and credits must be equal</p>
               )}
             </div>
 
@@ -618,7 +647,13 @@ export default function VouchersPage() {
               <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit" size="lg">Create Voucher</Button>
+              <Button 
+                type="button" 
+                size="lg" 
+                onClick={() => handleCreateVoucher()}
+              >
+                Create Voucher
+              </Button>
             </div>
           </form>
         </DialogContent>
@@ -631,40 +666,40 @@ export default function VouchersPage() {
           </DialogHeader>
           {selectedVoucher && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
                 <div>
-                  <p className="text-sm text-gray-600">Voucher Number</p>
+                  <p className="text-sm text-muted-foreground">Voucher Number</p>
                   <p className="font-semibold">{selectedVoucher.voucherNumber}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Type</p>
+                  <p className="text-sm text-muted-foreground">Type</p>
                   <p className="font-semibold capitalize">{selectedVoucher.voucherType.replace('_', ' ')}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Date</p>
+                  <p className="text-sm text-muted-foreground">Date</p>
                   <p className="font-semibold">{new Date(selectedVoucher.date).toLocaleDateString('en-IN')}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Status</p>
+                  <p className="text-sm text-muted-foreground">Status</p>
                   {getStatusBadge(selectedVoucher.status)}
                 </div>
                 {selectedVoucher.partyName && (
                   <div>
-                    <p className="text-sm text-gray-600">Party</p>
+                    <p className="text-sm text-muted-foreground">Party</p>
                     <p className="font-semibold">{selectedVoucher.partyName}</p>
                   </div>
                 )}
                 {selectedVoucher.reference && (
                   <div>
-                    <p className="text-sm text-gray-600">Reference</p>
+                    <p className="text-sm text-muted-foreground">Reference</p>
                     <p className="font-semibold">{selectedVoucher.reference}</p>
                   </div>
                 )}
               </div>
 
               <div>
-                <p className="text-sm text-gray-600 mb-1">Narration</p>
-                <p className="p-3 bg-gray-50 rounded">{selectedVoucher.narration}</p>
+                <p className="text-sm text-muted-foreground mb-1">Narration</p>
+                <p className="p-3 bg-muted/30 rounded">{selectedVoucher.narration}</p>
               </div>
 
               <div>
@@ -693,7 +728,7 @@ export default function VouchersPage() {
                         <TableCell>{line.description || '-'}</TableCell>
                       </TableRow>
                     ))}
-                    <TableRow className="font-semibold bg-gray-50">
+                    <TableRow className="font-semibold bg-muted/30">
                       <TableCell>Total</TableCell>
                       <TableCell className="text-right">
                         ₹{selectedVoucher.lines.reduce((sum: number, l: any) => sum + l.debit, 0).toLocaleString('en-IN')}
@@ -708,7 +743,7 @@ export default function VouchersPage() {
               </div>
 
               <div className="flex justify-between items-center pt-4 border-t">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   Created by {selectedVoucher.createdBy?.name} on {new Date(selectedVoucher.createdAt).toLocaleString('en-IN')}
                 </div>
                 <div className="flex gap-2">

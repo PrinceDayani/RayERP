@@ -11,6 +11,7 @@ import { CheckCircle, XCircle, Clock, Eye, ArrowLeft } from "lucide-react";
 import { Budget } from "@/types/budget";
 import { getPendingApprovals, approveBudget, rejectBudget, getAllBudgets } from "@/lib/api/budgetAPI";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/ui/use-toast";
 
 export default function BudgetApprovalsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -77,17 +78,30 @@ export default function BudgetApprovalsPage() {
 
     try {
       if (approvalAction === 'approve') {
-        await approveBudget(selectedBudget._id, { status: 'approved', comments });
+        await approveBudget(selectedBudget._id, { comments });
+        toast({
+          title: "Success",
+          description: "Budget approved successfully",
+        });
       } else {
-        await rejectBudget(selectedBudget._id, { status: 'rejected', comments });
+        await rejectBudget(selectedBudget._id, { comments });
+        toast({
+          title: "Success",
+          description: "Budget rejected successfully",
+        });
       }
       
-      fetchBudgets();
+      await fetchBudgets();
       setShowApprovalDialog(false);
       setComments("");
       setSelectedBudget(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting approval:", error);
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || error?.message || "Failed to process approval",
+        variant: "destructive",
+      });
     }
   };
 

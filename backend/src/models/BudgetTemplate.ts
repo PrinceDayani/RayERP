@@ -1,18 +1,26 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export interface ITemplateAccount {
-  accountId: mongoose.Types.ObjectId;
-  percentage: number;
-  fixedAmount?: number;
+export interface ITemplateItem {
+  name: string;
+  description?: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface ITemplateCategory {
+  name: string;
+  type: 'labor' | 'materials' | 'equipment' | 'overhead';
+  allocatedAmount: number;
+  items: ITemplateItem[];
 }
 
 export interface IBudgetTemplate extends Document {
   name: string;
   description?: string;
-  templateType: 'department' | 'project' | 'custom';
-  departmentId?: mongoose.Types.ObjectId;
-  accounts: ITemplateAccount[];
-  isActive: boolean;
+  projectType: string;
+  categories: ITemplateCategory[];
+  isDefault: boolean;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -21,14 +29,20 @@ export interface IBudgetTemplate extends Document {
 const BudgetTemplateSchema = new Schema<IBudgetTemplate>({
   name: { type: String, required: true },
   description: String,
-  templateType: { type: String, enum: ['department', 'project', 'custom'], required: true },
-  departmentId: { type: Schema.Types.ObjectId, ref: 'Department' },
-  accounts: [{
-    accountId: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
-    percentage: { type: Number, min: 0, max: 100 },
-    fixedAmount: Number
+  projectType: { type: String, required: true },
+  categories: [{
+    name: { type: String, required: true },
+    type: { type: String, enum: ['labor', 'materials', 'equipment', 'overhead'], required: true },
+    allocatedAmount: { type: Number, default: 0 },
+    items: [{
+      name: { type: String, required: true },
+      description: String,
+      quantity: { type: Number, required: true, default: 1 },
+      unitCost: { type: Number, required: true, default: 0 },
+      totalCost: { type: Number, required: true, default: 0 }
+    }]
   }],
-  isActive: { type: Boolean, default: true },
+  isDefault: { type: Boolean, default: false },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 

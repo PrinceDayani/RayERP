@@ -47,7 +47,7 @@ const FinancialReports = () => {
 
       const response = await fetch(`/api/general-ledger/reports?${queryParams}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
       });
 
@@ -73,7 +73,7 @@ const FinancialReports = () => {
 
       const response = await fetch(`/api/general-ledger/reports?${queryParams}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
         }
       });
 

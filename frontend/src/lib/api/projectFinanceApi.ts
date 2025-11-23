@@ -26,7 +26,7 @@ export const projectFinanceApi = {
       params.append('endDate', filters.dateRange.endDate);
     }
     
-    const token = localStorage.getItem('token') || localStorage.getItem('auth-token');
+    const token = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
     const response = await fetch(`${API_BASE}/api/general-ledger/reports?reportType=profit-loss&${params}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -44,7 +44,7 @@ export const projectFinanceApi = {
       params.append('asOfDate', filters.dateRange.endDate);
     }
     
-    const token = localStorage.getItem('token') || localStorage.getItem('auth-token');
+    const token = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
     const response = await fetch(`${API_BASE}/api/general-ledger/trial-balance?${params}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -63,7 +63,7 @@ export const projectFinanceApi = {
       params.append('endDate', filters.dateRange.endDate);
     }
     
-    const token = localStorage.getItem('token') || localStorage.getItem('auth-token');
+    const token = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
     const response = await fetch(`${API_BASE}/api/general-ledger/reports?reportType=balance-sheet&${params}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -82,7 +82,7 @@ export const projectFinanceApi = {
       params.append('endDate', filters.dateRange.endDate);
     }
     
-    const token = localStorage.getItem('token') || localStorage.getItem('auth-token');
+    const token = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
     const response = await fetch(`${API_BASE}/api/general-ledger/reports?reportType=cash-flow&${params}`, {
       headers: {
         'Authorization': `Bearer ${token}`,

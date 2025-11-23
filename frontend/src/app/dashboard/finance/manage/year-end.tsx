@@ -15,14 +15,14 @@ export default function YearEndClosing() {
   useEffect(() => { fetchYears(); }, []);
 
   const fetchYears = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     const res = await fetch(`${API_URL}/api/finance-advanced/financial-years`, { headers: { Authorization: `Bearer ${token}` } });
     setYears((await res.json()).years || []);
   };
 
   const closeYear = async (yearId: string, yearName: string) => {
     if (!confirm(`Close financial year ${yearName}? This will transfer balances to next year.`)) return;
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     const res = await fetch(`${API_URL}/api/finance-advanced/financial-years/close`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

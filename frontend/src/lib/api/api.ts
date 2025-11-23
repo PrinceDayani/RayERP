@@ -23,8 +23,8 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("auth-token");
     
-    // Add auth token if available
-    if (token) {
+    // Add auth token if available and valid
+    if (token && token !== 'null' && token !== 'undefined') {
       config.headers.Authorization = `Bearer ${token}`;
     }
     

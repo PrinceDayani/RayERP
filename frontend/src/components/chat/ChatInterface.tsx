@@ -90,10 +90,10 @@ export default function ChatInterface() {
     }
   };
 
-  const handleSendMessage = async (content: string, type?: string, fileUrl?: string) => {
+  const handleSendMessage = async (content: string, type?: string, fileData?: string, fileName?: string, fileSize?: number, mimeType?: string) => {
     if (!selectedChat) return;
     try {
-      const response = await chatAPI.sendMessage(selectedChat._id, content, type, fileUrl);
+      const response = await chatAPI.sendMessage(selectedChat._id, content, type, fileData, fileName, fileSize, mimeType);
       if (response.data) {
         setSelectedChat(response.data);
       }

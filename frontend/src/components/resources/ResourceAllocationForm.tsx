@@ -36,11 +36,11 @@ export default function ResourceAllocationForm({ employees, projects, onSubmit, 
         <Select value={formData.employee} onValueChange={(v) => setFormData({ ...formData, employee: v })}>
           <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
           <SelectContent>
-            {employees.map((emp) => (
+            {employees?.length > 0 ? employees.map((emp) => (
               <SelectItem key={emp._id} value={emp._id}>
                 {emp.firstName} {emp.lastName} - {emp.position}
               </SelectItem>
-            ))}
+            )) : <div className="p-2 text-sm text-muted-foreground">No employees available</div>}
           </SelectContent>
         </Select>
       </div>
@@ -50,9 +50,9 @@ export default function ResourceAllocationForm({ employees, projects, onSubmit, 
         <Select value={formData.project} onValueChange={(v) => setFormData({ ...formData, project: v })}>
           <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
           <SelectContent>
-            {projects.map((proj) => (
+            {projects?.length > 0 ? projects.map((proj) => (
               <SelectItem key={proj._id} value={proj._id}>{proj.name}</SelectItem>
-            ))}
+            )) : <div className="p-2 text-sm text-muted-foreground">No projects available</div>}
           </SelectContent>
         </Select>
       </div>

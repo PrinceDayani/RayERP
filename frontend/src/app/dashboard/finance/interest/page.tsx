@@ -42,7 +42,7 @@ export default function InterestCalculationsPage() {
   const fetchAccounts = async () => {
     try {
       const res = await fetch(`${API_URL}/api/general-ledger/accounts`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setAccounts((data.accounts || []).filter((a: any) => a.enableInterest));
@@ -54,7 +54,7 @@ export default function InterestCalculationsPage() {
   const fetchCalculations = async () => {
     try {
       const res = await fetch(`${API_URL}/api/interest-calculations`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setCalculations(data.data || []);
@@ -66,7 +66,7 @@ export default function InterestCalculationsPage() {
   const fetchSummary = async () => {
     try {
       const res = await fetch(`${API_URL}/api/interest-calculations/summary`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setSummary(data.data);
@@ -91,7 +91,7 @@ export default function InterestCalculationsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify({
           accountId: selectedAccount,
@@ -125,7 +125,7 @@ export default function InterestCalculationsPage() {
     try {
       const res = await fetch(`${API_URL}/api/interest-calculations/${calcId}/post`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
 
       if (res.ok) {
@@ -144,7 +144,7 @@ export default function InterestCalculationsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
         body: JSON.stringify({
           accountId: selectedAccount,

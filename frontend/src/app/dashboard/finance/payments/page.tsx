@@ -43,7 +43,7 @@ export default function PaymentsPage() {
       const params = new URLSearchParams();
       if (filter.status !== 'all') params.append('status', filter.status);
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setPayments(data.data || []);
@@ -57,7 +57,7 @@ export default function PaymentsPage() {
   const fetchAnalytics = async () => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/analytics`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       setAnalytics(data.data);
@@ -70,7 +70,7 @@ export default function PaymentsPage() {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/${id}/approve`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       fetchPayments();
     } catch (error) {
@@ -82,7 +82,7 @@ export default function PaymentsPage() {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/${id}/reconcile`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
         body: JSON.stringify({})
       });
       fetchPayments();
@@ -95,7 +95,7 @@ export default function PaymentsPage() {
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/${id}/journal-entry`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       alert('Journal entry created');
       fetchPayments();
@@ -255,7 +255,7 @@ function PaymentForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       };
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
         body: JSON.stringify(payload)
       });
       onSuccess();

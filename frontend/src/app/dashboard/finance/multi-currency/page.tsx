@@ -114,8 +114,8 @@ export default function MultiCurrencyPage() {
                     id="exchangeRate"
                     type="number"
                     step="0.0001"
-                    value={formData.exchangeRate}
-                    onChange={(e) => setFormData({...formData, exchangeRate: parseFloat(e.target.value)})}
+                    value={formData.exchangeRate || ''}
+                    onChange={(e) => setFormData({...formData, exchangeRate: parseFloat(e.target.value) || 0})}
                     required
                   />
                 </div>

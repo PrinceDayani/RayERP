@@ -10,6 +10,8 @@ export interface Budget {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  remainingBudget?: number;
+  utilizationPercentage?: number;
 }
 
 export interface BudgetCategory {

@@ -6,9 +6,12 @@ import { Voucher } from '../models/Voucher';
 
 export const createCostCenter = async (req: Request, res: Response) => {
   try {
+    console.log('Creating cost center:', req.body);
     const costCenter = await CostCenter.create(req.body);
+    console.log('Cost center created:', costCenter._id);
     res.status(201).json({ success: true, data: costCenter });
   } catch (error: any) {
+    console.error('Error creating cost center:', error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -25,6 +28,7 @@ export const getCostCenters = async (req: Request, res: Response) => {
       .populate('departmentId', 'name')
       .populate('projectId', 'name')
       .populate('parentId', 'name code')
+      .lean()
       .sort({ code: 1 });
 
     if (hierarchy === 'true') {
@@ -34,11 +38,12 @@ export const getCostCenters = async (req: Request, res: Response) => {
     // Calculate actual expenses
     const centersWithActuals = await Promise.all(costCenters.map(async (cc: any) => {
       const actual = await calculateActualExpenses(cc._id);
-      return { ...cc.toObject(), actual };
+      return { ...cc, actual };
     }));
 
     res.json({ success: true, data: centersWithActuals });
   } catch (error: any) {
+    console.error('Error fetching cost centers:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -256,15 +261,13 @@ const buildHierarchy = (costCenters: any[]) => {
   const roots: any[] = [];
 
   costCenters.forEach(cc => {
-    const obj = cc.toObject ? cc.toObject() : cc;
-    map.set(obj._id.toString(), { ...obj, children: [] });
+    map.set(cc._id.toString(), { ...cc, children: [] });
   });
 
   costCenters.forEach(cc => {
-    const obj = cc.toObject ? cc.toObject() : cc;
-    const node = map.get(obj._id.toString());
-    if (obj.parentId) {
-      const parentId = typeof obj.parentId === 'object' ? obj.parentId._id || obj.parentId : obj.parentId;
+    const node = map.get(cc._id.toString());
+    if (cc.parentId) {
+      const parentId = typeof cc.parentId === 'object' ? cc.parentId._id || cc.parentId : cc.parentId;
       const parent = map.get(parentId.toString());
       if (parent) parent.children.push(node);
       else roots.push(node);

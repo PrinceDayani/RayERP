@@ -17,7 +17,7 @@ export default function MultiCurrency() {
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     const [curr, rate] = await Promise.all([
       fetch(`${API_URL}/api/finance-advanced/currencies`, { headers: { Authorization: `Bearer ${token}` } }),
       fetch(`${API_URL}/api/finance-advanced/exchange-rates`, { headers: { Authorization: `Bearer ${token}` } })
@@ -28,7 +28,7 @@ export default function MultiCurrency() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     await fetch(`${API_URL}/api/finance-advanced/currencies`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

@@ -16,15 +16,17 @@ const VOUCHER_PREFIXES: Record<VoucherType, string> = {
   credit_note: 'CN'
 };
 
-const generateVoucherNumber = async (type: VoucherType, fiscalYear?: string): Promise<string> => {
+const generateVoucherNumber = async (type: VoucherType, fiscalYear?: string, session?: mongoose.ClientSession): Promise<string> => {
   const prefix = VOUCHER_PREFIXES[type];
   const year = fiscalYear || new Date().getFullYear().toString().slice(-2);
   const pattern = new RegExp(`^${prefix}${year}`);
   
-  const last = await Voucher.findOne({ 
+  const query = Voucher.findOne({ 
     voucherType: type,
     voucherNumber: pattern
   }).sort({ voucherNumber: -1 });
+  
+  const last = session ? await query.session(session) : await query;
   
   const num = last ? parseInt(last.voucherNumber.slice(-6)) + 1 : 1;
   return `${prefix}${year}${num.toString().padStart(6, '0')}`;
@@ -69,7 +71,7 @@ export const createVoucher = async (req: Request, res: Response) => {
       }
     }
 
-    const voucherNumber = await generateVoucherNumber(voucherType);
+    const voucherNumber = await generateVoucherNumber(voucherType, undefined, session);
     
     const voucher = await Voucher.create([{
       voucherType,

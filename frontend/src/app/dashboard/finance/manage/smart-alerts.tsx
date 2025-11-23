@@ -16,19 +16,19 @@ export default function SmartAlerts() {
   useEffect(() => { fetchAlerts(); detectDuplicates(); autoDetect(); }, []);
 
   const fetchAlerts = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     const res = await fetch(`${API_URL}/api/finance-advanced/alerts`, { headers: { Authorization: `Bearer ${token}` } });
     setAlerts((await res.json()).alerts || []);
   };
 
   const detectDuplicates = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     const res = await fetch(`${API_URL}/api/finance-advanced/alerts/detect-duplicates`, { headers: { Authorization: `Bearer ${token}` } });
     setDuplicates(await res.json());
   };
 
   const autoDetect = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     await fetch(`${API_URL}/api/finance-advanced/alerts/auto-detect`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
@@ -36,7 +36,7 @@ export default function SmartAlerts() {
   };
 
   const resolveAlert = async (id: string) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth-token');
     await fetch(`${API_URL}/api/finance-advanced/alerts/${id}/resolve`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` }

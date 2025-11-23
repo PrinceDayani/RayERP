@@ -24,7 +24,7 @@ export default function DepartmentBudgetsPage() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       const [budgetsRes, deptsRes] = await Promise.all([
         axios.get(`${API_URL}/api/department-budgets`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get(`${API_URL}/api/departments`, { headers: { Authorization: `Bearer ${token}` } })
@@ -41,7 +41,7 @@ export default function DepartmentBudgetsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       await axios.post(`${API_URL}/api/department-budgets`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -69,7 +69,7 @@ export default function DepartmentBudgetsPage() {
 
   const approveBudget = async (id: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       await axios.put(`${API_URL}/api/department-budgets/${id}/approve`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
