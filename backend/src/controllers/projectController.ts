@@ -178,6 +178,30 @@ export const createProject = async (req: Request, res: Response) => {
     io.emit('project:created', project);
     await emitProjectStats();
     
+    // Log project creation activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: user._id.toString(),
+      userName: user.name,
+      action: 'create',
+      resource: `Project: ${project.name}`,
+      resourceType: 'project',
+      resourceId: project._id.toString(),
+      projectId: project._id.toString(),
+      details: `Created new project "${project.name}" with status ${project.status}`,
+      metadata: { 
+        projectId: project._id, 
+        projectName: project.name, 
+        status: project.status,
+        budget: project.budget,
+        startDate: project.startDate,
+        endDate: project.endDate
+      },
+      category: 'project',
+      severity: 'medium',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
@@ -262,6 +286,31 @@ export const updateProject = async (req: Request, res: Response) => {
     const { NotificationEmitter } = await import('../utils/notificationEmitter');
     NotificationEmitter.projectUpdated(project);
     
+    // Log project update activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'System',
+      action: 'update',
+      resource: `Project: ${project.name}`,
+      resourceType: 'project',
+      resourceId: project._id.toString(),
+      projectId: project._id.toString(),
+      details: oldProject.status !== project.status ? 
+        `Updated project "${project.name}" - Status changed from ${oldProject.status} to ${project.status}` :
+        `Updated project "${project.name}"`,
+      metadata: { 
+        projectId: project._id, 
+        projectName: project.name, 
+        oldStatus: oldProject.status,
+        newStatus: project.status,
+        changes: Object.keys(req.body)
+      },
+      category: 'project',
+      severity: oldProject.status !== project.status ? 'medium' : 'low',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
@@ -366,6 +415,26 @@ export const deleteProject = async (req: Request, res: Response) => {
     io.emit('project:deleted', { id: req.params.id });
     await emitProjectStats();
     
+    // Log project deletion activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'System',
+      action: 'delete',
+      resource: `Project: ${project.name}`,
+      resourceType: 'project',
+      resourceId: req.params.id,
+      details: `Deleted project "${project.name}" and all associated tasks`,
+      metadata: { 
+        projectId: project._id, 
+        projectName: project.name,
+        deletedAt: new Date().toISOString()
+      },
+      category: 'project',
+      severity: 'high',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
@@ -482,6 +551,31 @@ export const createProjectTask = async (req: Request, res: Response) => {
     io.emit('task:created', transformedTask);
     await emitProjectStats();
     
+    // Log task creation activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'System',
+      action: 'create',
+      resource: `Task: ${task.title}`,
+      resourceType: 'task',
+      resourceId: task._id.toString(),
+      projectId: project._id.toString(),
+      details: `Created new task "${task.title}" in project "${project.name}"`,
+      metadata: { 
+        taskId: task._id, 
+        taskTitle: task.title, 
+        projectId: project._id, 
+        projectName: project.name,
+        priority: task.priority,
+        dueDate: task.dueDate,
+        assignedTo: task.assignedTo
+      },
+      category: 'project',
+      severity: 'low',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();

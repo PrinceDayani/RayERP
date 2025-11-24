@@ -40,11 +40,24 @@ export default function EditContactPage() {
   const handleSubmit = async (data: Contact) => {
     try {
       setIsLoading(true);
-      await updateContact(contactId, data);
       setError(null);
-    } catch (err) {
+      await updateContact(contactId, data);
+      // Success - navigation will happen in ContactForm
+    } catch (err: any) {
       console.error('Error updating contact:', err);
-      setError('Failed to update contact. Please try again.');
+      
+      // Provide more specific error messages
+      if (err?.response?.status === 400) {
+        setError(err.response.data?.message || 'Invalid contact data. Please check your inputs.');
+      } else if (err?.response?.status === 401) {
+        setError('You are not authorized to update this contact. Please log in again.');
+      } else if (err?.response?.status === 404) {
+        setError('Contact not found. It may have been deleted.');
+      } else if (err?.code === 'ERR_NETWORK' || err?.name === 'NetworkError') {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError(err?.response?.data?.message || 'Failed to update contact. Please try again.');
+      }
       throw err;
     } finally {
       setIsLoading(false);

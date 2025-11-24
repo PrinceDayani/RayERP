@@ -11,7 +11,7 @@ export const chatAPI = {
     return response.data;
   },
 
-  sendMessage: async (chatId: string, content: string, type = 'text', fileData?: string, fileName?: string, fileSize?: number, mimeType?: string) => {
+  sendMessage: async (chatId: string, content: string, type = 'text', fileData?: string, fileName?: string, fileSize?: number, mimeType?: string, replyTo?: string) => {
     let location;
     if (navigator.geolocation && navigator.permissions) {
       try {
@@ -30,6 +30,14 @@ export const chatAPI = {
       }
     }
 
+    // Get device info for better tracking
+    const deviceInfo = {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      language: navigator.language,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    };
+
     const response = await api.post('/chat/chats/message', {
       chatId,
       content,
@@ -38,7 +46,10 @@ export const chatAPI = {
       fileName,
       fileSize,
       mimeType,
-      location
+      replyTo,
+      location,
+      deviceInfo,
+      status: 'sending' // Initial status
     });
     return response.data;
   },
@@ -59,7 +70,39 @@ export const chatAPI = {
   getUsers: async () => {
     const response = await api.get('/chat/users');
     return response.data;
+  },
+
+  updateMessageStatus: async (messageId: string, status: 'sent' | 'delivered' | 'read' | 'failed') => {
+    const response = await api.put(`/chat/messages/${messageId}/status`, { status });
+    return response.data;
+  },
+
+  markMessagesAsRead: async (chatId: string, messageIds: string[]) => {
+    const response = await api.put(`/chat/chats/${chatId}/messages/read`, { messageIds });
+    return response.data;
+  },
+
+  editMessage: async (messageId: string, content: string) => {
+    const response = await api.put(`/chat/messages/${messageId}`, { content });
+    return response.data;
+  },
+
+  deleteMessage: async (messageId: string) => {
+    const response = await api.delete(`/chat/messages/${messageId}`);
+    return response.data;
+  },
+
+  getOnlineUsers: async () => {
+    const response = await api.get('/chat/users/online');
+    return response.data;
+  },
+
+  getUserStatus: async (userId: string) => {
+    const response = await api.get(`/chat/users/${userId}/status`);
+    return response.data;
   }
 };
+
+
 
 export default chatAPI;

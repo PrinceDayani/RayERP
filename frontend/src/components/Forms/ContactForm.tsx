@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, X, User, Mail, Phone, Building2, MapPin, FileText, Tag, AlertTriangle } from 'lucide-react';
+import { Plus, X, User, Mail, Phone, Building2, MapPin, FileText, Tag, AlertTriangle, Globe, Linkedin, Twitter, Calendar, Briefcase, Star, TrendingUp } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ContactFormProps {
   initialData?: Contact;
@@ -31,6 +32,17 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
     tags: [],
     reference: '',
     alternativePhone: '',
+    contactType: 'personal',
+    department: '',
+    role: '',
+    priority: 'medium',
+    status: 'active',
+    website: '',
+    linkedIn: '',
+    twitter: '',
+    industry: '',
+    companySize: '',
+    annualRevenue: '',
   });
   const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -43,6 +55,19 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Clear error when field is modified
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
     
     // Clear error when field is modified
@@ -88,6 +113,21 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
     
     if (formData.email && !/^\S+@\S+\.\S+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
+    }
+    
+    // Validate website URL format
+    if (formData.website && formData.website.trim() && !/^https?:\/\/.+/.test(formData.website)) {
+      newErrors.website = 'Website must start with http:// or https://';
+    }
+    
+    // Validate LinkedIn URL format
+    if (formData.linkedIn && formData.linkedIn.trim() && !/^https?:\/\/(www\.)?linkedin\.com\//.test(formData.linkedIn)) {
+      newErrors.linkedIn = 'Please enter a valid LinkedIn URL';
+    }
+    
+    // Validate Twitter handle format
+    if (formData.twitter && formData.twitter.trim() && !/^@?[A-Za-z0-9_]+$/.test(formData.twitter)) {
+      newErrors.twitter = 'Please enter a valid Twitter handle (e.g., @username)';
     }
     
     if (Object.keys(newErrors).length > 0) {
@@ -181,6 +221,54 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
             )}
           </div>
 
+          {/* Contact Categorization */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label>Contact Type</Label>
+              <Select value={formData.contactType} onValueChange={(value) => handleSelectChange('contactType', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="personal">Personal</SelectItem>
+                  <SelectItem value="company">Company</SelectItem>
+                  <SelectItem value="vendor">Vendor</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                  <SelectItem value="partner">Partner</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Priority</Label>
+              <Select value={formData.priority} onValueChange={(value) => handleSelectChange('priority', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           {/* Professional Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -207,6 +295,65 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
                 value={formData.position || ''}
                 onChange={handleChange}
                 placeholder="Enter job title or position"
+              />
+            </div>
+          </div>
+
+          {/* Department and Role */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="department" className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                Department
+              </Label>
+              <Input
+                id="department"
+                name="department"
+                value={formData.department || ''}
+                onChange={handleChange}
+                placeholder="Enter department"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role">
+                Role
+              </Label>
+              <Input
+                id="role"
+                name="role"
+                value={formData.role || ''}
+                onChange={handleChange}
+                placeholder="Enter role or responsibility"
+              />
+            </div>
+          </div>
+
+          {/* Business Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="industry">
+                Industry
+              </Label>
+              <Input
+                id="industry"
+                name="industry"
+                value={formData.industry || ''}
+                onChange={handleChange}
+                placeholder="Enter industry"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="companySize">
+                Company Size
+              </Label>
+              <Input
+                id="companySize"
+                name="companySize"
+                value={formData.companySize || ''}
+                onChange={handleChange}
+                placeholder="e.g., 50-100 employees"
               />
             </div>
           </div>
@@ -239,6 +386,72 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
                 onChange={handleChange}
                 placeholder="Enter alternative phone number"
               />
+            </div>
+          </div>
+
+          {/* Social Media & Web */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="website" className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Website
+              </Label>
+              <Input
+                id="website"
+                name="website"
+                value={formData.website || ''}
+                onChange={handleChange}
+                placeholder="https://example.com"
+                className={errors.website ? 'border-red-500' : ''}
+              />
+              {errors.website && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.website}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="linkedIn" className="flex items-center gap-2">
+                <Linkedin className="h-4 w-4" />
+                LinkedIn
+              </Label>
+              <Input
+                id="linkedIn"
+                name="linkedIn"
+                value={formData.linkedIn || ''}
+                onChange={handleChange}
+                placeholder="LinkedIn profile URL"
+                className={errors.linkedIn ? 'border-red-500' : ''}
+              />
+              {errors.linkedIn && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.linkedIn}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="twitter" className="flex items-center gap-2">
+                <Twitter className="h-4 w-4" />
+                Twitter
+              </Label>
+              <Input
+                id="twitter"
+                name="twitter"
+                value={formData.twitter || ''}
+                onChange={handleChange}
+                placeholder="@username"
+                className={errors.twitter ? 'border-red-500' : ''}
+              />
+              {errors.twitter && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.twitter}
+                </p>
+              )}
             </div>
           </div>
 

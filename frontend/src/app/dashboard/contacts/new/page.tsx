@@ -16,11 +16,24 @@ export default function NewContactPage() {
   const handleSubmit = async (data: Contact) => {
     try {
       setIsLoading(true);
-      await createContact(data);
       setError(null);
-    } catch (err) {
+      await createContact(data);
+      // Success - navigation will happen in ContactForm
+    } catch (err: any) {
       console.error('Error creating contact:', err);
-      setError('Failed to create contact. Please try again.');
+      
+      // Provide more specific error messages
+      if (err?.response?.status === 400) {
+        setError(err.response.data?.message || 'Invalid contact data. Please check your inputs.');
+      } else if (err?.response?.status === 401) {
+        setError('You are not authorized to create contacts. Please log in again.');
+      } else if (err?.response?.status === 409) {
+        setError('A contact with this phone number already exists.');
+      } else if (err?.code === 'ERR_NETWORK' || err?.name === 'NetworkError') {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError(err?.response?.data?.message || 'Failed to create contact. Please try again.');
+      }
       throw err;
     } finally {
       setIsLoading(false);

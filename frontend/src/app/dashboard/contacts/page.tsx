@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getContacts, searchContacts, deleteContact, createContact, Contact } from '@/lib/api/index';
+import { useSocketContext } from '@/contexts/socket/SocketContext';
+import { getContacts, searchContacts, deleteContact, createContact, Contact, filterContacts, getContactStats, ContactFilterOptions, ContactStats, ContactFilterParams } from '@/lib/api/index';
 import { 
   Plus, 
   Search, 
@@ -21,7 +22,16 @@ import {
   Tag,
   FileText,
   AlertTriangle,
-  MapPin
+  MapPin,
+  Globe,
+  Linkedin,
+  Twitter,
+  TrendingUp,
+  Briefcase,
+  Star,
+  Archive,
+  Eye,
+  MoreVertical
 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,11 +74,35 @@ import {
 } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Papa, { ParseConfig } from 'papaparse';
+import ContactsDiagnostic from '@/components/ContactsDiagnostic';
 
 type FilterOptions = {
   tags: string[];
   company: string[];
+  departments: string[];
+  roles: string[];
+  contactTypes: string[];
+  priorities: string[];
+  statuses: string[];
+  industries: string[];
+};
+
+const CONTACT_TYPE_COLORS: Record<string, string> = {
+  company: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+  personal: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+  vendor: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
+  client: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
+  partner: 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400',
+};
+
+const PRIORITY_COLORS: Record<string, string> = {
+  low: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
+  medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
+  high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
+  critical: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
 };
 
 export default function ContactsPage() {
@@ -79,7 +113,13 @@ export default function ContactsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [filterOptions, setFilterOptions] = useState<FilterOptions>({ tags: [], company: [] });
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({ 
+    tags: [], company: [], departments: [], roles: [], contactTypes: [], 
+    priorities: [], statuses: [], industries: [] 
+  });
+  const [contactStats, setContactStats] = useState<ContactStats>({ total: 0, byType: [] });
+  const [advancedFilters, setAdvancedFilters] = useState<ContactFilterParams>({});
+  const [currentView, setCurrentView] = useState<'all' | 'company' | 'personal' | 'vendor' | 'client' | 'partner'>('all');
   const [activeFilters, setActiveFilters] = useState<{
     tags: string[],
     company: string[]
@@ -91,38 +131,85 @@ export default function ContactsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { socket, isConnected } = useSocketContext();
 
   useEffect(() => {
     fetchContacts();
   }, []);
 
+  // Real-time socket listeners with proper state updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleContactCreated = (newContact: Contact) => {
+      setContacts(prev => {
+        const exists = prev.some(c => c._id === newContact._id);
+        return exists ? prev : [newContact, ...prev];
+      });
+      setAllContacts(prev => {
+        const exists = prev.some(c => c._id === newContact._id);
+        return exists ? prev : [newContact, ...prev];
+      });
+    };
+
+    const handleContactUpdated = (updatedContact: Contact) => {
+      setContacts(prev => prev.map(c => c._id === updatedContact._id ? updatedContact : c));
+      setAllContacts(prev => prev.map(c => c._id === updatedContact._id ? updatedContact : c));
+    };
+
+    const handleContactDeleted = (contactId: string) => {
+      setContacts(prev => prev.filter(c => c._id !== contactId));
+      setAllContacts(prev => prev.filter(c => c._id !== contactId));
+    };
+
+    socket.on('contact:created', handleContactCreated);
+    socket.on('contact:updated', handleContactUpdated);
+    socket.on('contact:deleted', handleContactDeleted);
+
+    return () => {
+      socket.off('contact:created', handleContactCreated);
+      socket.off('contact:updated', handleContactUpdated);
+      socket.off('contact:deleted', handleContactDeleted);
+    };
+  }, [socket]);
+
   const fetchContacts = async () => {
     try {
       setIsLoading(true);
-      const data = await getContacts();
-      setContacts(data);
-      setAllContacts(data);
-      
-      // Extract unique filter options
-      const tagOptions = new Set<string>();
-      const companyOptions = new Set<string>();
-      
-      data.forEach(contact => {
-        if (contact.company) companyOptions.add(contact.company);
-        if (contact.tags && contact.tags.length > 0) {
-          contact.tags.forEach(tag => tagOptions.add(tag));
-        }
-      });
-      
-      setFilterOptions({
-        tags: Array.from(tagOptions),
-        company: Array.from(companyOptions)
-      });
-      
       setError(null);
-    } catch (err) {
-      setError('Failed to load contacts. Please try again.');
-      console.error(err);
+      
+      const [contactsData, statsData] = await Promise.all([
+        getContacts(),
+        getContactStats()
+      ]);
+      
+      setContacts(contactsData || []);
+      setAllContacts(contactsData || []);
+      setContactStats(statsData?.stats || { total: 0, byType: [] });
+      
+      // Set enhanced filter options with fallbacks
+      setFilterOptions({
+        tags: statsData?.filterOptions?.tags || [],
+        company: statsData?.filterOptions?.companies || [],
+        departments: statsData?.filterOptions?.departments || [],
+        roles: statsData?.filterOptions?.roles || [],
+        contactTypes: statsData?.filterOptions?.contactTypes || ['personal', 'company', 'vendor', 'client', 'partner'],
+        priorities: statsData?.filterOptions?.priorities || ['low', 'medium', 'high', 'critical'],
+        statuses: statsData?.filterOptions?.statuses || ['active', 'inactive', 'archived'],
+        industries: statsData?.filterOptions?.industries || []
+      });
+      
+    } catch (err: any) {
+      console.error('Error fetching contacts:', err);
+      
+      // Provide more specific error messages
+      if (err?.response?.status === 401) {
+        setError('You are not authorized to view contacts. Please log in again.');
+      } else if (err?.code === 'ERR_NETWORK' || err?.name === 'NetworkError') {
+        setError('Network error. Please check your connection and server status.');
+      } else {
+        setError(err?.response?.data?.message || 'Failed to load contacts. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -151,30 +238,20 @@ export default function ContactsPage() {
       setTimeout(() => {
         setSuccess(null);
       }, 3000);
-    } catch (err) {
-      setError('Failed to delete contact. Please try again.');
-      console.error(err);
+    } catch (err: any) {
+      console.error('Error deleting contact:', err);
+      
+      if (err?.response?.status === 404) {
+        setError('Contact not found. It may have already been deleted.');
+      } else if (err?.response?.status === 401) {
+        setError('You are not authorized to delete this contact.');
+      } else {
+        setError(err?.response?.data?.message || 'Failed to delete contact. Please try again.');
+      }
     }
   };
 
-  const applyFilters = React.useCallback((contactsToFilter: Contact[]) => {
-    if (activeFilters.tags.length === 0 && activeFilters.company.length === 0) {
-      setContacts(contactsToFilter);
-      return;
-    }
-
-    const filtered = contactsToFilter.filter(contact => {
-      const companyMatch = activeFilters.company.length === 0 || 
-        (contact.company && activeFilters.company.includes(contact.company));
-      
-      const tagMatch = activeFilters.tags.length === 0 || 
-        (contact.tags && contact.tags.some(tag => activeFilters.tags.includes(tag)));
-      
-      return companyMatch && tagMatch;
-    });
-    
-    setContacts(filtered);
-  }, [activeFilters]);
+  // Remove applyFilters function as it's now inline in useEffect
 
   const toggleFilter = (type: 'tags' | 'company', value: string) => {
     setActiveFilters(prev => {
@@ -197,6 +274,11 @@ export default function ContactsPage() {
   useEffect(() => {
     let filtered = allContacts;
     
+    // Apply view filter first
+    if (currentView !== 'all') {
+      filtered = filtered.filter(c => (c.contactType || 'personal') === currentView);
+    }
+    
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -205,22 +287,68 @@ export default function ContactsPage() {
         const email = c.email?.toLowerCase() || '';
         const phone = c.phone?.toLowerCase() || '';
         const company = c.company?.toLowerCase() || '';
+        const department = c.department?.toLowerCase() || '';
+        const role = c.role?.toLowerCase() || '';
         
         return name.includes(query) || 
                email.includes(query) || 
                phone.includes(query) || 
-               company.includes(query);
+               company.includes(query) ||
+               department.includes(query) ||
+               role.includes(query);
       });
     }
     
-    // Apply active filters
-    applyFilters(filtered);
-  }, [activeFilters, searchQuery, allContacts]);
+    // Apply advanced filters
+    if (advancedFilters.company) {
+      filtered = filtered.filter(c => c.company?.toLowerCase().includes(advancedFilters.company!.toLowerCase()));
+    }
+    if (advancedFilters.department) {
+      filtered = filtered.filter(c => c.department?.toLowerCase().includes(advancedFilters.department!.toLowerCase()));
+    }
+    if (advancedFilters.role) {
+      filtered = filtered.filter(c => c.role?.toLowerCase().includes(advancedFilters.role!.toLowerCase()));
+    }
+    if (advancedFilters.priority) {
+      filtered = filtered.filter(c => (c.priority || 'medium') === advancedFilters.priority);
+    }
+    if (advancedFilters.status) {
+      filtered = filtered.filter(c => (c.status || 'active') === advancedFilters.status);
+    }
+    
+    // Apply legacy active filters inline to avoid dependency issues
+    if (activeFilters.tags.length === 0 && activeFilters.company.length === 0) {
+      setContacts(filtered);
+      return;
+    }
+
+    const finalFiltered = filtered.filter(contact => {
+      const companyMatch = activeFilters.company.length === 0 || 
+        (contact.company && activeFilters.company.includes(contact.company));
+      
+      const tagMatch = activeFilters.tags.length === 0 || 
+        (contact.tags && contact.tags.some(tag => activeFilters.tags.includes(tag)));
+      
+      return companyMatch && tagMatch;
+    });
+    
+    setContacts(finalFiltered);
+  }, [activeFilters, searchQuery, allContacts, currentView, advancedFilters]);
 
   const clearFilters = () => {
     setActiveFilters({ tags: [], company: [] });
+    setAdvancedFilters({});
     setSearchQuery('');
+    setCurrentView('all');
   };
+  
+  const getContactTypeStats = useMemo(() => {
+    return allContacts.reduce((acc, contact) => {
+      const type = contact.contactType || 'personal';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [allContacts]);
 
   const exportContacts = () => {
     try {
@@ -478,78 +606,116 @@ export default function ContactsPage() {
               <Upload className="mr-2 h-4 w-4" /> Import
             </Button>
             
+            <div className="flex items-center gap-2 mr-3">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-xs text-muted-foreground">
+                {isConnected ? 'Live' : 'Offline'}
+              </span>
+            </div>
             <Button onClick={() => router.push('/dashboard/contacts/new')} className="btn-primary-gradient">
               <Plus className="mr-2 h-4 w-4" /> Add Contact
             </Button>
           </div>
         </div>
         
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Contacts</p>
-                  <p className="text-3xl font-bold text-foreground">{allContacts.length}</p>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    {contacts.length !== allContacts.length ? `${contacts.length} filtered` : 'Active database'}
-                  </p>
-                </div>
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
-                  <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Contact Type Tabs */}
+        <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)} className="w-full">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="all" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              All ({allContacts.length})
+            </TabsTrigger>
+            <TabsTrigger value="company" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Company ({getContactTypeStats.company || 0})
+            </TabsTrigger>
+            <TabsTrigger value="personal" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Personal ({getContactTypeStats.personal || 0})
+            </TabsTrigger>
+            <TabsTrigger value="vendor" className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4" />
+              Vendor ({getContactTypeStats.vendor || 0})
+            </TabsTrigger>
+            <TabsTrigger value="client" className="flex items-center gap-2">
+              <Star className="h-4 w-4" />
+              Client ({getContactTypeStats.client || 0})
+            </TabsTrigger>
+            <TabsTrigger value="partner" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Partner ({getContactTypeStats.partner || 0})
+            </TabsTrigger>
+          </TabsList>
 
-          <Card className="card-modern hover-lift border-l-4 border-l-green-500">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Companies</p>
-                  <p className="text-3xl font-bold text-foreground">{filterOptions.company.length}</p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Organizations</p>
-                </div>
-                <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
-                  <Building2 className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-modern hover-lift border-l-4 border-l-purple-500">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Unique Tags</p>
-                  <p className="text-3xl font-bold text-foreground">{filterOptions.tags.length}</p>
-                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">Categories</p>
-                </div>
-                <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
-                  <Tag className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {selectedContacts.length > 0 && (
-            <Card className="card-modern hover-lift border-l-4 border-l-orange-500">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Selected</p>
-                    <p className="text-3xl font-bold text-foreground">{selectedContacts.length}</p>
-                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Ready for action</p>
+          <TabsContent value={currentView} className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Total Contacts</p>
+                      <p className="text-3xl font-bold text-foreground">{allContacts.length}</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        {contacts.length !== allContacts.length ? `${contacts.length} filtered` : 'Active database'}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
+                      <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    </div>
                   </div>
-                  <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-xl">
-                    <Checkbox className="h-6 w-6 text-orange-600 dark:text-orange-400" checked />
+                </CardContent>
+              </Card>
+
+              <Card className="card-modern hover-lift border-l-4 border-l-green-500">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Companies</p>
+                      <p className="text-3xl font-bold text-foreground">{filterOptions.company.length}</p>
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">Organizations</p>
+                    </div>
+                    <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
+                      <Building2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                </CardContent>
+              </Card>
+
+              <Card className="card-modern hover-lift border-l-4 border-l-purple-500">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Unique Tags</p>
+                      <p className="text-3xl font-bold text-foreground">{filterOptions.tags.length}</p>
+                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">Categories</p>
+                    </div>
+                    <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
+                      <Tag className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {selectedContacts.length > 0 && (
+                <Card className="card-modern hover-lift border-l-4 border-l-orange-500">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Selected</p>
+                        <p className="text-3xl font-bold text-foreground">{selectedContacts.length}</p>
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Ready for action</p>
+                      </div>
+                      <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-xl">
+                        <Checkbox className="h-6 w-6 text-orange-600 dark:text-orange-400" checked />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
         
         {/* Error/Success Alerts */}
         {error && (
@@ -629,6 +795,80 @@ export default function ContactsPage() {
                   <button type="submit" hidden>Search</button>
                 </div>
               </form>
+              
+              {/* Advanced Filter Controls */}
+              <div className="flex flex-wrap gap-2">
+                <Select value={advancedFilters.company || 'all'} onValueChange={(value) => 
+                  setAdvancedFilters(prev => ({ ...prev, company: value === 'all' ? undefined : value }))
+                }>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Companies</SelectItem>
+                    {filterOptions.company.map(company => (
+                      <SelectItem key={company} value={company}>{company}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={advancedFilters.department || 'all'} onValueChange={(value) => 
+                  setAdvancedFilters(prev => ({ ...prev, department: value === 'all' ? undefined : value }))
+                }>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {filterOptions.departments.map(dept => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={advancedFilters.role || 'all'} onValueChange={(value) => 
+                  setAdvancedFilters(prev => ({ ...prev, role: value === 'all' ? undefined : value }))
+                }>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    {filterOptions.roles.map(role => (
+                      <SelectItem key={role} value={role}>{role}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={advancedFilters.priority || 'all'} onValueChange={(value) => 
+                  setAdvancedFilters(prev => ({ ...prev, priority: value === 'all' ? undefined : value }))
+                }>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={advancedFilters.status || 'all'} onValueChange={(value) => 
+                  setAdvancedFilters(prev => ({ ...prev, status: value === 'all' ? undefined : value }))
+                }>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
               {/* Action Buttons */}
               <div className="flex gap-2">
@@ -778,8 +1018,32 @@ export default function ContactsPage() {
             <div className="text-center">
               <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
               <p className="text-muted-foreground">Loading contacts...</p>
+              <p className="text-xs text-muted-foreground mt-2">This may take a few moments</p>
             </div>
           </div>
+        ) : error ? (
+          <Card className="card-modern">
+            <CardContent className="py-16">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <AlertTriangle className="h-10 w-10 text-red-600 dark:text-red-400" />
+                </div>
+                <p className="text-xl font-semibold text-foreground mb-2">Error Loading Contacts</p>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  {error}
+                </p>
+                <div className="flex gap-3 justify-center mb-6">
+                  <Button onClick={refreshData} className="btn-primary-gradient">
+                    <RefreshCw className="mr-2 h-4 w-4" /> Try Again
+                  </Button>
+                  <Button variant="outline" onClick={() => setError(null)}>
+                    Dismiss
+                  </Button>
+                </div>
+                <ContactsDiagnostic />
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <>
             {/* Contacts Grid */}
@@ -834,6 +1098,14 @@ export default function ContactsPage() {
                             <CardTitle className="text-lg truncate text-foreground">
                               {contact.name}
                             </CardTitle>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge className={`text-xs ${CONTACT_TYPE_COLORS[contact.contactType || 'personal'] || 'bg-gray-100 text-gray-800'}`}>
+                                {contact.contactType || 'personal'}
+                              </Badge>
+                              <Badge className={`text-xs ${PRIORITY_COLORS[contact.priority || 'medium'] || 'bg-yellow-100 text-yellow-800'}`}>
+                                {contact.priority || 'medium'}
+                              </Badge>
+                            </div>
                             {contact.company && (
                               <CardDescription className="flex items-center mt-1">
                                 <Building2 className="h-4 w-4 mr-1" />
@@ -967,6 +1239,22 @@ export default function ContactsPage() {
                           </div>
                         )}
                       </div>
+                      
+                      {/* Department and Role */}
+                      {(contact.department || contact.role) && (
+                        <div className="flex flex-wrap gap-2">
+                          {contact.department && (
+                            <Badge variant="outline" className="text-xs">
+                              Dept: {contact.department}
+                            </Badge>
+                          )}
+                          {contact.role && (
+                            <Badge variant="outline" className="text-xs">
+                              Role: {contact.role}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                       
                       {/* Tags */}
                       {contact.tags && contact.tags.length > 0 && (

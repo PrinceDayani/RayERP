@@ -209,7 +209,26 @@ export const login = async (req: Request, res: Response) => {
 
     logger.info(`User logged in successfully: ${email}`);
 
-    // Emit login activity
+    // Log login activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: user._id.toString(),
+      userName: user.name,
+      action: 'login',
+      resource: 'User Session',
+      resourceType: 'auth',
+      details: `User ${user.name} logged in successfully`,
+      metadata: { 
+        email: user.email, 
+        role: (user.role as any)?.name,
+        loginTime: new Date().toISOString()
+      },
+      category: 'security',
+      severity: 'low',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+
+    // Emit real-time activity
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitActivityLog({
       type: 'auth',
@@ -284,8 +303,26 @@ export const logout = async (req: Request, res: Response) => {
 
     logger.info('User logged out');
 
-    // Emit logout activity
+    // Log logout activity
     if (req.user) {
+      const { logActivity } = await import('../utils/activityLogger');
+      await logActivity({
+        userId: req.user._id.toString(),
+        userName: req.user.name,
+        action: 'logout',
+        resource: 'User Session',
+        resourceType: 'auth',
+        details: `User ${req.user.name} logged out`,
+        metadata: { 
+          email: req.user.email,
+          logoutTime: new Date().toISOString()
+        },
+        category: 'security',
+        severity: 'low',
+        ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+      });
+
+      // Emit real-time activity
       const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
       await RealTimeEmitter.emitActivityLog({
         type: 'auth',

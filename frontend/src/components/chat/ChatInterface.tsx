@@ -40,9 +40,13 @@ export default function ChatInterface() {
           if (!prev) return prev;
           // Ensure message has proper structure before adding
           if (data.message && data.message.sender) {
+            const newMessage = {
+              ...data.message,
+              status: 'delivered' // Mark as delivered when received
+            };
             return {
               ...prev,
-              messages: [...(prev.messages || []), data.message]
+              messages: [...(prev.messages || []), newMessage]
             };
           }
           return prev;
@@ -51,8 +55,42 @@ export default function ChatInterface() {
       loadChats();
     });
 
+    socket.on('message_status_update', (data: any) => {
+      if (selectedChat?._id === data.chatId) {
+        setSelectedChat((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages.map(msg => 
+              msg._id === data.messageId 
+                ? { ...msg, status: data.status }
+                : msg
+            )
+          };
+        });
+      }
+    });
+
+    socket.on('messages_read', (data: any) => {
+      if (selectedChat?._id === data.chatId) {
+        setSelectedChat((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages.map(msg => 
+              data.messageIds.includes(msg._id)
+                ? { ...msg, status: 'read', read: true }
+                : msg
+            )
+          };
+        });
+      }
+    });
+
     return () => {
       socket.off('new_message');
+      socket.off('message_status_update');
+      socket.off('messages_read');
     };
   }, [socket, selectedChat]);
 

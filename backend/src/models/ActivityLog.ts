@@ -6,7 +6,7 @@ export interface IActivityLog extends Document {
   userName: string;
   action: string;
   resource: string;
-  resourceType: 'project' | 'task' | 'file' | 'comment' | 'employee' | 'budget' | 'other';
+  resourceType: 'project' | 'task' | 'file' | 'comment' | 'employee' | 'budget' | 'user' | 'role' | 'department' | 'report' | 'notification' | 'system' | 'auth' | 'other';
   resourceId?: mongoose.Types.ObjectId;
   projectId?: mongoose.Types.ObjectId;
   status: 'success' | 'error' | 'warning';
@@ -14,6 +14,8 @@ export interface IActivityLog extends Document {
   metadata?: any;
   ipAddress: string;
   visibility: 'all' | 'management' | 'project_team' | 'private';
+  category?: 'system' | 'user' | 'project' | 'security' | 'data';
+  severity?: 'low' | 'medium' | 'high' | 'critical';
 }
 
 const ActivityLogSchema = new Schema<IActivityLog>({
@@ -39,6 +41,7 @@ const ActivityLogSchema = new Schema<IActivityLog>({
   },
   resourceType: {
     type: String,
+    enum: ['project', 'task', 'file', 'comment', 'employee', 'budget', 'user', 'role', 'department', 'report', 'notification', 'system', 'auth', 'other'],
     default: 'other'
   },
   resourceId: {
@@ -73,6 +76,16 @@ const ActivityLogSchema = new Schema<IActivityLog>({
     type: String,
     enum: ['all', 'management', 'project_team', 'private'],
     default: 'all'
+  },
+  category: {
+    type: String,
+    enum: ['system', 'user', 'project', 'security', 'data'],
+    default: 'user'
+  },
+  severity: {
+    type: String,
+    enum: ['low', 'medium', 'high', 'critical'],
+    default: 'low'
   }
 }, {
   timestamps: true

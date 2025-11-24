@@ -93,6 +93,27 @@ export const resetUserPassword = async (req: Request, res: Response) => {
     
     logger.info(`Password reset successfully for user ${user.email}`);
     
+    // Log password reset activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'System Admin',
+      action: 'update',
+      resource: `User Password: ${user.name}`,
+      resourceType: 'user',
+      resourceId: user._id.toString(),
+      details: `Password reset for user ${user.name} (${user.email})`,
+      metadata: {
+        targetUserId: user._id,
+        targetUserEmail: user.email,
+        resetBy: req.user?.name || 'System Admin'
+      },
+      category: 'security',
+      severity: 'high',
+      visibility: 'management',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+    
     res.status(200).json({
       success: true,
       message: 'Password reset successfully'
@@ -176,6 +197,27 @@ export const bulkUpdateUserRoles = async (req: Request, res: Response) => {
     }
     
     logger.info(`Bulk updated ${updated} user roles to ${newRole.name}`);
+    
+    // Log bulk role update activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'System Admin',
+      action: 'update',
+      resource: 'User Roles (Bulk)',
+      resourceType: 'user',
+      details: `Bulk updated ${updated} user roles to ${newRole.name}`,
+      metadata: {
+        updatedCount: updated,
+        newRoleName: newRole.name,
+        newRoleId: newRole._id,
+        targetUserIds: userIds
+      },
+      category: 'user',
+      severity: 'medium',
+      visibility: 'management',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
     
     res.status(200).json({
       success: true,
@@ -268,6 +310,29 @@ export const updateUserRole = async (req: Request, res: Response) => {
     }
     
     logger.info(`Updated role for user ${updatedUser.email} to ${newRole.name}`);
+    
+    // Log role update activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'System Admin',
+      action: 'update',
+      resource: `User Role: ${updatedUser.name}`,
+      resourceType: 'user',
+      resourceId: updatedUser._id.toString(),
+      details: `Updated role for user ${updatedUser.name} from ${targetUserCurrentRole.name} to ${newRole.name}`,
+      metadata: {
+        targetUserId: updatedUser._id,
+        targetUserEmail: updatedUser.email,
+        oldRoleName: targetUserCurrentRole.name,
+        newRoleName: newRole.name,
+        updatedBy: req.user?.name || 'System Admin'
+      },
+      category: 'user',
+      severity: 'medium',
+      visibility: 'management',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
     
     emitToUser(userId, 'roleUpdated', {
       userId: userId,
@@ -405,6 +470,25 @@ export const updateProfile = async (req: Request, res: Response) => {
     
     const updatedUser = await User.findById(userId).populate('role').select('-password');
     
+    // Log profile update activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: userId,
+      userName: user.name,
+      action: 'update',
+      resource: 'User Profile',
+      resourceType: 'user',
+      resourceId: userId,
+      details: `Updated profile information`,
+      metadata: {
+        updatedFields: Object.keys(req.body),
+        hasAvatar: !!avatarUrl
+      },
+      category: 'user',
+      severity: 'low',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+    
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
@@ -442,6 +526,24 @@ export const changePassword = async (req: Request, res: Response) => {
     
     user.password = newPassword;
     await user.save();
+    
+    // Log password change activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: userId,
+      userName: user.name,
+      action: 'update',
+      resource: 'User Password',
+      resourceType: 'user',
+      resourceId: userId,
+      details: `Changed password`,
+      metadata: {
+        changedAt: new Date().toISOString()
+      },
+      category: 'security',
+      severity: 'medium',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
     
     res.status(200).json({ success: true, message: 'Password changed successfully' });
   } catch (error: any) {
@@ -505,6 +607,28 @@ export const deleteUser = async (req: Request, res: Response) => {
     await User.findByIdAndDelete(userId);
     
     logger.info(`User deleted: ${user.email}`);
+    
+    // Log user deletion activity
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'System Admin',
+      action: 'delete',
+      resource: `User: ${user.name}`,
+      resourceType: 'user',
+      resourceId: userId,
+      details: `Deleted user ${user.name} (${user.email})`,
+      metadata: {
+        deletedUserId: user._id,
+        deletedUserEmail: user.email,
+        deletedUserRole: userRole.name,
+        deletedBy: req.user?.name || 'System Admin'
+      },
+      category: 'user',
+      severity: 'high',
+      visibility: 'management',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
     
     res.status(200).json({ success: true, message: 'User deleted successfully' });
   } catch (error: any) {

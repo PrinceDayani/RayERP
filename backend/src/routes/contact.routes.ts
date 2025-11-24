@@ -7,7 +7,9 @@ import {
   createContact,
   updateContact,
   deleteContact,
-  searchContacts
+  searchContacts,
+  filterContacts,
+  getContactStats
 } from '../controllers/contactController';
 
 const router = Router();
@@ -20,6 +22,12 @@ router.get('/', getContacts);
 
 // GET search contacts
 router.get('/search', searchContacts);
+
+// GET filter contacts with advanced options
+router.get('/filter', filterContacts);
+
+// GET contact statistics and filter options
+router.get('/stats', getContactStats);
 
 // GET single contact
 router.get('/:id', getContactById);

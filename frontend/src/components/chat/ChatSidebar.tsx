@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, RefreshCw, Shield, Megaphone } from 'lucide-react';
+import { Search, Plus, RefreshCw, Shield, Megaphone, Check, CheckCheck, Clock, Image, FileText, Mic } from 'lucide-react';
 import NewChatDialog from './NewChatDialog';
 import BroadcastDialog from './BroadcastDialog';
 import { formatDistanceToNow } from 'date-fns';
@@ -16,9 +16,14 @@ interface Chat {
   participants: Array<{ _id: string; name: string; email: string }>;
   lastMessage?: string;
   lastMessageTime?: string;
+  lastMessageType?: 'text' | 'image' | 'file' | 'audio';
+  lastMessageStatus?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+  unreadCount?: number;
   isGroup: boolean;
   groupName?: string;
   messages?: any[];
+  isOnline?: boolean;
+  lastSeen?: string;
 }
 
 interface ChatSidebarProps {
@@ -68,9 +73,56 @@ export default function ChatSidebar({ chats, selectedChat, onSelectChat, onRefre
   const formatTime = (time?: string) => {
     if (!time) return '';
     try {
-      return formatDistanceToNow(new Date(time), { addSuffix: true });
+      const date = new Date(time);
+      const now = new Date();
+      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+      
+      if (diffInHours < 24) {
+        return date.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        });
+      } else if (diffInHours < 168) { // Less than a week
+        return date.toLocaleDateString('en-US', { weekday: 'short' });
+      } else {
+        return date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      }
     } catch {
       return '';
+    }
+  };
+
+  const getMessagePreview = (chat: Chat) => {
+    if (!chat.lastMessage) return 'No messages yet';
+    
+    switch (chat.lastMessageType) {
+      case 'image':
+        return '📷 Photo';
+      case 'file':
+        return '📎 File';
+      case 'audio':
+        return '🎵 Audio';
+      default:
+        return chat.lastMessage;
+    }
+  };
+
+  const getStatusIcon = (status?: string) => {
+    switch (status) {
+      case 'sending':
+        return <Clock className="w-3 h-3 text-gray-400" />;
+      case 'sent':
+        return <Check className="w-3 h-3 text-gray-400" />;
+      case 'delivered':
+        return <CheckCheck className="w-3 h-3 text-gray-400" />;
+      case 'read':
+        return <CheckCheck className="w-3 h-3 text-blue-500" />;
+      default:
+        return null;
     }
   };
 
@@ -164,16 +216,39 @@ export default function ChatSidebar({ chats, selectedChat, onSelectChat, onRefre
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                        {getChatName(chat)}
-                      </h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                        {formatTime(chat.lastMessageTime)}
-                      </span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                          {getChatName(chat)}
+                        </h3>
+                        {chat.isOnline && (
+                          <div className="w-2 h-2 bg-green-500 rounded-full" title="Online" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 ml-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatTime(chat.lastMessageTime)}
+                        </span>
+                        {getStatusIcon(chat.lastMessageStatus)}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                      {chat.lastMessage || 'No messages yet'}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1">
+                        {chat.lastMessage || 'No messages yet'}
+                      </p>
+                      {chat.unreadCount && chat.unreadCount > 0 && (
+                        <Badge 
+                          variant="destructive" 
+                          className="ml-2 h-5 min-w-[20px] text-xs flex items-center justify-center rounded-full"
+                        >
+                          {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                        </Badge>
+                      )}
+                    </div>
+                    {!chat.isOnline && chat.lastSeen && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Last seen {formatTime(chat.lastSeen)}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { FileText, MessageSquare, Share2, UserPlus, CheckCircle, Clock, Filter, Upload, Trash2, Edit, Eye, Activity as ActivityIcon, Calendar, RefreshCw } from 'lucide-react';
+import { FileText, MessageSquare, Share2, UserPlus, CheckCircle, Clock, Filter, Upload, Trash2, Edit, Eye, Activity as ActivityIcon, Calendar, RefreshCw, Search, X, Info, AlertTriangle, AlertCircle, Shield, Database, User, Settings } from 'lucide-react';
 
 interface Activity {
   _id: string;
@@ -15,11 +15,23 @@ interface Activity {
   userName: string;
   action: string;
   resource: string;
-  resourceType: 'project' | 'task' | 'file' | 'comment' | 'employee' | 'budget' | 'other';
+  resourceType: 'project' | 'task' | 'file' | 'comment' | 'employee' | 'budget' | 'user' | 'role' | 'department' | 'report' | 'notification' | 'system' | 'auth' | 'other';
   details: string;
   status: 'success' | 'error' | 'warning';
   projectId?: { _id: string; name: string };
   metadata?: any;
+  ipAddress?: string;
+  visibility?: string;
+  user?: { _id: string; name: string; email: string };
+}
+
+interface ActivityStats {
+  totalActivities: number;
+  todayActivities: number;
+  weekActivities: number;
+  monthActivities: number;
+  resourceTypeStats: { _id: string; count: number }[];
+  actionStats: { _id: string; count: number }[];
 }
 
 const getActionIcon = (action: string, resourceType: string) => {
@@ -71,6 +83,13 @@ export default function ActivityPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [actionFilter, setActionFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [userNameFilter, setUserNameFilter] = useState('');
+  const [stats, setStats] = useState<ActivityStats | null>(null);
 
   const fetchActivities = async () => {
     if (!token) return;
@@ -80,8 +99,12 @@ export default function ActivityPage() {
       setError(null);
       const filterParam = filter !== 'all' ? `&resourceType=${filter}` : '';
       const dateParams = `${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`;
+      const actionParam = actionFilter && actionFilter !== 'all' ? `&action=${actionFilter}` : '';
+      const statusParam = statusFilter && statusFilter !== 'all' ? `&status=${statusFilter}` : '';
+      const categoryParam = categoryFilter && categoryFilter !== 'all' ? `&category=${categoryFilter}` : '';
+      const userParam = userNameFilter ? `&userName=${userNameFilter}` : '';
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/activity?page=${page}&limit=20${filterParam}${dateParams}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/activity?page=${page}&limit=20${filterParam}${dateParams}${actionParam}${statusParam}${categoryParam}${userParam}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -105,9 +128,90 @@ export default function ActivityPage() {
     }
   };
 
+  const fetchActivityStats = async () => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/activity/stats`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching activity stats:', error);
+    }
+  };
+
+  const fetchActivityDetails = async (activityId: string) => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/activity/${activityId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedActivity(data.data);
+        setShowDetailModal(true);
+      }
+    } catch (error) {
+      console.error('Error fetching activity details:', error);
+    }
+  };
+
+  const clearAllFilters = () => {
+    setFilter('all');
+    setActionFilter('all');
+    setStatusFilter('all');
+    setCategoryFilter('all');
+    setUserNameFilter('');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'system': return <Settings className="h-4 w-4" />;
+      case 'security': return <Shield className="h-4 w-4" />;
+      case 'data': return <Database className="h-4 w-4" />;
+      case 'user': return <User className="h-4 w-4" />;
+      default: return <Info className="h-4 w-4" />;
+    }
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'text-red-600 bg-red-50';
+      case 'high': return 'text-orange-600 bg-orange-50';
+      case 'medium': return 'text-yellow-600 bg-yellow-50';
+      case 'low': return 'text-green-600 bg-green-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
+  };
+
   useEffect(() => {
     fetchActivities();
-  }, [page, filter, startDate, endDate]);
+  }, [page, filter, startDate, endDate, actionFilter, statusFilter, categoryFilter, userNameFilter]);
+
+  useEffect(() => {
+    fetchActivityStats();
+  }, [token]);
 
   return (
     <div className="p-6 space-y-6">
@@ -130,51 +234,134 @@ export default function ActivityPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by type" />
+          {/* Stats Cards */}
+          {stats && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{stats.totalActivities}</div>
+                <div className="text-sm text-blue-600">Total Activities</div>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{stats.todayActivities}</div>
+                <div className="text-sm text-green-600">Today</div>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{stats.weekActivities}</div>
+                <div className="text-sm text-purple-600">This Week</div>
+              </div>
+              <div className="bg-orange-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-orange-600">{stats.monthActivities}</div>
+                <div className="text-sm text-orange-600">This Month</div>
+              </div>
+            </div>
+          )}
+
+          {/* Filters */}
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={filter} onValueChange={setFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Resource Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="project">Projects</SelectItem>
+                    <SelectItem value="task">Tasks</SelectItem>
+                    <SelectItem value="file">Files</SelectItem>
+                    <SelectItem value="comment">Comments</SelectItem>
+                    <SelectItem value="employee">Employees</SelectItem>
+                    <SelectItem value="budget">Budget</SelectItem>
+                    <SelectItem value="user">Users</SelectItem>
+                    <SelectItem value="auth">Authentication</SelectItem>
+                    <SelectItem value="system">System</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Select value={actionFilter} onValueChange={setActionFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Action" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Activities</SelectItem>
-                  <SelectItem value="project">Projects</SelectItem>
-                  <SelectItem value="task">Tasks</SelectItem>
-                  <SelectItem value="file">Files</SelectItem>
-                  <SelectItem value="comment">Comments</SelectItem>
-                  <SelectItem value="employee">Employees</SelectItem>
-                  <SelectItem value="budget">Budget</SelectItem>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  <SelectItem value="create">Create</SelectItem>
+                  <SelectItem value="update">Update</SelectItem>
+                  <SelectItem value="delete">Delete</SelectItem>
+                  <SelectItem value="view">View</SelectItem>
+                  <SelectItem value="login">Login</SelectItem>
+                  <SelectItem value="logout">Logout</SelectItem>
+                  <SelectItem value="share">Share</SelectItem>
+                  <SelectItem value="upload">Upload</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="success">Success</SelectItem>
+                  <SelectItem value="error">Error</SelectItem>
+                  <SelectItem value="warning">Warning</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="system">System</SelectItem>
+                  <SelectItem value="security">Security</SelectItem>
+                  <SelectItem value="project">Project</SelectItem>
+                  <SelectItem value="data">Data</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Input
-                type="date"
-                placeholder="Start Date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-[160px]"
-              />
-              <span className="text-muted-foreground">to</span>
-              <Input
-                type="date"
-                placeholder="End Date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-[160px]"
-              />
-              {(startDate || endDate) && (
+
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by user name..."
+                  value={userNameFilter}
+                  onChange={(e) => setUserNameFilter(e.target.value)}
+                  className="w-[200px]"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  placeholder="Start Date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-[160px]"
+                />
+                <span className="text-muted-foreground">to</span>
+                <Input
+                  type="date"
+                  placeholder="End Date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-[160px]"
+                />
+              </div>
+
+              {(filter !== 'all' || (actionFilter && actionFilter !== 'all') || (statusFilter && statusFilter !== 'all') || (categoryFilter && categoryFilter !== 'all') || userNameFilter || startDate || endDate) && (
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setStartDate('');
-                    setEndDate('');
-                  }}
+                  onClick={clearAllFilters}
+                  className="flex items-center gap-2"
                 >
-                  Clear
+                  <X className="h-4 w-4" />
+                  Clear All Filters
                 </Button>
               )}
             </div>
@@ -252,15 +439,37 @@ export default function ActivityPage() {
                               {activity.status}
                             </Badge>
                           )}
+                          {activity.metadata?.category && (
+                            <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                              {getCategoryIcon(activity.metadata.category)}
+                              {activity.metadata.category}
+                            </Badge>
+                          )}
+                          {activity.metadata?.severity && activity.metadata.severity !== 'low' && (
+                            <Badge className={`text-xs ${getSeverityColor(activity.metadata.severity)}`}>
+                              {activity.metadata.severity}
+                            </Badge>
+                          )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs text-muted-foreground whitespace-nowrap block">
-                          {formatTimeAgo(activity.timestamp)}
-                        </span>
-                        <span className="text-xs text-muted-foreground/70 whitespace-nowrap block mt-1">
-                          {new Date(activity.timestamp).toLocaleTimeString()}
-                        </span>
+                      <div className="text-right flex flex-col items-end gap-2">
+                        <div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap block">
+                            {formatTimeAgo(activity.timestamp)}
+                          </span>
+                          <span className="text-xs text-muted-foreground/70 whitespace-nowrap block mt-1">
+                            {new Date(activity.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => fetchActivityDetails(activity._id)}
+                          className="text-xs h-7 px-2"
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          Details
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -290,6 +499,151 @@ export default function ActivityPage() {
           >
             Next
           </Button>
+        </div>
+      )}
+
+      {/* Activity Detail Modal */}
+      {showDetailModal && selectedActivity && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <Info className="h-5 w-5" />
+                  Activity Details
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDetailModal(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="flex gap-4">
+                  <div className={`flex-shrink-0 w-16 h-16 rounded-full ${getActionColor(selectedActivity.action)} flex items-center justify-center text-white shadow-md`}>
+                    {getActionIcon(selectedActivity.action, selectedActivity.resourceType)}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-medium">
+                      <span className="font-bold text-primary">{selectedActivity.userName}</span>
+                      {' '}
+                      <span className="text-muted-foreground capitalize">{selectedActivity.action}d</span>
+                      {' '}
+                      <span className="font-semibold">{selectedActivity.resource}</span>
+                    </h3>
+                    <p className="text-muted-foreground mt-1">{selectedActivity.details}</p>
+                  </div>
+                </div>
+
+                {/* Basic Information */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Timestamp</label>
+                    <p className="text-sm">{new Date(selectedActivity.timestamp).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Status</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge 
+                        variant={selectedActivity.status === 'error' ? 'destructive' : selectedActivity.status === 'warning' ? 'default' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {selectedActivity.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Resource Type</label>
+                    <p className="text-sm capitalize">{selectedActivity.resourceType}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Action</label>
+                    <p className="text-sm capitalize">{selectedActivity.action}</p>
+                  </div>
+                </div>
+
+                {/* Project Information */}
+                {selectedActivity.projectId && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Project</label>
+                    <p className="text-sm">{selectedActivity.projectId.name}</p>
+                  </div>
+                )}
+
+                {/* User Information */}
+                {selectedActivity.user && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">User Details</label>
+                    <div className="text-sm space-y-1">
+                      <p><span className="font-medium">Name:</span> {selectedActivity.user.name}</p>
+                      <p><span className="font-medium">Email:</span> {selectedActivity.user.email}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Technical Details */}
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedActivity.ipAddress && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">IP Address</label>
+                      <p className="text-sm font-mono">{selectedActivity.ipAddress}</p>
+                    </div>
+                  )}
+                  {selectedActivity.visibility && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Visibility</label>
+                      <p className="text-sm capitalize">{selectedActivity.visibility}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Metadata */}
+                {selectedActivity.metadata && Object.keys(selectedActivity.metadata).length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Additional Information</label>
+                    <div className="mt-2 space-y-2">
+                      {selectedActivity.metadata.category && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Category:</span>
+                          <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                            {getCategoryIcon(selectedActivity.metadata.category)}
+                            {selectedActivity.metadata.category}
+                          </Badge>
+                        </div>
+                      )}
+                      {selectedActivity.metadata.severity && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Severity:</span>
+                          <Badge className={`text-xs ${getSeverityColor(selectedActivity.metadata.severity)}`}>
+                            {selectedActivity.metadata.severity}
+                          </Badge>
+                        </div>
+                      )}
+                      {Object.entries(selectedActivity.metadata)
+                        .filter(([key]) => !['category', 'severity', 'timestamp'].includes(key))
+                        .map(([key, value]) => (
+                          <div key={key} className="flex items-start gap-2">
+                            <span className="text-sm font-medium capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span>
+                            <span className="text-sm">{typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}</span>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <Button onClick={() => setShowDetailModal(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
