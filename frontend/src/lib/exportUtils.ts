@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+ï»¿import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -531,7 +531,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
           pdf.setFont('helvetica', 'normal');
           pdf.setFontSize(8);
           metric.items.forEach((item, idx) => {
-            pdf.text(`• ${item}`, 27, yPosition + 7 + (idx * 4));
+            pdf.text(` ${item}`, 27, yPosition + 7 + (idx * 4));
           });
           yPosition += 26;
         });
@@ -1649,21 +1649,21 @@ export const exportToText = (data: ExportData): void => {
         content += '============================\n\n';
         content += 'Key Performance Indicators:\n\n';
         content += '?? WORKFORCE METRICS\n';
-        content += '   • Total Employees: 24 (+2 this month)\n';
-        content += '   • Department Coverage: 5 departments\n';
-        content += '   • Average Attendance: 95.1%\n\n';
+        content += '    Total Employees: 24 (+2 this month)\n';
+        content += '    Department Coverage: 5 departments\n';
+        content += '    Average Attendance: 95.1%\n\n';
         content += '?? PROJECT METRICS\n';
-        content += '   • Active Projects: 12 (3 completing this month)\n';
-        content += '   • Project Success Rate: 85%\n';
-        content += '   • On-time Delivery: 78%\n\n';
+        content += '    Active Projects: 12 (3 completing this month)\n';
+        content += '    Project Success Rate: 85%\n';
+        content += '    On-time Delivery: 78%\n\n';
         content += '? TASK METRICS\n';
-        content += '   • Total Tasks: 346\n';
-        content += '   • Completion Rate: 78%\n';
-        content += '   • Overdue Tasks: 15\n\n';
+        content += '    Total Tasks: 346\n';
+        content += '    Completion Rate: 78%\n';
+        content += '    Overdue Tasks: 15\n\n';
         content += '?? FINANCIAL METRICS\n';
-        content += '   • Monthly Revenue: ?189K (+12% growth)\n';
-        content += '   • Budget Utilization: 85%\n';
-        content += '   • Cost Efficiency: 92%\n\n';
+        content += '    Monthly Revenue: ?189K (+12% growth)\n';
+        content += '    Budget Utilization: 85%\n';
+        content += '    Cost Efficiency: 92%\n\n';
     }
     
     content += `\n${'='.repeat(60)}\n`;
@@ -1678,3 +1678,4 @@ export const exportToText = (data: ExportData): void => {
     throw new Error('Failed to generate text file. Please try again.');
   }
 };
+
