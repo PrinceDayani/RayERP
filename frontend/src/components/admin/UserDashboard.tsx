@@ -45,6 +45,7 @@ const AnalyticsCharts = lazy(() => import('@/components/Dashboard/AnalyticsChart
 const EmployeeList = lazy(() => import('@/components/employee').then(m => ({ default: m.EmployeeList })));
 const ProjectList = lazy(() => import('@/components/projects').then(m => ({ default: m.ProjectList })));
 const TaskList = lazy(() => import('@/components/tasks').then(m => ({ default: m.TaskList })));
+const FinanceAnalyticsDashboard = lazy(() => import('@/components/finance/FinanceAnalyticsDashboard'));
 import { employeesAPI } from "@/lib/api/employeesAPI";
 import { projectsAPI } from "@/lib/api/projectsAPI";
 import { tasksAPI } from "@/lib/api/tasksAPI";
@@ -743,50 +744,25 @@ const Dashboard = () => {
           {checkMinimumLevel(ROLE_LEVELS.ADMIN) && (
             <TabsContent value="analytics" className="space-y-6">
               {isAuthenticated ? (
-                <Card className="theme-card theme-shadow theme-transition">
-                  <CardHeader className="theme-compact-padding">
-                    <CardTitle className="theme-text theme-responsive-text">Analytics Dashboard</CardTitle>
-                    <CardDescription className="theme-text">Business intelligence and reporting</CardDescription>
-                  </CardHeader>
-                  <CardContent className="theme-compact-padding">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="bg-primary/10 p-4 theme-rounded-lg border border-primary/20 theme-transition">
-                        <p className="text-sm text-muted-foreground theme-text">Employee Productivity</p>
-                        <p className="text-2xl font-bold text-foreground theme-responsive-text theme-text">
-                          {stats.activeEmployees > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}%
-                        </p>
-                        <div className="flex items-center mt-1">
-                          <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                          <span className="text-xs text-green-600 dark:text-green-400 theme-text">
-                            +8.2% vs last month
-                          </span>
-                        </div>
-                      </div>
-                      <div className="bg-muted p-4 theme-rounded-lg theme-transition">
-                        <p className="text-sm text-muted-foreground theme-text">Project Completion Rate</p>
-                        <p className="text-2xl font-bold text-foreground theme-responsive-text theme-text">
-                          {stats.totalProjects > 0 ? Math.round((stats.completedProjects / stats.totalProjects) * 100) : 0}%
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin" /></div>}>
+                  <FinanceAnalyticsDashboard dateRange="30d" currency="INR" />
+                </Suspense>
               ) : (
                 <Card className="theme-card theme-shadow theme-transition">
                   <CardContent className="p-8 text-center theme-compact-padding">
                     <BarChart4 className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
                     <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                      Analytics Dashboard
+                      Finance Analytics Dashboard
                     </h3>
                     <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                      Access detailed analytics and business intelligence reports.
+                      Access comprehensive financial analytics and business intelligence reports.
                     </p>
                     <Button 
                       onClick={() => router.push("/login")}
                       size="lg"
                       className="theme-button theme-touch-target theme-focusable theme-transition"
                     >
-                      Login to View Analytics
+                      Login to View Finance Analytics
                     </Button>
                   </CardContent>
                 </Card>
