@@ -36,7 +36,13 @@ export default function TemplateDialog({ open, onOpenChange, onSuccess, template
         projectType: template.projectType,
         isDefault: template.isDefault
       });
-      setCategories(template.categories);
+      setCategories(template.categories.map(cat => ({
+        ...cat,
+        items: cat.items.map(item => ({
+          ...item,
+          _id: item._id || Math.random().toString(36).substr(2, 9)
+        }))
+      })));
     } else {
       resetForm();
     }
