@@ -14,7 +14,7 @@ import {
   Plus, 
   Users, 
   Calendar, 
-  DollarSign,
+  Coins,
   Clock,
   UserCheck,
   UserX,

@@ -26,7 +26,7 @@ import {
   ArrowLeft, 
   Calendar, 
   Users, 
-  DollarSign, 
+  Coins, 
   BarChart3,
   Edit,
   Settings
@@ -321,7 +321,7 @@ const ProjectDetailPage = () => {
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-orange-200 dark:bg-orange-800 rounded-full flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-orange-700 dark:text-orange-300" />
+                  <Coins className="h-6 w-6 text-orange-700 dark:text-orange-300" />
                 </div>
               </div>
             </CardContent>
@@ -599,7 +599,7 @@ const ProjectDetailPage = () => {
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-semibold">Project Budget</h3>
                 <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
-                  <DollarSign className="h-4 w-4 mr-2" />
+                  <Coins className="h-4 w-4 mr-2" />
                   {budget ? 'Manage Budget' : 'Create Budget'}
                 </Button>
               </div>
@@ -610,7 +610,7 @@ const ProjectDetailPage = () => {
                     <Card>
                       <CardContent className="p-4">
                         <div className="text-center">
-                          <DollarSign className="h-8 w-8 mx-auto text-blue-600 mb-2" />
+                          <Coins className="h-8 w-8 mx-auto text-blue-600 mb-2" />
                           <p className="text-sm text-muted-foreground">Total Budget</p>
                           <p className="text-2xl font-bold">{budget.currency} {budget.totalBudget?.toLocaleString()}</p>
                         </div>
@@ -676,11 +676,11 @@ const ProjectDetailPage = () => {
                 ) : (
                   <Card>
                     <CardContent className="text-center py-12">
-                      <DollarSign className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                      <Coins className="h-16 w-16 mx-auto text-gray-400 mb-4" />
                       <h3 className="text-lg font-semibold mb-2">No Budget Created</h3>
                       <p className="text-muted-foreground mb-4">This project doesn't have a budget yet. Create one to start tracking expenses.</p>
                       <Button onClick={() => router.push(`/dashboard/projects/${projectId}/budget`)}>
-                        <DollarSign className="h-4 w-4 mr-2" />
+                        <Coins className="h-4 w-4 mr-2" />
                         Create Budget
                       </Button>
                     </CardContent>

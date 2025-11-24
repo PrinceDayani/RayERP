@@ -1,4 +1,4 @@
-ï»¿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,8 +25,8 @@ interface Currency {
 export default function MultiCurrencyPage() {
   const [currencies, setCurrencies] = useState<Currency[]>([
     { _id: '1', code: 'INR', name: 'US Dollar', symbol: '$', exchangeRate: 83.12, isBaseCurrency: false, isActive: true, lastUpdated: new Date() },
-    { _id: '2', code: 'EUR', name: 'Euro', symbol: 'â‚¬', exchangeRate: 90.45, isBaseCurrency: false, isActive: true, lastUpdated: new Date() },
-    { _id: '3', code: 'INR', name: 'Indian Rupee', symbol: 'â‚¹', exchangeRate: 1, isBaseCurrency: true, isActive: true, lastUpdated: new Date() }
+    { _id: '2', code: 'EUR', name: 'Euro', symbol: '€', exchangeRate: 90.45, isBaseCurrency: false, isActive: true, lastUpdated: new Date() },
+    { _id: '3', code: 'INR', name: 'Indian Rupee', symbol: '?', exchangeRate: 1, isBaseCurrency: true, isActive: true, lastUpdated: new Date() }
   ]);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -104,7 +104,7 @@ export default function MultiCurrencyPage() {
                     id="symbol"
                     value={formData.symbol}
                     onChange={(e) => setFormData({...formData, symbol: e.target.value})}
-                    placeholder="$, â‚¬, Â£..."
+                    placeholder="$, €, £..."
                     required
                   />
                 </div>

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FolderOpen, Edit, Trash2, ArrowLeft, Download, Upload, FileText, Search, TrendingUp, TrendingDown, DollarSign, Layers, RefreshCw } from 'lucide-react';
+import { Plus, FolderOpen, Edit, Trash2, ArrowLeft, Download, Upload, FileText, Search, TrendingUp, TrendingDown, Coins, Layers, RefreshCw } from 'lucide-react';
 import { generalLedgerAPI, type Account } from '@/lib/api/generalLedgerAPI';
 import { chartOfAccountsAPI } from '@/lib/api/chartOfAccountsAPI';
 import { toast } from '@/components/ui/use-toast';
@@ -541,7 +541,7 @@ export default function ChartOfAccountsPage() {
                 <p className="text-sm text-gray-600">Total Balance</p>
                 <p className="text-2xl font-bold mt-1">₹{totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
               </div>
-              <DollarSign className="w-8 h-8 text-green-600" />
+              <Coins className="w-8 h-8 text-green-600" />
             </div>
           </CardContent>
         </Card>

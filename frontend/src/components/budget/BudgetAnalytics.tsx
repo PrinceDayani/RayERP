@@ -1,10 +1,10 @@
-﻿"use client";
+"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { TrendingUp, TrendingDown, AlertTriangle, DollarSign, Target, Activity, Percent } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle, Coins, Target, Activity, Percent } from "lucide-react";
 import { Budget } from "@/types/budget";
 import { formatCurrency } from "@/utils/currency";
 
@@ -80,7 +80,7 @@ export default function BudgetAnalytics({ budgets }: BudgetAnalyticsProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <Coins className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalBudget, 'INR')}</div>

@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  DollarSign, TrendingUp, TrendingDown, AlertTriangle, Activity, RefreshCw,
+  Coins, TrendingUp, TrendingDown, AlertTriangle, Activity, RefreshCw,
   FileText, BarChart3, PieChart, Target, CreditCard, Wallet, Building,
   Calendar, Users, Package, ShoppingCart, Clock, Bell, Download, Eye,
   Calculator, Receipt, Banknote, ArrowUpRight, ArrowDownRight, Percent
@@ -188,7 +188,7 @@ export default function FinanceAnalyticsDashboard({
         <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4" />
+            <Coins className="h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(topLevelKPIs.totalRevenue.ytd)}</div>

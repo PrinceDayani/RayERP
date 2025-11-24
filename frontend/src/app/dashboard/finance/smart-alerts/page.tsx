@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, Bell, Zap, TrendingUp, DollarSign, Calendar, Settings } from 'lucide-react';
+import { AlertTriangle, Bell, Zap, TrendingUp, Coins, Calendar, Settings } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 interface Alert {
@@ -108,7 +108,7 @@ export default function SmartAlertsPage() {
     switch (type) {
       case 'Fraud Detection': return AlertTriangle;
       case 'Duplicate Entry': return Bell;
-      case 'Budget Overrun': return DollarSign;
+      case 'Budget Overrun': return Coins;
       case 'Cash Flow': return TrendingUp;
       case 'Compliance': return Settings;
       default: return Zap;
@@ -224,7 +224,7 @@ export default function SmartAlertsPage() {
                             </span>
                             {alert.amount && (
                               <span className="flex items-center gap-1">
-                                <DollarSign className="w-4 h-4" />
+                                <Coins className="w-4 h-4" />
                                 ₹{alert.amount.toLocaleString()}
                               </span>
                             )}

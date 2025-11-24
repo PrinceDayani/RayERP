@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,15 +34,15 @@ export default function ProjectProfitLoss({ projectId }: ProjectProfitLossProps)
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Contract Value</span>
-                <span className="font-medium">₹150,000</span>
+                <span className="font-medium">?150,000</span>
               </div>
               <div className="flex justify-between">
                 <span>Billed Amount</span>
-                <span className="font-medium">₹120,000</span>
+                <span className="font-medium">?120,000</span>
               </div>
               <div className="flex justify-between">
                 <span>Unbilled Amount</span>
-                <span className="font-medium">₹30,000</span>
+                <span className="font-medium">?30,000</span>
               </div>
             </div>
           </CardContent>
@@ -56,15 +56,15 @@ export default function ProjectProfitLoss({ projectId }: ProjectProfitLossProps)
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Direct Costs</span>
-                <span className="font-medium">₹80,000</span>
+                <span className="font-medium">?80,000</span>
               </div>
               <div className="flex justify-between">
                 <span>Indirect Costs</span>
-                <span className="font-medium">₹15,000</span>
+                <span className="font-medium">?15,000</span>
               </div>
               <div className="flex justify-between">
                 <span>Overheads</span>
-                <span className="font-medium">₹10,000</span>
+                <span className="font-medium">?10,000</span>
               </div>
             </div>
           </CardContent>
@@ -78,11 +78,11 @@ export default function ProjectProfitLoss({ projectId }: ProjectProfitLossProps)
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Gross Profit</span>
-                <span className="font-medium text-green-600">₹45,000</span>
+                <span className="font-medium text-green-600">?45,000</span>
               </div>
               <div className="flex justify-between">
                 <span>Net Profit</span>
-                <span className="font-medium text-green-600">₹35,000</span>
+                <span className="font-medium text-green-600">?35,000</span>
               </div>
               <div className="flex justify-between">
                 <span>Profit Margin</span>

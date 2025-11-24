@@ -1,10 +1,10 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, TrendingUp, TrendingDown, AlertCircle, ArrowLeft, PieChart } from "lucide-react";
+import { Coins, TrendingUp, TrendingDown, AlertCircle, ArrowLeft, PieChart } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 import { useRouter } from "next/navigation";
 import { getAllProjects } from "@/lib/api/projectsAPI";
@@ -98,7 +98,7 @@ const BudgetAnalysisPage = () => {
           </Button>
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
-              <DollarSign className="h-8 w-8 text-blue-600" />
+              <Coins className="h-8 w-8 text-blue-600" />
               Budget Analysis
             </h1>
             <p className="text-muted-foreground">Financial performance and budget utilization</p>
@@ -117,7 +117,7 @@ const BudgetAnalysisPage = () => {
             </SelectContent>
           </Select>
           <Button>
-            <DollarSign className="h-4 w-4 mr-2" />
+            <Coins className="h-4 w-4 mr-2" />
             Export
           </Button>
         </div>
@@ -132,7 +132,7 @@ const BudgetAnalysisPage = () => {
                 <p className="text-sm font-medium text-muted-foreground">Total Budget</p>
                 <p className="text-3xl font-bold">${metrics.totalBudget.toLocaleString()}</p>
               </div>
-              <DollarSign className="h-8 w-8 text-blue-500" />
+              <Coins className="h-8 w-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>

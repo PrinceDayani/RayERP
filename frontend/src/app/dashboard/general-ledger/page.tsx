@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, FileText, Calculator, DollarSign, Trash2, AlertCircle, FolderOpen, Building2, Users, Package, CreditCard, Banknote, Receipt, FileSpreadsheet, ChevronRight } from 'lucide-react';
+import { Plus, FileText, Calculator, Coins, Trash2, AlertCircle, FolderOpen, Building2, Users, Package, CreditCard, Banknote, Receipt, FileSpreadsheet, ChevronRight } from 'lucide-react';
 import { generalLedgerAPI, type Account, type JournalEntry } from '@/lib/api/generalLedgerAPI';
 
 interface TrialBalance {
@@ -785,7 +785,7 @@ export default function GeneralLedgerPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 bg-indigo-600 rounded-xl shadow-lg">
-                <DollarSign className="w-8 h-8 text-white" />
+                <Coins className="w-8 h-8 text-white" />
               </div>
               <ChevronRight className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             </div>

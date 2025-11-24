@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,7 +70,7 @@ export default function MultiCurrency() {
                   <TableCell className="font-mono">{c.code}</TableCell>
                   <TableCell>{c.name}</TableCell>
                   <TableCell>{c.symbol}</TableCell>
-                  <TableCell>{c.isBaseCurrency ? '✓' : ''}</TableCell>
+                  <TableCell>{c.isBaseCurrency ? '?' : ''}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, CheckCircle, DollarSign, TrendingUp, AlertCircle, FileText, Download, RefreshCw, XCircle, Check } from 'lucide-react';
+import { Plus, CheckCircle, Coins, TrendingUp, AlertCircle, FileText, Download, RefreshCw, XCircle, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -141,7 +141,7 @@ export default function PaymentsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Amount</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">₹{analytics.analytics?.reduce((s: number, a: any) => s + a.totalAmount, 0).toLocaleString() || 0}</div>
+              <div className="text-2xl font-bold text-green-600">?{analytics.analytics?.reduce((s: number, a: any) => s + a.totalAmount, 0).toLocaleString() || 0}</div>
             </CardContent>
           </Card>
           <Card>
@@ -193,7 +193,7 @@ export default function PaymentsPage() {
                 <tr key={payment._id}>
                   <td className="px-6 py-4 text-sm font-medium">{payment.paymentNumber}</td>
                   <td className="px-6 py-4 text-sm">{payment.customerName}</td>
-                  <td className="px-6 py-4 text-sm font-semibold">₹{payment.baseAmount?.toLocaleString() || payment.totalAmount?.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm font-semibold">?{payment.baseAmount?.toLocaleString() || payment.totalAmount?.toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm">{payment.currency || 'INR'}</td>
                   <td className="px-6 py-4 text-sm">{payment.paymentMethod}</td>
                   <td className="px-6 py-4 text-sm">{new Date(payment.paymentDate).toLocaleDateString()}</td>

@@ -18,7 +18,7 @@ import {
   Edit, 
   Trash2, 
   Eye, 
-  DollarSign,
+  Coins,
   TrendingUp,
   TrendingDown,
   Calendar,
@@ -651,7 +651,7 @@ export default function ProjectLedger({ projectId }: ProjectLedgerProps) {
                 </p>
                 <p className="text-xs text-muted-foreground">Current position</p>
               </div>
-              <DollarSign className="h-8 w-8 text-purple-600" />
+              <Coins className="h-8 w-8 text-purple-600" />
             </div>
           </CardContent>
         </Card>
@@ -985,7 +985,7 @@ export default function ProjectLedger({ projectId }: ProjectLedgerProps) {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Button variant="outline" className="h-20 flex-col gap-2">
-                  <DollarSign className="h-6 w-6" />
+                  <Coins className="h-6 w-6" />
                   <span className="text-sm">Cash Receipt</span>
                 </Button>
                 <Button variant="outline" className="h-20 flex-col gap-2">

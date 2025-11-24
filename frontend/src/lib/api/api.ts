@@ -1,4 +1,4 @@
-﻿// path: frontend/src/lib/api.ts
+// path: frontend/src/lib/api.ts
 import axios from "axios";
 
 // Use environment variable for API URL - no defaults
@@ -51,7 +51,7 @@ api.interceptors.response.use(
   async (error) => {
     // Enhanced error logging for network issues
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      console.error('🔴 Network Error Details:', {
+      console.error('?? Network Error Details:', {
         message: 'Cannot connect to backend server',
         apiUrl: API_URL,
         possibleCauses: [
@@ -75,7 +75,7 @@ api.interceptors.response.use(
     
     // Handle CORS errors specifically
     if (error.message?.includes('CORS') || error.code === 'ERR_BLOCKED_BY_CLIENT') {
-      console.error('🔴 CORS Error:', {
+      console.error('?? CORS Error:', {
         message: 'Request blocked by CORS policy',
         url: error.config?.url,
         method: error.config?.method,

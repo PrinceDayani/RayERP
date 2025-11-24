@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Edit, DollarSign, TrendingUp, AlertTriangle, BarChart3, Send, CheckCircle, XCircle, Clock, FileText, ThumbsUp, ThumbsDown, RotateCcw } from "lucide-react";
+import { Plus, Edit, Coins, TrendingUp, AlertTriangle, BarChart3, Send, CheckCircle, XCircle, Clock, FileText, ThumbsUp, ThumbsDown, RotateCcw } from "lucide-react";
 import { Budget } from "@/types/budget";
 import BudgetDialog from "@/components/budget/BudgetDialog";
 import ProjectBudgetAnalytics from "@/components/budget/ProjectBudgetAnalytics";
@@ -334,7 +334,7 @@ export default function ProjectBudgetPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <Coins className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{budget.currency} {budget.totalBudget.toLocaleString()}</div>
@@ -622,7 +622,7 @@ export default function ProjectBudgetPage() {
       ) : (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <DollarSign className="w-12 h-12 text-muted-foreground mb-4" />
+            <Coins className="w-12 h-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Budget Created</h3>
             <p className="text-muted-foreground text-center mb-4">
               This project doesn't have a budget yet. Create one to start tracking expenses.

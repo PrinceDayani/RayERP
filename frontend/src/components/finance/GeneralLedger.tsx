@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, FileText, TrendingUp, DollarSign, Building, Users, Plus, Filter, Download, Eye, BarChart3, PieChart, Printer, Settings, ArrowLeft, Activity } from 'lucide-react';
+import { Calendar, FileText, TrendingUp, Coins, Building, Users, Plus, Filter, Download, Eye, BarChart3, PieChart, Printer, Settings, ArrowLeft, Activity } from 'lucide-react';
 import ChartOfAccounts from './ChartOfAccounts';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { toast } from '@/hooks/use-toast';
@@ -952,7 +952,7 @@ const GeneralLedger = () => {
                     <p className="text-3xl font-bold text-white">{formatCurrency(dashboardData.kpis.totalExpenses)}</p>
                   </div>
                   <div className="p-3 bg-green-500/20 rounded-lg">
-                    <DollarSign className="h-6 w-6 text-green-400" />
+                    <Coins className="h-6 w-6 text-green-400" />
                   </div>
                 </div>
               </div>
@@ -1143,7 +1143,7 @@ const GeneralLedger = () => {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <DollarSign className="h-5 w-5" />
+                        <Coins className="h-5 w-5" />
                         Key Metrics
                       </CardTitle>
                     </CardHeader>
@@ -1463,7 +1463,7 @@ const GeneralLedger = () => {
                 <Card className="cursor-pointer hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="w-5 h-5" />
+                      <Coins className="w-5 h-5" />
                       Cash Flow Statement
                     </CardTitle>
                   </CardHeader>
@@ -1608,7 +1608,7 @@ const GeneralLedger = () => {
                         <p className="text-sm font-medium text-muted-foreground">Cash Flow</p>
                         <p className="text-2xl font-bold text-purple-600">{formatCurrency(75000)}</p>
                       </div>
-                      <DollarSign className="h-8 w-8 text-purple-600" />
+                      <Coins className="h-8 w-8 text-purple-600" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">net inflow</p>
                   </CardContent>
@@ -1876,7 +1876,7 @@ const GeneralLedger = () => {
                             </div>
                             <div>
                               <p className="font-medium">{account.name}</p>
-                              <p className="text-sm text-muted-foreground">{account.code} • {account.type}</p>
+                              <p className="text-sm text-muted-foreground">{account.code} � {account.type}</p>
                             </div>
                           </div>
                           <div className="text-right">
@@ -2018,7 +2018,7 @@ const GeneralLedger = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
+                    <Coins className="h-5 w-5" />
                     Risk Assessment
                   </CardTitle>
                 </CardHeader>

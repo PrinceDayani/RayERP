@@ -393,7 +393,10 @@ export const getJournalEntry = async (req: Request, res: Response) => {
     const { id } = req.params;
     const entry = await JournalEntry.findById(id)
       .populate('lines.account', 'code name')
-      .populate('createdBy', 'name email');
+      .populate('createdBy', 'firstName lastName name email')
+      .populate('updatedBy', 'firstName lastName name email')
+      .populate('postedBy', 'firstName lastName name email')
+      .populate('changeHistory.changedBy', 'firstName lastName name email');
     
     if (!entry) {
       return res.status(404).json({ message: 'Journal entry not found' });
@@ -610,6 +613,7 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { date, reference, description, lines } = req.body;
+    const userId = (req as any).user?.id;
     
     const entry = await JournalEntry.findById(id);
     if (!entry) {
@@ -624,9 +628,9 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
     if (lines && Array.isArray(lines)) {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (!line.ledgerId || !line.description) {
+        if (!line.accountId && !line.ledgerId) {
           return res.status(400).json({ 
-            message: `Line ${i + 1}: Ledger and description are required` 
+            message: `Line ${i + 1}: Account is required` 
           });
         }
       }
@@ -641,11 +645,30 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
       }
     }
     
+    // Track changes for audit trail
+    const changes: any[] = [];
+    if (date && entry.date?.toString() !== new Date(date).toString()) {
+      changes.push({ field: 'date', oldValue: entry.date, newValue: new Date(date), changedBy: userId, changedAt: new Date() });
+    }
+    if (reference !== undefined && entry.reference !== reference) {
+      changes.push({ field: 'reference', oldValue: entry.reference, newValue: reference, changedBy: userId, changedAt: new Date() });
+    }
+    if (description && entry.description !== description) {
+      changes.push({ field: 'description', oldValue: entry.description, newValue: description, changedBy: userId, changedAt: new Date() });
+    }
+    if (lines && JSON.stringify(entry.lines) !== JSON.stringify(lines)) {
+      changes.push({ field: 'lines', oldValue: `${entry.lines.length} lines`, newValue: `${lines.length} lines`, changedBy: userId, changedAt: new Date() });
+    }
+    
     const updateData: any = {};
     if (date) updateData.date = new Date(date);
     if (reference !== undefined) updateData.reference = reference;
     if (description) updateData.description = description;
     if (lines) updateData.lines = lines;
+    if (userId) updateData.updatedBy = userId;
+    if (changes.length > 0) {
+      updateData.$push = { changeHistory: { $each: changes } };
+    }
     
     const updated = await JournalEntry.findByIdAndUpdate(
       id,
@@ -666,6 +689,7 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
 export const deleteJournalEntry = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).user?.id;
     const entry = await JournalEntry.findById(id);
     
     if (!entry) {
@@ -675,6 +699,16 @@ export const deleteJournalEntry = async (req: Request, res: Response) => {
     if (entry.isPosted) {
       return res.status(400).json({ message: 'Cannot delete posted journal entry' });
     }
+    
+    // Add audit trail before deletion
+    entry.changeHistory.push({
+      field: 'status',
+      oldValue: entry.status,
+      newValue: 'deleted',
+      changedBy: userId,
+      changedAt: new Date()
+    });
+    await entry.save();
     
     await JournalEntry.findByIdAndDelete(id);
     res.json({ message: 'Journal entry deleted successfully' });
@@ -691,6 +725,7 @@ export const postJournalEntry = async (req: Request, res: Response) => {
   
   try {
     const { id } = req.params;
+    const userId = (req as any).user?.id;
 
     const journalEntry = await JournalEntry.findById(id).session(session);
     if (!journalEntry) {
@@ -702,6 +737,15 @@ export const postJournalEntry = async (req: Request, res: Response) => {
       await session.abortTransaction();
       return res.status(400).json({ message: 'Journal entry already posted' });
     }
+
+    // Add audit trail for posting
+    journalEntry.changeHistory.push({
+      field: 'status',
+      oldValue: 'draft',
+      newValue: 'posted',
+      changedBy: userId,
+      changedAt: new Date()
+    });
 
     // Process each journal line - update Account balances
     for (const line of journalEntry.lines) {
@@ -750,6 +794,8 @@ export const postJournalEntry = async (req: Request, res: Response) => {
 
     // Mark journal entry as posted
     journalEntry.isPosted = true;
+    journalEntry.postedBy = userId;
+    journalEntry.postingDate = new Date();
     await journalEntry.save({ session });
 
     await session.commitTransaction();

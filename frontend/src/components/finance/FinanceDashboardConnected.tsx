@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  DollarSign, 
+  Coins, 
   TrendingUp, 
   FileText, 
   AlertCircle, 
@@ -107,7 +107,7 @@ export default function FinanceDashboardConnected() {
     {
       title: 'View Accounts',
       description: 'Manage chart of accounts',
-      icon: DollarSign,
+      icon: Coins,
       action: () => window.location.href = '/dashboard/finance/chart-of-accounts',
       color: 'bg-green-500'
     },
@@ -149,7 +149,7 @@ export default function FinanceDashboardConnected() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Accounts</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <Coins className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.accounts}</div>
@@ -197,15 +197,15 @@ export default function FinanceDashboardConnected() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Total Allocated</span>
-                  <span className="font-bold">₹{budgetAnalytics.departmentBudgets.total.toLocaleString()}</span>
+                  <span className="font-bold">?{budgetAnalytics.departmentBudgets.total.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Total Spent</span>
-                  <span className="font-bold">₹{budgetAnalytics.departmentBudgets.spent.toLocaleString()}</span>
+                  <span className="font-bold">?{budgetAnalytics.departmentBudgets.spent.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Remaining</span>
-                  <span className="font-bold text-green-600">₹{budgetAnalytics.departmentBudgets.remaining.toLocaleString()}</span>
+                  <span className="font-bold text-green-600">?{budgetAnalytics.departmentBudgets.remaining.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Utilization</span>
@@ -225,16 +225,16 @@ export default function FinanceDashboardConnected() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Total Budget</span>
-                  <span className="font-bold">₹{budgetAnalytics.glBudgets.total.toLocaleString()}</span>
+                  <span className="font-bold">?{budgetAnalytics.glBudgets.total.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Actual</span>
-                  <span className="font-bold">₹{budgetAnalytics.glBudgets.actual.toLocaleString()}</span>
+                  <span className="font-bold">?{budgetAnalytics.glBudgets.actual.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Variance</span>
                   <span className={`font-bold ${budgetAnalytics.glBudgets.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ₹{budgetAnalytics.glBudgets.variance.toLocaleString()}
+                    ?{budgetAnalytics.glBudgets.variance.toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

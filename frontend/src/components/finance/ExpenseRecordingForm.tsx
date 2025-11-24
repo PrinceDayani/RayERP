@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { Coins, Save, AlertCircle, CheckCircle } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 
 interface ExpenseRecordingFormProps {
@@ -123,7 +123,7 @@ export default function ExpenseRecordingForm({ projectId, onExpenseRecorded }: E
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <DollarSign className="h-5 w-5" />
+          <Coins className="h-5 w-5" />
           Record Project Expense
         </CardTitle>
       </CardHeader>
@@ -151,7 +151,7 @@ export default function ExpenseRecordingForm({ projectId, onExpenseRecorded }: E
           <div className="space-y-2">
             <Label htmlFor="amount">Amount *</Label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Coins className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 id="amount"
                 type="number"

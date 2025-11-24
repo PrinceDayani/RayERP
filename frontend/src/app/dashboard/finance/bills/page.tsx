@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -237,7 +237,7 @@ export default function BillsPage() {
               <Bell className="h-5 w-5 text-orange-600" />
               <div>
                 <p className="font-semibold text-orange-800">{reminders.length} bills due within 7 days</p>
-                <p className="text-sm text-orange-700">Total amount: ₹{reminders.reduce((sum, b) => sum + b.balanceAmount, 0).toFixed(2)}</p>
+                <p className="text-sm text-orange-700">Total amount: ?{reminders.reduce((sum, b) => sum + b.balanceAmount, 0).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -254,19 +254,19 @@ export default function BillsPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-gray-600">Total Amount</p>
-            <p className="text-2xl font-bold">₹{summary?.totalAmount?.toFixed(2) || 0}</p>
+            <p className="text-2xl font-bold">?{summary?.totalAmount?.toFixed(2) || 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-gray-600">Paid</p>
-            <p className="text-2xl font-bold text-green-600">₹{summary?.totalPaid?.toFixed(2) || 0}</p>
+            <p className="text-2xl font-bold text-green-600">?{summary?.totalPaid?.toFixed(2) || 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-gray-600">Outstanding</p>
-            <p className="text-2xl font-bold text-red-600">₹{summary?.totalBalance?.toFixed(2) || 0}</p>
+            <p className="text-2xl font-bold text-red-600">?{summary?.totalBalance?.toFixed(2) || 0}</p>
           </CardContent>
         </Card>
       </div>
@@ -343,9 +343,9 @@ export default function BillsPage() {
                           <AlertTriangle className="inline h-4 w-4 ml-2 text-red-600" />
                         )}
                       </TableCell>
-                      <TableCell className="text-right">₹{bill.billAmount.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">₹{bill.paidAmount.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">₹{bill.balanceAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">?{bill.billAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">?{bill.paidAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">?{bill.balanceAmount.toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge variant={bill.status === 'paid' ? 'default' : bill.status === 'partial' ? 'secondary' : 'destructive'}>
                           {bill.status}
@@ -382,7 +382,7 @@ export default function BillsPage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
                     <YAxis />
-                    <Tooltip formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`} />
+                    <Tooltip formatter={(value: any) => `?${value.toLocaleString('en-IN')}`} />
                     <Bar dataKey="value" fill="#3b82f6" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -398,7 +398,7 @@ export default function BillsPage() {
                   {agingData.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center">
                       <span className="font-medium">{item.name}</span>
-                      <span className="text-lg font-bold">₹{item.value.toLocaleString('en-IN')}</span>
+                      <span className="text-lg font-bold">?{item.value.toLocaleString('en-IN')}</span>
                     </div>
                   ))}
                 </div>
@@ -438,7 +438,7 @@ export default function BillsPage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
-                    <Tooltip formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`} />
+                    <Tooltip formatter={(value: any) => `?${value.toLocaleString('en-IN')}`} />
                     <Line type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -467,7 +467,7 @@ export default function BillsPage() {
                     <TableRow key={bill._id}>
                       <TableCell>{new Date(bill.billDate).toLocaleDateString('en-IN')}</TableCell>
                       <TableCell>{bill.billReference}</TableCell>
-                      <TableCell className="text-right">₹{bill.paidAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">?{bill.paidAmount.toFixed(2)}</TableCell>
                       <TableCell>Bank Transfer</TableCell>
                     </TableRow>
                   ))}

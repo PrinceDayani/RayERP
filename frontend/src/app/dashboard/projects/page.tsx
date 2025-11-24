@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { 
   Plus, Calendar, Users, BarChart3, CheckCircle, AlertCircle, TrendingUp, Search,
-  MessageSquare, Clock, DollarSign, Edit, FileText, Download, Filter, ArrowRight,
+  MessageSquare, Clock, Coins, Edit, FileText, Download, Filter, ArrowRight,
   Briefcase, Target, Activity, Zap, GanttChartSquare, Trash2
 } from "lucide-react";
 import { getProjectStats, getAllProjects, updateProject, deleteProject, type Project } from "@/lib/api/projectsAPI";
@@ -435,7 +435,7 @@ const ProjectManagementDashboard: React.FC = () => {
                       </Button>
                       <Button size="sm" variant="outline" className="flex-1 hover:bg-primary hover:text-primary-foreground"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
-                        <DollarSign className="h-3.5 w-3.5 mr-1.5" />
+                        <Coins className="h-3.5 w-3.5 mr-1.5" />
                         Budget
                       </Button>
                     </div>
@@ -509,7 +509,7 @@ const ProjectManagementDashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   { icon: TrendingUp, title: "Performance Report", desc: "Project completion rates", color: "text-green-600", route: "/dashboard/projects/reports/performance" },
-                  { icon: DollarSign, title: "Budget Analysis", desc: "Financial performance", color: "text-blue-600", route: "/dashboard/projects/reports/budget" },
+                  { icon: Coins, title: "Budget Analysis", desc: "Financial performance", color: "text-blue-600", route: "/dashboard/projects/reports/budget" },
                   { icon: Calendar, title: "Timeline Report", desc: "Project schedules", color: "text-purple-600", route: "/dashboard/projects/reports/timeline" },
                 ].map((report, idx) => (
                   <Card key={idx} className="cursor-pointer hover:shadow-xl hover:scale-105 hover:border-primary/50 transition-all duration-300 group"
@@ -855,7 +855,7 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
                   <p className="text-sm text-muted-foreground">Total Budgets</p>
                   <p className="text-2xl font-bold">{analytics.summary.totalBudgets}</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-blue-500" />
+                <Coins className="h-8 w-8 text-blue-500" />
               </div>
             </CardContent>
           </Card>
@@ -899,7 +899,7 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
       <Card className="card-modern">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" />
+            <Coins className="h-5 w-5 text-primary" />
             Project Budgets
           </CardTitle>
           <Button onClick={() => router.push('/dashboard/finance/budgets')} size="sm">
@@ -909,7 +909,7 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
         <CardContent>
           {budgets.length === 0 ? (
             <div className="text-center py-8">
-              <DollarSign className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+              <Coins className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
               <p className="text-muted-foreground">No budgets created yet</p>
             </div>
           ) : (

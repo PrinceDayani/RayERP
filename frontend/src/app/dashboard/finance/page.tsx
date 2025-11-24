@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Briefcase, Calculator, FileText, TrendingUp, BarChart3, DollarSign, Receipt, Building2, Users, BookOpen, FolderOpen, Banknote, Repeat, PieChart, Wallet, FileSpreadsheet, ChevronRight, Plus, Globe, Scale, Clock, Lock, Shield, Zap, CheckCircle, FileCheck } from 'lucide-react';
+import { Briefcase, Calculator, FileText, TrendingUp, BarChart3, Coins, Receipt, Building2, Users, BookOpen, FolderOpen, Banknote, Repeat, PieChart, Wallet, FileSpreadsheet, ChevronRight, Plus, Globe, Scale, Clock, Lock, Shield, Zap, CheckCircle, FileCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
@@ -57,13 +57,13 @@ export default function FinancePage() {
     { title: 'Trial Balance', description: 'Verify account balances', icon: BarChart3, path: '/dashboard/finance/trial-balance', color: 'from-orange-500 to-orange-600', badge: 'Available' },
     { title: 'Profit & Loss', description: 'Income statement analysis', icon: PieChart, path: '/dashboard/finance/profit-loss', color: 'from-indigo-500 to-indigo-600', badge: 'Available' },
     { title: 'Balance Sheet', description: 'Financial position statement', icon: FileText, path: '/dashboard/finance/balance-sheet', color: 'from-teal-500 to-teal-600', badge: 'Available' },
-    { title: 'Cash Flow', description: 'Cash movement analysis', icon: DollarSign, path: '/dashboard/finance/cash-flow', color: 'from-blue-500 to-blue-600', badge: 'Available' }
+    { title: 'Cash Flow', description: 'Cash movement analysis', icon: Coins, path: '/dashboard/finance/cash-flow', color: 'from-blue-500 to-blue-600', badge: 'Available' }
   ];
 
   const managementModules = [
     { title: 'Cost Centers', description: 'Department/project allocation', icon: Building2, path: '/dashboard/finance/cost-centers', color: 'from-amber-500 to-amber-600', badge: 'Available' },
     { title: 'GL Budgets', description: 'Budget tracking & variance analysis', icon: TrendingUp, path: '/dashboard/finance/gl-budgets', color: 'from-teal-500 to-teal-600', badge: 'Available' },
-    { title: 'Interest Calculations', description: 'Calculate & post interest entries', icon: DollarSign, path: '/dashboard/finance/interest', color: 'from-rose-500 to-rose-600', badge: 'Available' },
+    { title: 'Interest Calculations', description: 'Calculate & post interest entries', icon: Coins, path: '/dashboard/finance/interest', color: 'from-rose-500 to-rose-600', badge: 'Available' },
     { title: 'Project Ledger', description: 'Project-wise financial tracking', icon: Briefcase, path: '/dashboard/finance/project-ledger', color: 'from-purple-500 to-purple-600', badge: 'Available' },
     { title: 'Payments', description: 'Payment processing & tracking', icon: Wallet, path: '/dashboard/finance/payments', color: 'from-green-500 to-green-600', badge: 'Available' },
     { title: 'Invoices', description: 'Invoice management', icon: Receipt, path: '/dashboard/finance/invoices', color: 'from-cyan-500 to-cyan-600', badge: 'Available' }

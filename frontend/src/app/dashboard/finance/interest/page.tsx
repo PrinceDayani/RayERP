@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Calculator, Play, FileText, TrendingUp, DollarSign, Calendar } from 'lucide-react';
+import { Calculator, Play, FileText, TrendingUp, Coins, Calendar } from 'lucide-react';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
@@ -189,7 +189,7 @@ export default function InterestCalculationsPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-600" />
+              <Coins className="h-5 w-5 text-green-600" />
               <div>
                 <p className="text-sm text-gray-600">Total Interest</p>
                 <p className="text-2xl font-bold">₹{summary?.totalInterest?.toLocaleString('en-IN') || 0}</p>

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DollarSign, TrendingUp, Building, RefreshCw, Globe } from 'lucide-react';
+import { Coins, TrendingUp, Building, RefreshCw, Globe } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { formatCurrency } from '@/utils/currency';
 
@@ -149,7 +149,7 @@ const CurrencyAwareGeneralLedger = () => {
                         <p className="text-xs text-gray-500 mt-1">{formatCompact(kpis.totalExpenses)}</p>
                       </div>
                       <div className="p-3 bg-red-500/20 rounded-lg">
-                        <DollarSign className="h-6 w-6 text-red-400" />
+                        <Coins className="h-6 w-6 text-red-400" />
                       </div>
                     </div>
                   </CardContent>

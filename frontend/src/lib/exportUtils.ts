@@ -1,4 +1,4 @@
-﻿import jsPDF from 'jspdf';
+import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -204,7 +204,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
         const average = data.employeeData?.filter(e => e.efficiency < 80).length || 0;
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(34, 197, 94);
-        pdf.text(`Excellent (≥90%): ${excellent} employees`, 22, yPosition + 5);
+        pdf.text(`Excellent (=90%): ${excellent} employees`, 22, yPosition + 5);
         pdf.setTextColor(234, 179, 8);
         pdf.text(`Good (80-89%): ${good} employees`, 22, yPosition + 10);
         pdf.setTextColor(239, 68, 68);
@@ -244,7 +244,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
           pdf.setTextColor(emp.attendance >= 95 ? 34 : 239, emp.attendance >= 95 ? 197 : 68, emp.attendance >= 95 ? 94 : 68);
           pdf.text(`${emp.attendance}%`, 155, yPosition);
           pdf.setTextColor(0, 0, 0);
-          const rating = emp.efficiency >= 90 ? '⭐⭐⭐⭐⭐' : emp.efficiency >= 80 ? '⭐⭐⭐⭐' : '⭐⭐⭐';
+          const rating = emp.efficiency >= 90 ? '?????' : emp.efficiency >= 80 ? '????' : '???';
           pdf.text(rating, 175, yPosition);
           yPosition += 6;
         });
@@ -318,8 +318,8 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
           pdf.rect(22, yPosition + 16, project.progress, 4, 'F');
           
           // Risk Indicator
-          const budgetRisk = (project.spent/project.budget) > 0.9 ? '⚠ Budget Alert' : '';
-          const timeRisk = project.progress < 50 ? '⚠ Timeline Risk' : '';
+          const budgetRisk = (project.spent/project.budget) > 0.9 ? '? Budget Alert' : '';
+          const timeRisk = project.progress < 50 ? '? Timeline Risk' : '';
           if (budgetRisk || timeRisk) {
             pdf.setTextColor(239, 68, 68);
             pdf.text(`${budgetRisk} ${timeRisk}`, 22, yPosition + 23);
@@ -353,11 +353,11 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
         pdf.setFont('helvetica', 'normal');
         pdf.text(`Total Tasks: ${totalTasksAll} | Overall Completion Rate: ${overallRate}% | Efficiency Score: ${overallRate >= 80 ? 'Excellent' : overallRate >= 60 ? 'Good' : 'Needs Improvement'}`, 22, yPosition + 8);
         pdf.setTextColor(34, 197, 94);
-        pdf.text(`✓ Completed: ${totalCompleted} (${Math.round((totalCompleted/totalTasksAll)*100)}%)`, 22, yPosition + 14);
+        pdf.text(`? Completed: ${totalCompleted} (${Math.round((totalCompleted/totalTasksAll)*100)}%)`, 22, yPosition + 14);
         pdf.setTextColor(234, 179, 8);
-        pdf.text(`⧗ Pending: ${totalPending} (${Math.round((totalPending/totalTasksAll)*100)}%)`, 80, yPosition + 14);
+        pdf.text(`? Pending: ${totalPending} (${Math.round((totalPending/totalTasksAll)*100)}%)`, 80, yPosition + 14);
         pdf.setTextColor(239, 68, 68);
-        pdf.text(`⚠ Overdue: ${totalOverdue} (${Math.round((totalOverdue/totalTasksAll)*100)}%)`, 135, yPosition + 14);
+        pdf.text(`? Overdue: ${totalOverdue} (${Math.round((totalOverdue/totalTasksAll)*100)}%)`, 135, yPosition + 14);
         yPosition += 35;
         
         // Department Breakdown
@@ -463,7 +463,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
         pdf.setTextColor(0, 0, 0);
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('📊 KEY HIGHLIGHTS', 22, yPosition + 2);
+        pdf.text('?? KEY HIGHLIGHTS', 22, yPosition + 2);
         pdf.setFont('helvetica', 'normal');
         pdf.text('Organization Performance: Excellent | Growth Trend: +12% MoM | Overall Health Score: 87/100', 22, yPosition + 8);
         pdf.text('Top Performer: Development Dept | Focus Area: Task Completion | Budget Status: On Track', 22, yPosition + 13);
@@ -494,7 +494,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
             title: 'Task Metrics', 
             color: [168, 85, 247], 
             items: [
-              'Total Tasks: 346 (↑15% from last month)',
+              'Total Tasks: 346 (?15% from last month)',
               'Completion Rate: 78% (Target: 75%)',
               'Overdue Tasks: 15 (4.3% of total)',
               'Avg Completion Time: 3.2 days'
@@ -504,9 +504,9 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
             title: 'Financial Metrics', 
             color: [6, 182, 212], 
             items: [
-              'Monthly Revenue: ₹189K (+12% growth)',
+              'Monthly Revenue: ?189K (+12% growth)',
               'Budget Utilization: 85% (Optimal range)',
-              'Cost per Employee: ₹7,875',
+              'Cost per Employee: ?7,875',
               'ROI: 145% (Excellent performance)'
             ]
           }
@@ -531,7 +531,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
           pdf.setFont('helvetica', 'normal');
           pdf.setFontSize(8);
           metric.items.forEach((item, idx) => {
-            pdf.text(`• ${item}`, 27, yPosition + 7 + (idx * 4));
+            pdf.text(`� ${item}`, 27, yPosition + 7 + (idx * 4));
           });
           yPosition += 26;
         });
@@ -545,7 +545,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
         pdf.rect(20, yPosition - 3, 170, 25, 'F');
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(9);
-        pdf.text('💡 STRATEGIC RECOMMENDATIONS', 22, yPosition + 2);
+        pdf.text('?? STRATEGIC RECOMMENDATIONS', 22, yPosition + 2);
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(8);
         pdf.text('1. Focus on reducing overdue tasks by 50% through better resource allocation', 22, yPosition + 8);
@@ -608,7 +608,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
         pdf.setFillColor(34, 197, 94);
         pdf.rect(100, yPosition + 15, 4, 4, 'F');
         pdf.setTextColor(0, 0, 0);
-        pdf.text(`Excellent (≥90%): ${effExcellent} (${((effExcellent/effTotal)*100).toFixed(1)}%)`, 106, yPosition + 18);
+        pdf.text(`Excellent (=90%): ${effExcellent} (${((effExcellent/effTotal)*100).toFixed(1)}%)`, 106, yPosition + 18);
         
         pdf.setFillColor(234, 179, 8);
         pdf.rect(100, yPosition + 25, 4, 4, 'F');
@@ -967,7 +967,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
       pdf.setTextColor(51, 65, 85);
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
-      pdf.text('Monthly Revenue: ₹189K (+12% growth)', 25, y + 10);
+      pdf.text('Monthly Revenue: ?189K (+12% growth)', 25, y + 10);
       pdf.text('Profit & Loss: Balance Sheet, Cash Flow available', 25, y + 16);
       pdf.text('Bank Reconciliation: All accounts reconciled', 25, y + 22);
       
@@ -1377,7 +1377,7 @@ export const exportToExcel = (data: ExportData): void => {
             { Metric: 'Total Employees', Value: 24, Change: '+2 this month' },
             { Metric: 'Active Projects', Value: 12, Change: '3 completing this month' },
             { Metric: 'Total Tasks', Value: 346, Change: '78% completion rate' },
-            { Metric: 'Monthly Revenue', Value: '₹189K', Change: '+12% from last month' }
+            { Metric: 'Monthly Revenue', Value: '?189K', Change: '+12% from last month' }
           ];
           const overviewWs = XLSX.utils.json_to_sheet(overviewData);
           XLSX.utils.book_append_sheet(wb, overviewWs, 'Overview');
@@ -1514,7 +1514,7 @@ export const exportToCSV = (data: ExportData): void => {
           { Metric: 'Total Employees', Value: '24', Change: '+2 this month' },
           { Metric: 'Active Projects', Value: '12', Change: '3 completing this month' },
           { Metric: 'Total Tasks', Value: '346', Change: '78% completion rate' },
-          { Metric: 'Monthly Revenue', Value: '₹189K', Change: '+12% from last month' }
+          { Metric: 'Monthly Revenue', Value: '?189K', Change: '+12% from last month' }
         ];
     }
 
@@ -1648,22 +1648,22 @@ export const exportToText = (data: ExportData): void => {
         content += 'EXECUTIVE DASHBOARD OVERVIEW\n';
         content += '============================\n\n';
         content += 'Key Performance Indicators:\n\n';
-        content += '📊 WORKFORCE METRICS\n';
-        content += '   • Total Employees: 24 (+2 this month)\n';
-        content += '   • Department Coverage: 5 departments\n';
-        content += '   • Average Attendance: 95.1%\n\n';
-        content += '🎯 PROJECT METRICS\n';
-        content += '   • Active Projects: 12 (3 completing this month)\n';
-        content += '   • Project Success Rate: 85%\n';
-        content += '   • On-time Delivery: 78%\n\n';
-        content += '✅ TASK METRICS\n';
-        content += '   • Total Tasks: 346\n';
-        content += '   • Completion Rate: 78%\n';
-        content += '   • Overdue Tasks: 15\n\n';
-        content += '💰 FINANCIAL METRICS\n';
-        content += '   • Monthly Revenue: ₹189K (+12% growth)\n';
-        content += '   • Budget Utilization: 85%\n';
-        content += '   • Cost Efficiency: 92%\n\n';
+        content += '?? WORKFORCE METRICS\n';
+        content += '   � Total Employees: 24 (+2 this month)\n';
+        content += '   � Department Coverage: 5 departments\n';
+        content += '   � Average Attendance: 95.1%\n\n';
+        content += '?? PROJECT METRICS\n';
+        content += '   � Active Projects: 12 (3 completing this month)\n';
+        content += '   � Project Success Rate: 85%\n';
+        content += '   � On-time Delivery: 78%\n\n';
+        content += '? TASK METRICS\n';
+        content += '   � Total Tasks: 346\n';
+        content += '   � Completion Rate: 78%\n';
+        content += '   � Overdue Tasks: 15\n\n';
+        content += '?? FINANCIAL METRICS\n';
+        content += '   � Monthly Revenue: ?189K (+12% growth)\n';
+        content += '   � Budget Utilization: 85%\n';
+        content += '   � Cost Efficiency: 92%\n\n';
     }
     
     content += `\n${'='.repeat(60)}\n`;

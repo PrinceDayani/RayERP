@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
-import { TrendingUp, TrendingDown, AlertTriangle, DollarSign, Target, Calendar, Percent, Activity, Zap, Clock, Award } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle, Coins, Target, Calendar, Percent, Activity, Zap, Clock, Award } from "lucide-react";
 import { Budget } from "@/types/budget";
 
 interface ProjectBudgetAnalyticsProps {
@@ -174,7 +174,7 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Daily Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-purple-500" />
+            <Coins className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹{costPerDay.toFixed(0)}</div>
@@ -463,7 +463,7 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
             <div className="space-y-3">
               <div className="flex justify-between items-center p-3 bg-blue-500/10 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <Coins className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   <span className="text-sm font-medium">Total Budget</span>
                 </div>
                 <span className="text-lg font-bold">₹{budget.totalBudget.toLocaleString()}</span>

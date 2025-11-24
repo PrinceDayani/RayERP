@@ -29,6 +29,7 @@ export interface IJournalEntry extends Document {
   reversalDate?: Date;
   periodYear: number;
   periodMonth: number;
+  updatedAt?: Date;
   
   // Description
   description: string;
@@ -100,6 +101,7 @@ export interface IJournalEntry extends Document {
   postedBy?: mongoose.Types.ObjectId;
   reversedBy?: mongoose.Types.ObjectId;
   reversalReason?: string;
+  createdAt?: Date;
   
   // Period Lock
   isLocked: boolean;

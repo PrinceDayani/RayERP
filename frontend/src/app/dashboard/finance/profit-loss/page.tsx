@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Download, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Target, DollarSign, Zap, Filter } from "lucide-react";
+import { TrendingUp, Download, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Target, Coins, Zap, Filter } from "lucide-react";
 import { reportingApi } from "@/lib/api/finance/reportingApi";
 import { DrillDownModal } from "@/components/finance/DrillDownModal";
 import { WaterfallChart } from "@/components/finance/WaterfallChart";
@@ -202,7 +202,7 @@ const ProfitLossPage = () => {
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">₹{profitLossData.totalRevenue?.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-green-600">?{profitLossData.totalRevenue?.toLocaleString()}</div>
                   {profitLossData.comparison && (
                     <div className="flex items-center text-sm mt-1">
                       {profitLossData.comparison.variance > 0 ? <ArrowUpRight className="h-4 w-4 text-green-600" /> : <ArrowDownRight className="h-4 w-4 text-red-600" />}
@@ -215,12 +215,12 @@ const ProfitLossPage = () => {
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-red-600">₹{profitLossData.totalExpenses?.toLocaleString()}</div></CardContent>
+                <CardContent><div className="text-2xl font-bold text-red-600">?{profitLossData.totalExpenses?.toLocaleString()}</div></CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Net Income</CardTitle></CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${profitLossData.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{profitLossData.netIncome?.toLocaleString()}</div>
+                  <div className={`text-2xl font-bold ${profitLossData.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>?{profitLossData.netIncome?.toLocaleString()}</div>
                   <p className="text-sm text-muted-foreground">{profitLossData.grossMargin?.toFixed(2)}% margin</p>
                 </CardContent>
               </Card>
@@ -237,13 +237,13 @@ const ProfitLossPage = () => {
                   {profitLossData.revenue?.map((item: any, index: number) => (
                     <div key={index} className="flex justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer" onClick={() => drillDown(item.accountId, item.account, item.code)}>
                       <span>{item.account} ({item.code})</span>
-                      <span className="font-medium">₹{item.amount.toLocaleString()}</span>
+                      <span className="font-medium">?{item.amount.toLocaleString()}</span>
                     </div>
                   ))}
                   <hr />
                   <div className="flex justify-between font-bold">
                     <span>Total Revenue</span>
-                    <span className="text-green-600">₹{profitLossData.totalRevenue?.toLocaleString()}</span>
+                    <span className="text-green-600">?{profitLossData.totalRevenue?.toLocaleString()}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -254,13 +254,13 @@ const ProfitLossPage = () => {
                   {profitLossData.expenses?.map((item: any, index: number) => (
                     <div key={index} className="flex justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer" onClick={() => drillDown(item.accountId, item.account, item.code)}>
                       <span>{item.account} ({item.code})</span>
-                      <span className="font-medium">₹{item.amount.toLocaleString()}</span>
+                      <span className="font-medium">?{item.amount.toLocaleString()}</span>
                     </div>
                   ))}
                   <hr />
                   <div className="flex justify-between font-bold">
                     <span>Total Expenses</span>
-                    <span className="text-red-600">₹{profitLossData.totalExpenses?.toLocaleString()}</span>
+                    <span className="text-red-600">?{profitLossData.totalExpenses?.toLocaleString()}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -280,16 +280,16 @@ const ProfitLossPage = () => {
                       <div><div className="text-sm text-muted-foreground">Current Period</div></div>
                       <div><div className="text-sm text-muted-foreground">Previous Period</div></div>
                       <div className="font-medium">Revenue</div>
-                      <div className="font-bold text-green-600">₹{comparison.period1.totalRevenue?.toLocaleString()}</div>
-                      <div>₹{comparison.period2.totalRevenue?.toLocaleString()}</div>
+                      <div className="font-bold text-green-600">?{comparison.period1.totalRevenue?.toLocaleString()}</div>
+                      <div>?{comparison.period2.totalRevenue?.toLocaleString()}</div>
                       <div className="font-medium">Expenses</div>
-                      <div className="font-bold text-red-600">₹{comparison.period1.totalExpenses?.toLocaleString()}</div>
-                      <div>₹{comparison.period2.totalExpenses?.toLocaleString()}</div>
+                      <div className="font-bold text-red-600">?{comparison.period1.totalExpenses?.toLocaleString()}</div>
+                      <div>?{comparison.period2.totalExpenses?.toLocaleString()}</div>
                       <div className="font-medium">Net Income</div>
-                      <div className="font-bold">₹{comparison.period1.netIncome?.toLocaleString()}</div>
-                      <div>₹{comparison.period2.netIncome?.toLocaleString()}</div>
+                      <div className="font-bold">?{comparison.period1.netIncome?.toLocaleString()}</div>
+                      <div>?{comparison.period2.netIncome?.toLocaleString()}</div>
                       <div className="font-medium">Variance</div>
-                      <div className="font-bold text-blue-600">₹{comparison.variance.netIncome?.toLocaleString()}</div>
+                      <div className="font-bold text-blue-600">?{comparison.variance.netIncome?.toLocaleString()}</div>
                       <div className="text-sm">{comparison.variance.revenuePercent?.toFixed(2)}% change</div>
                     </div>
                   </CardContent>
@@ -307,9 +307,9 @@ const ProfitLossPage = () => {
                     {multiPeriod.map((period: any, i: number) => (
                       <div key={i} className="grid grid-cols-4 gap-4 p-2 hover:bg-muted rounded">
                         <div className="font-medium">{new Date(period.period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
-                        <div className="text-green-600">₹{period.totalRevenue?.toLocaleString()}</div>
-                        <div className="text-red-600">₹{period.totalExpenses?.toLocaleString()}</div>
-                        <div className="font-bold">₹{period.netIncome?.toLocaleString()}</div>
+                        <div className="text-green-600">?{period.totalRevenue?.toLocaleString()}</div>
+                        <div className="text-red-600">?{period.totalExpenses?.toLocaleString()}</div>
+                        <div className="font-bold">?{period.netIncome?.toLocaleString()}</div>
                       </div>
                     ))}
                   </div>
@@ -327,9 +327,9 @@ const ProfitLossPage = () => {
                     {forecast.forecast?.map((f: any, i: number) => (
                       <div key={i} className="grid grid-cols-4 gap-4 p-2 bg-blue-50 rounded">
                         <div className="font-medium">Month {f.month}</div>
-                        <div className="text-green-600">₹{f.revenue?.toLocaleString()}</div>
-                        <div className="text-red-600">₹{f.expenses?.toLocaleString()}</div>
-                        <div className="font-bold">₹{f.netIncome?.toLocaleString()}</div>
+                        <div className="text-green-600">?{f.revenue?.toLocaleString()}</div>
+                        <div className="text-red-600">?{f.expenses?.toLocaleString()}</div>
+                        <div className="font-bold">?{f.netIncome?.toLocaleString()}</div>
                       </div>
                     ))}
                   </div>
@@ -346,11 +346,11 @@ const ProfitLossPage = () => {
                   <div className="space-y-4">
                     {['revenue', 'expenses', 'netIncome'].map((key) => (
                       <div key={key} className="grid grid-cols-5 gap-4 p-3 bg-gray-50 rounded">
-                        <div className="font-medium capitalize">{key.replace(/([A-Z])/g, ' ₹1')}</div>
-                        <div className="text-green-600">₹{budgetData[key]?.actual?.toLocaleString()}</div>
-                        <div>₹{budgetData[key]?.budget?.toLocaleString()}</div>
+                        <div className="font-medium capitalize">{key.replace(/([A-Z])/g, ' ?1')}</div>
+                        <div className="text-green-600">?{budgetData[key]?.actual?.toLocaleString()}</div>
+                        <div>?{budgetData[key]?.budget?.toLocaleString()}</div>
                         <div className={budgetData[key]?.variance > 0 ? 'text-green-600' : 'text-red-600'}>
-                          ₹{budgetData[key]?.variance?.toLocaleString()}
+                          ?{budgetData[key]?.variance?.toLocaleString()}
                         </div>
                         <div className={budgetData[key]?.variancePercent > 0 ? 'text-green-600' : 'text-red-600'}>
                           {budgetData[key]?.variancePercent?.toFixed(1)}%
@@ -375,12 +375,12 @@ const ProfitLossPage = () => {
                   <div className="grid grid-cols-3 gap-6">
                     <div className="p-4 bg-blue-50 rounded">
                       <p className="text-sm text-muted-foreground">EBITDA</p>
-                      <p className="text-3xl font-bold text-blue-600">₹{ratios.ebitda?.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-blue-600">?{ratios.ebitda?.toLocaleString()}</p>
                       <p className="text-sm mt-1">{ratios.ebitdaMargin}% margin</p>
                     </div>
                     <div className="p-4 bg-green-50 rounded">
                       <p className="text-sm text-muted-foreground">Operating Income</p>
-                      <p className="text-3xl font-bold text-green-600">₹{ratios.operatingIncome?.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-green-600">?{ratios.operatingIncome?.toLocaleString()}</p>
                       <p className="text-sm mt-1">{ratios.operatingMargin}% margin</p>
                     </div>
                     <div className="p-4 bg-purple-50 rounded">
@@ -402,25 +402,25 @@ const ProfitLossPage = () => {
                     <div className="p-6 bg-green-50 rounded-lg border-2 border-green-200">
                       <h4 className="font-bold text-green-700 mb-3">Best Case</h4>
                       <div className="space-y-2">
-                        <div><span className="text-sm">Revenue:</span> <span className="font-bold">₹{scenarios.bestCase?.revenue?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Expenses:</span> <span className="font-bold">₹{scenarios.bestCase?.expenses?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Net Income:</span> <span className="font-bold text-green-600">₹{scenarios.bestCase?.netIncome?.toLocaleString()}</span></div>
+                        <div><span className="text-sm">Revenue:</span> <span className="font-bold">?{scenarios.bestCase?.revenue?.toLocaleString()}</span></div>
+                        <div><span className="text-sm">Expenses:</span> <span className="font-bold">?{scenarios.bestCase?.expenses?.toLocaleString()}</span></div>
+                        <div><span className="text-sm">Net Income:</span> <span className="font-bold text-green-600">?{scenarios.bestCase?.netIncome?.toLocaleString()}</span></div>
                       </div>
                     </div>
                     <div className="p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
                       <h4 className="font-bold text-blue-700 mb-3">Expected</h4>
                       <div className="space-y-2">
-                        <div><span className="text-sm">Revenue:</span> <span className="font-bold">₹{scenarios.expected?.revenue?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Expenses:</span> <span className="font-bold">₹{scenarios.expected?.expenses?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Net Income:</span> <span className="font-bold text-blue-600">₹{scenarios.expected?.netIncome?.toLocaleString()}</span></div>
+                        <div><span className="text-sm">Revenue:</span> <span className="font-bold">?{scenarios.expected?.revenue?.toLocaleString()}</span></div>
+                        <div><span className="text-sm">Expenses:</span> <span className="font-bold">?{scenarios.expected?.expenses?.toLocaleString()}</span></div>
+                        <div><span className="text-sm">Net Income:</span> <span className="font-bold text-blue-600">?{scenarios.expected?.netIncome?.toLocaleString()}</span></div>
                       </div>
                     </div>
                     <div className="p-6 bg-red-50 rounded-lg border-2 border-red-200">
                       <h4 className="font-bold text-red-700 mb-3">Worst Case</h4>
                       <div className="space-y-2">
-                        <div><span className="text-sm">Revenue:</span> <span className="font-bold">₹{scenarios.worstCase?.revenue?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Expenses:</span> <span className="font-bold">₹{scenarios.worstCase?.expenses?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Net Income:</span> <span className="font-bold text-red-600">₹{scenarios.worstCase?.netIncome?.toLocaleString()}</span></div>
+                        <div><span className="text-sm">Revenue:</span> <span className="font-bold">?{scenarios.worstCase?.revenue?.toLocaleString()}</span></div>
+                        <div><span className="text-sm">Expenses:</span> <span className="font-bold">?{scenarios.worstCase?.expenses?.toLocaleString()}</span></div>
+                        <div><span className="text-sm">Net Income:</span> <span className="font-bold text-red-600">?{scenarios.worstCase?.netIncome?.toLocaleString()}</span></div>
                       </div>
                     </div>
                   </div>

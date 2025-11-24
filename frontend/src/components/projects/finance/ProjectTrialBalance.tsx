@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,8 +63,8 @@ export default function ProjectTrialBalance({ projectId }: ProjectTrialBalancePr
               ))}
               <TableRow className="border-t-2 font-bold">
                 <TableCell colSpan={2}>Total</TableCell>
-                <TableCell className="text-right">₹135,000</TableCell>
-                <TableCell className="text-right">₹135,000</TableCell>
+                <TableCell className="text-right">?135,000</TableCell>
+                <TableCell className="text-right">?135,000</TableCell>
                 <TableCell className="text-right">-</TableCell>
               </TableRow>
             </TableBody>

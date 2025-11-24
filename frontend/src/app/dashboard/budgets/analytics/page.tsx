@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Budget } from "@/types/budget";
 import BudgetAnalytics from "@/components/budget/BudgetAnalytics";
-import { RefreshCw, TrendingUp, Calendar, DollarSign, Target, ExternalLink } from "lucide-react";
+import { RefreshCw, TrendingUp, Calendar, Coins, Target, ExternalLink } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from "recharts";
 import { checkBackendHealth, checkAuthToken } from "@/utils/healthCheck";
@@ -267,7 +267,7 @@ export default function BudgetAnalyticsPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Allocated</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <Coins className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">

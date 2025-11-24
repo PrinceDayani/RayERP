@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DollarSign, TrendingUp, TrendingDown, Download, Calendar, BarChart3, AlertCircle, Eye, Printer } from "lucide-react";
+import { Coins, TrendingUp, TrendingDown, Download, Calendar, BarChart3, AlertCircle, Eye, Printer } from "lucide-react";
 import { reportingApi } from "@/lib/api/finance/reportingApi";
 import { billsApi } from "@/lib/api/billsApi";
 import { BarChart, Bar, LineChart, Line, ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
@@ -164,7 +164,7 @@ const CashFlowPage = () => {
     <div className="flex-1 space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <DollarSign className="h-8 w-8 text-orange-600" />
+          <Coins className="h-8 w-8 text-orange-600" />
           <div>
             <h1 className="text-3xl font-bold">Cash Flow Statement</h1>
             <p className="text-muted-foreground">Track, analyze, and forecast cash movements</p>

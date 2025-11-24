@@ -127,6 +127,7 @@ router.delete('/accounts/:id', optionalPermission('finance.manage'), deleteAccou
 // Journal entry routes
 router.get('/journal-entries', optionalPermission('finance.view'), getJournalEntries);
 router.get('/journal-entries/:id', optionalPermission('finance.view'), getJournalEntry);
+router.get('/journal-entries/:id/audit-trail', optionalPermission('finance.view'), getJournalEntry);
 router.post('/journal-entries', optionalPermission('finance.manage'), createJournalEntry);
 router.put('/journal-entries/:id', optionalPermission('finance.manage'), updateJournalEntry);
 router.post('/journal-entries/:id/post', optionalPermission('finance.manage'), postJournalEntry);

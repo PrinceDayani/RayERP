@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  DollarSign, 
+  Coins, 
   FileText, 
   BarChart3,
   TrendingUp,
@@ -56,7 +56,7 @@ const ProjectFinancePage = () => {
     {
       title: "Cash Flow",
       description: "Track cash inflows and outflows by activity",
-      icon: DollarSign,
+      icon: Coins,
       color: "text-orange-600"
     },
     {

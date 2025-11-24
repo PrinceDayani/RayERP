@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { 
-  ArrowLeft, Edit, Mail, Phone, MapPin, Calendar, DollarSign, User, Clock, 
+  ArrowLeft, Edit, Mail, Phone, MapPin, Calendar, Coins, User, Clock, 
   FileText, BarChart3, Briefcase, Award, TrendingUp, Activity, Users, 
   CheckCircle2, XCircle, AlertCircle, Target, Zap
 } from 'lucide-react';
@@ -244,7 +244,7 @@ export default function EmployeeDetailPage() {
                 <p className="text-2xl font-bold">{formatAmount(employee.salary)}</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <Coins className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
           </CardContent>

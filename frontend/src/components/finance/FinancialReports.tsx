@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Spinner } from '@/components/ui/spinner';
-import { FileText, Download, TrendingUp, DollarSign } from 'lucide-react';
+import { FileText, Download, TrendingUp, Coins } from 'lucide-react';
 
 interface ReportData {
   reportType: string;

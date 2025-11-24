@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -302,7 +302,7 @@ export default function ReportsPage() {
             <TrendingUp className="h-4 w-4 text-cyan-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹189K</div>
+            <div className="text-2xl font-bold">?189K</div>
             <p className="text-xs text-green-600">+12% from last month</p>
           </CardContent>
         </Card>
@@ -824,10 +824,10 @@ export default function ReportsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="INR">₹ INR</SelectItem>
+              <SelectItem value="INR">? INR</SelectItem>
               <SelectItem value="USD">$ USD</SelectItem>
-              <SelectItem value="EUR">€ EUR</SelectItem>
-              <SelectItem value="GBP">£ GBP</SelectItem>
+              <SelectItem value="EUR">� EUR</SelectItem>
+              <SelectItem value="GBP">� GBP</SelectItem>
             </SelectContent>
           </Select>
           
@@ -918,7 +918,7 @@ export default function ReportsPage() {
 
       {/* Footer */}
       <div className="text-center text-muted-foreground text-sm py-4">
-        <p>Report generated on: {new Date().toLocaleString()} • Data updated in real-time</p>
+        <p>Report generated on: {new Date().toLocaleString()} � Data updated in real-time</p>
       </div>
     </div>
   );

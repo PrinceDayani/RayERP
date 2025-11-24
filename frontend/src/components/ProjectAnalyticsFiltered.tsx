@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart } from 'recharts';
-import { TrendingUp, BarChart3, Users as UsersIcon, AlertTriangle, DollarSign, Activity, ArrowUpRight, ArrowDownRight, Brain, Zap, Target, Clock, TrendingDown } from 'lucide-react';
+import { TrendingUp, BarChart3, Users as UsersIcon, AlertTriangle, Coins, Activity, ArrowUpRight, ArrowDownRight, Brain, Zap, Target, Clock, TrendingDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useMemo } from 'react';
@@ -418,7 +418,7 @@ export default function ProjectAnalyticsFiltered({ burndown, velocity, utilizati
     const insights = [];
     
     if (performance?.cpi < 1) {
-      insights.push({ type: 'warning', message: 'Project is over budget. Review cost allocations.', icon: DollarSign });
+      insights.push({ type: 'warning', message: 'Project is over budget. Review cost allocations.', icon: Coins });
     }
     if (performance?.spi < 1) {
       insights.push({ type: 'warning', message: 'Project is behind schedule. Consider resource reallocation.', icon: Clock });
@@ -483,7 +483,7 @@ export default function ProjectAnalyticsFiltered({ burndown, velocity, utilizati
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="h-4 w-4" />
+              <Coins className="h-4 w-4" />
               <span className="text-sm text-muted-foreground">Planned</span>
             </div>
             <div className="text-2xl font-bold">${performance?.plannedValue?.toLocaleString() || 0}</div>

@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, FolderOpen, Building2, Receipt, Calculator, FileText, Trash2, Edit, Eye, CheckCircle, Download, BookOpen, Filter, Upload, TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
+import { Plus, FolderOpen, Building2, Receipt, Calculator, FileText, Trash2, Edit, Eye, CheckCircle, Download, BookOpen, Filter, Upload, TrendingUp, Coins, BarChart3 } from 'lucide-react';
 import { generalLedgerAPI, type Account, type JournalEntry } from '@/lib/api/generalLedgerAPI';
 import { toast } from '@/components/ui/use-toast';
 
@@ -157,7 +157,7 @@ function OverviewTab({ accounts, journalEntries, onRefresh }: any) {
         <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-0 shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <DollarSign className="w-10 h-10 text-orange-600" />
+              <Coins className="w-10 h-10 text-orange-600" />
               <span className="text-2xl font-bold text-orange-600">₹{totalBalance.toFixed(2)}</span>
             </div>
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Total Balance</h3>
@@ -716,7 +716,7 @@ function AdvancedTab() {
             <div className="grid grid-cols-3 gap-4">
               <Card><CardContent className="p-4 text-center"><TrendingUp className="w-8 h-8 mx-auto mb-2 text-green-600" /><h3 className="font-medium">Cash Flow Analysis</h3></CardContent></Card>
               <Card><CardContent className="p-4 text-center"><BarChart3 className="w-8 h-8 mx-auto mb-2 text-blue-600" /><h3 className="font-medium">Ratio Analysis</h3></CardContent></Card>
-              <Card><CardContent className="p-4 text-center"><DollarSign className="w-8 h-8 mx-auto mb-2 text-purple-600" /><h3 className="font-medium">Funds Flow</h3></CardContent></Card>
+              <Card><CardContent className="p-4 text-center"><Coins className="w-8 h-8 mx-auto mb-2 text-purple-600" /><h3 className="font-medium">Funds Flow</h3></CardContent></Card>
             </div>
           )}
         </CardContent>

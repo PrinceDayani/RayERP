@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, FileSpreadsheet, TrendingUp, DollarSign, Activity } from 'lucide-react';
+import { Download, FileSpreadsheet, TrendingUp, Coins, Activity } from 'lucide-react';
 
 export default function AdvancedReportsPage() {
   const [dateRange, setDateRange] = useState({
@@ -16,10 +16,10 @@ export default function AdvancedReportsPage() {
 
   const reports = [
     { name: 'Profit & Loss Statement', description: 'Income and expenses summary', icon: TrendingUp, color: 'from-green-500 to-green-600' },
-    { name: 'Balance Sheet', description: 'Assets, liabilities, and equity', icon: DollarSign, color: 'from-blue-500 to-blue-600' },
+    { name: 'Balance Sheet', description: 'Assets, liabilities, and equity', icon: Coins, color: 'from-blue-500 to-blue-600' },
     { name: 'Cash Flow Statement', description: 'Cash inflows and outflows', icon: Activity, color: 'from-purple-500 to-purple-600' },
     { name: 'Income Statement', description: 'Detailed revenue analysis', icon: TrendingUp, color: 'from-cyan-500 to-cyan-600' },
-    { name: 'Expense Report', description: 'Expense breakdown by category', icon: DollarSign, color: 'from-orange-500 to-orange-600' },
+    { name: 'Expense Report', description: 'Expense breakdown by category', icon: Coins, color: 'from-orange-500 to-orange-600' },
     { name: 'Ratio Analysis', description: 'Financial ratios and metrics', icon: Activity, color: 'from-pink-500 to-pink-600' }
   ];
 

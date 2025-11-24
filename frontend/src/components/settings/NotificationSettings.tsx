@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { useRealTimeSetting } from '@/lib/realTimeSettings';
 import { useSocket } from '@/hooks/useSocket';
 import { useNotifications } from '@/hooks/useNotifications';
-import { CheckCircle, Bell, Mail, Package, TrendingUp, Users, AlertTriangle, Calendar, DollarSign, FileText, Settings, Zap } from 'lucide-react';
+import { CheckCircle, Bell, Mail, Package, TrendingUp, Users, AlertTriangle, Calendar, Coins, FileText, Settings, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function NotificationSettings() {
@@ -271,7 +271,7 @@ export default function NotificationSettings() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
+                <Coins className="h-4 w-4" />
                 Budget Alerts
               </Label>
               <p className="text-sm text-muted-foreground">Budget overruns and financial warnings</p>

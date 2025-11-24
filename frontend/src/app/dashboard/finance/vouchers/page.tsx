@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, FileText, Eye, CheckCircle, XCircle, Search, Filter, Download } from 'lucide-react';
+import { Plus, Trash2, FileText, Eye, CheckCircle, XCircle, Search, Filter, Download, ChevronLeft, ChevronRight, History } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 
@@ -23,11 +23,20 @@ export default function VouchersPage() {
   const [stats, setStats] = useState<any>({});
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showAuditDialog, setShowAuditDialog] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
   const [selectedType, setSelectedType] = useState('payment');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [selectedVouchers, setSelectedVouchers] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     reference: '',
@@ -45,7 +54,7 @@ export default function VouchersPage() {
   useEffect(() => {
     fetchVouchers();
     fetchAccounts();
-  }, [filterType, filterStatus, searchTerm]);
+  }, [filterType, filterStatus, searchTerm, dateFrom, dateTo, page]);
 
   useEffect(() => {
     fetchStats();
@@ -53,9 +62,13 @@ export default function VouchersPage() {
 
   const fetchVouchers = async () => {
     try {
+      setLoading(true);
       const params = new URLSearchParams();
-      params.append('limit', '100');
+      params.append('limit', '20');
+      params.append('page', page.toString());
       if (searchTerm) params.append('search', searchTerm);
+      if (dateFrom) params.append('startDate', dateFrom);
+      if (dateTo) params.append('endDate', dateTo);
       
       const res = await fetch(`${API_URL}/api/general-ledger/journal-entries?${params}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
@@ -64,7 +77,7 @@ export default function VouchersPage() {
       const entries = data.journalEntries || data.data || [];
       
       // Map journal entries to voucher format
-      const mappedVouchers = entries.map((entry: any) => ({
+      let mappedVouchers = entries.map((entry: any) => ({
         _id: entry._id,
         voucherNumber: entry.entryNumber,
         voucherType: 'journal',
@@ -77,9 +90,21 @@ export default function VouchersPage() {
         lines: entry.lines
       }));
       
+      // Client-side filtering
+      if (filterType !== 'all') {
+        mappedVouchers = mappedVouchers.filter((v: any) => v.voucherType === filterType);
+      }
+      if (filterStatus !== 'all') {
+        mappedVouchers = mappedVouchers.filter((v: any) => v.status === filterStatus);
+      }
+      
       setVouchers(mappedVouchers);
+      setTotalPages(data.pagination?.pages || Math.ceil(mappedVouchers.length / 20));
     } catch (error) {
       console.error('Error fetching vouchers:', error);
+      toast({ title: 'Error', description: 'Failed to load vouchers', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -115,7 +140,13 @@ export default function VouchersPage() {
 
   const handleCreateVoucher = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    console.log('handleCreateVoucher called', { lines, formData });
+    if (submitting) return;
+    
+    // Validate date
+    if (!formData.date) {
+      toast({ title: 'Error', description: 'Please select a date', variant: 'destructive' });
+      return;
+    }
 
     // Validate lines
     const validLines = lines.filter(l => l.accountId && (parseFloat(String(l.debit)) > 0 || parseFloat(String(l.credit)) > 0));
@@ -141,6 +172,7 @@ export default function VouchersPage() {
     }
 
     try {
+      setSubmitting(true);
       const payload: any = {
         voucherType: selectedType,
         date: formData.date,
@@ -203,7 +235,9 @@ export default function VouchersPage() {
       }
     } catch (error) {
       console.error('Error creating voucher:', error);
-      toast({ title: 'Error', description: 'Failed to create voucher', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Network error. Please try again.', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -245,7 +279,7 @@ export default function VouchersPage() {
     if (!confirm('Are you sure you want to post this voucher? This action cannot be undone.')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/vouchers/${id}/post`, {
+      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries/${id}/post`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
@@ -264,23 +298,21 @@ export default function VouchersPage() {
   };
 
   const handleCancelVoucher = async (id: string) => {
-    const reason = prompt('Enter cancellation reason:');
-    if (!reason) return;
+    if (!confirm('Cancel this voucher? This will reverse the entry.')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/vouchers/${id}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
-        },
-        body: JSON.stringify({ reason })
+      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
 
       if (res.ok) {
         toast({ title: 'Success', description: 'Voucher cancelled successfully' });
         fetchVouchers();
         fetchStats();
+      } else {
+        const data = await res.json();
+        toast({ title: 'Error', description: data.message, variant: 'destructive' });
       }
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to cancel voucher', variant: 'destructive' });
@@ -291,7 +323,7 @@ export default function VouchersPage() {
     if (!confirm('Are you sure you want to delete this voucher?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/vouchers/${id}`, {
+      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
@@ -306,16 +338,263 @@ export default function VouchersPage() {
     }
   };
 
+  const handleBulkPost = async () => {
+    if (selectedVouchers.length === 0) return;
+    if (!confirm(`Post ${selectedVouchers.length} vouchers? This cannot be undone.`)) return;
+
+    try {
+      setLoading(true);
+      await Promise.all(selectedVouchers.map(id => 
+        fetch(`${API_URL}/api/general-ledger/journal-entries/${id}/post`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
+        })
+      ));
+      toast({ title: 'Success', description: `${selectedVouchers.length} vouchers posted` });
+      setSelectedVouchers([]);
+      fetchVouchers();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to post vouchers', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedVouchers.length === 0) return;
+    if (!confirm(`Delete ${selectedVouchers.length} vouchers? This cannot be undone.`)) return;
+
+    try {
+      setLoading(true);
+      await Promise.all(selectedVouchers.map(id => 
+        fetch(`${API_URL}/api/general-ledger/journal-entries/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
+        })
+      ));
+      toast({ title: 'Success', description: `${selectedVouchers.length} vouchers deleted` });
+      setSelectedVouchers([]);
+      fetchVouchers();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete vouchers', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportToExcel = () => {
+    const csv = [
+      ['Voucher No', 'Type', 'Date', 'Party', 'Narration', 'Amount', 'Status'],
+      ...vouchers.map(v => [
+        v.voucherNumber,
+        v.voucherType,
+        new Date(v.date).toLocaleDateString('en-IN'),
+        v.partyName || '-',
+        v.narration,
+        v.totalAmount,
+        v.status
+      ])
+    ].map(row => row.join(',')).join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vouchers-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  };
+
+  const exportToPDF = async () => {
+    try {
+      setLoading(true);
+      const vouchersToExport = vouchers;
+      
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast({ title: 'Error', description: 'Please allow popups', variant: 'destructive' });
+        return;
+      }
+
+      const totalDebit = vouchersToExport.reduce((sum, v) => sum + v.totalAmount, 0);
+      const postedCount = vouchersToExport.filter(v => v.status === 'posted').length;
+      const draftCount = vouchersToExport.filter(v => v.status === 'draft').length;
+
+      const html = `<!DOCTYPE html>
+<html><head><title>Vouchers Report - RayERP</title><meta charset="UTF-8"><style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial, sans-serif; padding: 30px; background: white; color: #000; }
+.header { border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
+.company { font-size: 24px; font-weight: bold; }
+.title { font-size: 18px; margin-top: 5px; }
+.meta { display: flex; justify-content: space-between; margin: 15px 0; padding: 10px; background: #f5f5f5; }
+.meta-item { font-size: 12px; }
+.meta-label { font-weight: bold; }
+.summary { display: flex; gap: 15px; margin: 20px 0; }
+.summary-card { flex: 1; padding: 12px; border: 1px solid #ddd; text-align: center; }
+.summary-label { font-size: 10px; color: #666; text-transform: uppercase; }
+.summary-value { font-size: 20px; font-weight: bold; margin-top: 5px; }
+table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+th { background: #333; color: white; padding: 10px 8px; text-align: left; font-size: 11px; text-transform: uppercase; }
+td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
+.amount { text-align: right; font-family: monospace; }
+.status { display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; }
+.status-posted { background: #d4edda; color: #155724; }
+.status-draft { background: #fff3cd; color: #856404; }
+.footer { margin-top: 40px; padding-top: 15px; border-top: 1px solid #ddd; text-align: center; font-size: 10px; color: #666; }
+.signatures { display: flex; justify-content: space-around; margin-top: 50px; }
+.sig-box { text-align: center; padding-top: 30px; border-top: 1px solid #000; width: 150px; }
+.sig-label { font-size: 11px; margin-top: 5px; }
+@media print { body { padding: 15px; } @page { margin: 15mm; size: A4; } }
+</style></head><body>
+<div class="header">
+  <div class="company">RayERP</div>
+  <div class="title">Vouchers Report</div>
+</div>
+<div class="meta">
+  <div><span class="meta-label">Date:</span> ${new Date().toLocaleDateString('en-IN')}</div>
+  <div><span class="meta-label">Time:</span> ${new Date().toLocaleTimeString('en-IN')}</div>
+  ${dateFrom || dateTo ? `<div><span class="meta-label">Period:</span> ${dateFrom || 'Start'} to ${dateTo || 'End'}</div>` : ''}
+</div>
+<div class="summary">
+  <div class="summary-card"><div class="summary-label">Total</div><div class="summary-value">${vouchersToExport.length}</div></div>
+  <div class="summary-card"><div class="summary-label">Posted</div><div class="summary-value">${postedCount}</div></div>
+  <div class="summary-card"><div class="summary-label">Draft</div><div class="summary-value">${draftCount}</div></div>
+  <div class="summary-card"><div class="summary-label">Amount</div><div class="summary-value">₹${totalDebit.toLocaleString('en-IN')}</div></div>
+</div>
+<table>
+  <thead><tr>
+    <th>Voucher No.</th><th>Date</th><th>Reference</th><th>Narration</th><th class="amount">Amount (₹)</th><th>Status</th>
+  </tr></thead>
+  <tbody>
+    ${vouchersToExport.map(v => `<tr>
+      <td>${v.voucherNumber}</td>
+      <td>${new Date(v.date).toLocaleDateString('en-IN')}</td>
+      <td>${v.partyName || '-'}</td>
+      <td>${v.narration}</td>
+      <td class="amount">${v.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+      <td><span class="status status-${v.status}">${v.status.toUpperCase()}</span></td>
+    </tr>`).join('')}
+  </tbody>
+</table>
+<div class="signatures">
+  <div class="sig-box"><div class="sig-label">Prepared By</div></div>
+  <div class="sig-box"><div class="sig-label">Reviewed By</div></div>
+  <div class="sig-box"><div class="sig-label">Approved By</div></div>
+</div>
+<div class="footer">
+  <p><strong>RayERP</strong> - Enterprise Resource Planning System</p>
+  <p>Generated on ${new Date().toLocaleString('en-IN')}</p>
+</div>
+<script>window.onload = () => setTimeout(() => window.print(), 250);</script>
+</body></html>`;
+
+      printWindow.document.write(html);
+      printWindow.document.close();
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast({ title: 'Error', description: 'Failed to generate PDF', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedVouchers.length === vouchers.length) {
+      setSelectedVouchers([]);
+    } else {
+      setSelectedVouchers(vouchers.map(v => v._id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedVouchers(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   const viewVoucher = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/vouchers/${id}`, {
+      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries/${id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
-      setSelectedVoucher(data.data);
+      const voucher = {
+        _id: data._id,
+        voucherNumber: data.entryNumber,
+        voucherType: 'journal',
+        date: data.entryDate || data.date,
+        reference: data.reference,
+        narration: data.description,
+        status: data.isPosted ? 'posted' : 'draft',
+        lines: data.lines,
+        createdAt: data.createdAt,
+        createdBy: data.createdBy,
+        updatedAt: data.updatedAt
+      };
+      setSelectedVoucher(voucher);
       setShowViewDialog(true);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to fetch voucher details', variant: 'destructive' });
+    }
+  };
+
+  const viewAuditTrail = async (id: string) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
+      });
+      const data = await res.json();
+      
+      // Build audit log from journal entry data
+      const logs = [];
+      
+      // Created event
+      logs.push({
+        action: 'Created',
+        user: data.createdBy?.firstName || data.createdBy?.name || 'System',
+        timestamp: data.createdAt,
+        details: `Voucher ${data.entryNumber} created`
+      });
+      
+      // Updated event
+      if (data.updatedAt && data.updatedAt !== data.createdAt) {
+        logs.push({
+          action: 'Updated',
+          user: data.updatedBy?.firstName || data.updatedBy?.name || 'System',
+          timestamp: data.updatedAt,
+          details: 'Voucher details modified'
+        });
+      }
+      
+      // Posted event
+      if (data.isPosted) {
+        logs.push({
+          action: 'Posted',
+          user: data.postedBy?.firstName || data.postedBy?.name || 'System',
+          timestamp: data.postingDate || data.updatedAt,
+          details: 'Voucher posted to ledger'
+        });
+      }
+      
+      // Change history from model
+      if (data.changeHistory && data.changeHistory.length > 0) {
+        data.changeHistory.forEach((change: any) => {
+          logs.push({
+            action: 'Modified',
+            user: change.changedBy?.firstName || change.changedBy?.name || 'System',
+            timestamp: change.changedAt,
+            details: `${change.field}: ${change.oldValue} → ${change.newValue}`
+          });
+        });
+      }
+      
+      setAuditLogs(logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+      setShowAuditDialog(true);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to fetch audit trail', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -375,18 +654,32 @@ export default function VouchersPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>All Vouchers</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search vouchers..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 w-64"
+                  className="pl-8 w-48"
                 />
               </div>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                placeholder="From"
+                className="w-36"
+              />
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                placeholder="To"
+                className="w-36"
+              />
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-32">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -395,16 +688,31 @@ export default function VouchersPage() {
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-28">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="posted">Posted</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
+              <Button variant="outline" size="sm" onClick={exportToExcel}>
+                <Download className="w-4 h-4 mr-1" /> CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportToPDF}>
+                <FileText className="w-4 h-4 mr-1" /> PDF
+              </Button>
+              {selectedVouchers.length > 0 && (
+                <>
+                  <Button variant="outline" size="sm" onClick={handleBulkPost}>
+                    <CheckCircle className="w-4 h-4 mr-1" /> Post ({selectedVouchers.length})
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleBulkDelete}>
+                    <Trash2 className="w-4 h-4 mr-1" /> Delete ({selectedVouchers.length})
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -412,6 +720,14 @@ export default function VouchersPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedVouchers.length === vouchers.length && vouchers.length > 0}
+                    onChange={toggleSelectAll}
+                    className="cursor-pointer"
+                  />
+                </TableHead>
                 <TableHead>Voucher No</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Date</TableHead>
@@ -423,15 +739,32 @@ export default function VouchersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {vouchers.length === 0 ? (
+              {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center py-8">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                      <span>Loading vouchers...</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : vouchers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     No vouchers found
                   </TableCell>
                 </TableRow>
               ) : (
                 vouchers.map(v => (
                   <TableRow key={v._id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedVouchers.includes(v._id)}
+                        onChange={() => toggleSelect(v._id)}
+                        className="cursor-pointer"
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{v.voucherNumber}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">{v.voucherType.replace('_', ' ')}</Badge>
@@ -443,8 +776,11 @@ export default function VouchersPage() {
                     <TableCell>{getStatusBadge(v.status)}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => viewVoucher(v._id)}>
+                        <Button size="sm" variant="ghost" onClick={() => viewVoucher(v._id)} title="View Details">
                           <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => viewAuditTrail(v._id)} title="Audit Trail">
+                          <History className="w-4 h-4" />
                         </Button>
                         {v.status === 'draft' && (
                           <>
@@ -468,6 +804,31 @@ export default function VouchersPage() {
               )}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <p className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -686,8 +1047,16 @@ export default function VouchersPage() {
                 type="button" 
                 size="lg" 
                 onClick={() => handleCreateVoucher()}
+                disabled={submitting}
               >
-                Create Voucher
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Creating...
+                  </>
+                ) : (
+                  'Create Voucher'
+                )}
               </Button>
             </div>
           </form>
@@ -792,6 +1161,44 @@ export default function VouchersPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAuditDialog} onOpenChange={setShowAuditDialog}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Audit Trail</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {auditLogs.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No audit logs available</p>
+            ) : (
+              <div className="space-y-3">
+                {auditLogs.map((log, idx) => (
+                  <div key={idx} className="flex gap-4 p-3 border rounded-lg hover:bg-muted/50">
+                    <div className="flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <History className="w-5 h-5 text-primary" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-semibold">{log.action}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(log.timestamp).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{log.details}</p>
+                      <p className="text-xs text-muted-foreground mt-1">By: {log.user}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowAuditDialog(false)}>Close</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

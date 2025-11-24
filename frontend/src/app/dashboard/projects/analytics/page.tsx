@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { 
-  ArrowLeft, TrendingUp, TrendingDown, DollarSign, Users, 
+  ArrowLeft, TrendingUp, TrendingDown, Coins, Users, 
   Calendar, CheckCircle, AlertCircle, Clock, BarChart3,
   Activity, Target, Zap, Award
 } from "lucide-react";
@@ -185,7 +185,7 @@ const ProjectAnalyticsDashboard = () => {
                     {metrics?.budgetUtilization.toFixed(1)}%
                   </p>
                   <div className="flex items-center gap-1 mt-2">
-                    <DollarSign className="h-4 w-4 text-orange-600" />
+                    <Coins className="h-4 w-4 text-orange-600" />
                     <span className="text-sm text-orange-600">₹{metrics?.totalSpent.toLocaleString()} spent</span>
                   </div>
                 </div>
@@ -214,7 +214,7 @@ const ProjectAnalyticsDashboard = () => {
                       <p className="text-xs text-muted-foreground">Total Budget</p>
                       <p className="text-xl font-bold">₹{metrics?.totalBudget.toLocaleString()}</p>
                     </div>
-                    <DollarSign className="h-6 w-6 text-blue-500" />
+                    <Coins className="h-6 w-6 text-blue-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -527,7 +527,7 @@ const ProjectAnalyticsDashboard = () => {
                       <p className="text-sm text-muted-foreground">Total Allocated</p>
                       <p className="text-2xl font-bold">₹{metrics?.totalBudget.toLocaleString()}</p>
                     </div>
-                    <DollarSign className="h-8 w-8 text-blue-600" />
+                    <Coins className="h-8 w-8 text-blue-600" />
                   </div>
                   <div className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
                     <div>

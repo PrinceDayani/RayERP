@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,15 +34,15 @@ export default function ProjectCashFlow({ projectId }: ProjectCashFlowProps) {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Cash Receipts</span>
-                <span className="font-medium">₹120,000</span>
+                <span className="font-medium">?120,000</span>
               </div>
               <div className="flex justify-between">
                 <span>Cash Payments</span>
-                <span className="font-medium text-red-600">(₹95,000)</span>
+                <span className="font-medium text-red-600">(?95,000)</span>
               </div>
               <div className="flex justify-between border-t pt-2 font-bold">
                 <span>Net Operating Cash Flow</span>
-                <span className="text-green-600">₹25,000</span>
+                <span className="text-green-600">?25,000</span>
               </div>
             </div>
           </CardContent>
@@ -56,11 +56,11 @@ export default function ProjectCashFlow({ projectId }: ProjectCashFlowProps) {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Equipment Purchase</span>
-                <span className="font-medium text-red-600">(₹60,000)</span>
+                <span className="font-medium text-red-600">(?60,000)</span>
               </div>
               <div className="flex justify-between border-t pt-2 font-bold">
                 <span>Net Investing Cash Flow</span>
-                <span className="text-red-600">(₹60,000)</span>
+                <span className="text-red-600">(?60,000)</span>
               </div>
             </div>
           </CardContent>
@@ -74,11 +74,11 @@ export default function ProjectCashFlow({ projectId }: ProjectCashFlowProps) {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Project Funding</span>
-                <span className="font-medium">₹50,000</span>
+                <span className="font-medium">?50,000</span>
               </div>
               <div className="flex justify-between border-t pt-2 font-bold">
                 <span>Net Financing Cash Flow</span>
-                <span className="text-green-600">₹50,000</span>
+                <span className="text-green-600">?50,000</span>
               </div>
             </div>
           </CardContent>
@@ -92,15 +92,15 @@ export default function ProjectCashFlow({ projectId }: ProjectCashFlowProps) {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Opening Cash Balance</span>
-                <span className="font-medium">₹10,000</span>
+                <span className="font-medium">?10,000</span>
               </div>
               <div className="flex justify-between">
                 <span>Net Cash Flow</span>
-                <span className="font-medium">₹15,000</span>
+                <span className="font-medium">?15,000</span>
               </div>
               <div className="flex justify-between border-t pt-2 font-bold text-lg">
                 <span>Closing Cash Balance</span>
-                <span className="text-green-600">₹25,000</span>
+                <span className="text-green-600">?25,000</span>
               </div>
             </div>
           </CardContent>
