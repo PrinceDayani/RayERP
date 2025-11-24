@@ -29,10 +29,26 @@ export const getEmployeeById = async (req: Request, res: Response) => {
 export const createEmployee = async (req: Request, res: Response) => {
   try {
     const employeeData = req.body;
-    const lastEmployee = await Employee.findOne().sort({ employeeId: -1 });
-    const nextId = lastEmployee ? 
-      `EMP${(parseInt(lastEmployee.employeeId.slice(3)) + 1).toString().padStart(4, '0')}` : 
-      'EMP0001';
+    
+    // Generate unique employeeId with retry logic
+    let nextId: string;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      const lastEmployee = await Employee.findOne().sort({ createdAt: -1, employeeId: -1 }).limit(1);
+      const lastIdNum = lastEmployee ? parseInt(lastEmployee.employeeId.replace(/\D/g, '')) : 0;
+      nextId = `EMP${(lastIdNum + 1).toString().padStart(4, '0')}`;
+      
+      // Check if ID already exists
+      const exists = await Employee.findOne({ employeeId: nextId });
+      if (!exists) break;
+      
+      attempts++;
+      if (attempts >= maxAttempts) {
+        return res.status(500).json({ message: 'Failed to generate unique employee ID. Please try again.' });
+      }
+    }
     
     employeeData.employeeId = nextId;
     
@@ -83,9 +99,26 @@ export const createEmployee = async (req: Request, res: Response) => {
       res.status(201).json(employee);
     } catch (employeeError: any) {
       await User.findByIdAndDelete(user._id);
+      
+      // Handle duplicate key errors
+      if (employeeError.code === 11000) {
+        const field = Object.keys(employeeError.keyPattern || {})[0];
+        return res.status(400).json({ 
+          message: `Employee with this ${field} already exists. Please use a different ${field}.`,
+          error: employeeError.message 
+        });
+      }
       throw employeeError;
     }
   } catch (error: any) {
+    // Handle duplicate key errors at top level
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0];
+      return res.status(400).json({ 
+        message: `Employee with this ${field} already exists. Please use a different ${field}.`,
+        error: error.message 
+      });
+    }
     res.status(400).json({ message: 'Error creating employee', error: error.message });
   }
 };
