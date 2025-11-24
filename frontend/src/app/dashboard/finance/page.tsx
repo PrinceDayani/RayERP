@@ -37,6 +37,7 @@ export default function FinancePage() {
   };
 
   const coreModules = [
+    { title: 'General Ledger', description: 'Complete GL with currency support', icon: BookOpen, path: '/dashboard/finance/general-ledger', color: 'from-indigo-500 to-indigo-600', stat: 'Multi-currency', badge: 'New' },
     { title: 'Chart of Accounts', description: 'Account structure & hierarchy', icon: FolderOpen, path: '/dashboard/finance/chart-of-accounts', color: 'from-blue-500 to-blue-600', stat: `${stats.accounts} accounts` },
     { title: 'Journal Entries', description: 'Record financial transactions', icon: FileText, path: '/dashboard/finance/journal-entry', color: 'from-green-500 to-green-600', stat: `${stats.entries} entries` },
     { title: 'Vouchers', description: 'Payment, Receipt, Contra, Sales, Purchase', icon: Receipt, path: '/dashboard/finance/vouchers', color: 'from-purple-500 to-purple-600', stat: '8 types', badge: 'Complete' },
@@ -143,7 +144,7 @@ export default function FinancePage() {
           <h2 className="text-2xl font-bold text-foreground">Core Accounting</h2>
           <Badge variant="outline">Essential</Badge>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           {coreModules.map((module) => <ModuleCard key={module.path} module={module} />)}
         </div>
       </div>

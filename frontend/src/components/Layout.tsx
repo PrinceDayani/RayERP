@@ -108,7 +108,7 @@ export default function Layout({ children }: LayoutProps) {
         { path: "/dashboard/budgets/templates", name: "Budget Templates", icon: ClipboardList, description: "Reusable budget templates" } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/budgets/approvals", name: "Approvals", icon: Target, description: "Budget approval workflow", access: isManager } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/budgets/analytics", name: "Budget Analytics", icon: PieChart, description: "Budget performance analysis", access: isManager } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/finance", name: "General Ledger", icon: Wallet, description: "Financial accounting" } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/finance", name: "Finance", icon: Wallet, description: "Financial accounting" } as MenuItem & { icon: any; description: string },
       ]
     },
     {

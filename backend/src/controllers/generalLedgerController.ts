@@ -501,12 +501,18 @@ export const createJournalEntry = async (req: Request, res: Response) => {
       : 1;
     const entryNumber = `JE${nextNumber.toString().padStart(6, '0')}`;
 
+    const entryDate = new Date(date);
     const journalEntry = new JournalEntry({
       entryNumber,
-      date: new Date(date),
+      date: entryDate,
+      entryDate: entryDate,
       reference: reference || '',
       description,
       lines: sanitizedLines,
+      totalDebit,
+      totalCredit,
+      periodYear: entryDate.getFullYear(),
+      periodMonth: entryDate.getMonth() + 1,
       createdBy: userId
     });
 
@@ -516,6 +522,37 @@ export const createJournalEntry = async (req: Request, res: Response) => {
       { path: 'lines.account', select: 'code name' },
       { path: 'createdBy', select: 'name email' }
     ]);
+
+    // Auto-post the journal entry and update account balances
+    try {
+      console.log('=== AUTO-POSTING JOURNAL ENTRY ===');
+      for (const line of sanitizedLines) {
+        const account = await Account.findById(line.account);
+        if (account) {
+          const oldBalance = account.balance;
+          let newBalance = account.balance;
+          if (['asset', 'expense'].includes(account.type)) {
+            newBalance += line.debit - line.credit;
+          } else {
+            newBalance += line.credit - line.debit;
+          }
+          console.log(`Updating account ${account.code} (${account.name}):`);
+          console.log(`  Old balance: ${oldBalance}`);
+          console.log(`  Debit: ${line.debit}, Credit: ${line.credit}`);
+          console.log(`  New balance: ${newBalance}`);
+          await Account.findByIdAndUpdate(line.account, { balance: newBalance });
+          console.log('  ✓ Balance updated');
+        } else {
+          console.log(`Account not found: ${line.account}`);
+        }
+      }
+      journalEntry.isPosted = true;
+      await journalEntry.save();
+      console.log('=== AUTO-POST COMPLETE ===');
+    } catch (autoPostError) {
+      console.error('Auto-post failed:', autoPostError);
+      logger.error('Auto-post failed:', autoPostError);
+    }
 
     res.status(201).json(journalEntry);
   } catch (error) {
@@ -626,8 +663,16 @@ export const postJournalEntry = async (req: Request, res: Response) => {
 
     // Process each journal line - update Account balances
     for (const line of journalEntry.lines) {
-      const account = await Account.findById(line.accountId).session(session);
-      if (!account) continue;
+      const accountId = (line as any).account;
+      if (!accountId) {
+        console.error('Line missing account:', line);
+        continue;
+      }
+      const account = await Account.findById(accountId).session(session);
+      if (!account) {
+        console.error('Account not found:', accountId);
+        continue;
+      }
 
       // Calculate new balance based on account type
       let newBalance = account.balance;
@@ -641,7 +686,7 @@ export const postJournalEntry = async (req: Request, res: Response) => {
 
       // Update account balance
       await Account.findByIdAndUpdate(
-        line.accountId,
+        accountId,
         { balance: newBalance },
         { session }
       );
@@ -649,11 +694,11 @@ export const postJournalEntry = async (req: Request, res: Response) => {
       // Create ledger entry for audit trail
       if (Ledger) {
         await Ledger.create([{
-          accountId: line.accountId,
+          accountId: accountId,
           journalEntryId: journalEntry._id,
-          date: journalEntry.date,
-          description: line.description,
-          reference: journalEntry.reference,
+          date: journalEntry.date || journalEntry.entryDate,
+          description: line.description || journalEntry.description,
+          reference: journalEntry.reference || journalEntry.entryNumber,
           debit: line.debit,
           credit: line.credit,
           balance: newBalance
@@ -670,7 +715,9 @@ export const postJournalEntry = async (req: Request, res: Response) => {
   } catch (error) {
     await session.abortTransaction();
     logger.error('Error posting journal entry:', error);
-    res.status(500).json({ message: 'Error posting journal entry' });
+    const errorMessage = error instanceof Error ? error.message : 'Error posting journal entry';
+    console.error('Post journal entry error details:', error);
+    res.status(500).json({ message: errorMessage, error: error instanceof Error ? error.stack : String(error) });
   } finally {
     session.endSession();
   }
@@ -734,32 +781,58 @@ export const getTrialBalance = async (req: Request, res: Response) => {
 export const getAccountLedger = async (req: Request, res: Response) => {
   try {
     const { accountId } = req.params;
-    const { startDate, endDate, page = 1, limit } = req.query;
+    const { startDate, endDate, page = 1, limit = 50 } = req.query;
     
     const account = await Account.findById(accountId);
     if (!account) {
       return res.status(404).json({ message: 'Account not found' });
     }
 
-    const query: any = { accountId };
+    // Get journal entries that include this account
+    const journalQuery: any = {
+      'lines.account': accountId
+    };
     if (startDate && endDate) {
-      query.date = {
+      journalQuery.entryDate = {
         $gte: new Date(startDate as string),
         $lte: new Date(endDate as string)
       };
     }
 
-    let ledgerQuery = Ledger.find(query)
-      .populate('journalEntryId', 'entryNumber reference')
-      .sort({ date: 1, createdAt: 1 });
-    
-    if (limit) {
-      ledgerQuery = ledgerQuery.limit(Number(limit) * Number(page)).skip((Number(page) - 1) * Number(limit));
-    }
-    
-    const ledgerEntries = await ledgerQuery;
+    const journalEntries = await JournalEntry.find(journalQuery)
+      .sort({ entryDate: 1 })
+      .limit(Number(limit))
+      .skip((Number(page) - 1) * Number(limit));
 
-    const total = await Ledger.countDocuments(query);
+    // Transform to ledger format with auto-calculated running balance
+    let runningBalance = 0;
+    const entries = journalEntries.flatMap(entry => {
+      return entry.lines
+        .filter((line: any) => line.account.toString() === accountId)
+        .map((line: any) => {
+          // Auto-calculate running balance based on account type
+          if (['asset', 'expense'].includes(account.type)) {
+            runningBalance += line.debit - line.credit;
+          } else {
+            runningBalance += line.credit - line.debit;
+          }
+          return {
+            _id: entry._id,
+            date: entry.entryDate || entry.date,
+            description: line.description || entry.description,
+            reference: entry.reference || entry.entryNumber,
+            journalEntryId: {
+              entryNumber: entry.entryNumber,
+              reference: entry.reference
+            },
+            debit: line.debit,
+            credit: line.credit,
+            balance: runningBalance
+          };
+        });
+    });
+
+    const total = await JournalEntry.countDocuments(journalQuery);
 
     res.json({
       account: {
@@ -769,7 +842,7 @@ export const getAccountLedger = async (req: Request, res: Response) => {
         type: account.type,
         currentBalance: account.balance
       },
-      entries: ledgerEntries,
+      entries,
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -1215,7 +1288,6 @@ export const getBillStatement = async (req: Request, res: Response) => {
   }
 };
 
-// Interest Calculations
 export const calculateInterest = async (req: Request, res: Response) => {
   try {
     const { accountId } = req.params;
@@ -1289,7 +1361,6 @@ export const getInterestReport = async (req: Request, res: Response) => {
   }
 };
 
-// GL Budgets
 export const getGLBudgets = async (req: Request, res: Response) => {
   try {
     const { fiscalYear } = req.query;
@@ -1376,3 +1447,56 @@ export const getAccountBudgetStatus = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const recalculateBalances = async (req: Request, res: Response) => {
+  try {
+    const accounts = await Account.find();
+    for (const account of accounts) {
+      account.balance = account.openingBalance || 0;
+      await account.save();
+    }
+    
+    const journalEntries = await JournalEntry.find().sort({ entryDate: 1, date: 1 });
+    
+    let updatedCount = 0;
+    for (const entry of journalEntries) {
+      for (const line of entry.lines) {
+        const accountId = (line as any).account;
+        if (!accountId) continue;
+        
+        const account = await Account.findById(accountId);
+        if (!account) continue;
+        
+        let newBalance = account.balance;
+        if (['asset', 'expense'].includes(account.type)) {
+          newBalance += line.debit - line.credit;
+        } else {
+          newBalance += line.credit - line.debit;
+        }
+        
+        await Account.findByIdAndUpdate(accountId, { balance: newBalance });
+        account.balance = newBalance;
+        updatedCount++;
+      }
+      
+      if (!entry.isPosted) {
+        entry.isPosted = true;
+        await entry.save();
+      }
+    }
+    
+    res.json({ 
+      message: 'Account balances recalculated successfully',
+      accountsReset: accounts.length,
+      entriesProcessed: journalEntries.length,
+      balancesUpdated: updatedCount
+    });
+  } catch (error) {
+    logger.error('Error recalculating balances:', error);
+    res.status(500).json({ 
+      message: 'Error recalculating balances',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+

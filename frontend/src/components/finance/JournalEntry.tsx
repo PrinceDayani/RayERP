@@ -221,7 +221,17 @@ const JournalEntry = () => {
         totalCredit: totalCredits
       }, { headers: { Authorization: `Bearer ${token}` } });
 
-      const entryId = res.data.data._id;
+      const entryId = res.data.data?._id || res.data._id;
+      
+      // Post the entry immediately
+      try {
+        await axios.post(`${API_URL}/api/general-ledger/journal-entries/${entryId}/post`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (postError: any) {
+        console.error('Error posting entry:', postError);
+        alert('Entry created but failed to post: ' + (postError?.response?.data?.message || postError.message));
+      }
 
       if (attachments.length > 0) {
         for (const file of attachments) {
@@ -233,7 +243,7 @@ const JournalEntry = () => {
         }
       }
 
-      alert('Journal entry created successfully!');
+      alert('Journal entry created and posted successfully!');
       await fetchRecentEntries();
       resetForm();
     } catch (error: any) {
