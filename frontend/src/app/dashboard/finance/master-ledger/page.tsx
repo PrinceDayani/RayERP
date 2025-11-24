@@ -33,6 +33,7 @@ export default function MasterLedgerPage() {
   const { formatAmount } = useCurrency();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -46,6 +47,7 @@ export default function MasterLedgerPage() {
   const fetchEntries = async () => {
     try {
       setLoading(true);
+      setError(null);
       const token = localStorage.getItem('auth-token');
       const params = new URLSearchParams();
       if (filters.startDate) params.append('startDate', filters.startDate);
@@ -61,6 +63,7 @@ export default function MasterLedgerPage() {
       
       if (!res.ok) {
         console.error('API Error:', res.status, res.statusText, data);
+        setError(`Failed to load entries: ${data.message || res.statusText}`);
         setEntries([]);
         return;
       }
@@ -70,6 +73,7 @@ export default function MasterLedgerPage() {
       setEntries(Array.isArray(entriesData) ? entriesData : []);
     } catch (error) {
       console.error('Error fetching entries:', error);
+      setError('Failed to connect to server. Please try again.');
       setEntries([]);
     } finally {
       setLoading(false);
@@ -86,17 +90,24 @@ export default function MasterLedgerPage() {
   const totalCredits = filteredEntries.reduce((sum, e) => sum + e.totalCredit, 0);
 
   const exportToCSV = () => {
+    const escapeCSV = (val: any) => {
+      const str = String(val || '');
+      return str.includes(',') || str.includes('"') || str.includes('\n') 
+        ? `"${str.replace(/"/g, '""')}"` 
+        : str;
+    };
+    
     const headers = ['Entry Number', 'Date', 'Description', 'Reference', 'Account', 'Debit', 'Credit', 'Created At'];
     const rows = filteredEntries.flatMap(entry =>
       entry.lines.map(line => [
-        entry.entryNumber,
-        format(new Date(entry.date), 'yyyy-MM-dd'),
-        entry.description,
-        entry.reference || '',
-        `${line.account?.code || 'N/A'} - ${line.account?.name || 'Unknown'}`,
+        escapeCSV(entry.entryNumber),
+        escapeCSV(format(new Date(entry.date), 'yyyy-MM-dd')),
+        escapeCSV(entry.description),
+        escapeCSV(entry.reference || ''),
+        escapeCSV(`${line.account?.code || 'N/A'} - ${line.account?.name || 'Unknown'}`),
         line.debit,
         line.credit,
-        format(new Date(entry.createdAt), 'yyyy-MM-dd HH:mm:ss')
+        escapeCSV(format(new Date(entry.createdAt), 'yyyy-MM-dd HH:mm:ss'))
       ])
     );
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -191,6 +202,11 @@ export default function MasterLedgerPage() {
           <CardTitle>All Journal Entries</CardTitle>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
+              {error}
+            </div>
+          )}
           {loading ? (
             <div className="text-center py-8">Loading entries...</div>
           ) : filteredEntries.length === 0 ? (
