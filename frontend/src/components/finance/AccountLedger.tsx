@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, Filter } from 'lucide-react';
+import { Calendar, Download, Filter, Plus, TrendingUp, TrendingDown, ArrowLeft, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface LedgerEntry {
@@ -40,6 +40,7 @@ interface AccountLedgerProps {
 
 const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId }) => {
   const params = useParams();
+  const router = useRouter();
   const accountId = propAccountId || (params.id as string);
   
   const [account, setAccount] = useState<Account | null>(null);
@@ -138,31 +139,94 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
     );
   }
 
+  const totalDebits = entries.reduce((sum, e) => sum + e.debit, 0);
+  const totalCredits = entries.reduce((sum, e) => sum + e.credit, 0);
+  const netChange = totalDebits - totalCredits;
+
   return (
     <div className="p-6 space-y-6">
       {account && (
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold">Account Ledger</h1>
-            <div className="mt-2 space-y-1">
-              <p className="text-lg">
-                <span className="font-mono">{account.code}</span> - {account.name}
-              </p>
-              <div className="flex items-center space-x-4">
-                <Badge variant="outline">{account.type}</Badge>
-                <span className="text-sm text-gray-600">
-                  Current Balance: <span className="font-mono font-semibold">
-                    ${account.currentBalance.toFixed(2)}
-                  </span>
-                </span>
+        <>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => router.back()}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold">Account Ledger</h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  <span className="font-mono font-semibold">{account.code}</span> - {account.name}
+                </p>
               </div>
             </div>
+            <div className="flex gap-2">
+              <Button onClick={fetchAccountLedger} variant="outline" size="sm">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+              <Button onClick={() => router.push('/dashboard/finance/journal-entry')} variant="default">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Entry
+              </Button>
+              <Button onClick={exportLedger} variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+            </div>
           </div>
-          <Button onClick={exportLedger} variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-        </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Current Balance</p>
+                    <p className="text-2xl font-bold mt-1">${account.currentBalance.toFixed(2)}</p>
+                  </div>
+                  <Badge variant="outline" className="capitalize">{account.type}</Badge>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Debits</p>
+                    <p className="text-2xl font-bold mt-1 text-red-600">${totalDebits.toFixed(2)}</p>
+                  </div>
+                  <TrendingUp className="w-8 h-8 text-red-600" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Credits</p>
+                    <p className="text-2xl font-bold mt-1 text-green-600">${totalCredits.toFixed(2)}</p>
+                  </div>
+                  <TrendingDown className="w-8 h-8 text-green-600" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Net Change</p>
+                    <p className={`text-2xl font-bold mt-1 ${netChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${Math.abs(netChange).toFixed(2)}
+                    </p>
+                  </div>
+                  <Badge variant={netChange >= 0 ? 'default' : 'destructive'}>
+                    {netChange >= 0 ? '+' : '-'}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
       )}
 
       <Card>
@@ -232,31 +296,48 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {entries.map((entry) => (
-                    <TableRow key={entry._id}>
-                      <TableCell>
+                  {entries.map((entry, idx) => (
+                    <TableRow key={entry._id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium">
                         {format(new Date(entry.date), 'MMM dd, yyyy')}
                       </TableCell>
-                      <TableCell>{entry.description}</TableCell>
-                      <TableCell className="font-mono text-sm">
+                      <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
+                      <TableCell className="font-mono text-sm text-gray-600">
                         {entry.reference}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {entry.journalEntryId?.entryNumber}
+                        <Badge variant="outline">{entry.journalEntryId?.entryNumber}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {entry.debit > 0 ? `$${entry.debit.toFixed(2)}` : '-'}
+                        {entry.debit > 0 ? (
+                          <span className="text-red-600 font-semibold">${entry.debit.toFixed(2)}</span>
+                        ) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {entry.credit > 0 ? `$${entry.credit.toFixed(2)}` : '-'}
+                        {entry.credit > 0 ? (
+                          <span className="text-green-600 font-semibold">${entry.credit.toFixed(2)}</span>
+                        ) : '-'}
                       </TableCell>
-                      <TableCell className="text-right font-mono font-semibold">
-                        ${entry.balance.toFixed(2)}
+                      <TableCell className="text-right font-mono font-bold">
+                        <span className={entry.balance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          ${entry.balance.toFixed(2)}
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              {entries.length > 0 && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border-t">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Showing {entries.length} entries</span>
+                    <div className="flex gap-4">
+                      <span className="text-gray-600">Total Debits: <span className="font-semibold text-red-600">${totalDebits.toFixed(2)}</span></span>
+                      <span className="text-gray-600">Total Credits: <span className="font-semibold text-green-600">${totalCredits.toFixed(2)}</span></span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FolderOpen, Edit, Trash2, ArrowLeft, Download, Upload, FileText } from 'lucide-react';
+import { Plus, FolderOpen, Edit, Trash2, ArrowLeft, Download, Upload, FileText, Search, TrendingUp, TrendingDown, DollarSign, Layers, RefreshCw } from 'lucide-react';
 import { generalLedgerAPI, type Account } from '@/lib/api/generalLedgerAPI';
 import { chartOfAccountsAPI } from '@/lib/api/chartOfAccountsAPI';
 import { toast } from '@/components/ui/use-toast';
@@ -25,6 +25,8 @@ export default function ChartOfAccountsPage() {
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
 
   useEffect(() => {
     fetchAccounts();
@@ -43,13 +45,42 @@ export default function ChartOfAccountsPage() {
   const fetchAccounts = async () => {
     try {
       setLoading(true);
-      const data = await generalLedgerAPI.getAccounts({ hierarchy: true });
+      const data = await generalLedgerAPI.getAccounts({ hierarchy: true, _t: Date.now() });
       setAccounts(data.accounts || []);
     } catch (error) {
       console.error('Error fetching accounts:', error);
       toast({
         title: 'Error',
         description: 'Failed to load chart of accounts',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRecalculateBalances = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/recalculate-balances`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const result = await response.json();
+      console.log('Recalculate result:', result);
+      toast({
+        title: 'Success',
+        description: `Reset ${result.accountsReset} accounts, processed ${result.entriesProcessed} entries, updated ${result.balancesUpdated} balances`
+      });
+      fetchAccounts();
+    } catch (error) {
+      console.error('Recalculate error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to recalculate balances',
         variant: 'destructive'
       });
     } finally {
@@ -315,7 +346,7 @@ export default function ChartOfAccountsPage() {
   const renderAccountTree = (accounts: Account[], level = 0) => {
     return accounts.map(account => (
       <React.Fragment key={account._id}>
-        <TableRow>
+        <TableRow className="cursor-pointer hover:bg-gray-50" onClick={() => router.push(`/dashboard/finance/account-ledger/${account._id}`)}>
           <TableCell style={{ paddingLeft: `${level * 20 + 16}px` }}>
             <div className="flex items-center">
               {account.isGroup && <FolderOpen className="w-4 h-4 mr-2 text-blue-600" />}
@@ -335,7 +366,7 @@ export default function ChartOfAccountsPage() {
             </Badge>
           </TableCell>
           <TableCell>
-            <div className="flex space-x-2">
+            <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
               <Button 
                 variant="ghost" 
                 size="sm"
@@ -380,6 +411,22 @@ export default function ChartOfAccountsPage() {
     );
   }
 
+  const filteredAccounts = accounts.filter(account => {
+    const matchesSearch = account.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         account.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'all' || account.type === filterType;
+    return matchesSearch && matchesType;
+  });
+
+  const accountsByType = accounts.reduce((acc: any, account) => {
+    acc[account.type] = (acc[account.type] || 0) + 1;
+    return acc;
+  }, {});
+
+  const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const assetBalance = accounts.filter(a => a.type === 'asset').reduce((sum, a) => sum + a.balance, 0);
+  const liabilityBalance = accounts.filter(a => a.type === 'liability').reduce((sum, a) => sum + a.balance, 0);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -395,6 +442,14 @@ export default function ChartOfAccountsPage() {
         </div>
         
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleRecalculateBalances}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Recalculate Balances
+          </Button>
+          <Button variant="outline" onClick={fetchAccounts}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
           <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -467,9 +522,92 @@ export default function ChartOfAccountsPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Accounts</p>
+                <p className="text-2xl font-bold mt-1">{accounts.length}</p>
+              </div>
+              <Layers className="w-8 h-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Balance</p>
+                <p className="text-2xl font-bold mt-1">₹{totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              </div>
+              <DollarSign className="w-8 h-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Assets</p>
+                <p className="text-2xl font-bold mt-1 text-green-600">₹{assetBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Liabilities</p>
+                <p className="text-2xl font-bold mt-1 text-red-600">₹{liabilityBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              </div>
+              <TrendingDown className="w-8 h-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Search accounts by name or code..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="asset">Asset</SelectItem>
+                <SelectItem value="liability">Liability</SelectItem>
+                <SelectItem value="equity">Equity</SelectItem>
+                <SelectItem value="revenue">Revenue</SelectItem>
+                <SelectItem value="expense">Expense</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
-          <CardTitle>Account Hierarchy ({accounts.length} accounts)</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Account Hierarchy ({filteredAccounts.length} of {accounts.length} accounts)</CardTitle>
+            {searchTerm && (
+              <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')}>
+                Clear Search
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -484,7 +622,15 @@ export default function ChartOfAccountsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {renderAccountTree(accounts)}
+              {filteredAccounts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    No accounts found matching your criteria
+                  </TableCell>
+                </TableRow>
+              ) : (
+                renderAccountTree(filteredAccounts)
+              )}
             </TableBody>
           </Table>
         </CardContent>

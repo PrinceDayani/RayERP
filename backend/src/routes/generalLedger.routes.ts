@@ -56,7 +56,8 @@ import {
   updateGLBudget,
   deleteGLBudget,
   getBudgetVarianceReport,
-  getAccountBudgetStatus
+  getAccountBudgetStatus,
+  recalculateBalances
 } from '../controllers/generalLedgerController';
 import {
   getAuditLogs,
@@ -200,5 +201,8 @@ router.post('/scenarios/:id/apply', optionalPermission('finance.manage'), applyS
 // Batch Operations
 router.post('/batch/post', optionalPermission('finance.manage'), batchPostEntries);
 router.post('/batch/delete', optionalPermission('finance.manage'), batchDeleteEntries);
+
+// Utility - Recalculate balances
+router.post('/recalculate-balances', optionalPermission('finance.manage'), recalculateBalances);
 
 export default router;
