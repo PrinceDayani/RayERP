@@ -170,7 +170,11 @@ export default function BudgetDialog({ open, onOpenChange, onSuccess, projectId,
       setCategories(template.categories.map(cat => ({
         ...cat,
         _id: Math.random().toString(36).substr(2, 9),
-        spentAmount: 0
+        spentAmount: 0,
+        items: cat.items.map(item => ({
+          ...item,
+          _id: item._id || Math.random().toString(36).substr(2, 9)
+        }))
       })));
       setFormData(prev => ({ ...prev, templateId }));
     }
