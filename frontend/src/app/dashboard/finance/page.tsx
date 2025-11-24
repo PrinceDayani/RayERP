@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Briefcase, Calculator, FileText, TrendingUp, BarChart3, DollarSign, Receipt, Building2, Users, BookOpen, FolderOpen, Banknote, Repeat, PieChart, Wallet, FileSpreadsheet, ChevronRight, Plus, Globe, Scale, Clock, Lock, Shield, Zap, CheckCircle, FileCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export default function FinancePage() {
   const router = useRouter();
+  const { currency, symbol, formatAmount, formatCompact } = useCurrency();
   const [stats, setStats] = useState({ accounts: 0, entries: 0, vouchers: 0 });
 
   useEffect(() => {
@@ -114,8 +116,14 @@ export default function FinancePage() {
     <div className="min-h-screen bg-background p-6 space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-bold text-foreground">Finance & Accounting</h1>
-          <p className="text-muted-foreground mt-2">Complete financial management system</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-4xl font-bold text-foreground">Finance & Accounting</h1>
+            <Badge variant="outline" className="text-sm">
+              <Globe className="w-3 h-3 mr-1" />
+              {symbol} {currency}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground mt-2">Complete financial management system • Currency: {currency}</p>
         </div>
         <Button size="lg" onClick={() => router.push('/dashboard/finance/journal-entry')} className="bg-primary hover:bg-primary/90">
           <Plus className="w-5 h-5 mr-2" />

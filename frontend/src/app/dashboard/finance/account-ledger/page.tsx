@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BookOpen, Search } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface Account {
   _id: string;
@@ -18,6 +19,7 @@ interface Account {
 
 export default function LedgerPage() {
   const router = useRouter();
+  const { formatAmount } = useCurrency();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<Account[]>([]);
   const [search, setSearch] = useState('');
@@ -95,7 +97,7 @@ export default function LedgerPage() {
                     <TableCell>{account.name}</TableCell>
                     <TableCell className="capitalize">{account.type}</TableCell>
                     <TableCell className="text-right font-mono">
-                      ${account.balance.toFixed(2)}
+                      {formatAmount(account.balance)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

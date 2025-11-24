@@ -14,10 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, FileText, Trash2, Upload, Download, Copy, AlertTriangle, CheckCircle, Paperclip, X, Save, Zap, FileSpreadsheet } from 'lucide-react';
 import axios from 'axios';
 import { AccountSelector } from './AccountSelector';
+import { useCurrency } from '@/contexts/CurrencyContext';
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 const JournalEntry = () => {
   const { accounts, loading, fetchAccounts, createJournalEntry } = useGeneralLedger();
+  const { currency, symbol, formatAmount } = useCurrency();
   
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -518,11 +520,11 @@ const JournalEntry = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div className="text-center">
                   <div className="text-sm text-muted-foreground mb-1">Total Debits</div>
-                  <div className="text-2xl font-bold text-foreground">${totalDebits.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-foreground">{formatAmount(totalDebits)}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-sm text-muted-foreground mb-1">Total Credits</div>
-                  <div className="text-2xl font-bold text-foreground">${totalCredits.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-foreground">{formatAmount(totalCredits)}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-sm text-muted-foreground mb-2">Status</div>
@@ -587,8 +589,8 @@ const JournalEntry = () => {
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Date: {new Date(entry.entryDate || entry.date).toLocaleDateString()} | 
-                      Debit: ${entry.totalDebit?.toFixed(2)} | 
-                      Credit: ${entry.totalCredit?.toFixed(2)}
+                      Debit: {formatAmount(entry.totalDebit || 0)} | 
+                      Credit: {formatAmount(entry.totalCredit || 0)}
                     </div>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => duplicateEntry(entry)}>
