@@ -20,11 +20,15 @@ export const createRecurringEntry = async (req: Request, res: Response) => {
     const { name, description, frequency, startDate, endDate, entries } = req.body;
     const userId = (req as any).user?.id;
 
-    const totalDebit = entries.reduce((sum: number, e: any) => sum + e.debit, 0);
-    const totalCredit = entries.reduce((sum: number, e: any) => sum + e.credit, 0);
+    if (!name || !frequency || !startDate || !entries || entries.length === 0) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    const totalDebit = entries.reduce((sum: number, e: any) => sum + Number(e.debit || 0), 0);
+    const totalCredit = entries.reduce((sum: number, e: any) => sum + Number(e.credit || 0), 0);
 
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
-      return res.status(400).json({ message: 'Debits must equal credits' });
+      return res.status(400).json({ success: false, message: 'Debits must equal credits' });
     }
 
     const nextRunDate = calculateNextRunDate(new Date(startDate), frequency);
@@ -41,9 +45,9 @@ export const createRecurringEntry = async (req: Request, res: Response) => {
     });
 
     res.status(201).json({ success: true, data: recurringEntry });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Create recurring entry error:', error);
-    res.status(500).json({ message: 'Error creating recurring entry' });
+    res.status(500).json({ success: false, message: error.message || 'Error creating recurring entry' });
   }
 };
 

@@ -10,10 +10,10 @@ const router = express.Router();
 router.use(protect);
 router.use(generalLimiter);
 
-router.post('/', validateRecurringEntry, createRecurringEntry);
+router.post('/', createRecurringEntry);
 router.get('/', getRecurringEntries);
-router.put('/:id', validateRecurringEntry, updateRecurringEntry);
-router.delete('/:id', validateSkipNext, deleteRecurringEntry);
+router.put('/:id', updateRecurringEntry);
+router.delete('/:id', deleteRecurringEntry);
 router.post('/process', processRecurringEntries);
 
 // Enterprise Features
