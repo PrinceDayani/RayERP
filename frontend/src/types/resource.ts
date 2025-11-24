@@ -54,16 +54,55 @@ export interface CapacityPlan {
   allocations: ResourceAllocation[];
 }
 
+export type SkillLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+
 export interface SkillMatrix {
   employee: {
     _id: string;
     name: string;
     position: string;
+    department?: string;
   };
   skills: {
     skill: string;
-    has: boolean;
+    level: SkillLevel | null;
+    yearsOfExperience?: number;
+    lastUpdated?: string;
   }[];
+}
+
+export interface SkillGapAnalysis {
+  employee: {
+    _id: string;
+    name: string;
+    position: string;
+    department?: string;
+  };
+  missingSkills: string[];
+  weakSkills: { skill: string; currentLevel: SkillLevel; requiredLevel: SkillLevel }[];
+  strongSkills: { skill: string; level: SkillLevel }[];
+}
+
+export interface ProjectSkillMatch {
+  employee: {
+    _id: string;
+    name: string;
+    position: string;
+  };
+  matchPercentage: number;
+  matchedSkills: { skill: string; level: SkillLevel; required: SkillLevel }[];
+  missingSkills: string[];
+}
+
+export interface SkillDistribution {
+  skill: string;
+  levels: {
+    Beginner: number;
+    Intermediate: number;
+    Advanced: number;
+    Expert: number;
+  };
+  totalEmployees: number;
 }
 
 export interface TimeTracking {
@@ -79,4 +118,12 @@ export interface TimeTracking {
     assignedTo: { firstName: string; lastName: string };
     project: { name: string };
   }[];
+}
+
+export interface SkillFilters {
+  employee?: string;
+  skill?: string;
+  department?: string;
+  level?: SkillLevel;
+  search?: string;
 }

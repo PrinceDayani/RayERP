@@ -20,6 +20,14 @@ export interface IRisk {
   identifiedDate: Date;
 }
 
+export type SkillLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+
+export interface IRequiredSkill {
+  skill: string;
+  level: SkillLevel;
+  priority: 'required' | 'preferred' | 'nice-to-have';
+}
+
 export interface IProject extends Document {
   name: string;
   description: string;
@@ -44,6 +52,8 @@ export interface IProject extends Document {
   risks: IRisk[];
   dependencies: mongoose.Types.ObjectId[];
   template?: string;
+  
+  requiredSkills: IRequiredSkill[]; // New field for project skill requirements
   
   createdAt: Date;
   updatedAt: Date;
@@ -114,7 +124,13 @@ const projectSchema = new Schema<IProject>({
   milestones: [milestoneSchema],
   risks: [riskSchema],
   dependencies: [{ type: Schema.Types.ObjectId, ref: 'Project' }],
-  template: String
+  template: String,
+  
+  requiredSkills: [{
+    skill: { type: String, required: true },
+    level: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert'], required: true },
+    priority: { type: String, enum: ['required', 'preferred', 'nice-to-have'], default: 'required' }
+  }]
 }, { timestamps: true });
 
 export default mongoose.model<IProject>('Project', projectSchema);
