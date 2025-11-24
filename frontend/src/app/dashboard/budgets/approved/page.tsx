@@ -12,8 +12,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency } from '@/utils/currency';
+import { useCurrency } from '@/hooks/useCurrency';
 
 export default function ApprovedBudgetsPage() {
+  const { displayCurrency } = useCurrency();
   const [approvedBudgets, setApprovedBudgets] = useState<Budget[]>([]);
   const [rejectedBudgets, setRejectedBudgets] = useState<Budget[]>([]);
   const [filteredApproved, setFilteredApproved] = useState<Budget[]>([]);

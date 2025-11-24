@@ -243,6 +243,14 @@ async function initializeRealTimeSystems() {
     const { initializeNotificationCleanup } = await import('./utils/notificationCleanup');
     initializeNotificationCleanup();
 
+    // Initialize task reminders
+    const { initializeTaskReminders } = await import('./utils/taskReminders');
+    initializeTaskReminders();
+
+    // Initialize recurring tasks
+    const { initializeRecurringTasks } = await import('./controllers/taskRecurringController');
+    initializeRecurringTasks();
+
     logger.info('✅ Real-time systems initialized');
   } catch (error) {
     logger.warn('⚠️ Some real-time systems could not be initialized:', error.message);

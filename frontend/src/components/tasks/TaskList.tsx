@@ -19,9 +19,10 @@ interface TaskListProps {
   tasks: Task[];
   onView?: (id: string) => void;
   onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export default function TaskList({ tasks, onView, onEdit }: TaskListProps) {
+export default function TaskList({ tasks, onView, onEdit, onDelete }: TaskListProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredTasks = tasks.filter(task =>
@@ -55,6 +56,7 @@ export default function TaskList({ tasks, onView, onEdit }: TaskListProps) {
               task={task}
               onView={onView}
               onEdit={onEdit}
+              onDelete={onDelete}
             />
           ))}
         </div>

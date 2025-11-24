@@ -122,7 +122,8 @@ export const getTaskById = async (req: Request, res: Response) => {
       const employee = await Employee.findOne({ user: user._id });
       
       // Check if user is assigned to this task
-      const isAssigned = employee && task.assignedTo._id.toString() === employee._id.toString();
+      const isAssigned = employee && task.assignedTo && 
+        (task.assignedTo as any)._id.toString() === employee._id.toString();
       
       // Check if user has access to the project
       const Project = (await import('../models/Project')).default;
@@ -135,7 +136,8 @@ export const getTaskById = async (req: Request, res: Response) => {
       );
       
       // Check if user created the task
-      const isCreator = employee && task.assignedBy && task.assignedBy._id.toString() === employee._id.toString();
+      const isCreator = employee && task.assignedBy && 
+        (task.assignedBy as any)._id.toString() === employee._id.toString();
       
       if (!isAssigned && !hasProjectAccess && !isCreator) {
         return res.status(403).json({ message: 'Access denied: You are not assigned to this task or project' });
@@ -158,7 +160,7 @@ export const createTask = async (req: Request, res: Response) => {
     
     // Safely get assignedBy ID
     const assignedById = task.assignedBy ? 
-                        (task.assignedBy._id?.toString() || task.assignedBy.toString()) : 
+                        (task.assignedBy as any)._id.toString() : 
                         req.body.assignedBy;
     
     if (!assignedById) {
@@ -184,7 +186,7 @@ export const createTask = async (req: Request, res: Response) => {
       const Employee = (await import('../models/Employee')).default;
       const employee = await Employee.findById(task.assignedTo).populate('user');
       if (employee?.user) {
-        const userId = typeof employee.user === 'object' ? employee.user._id.toString() : employee.user.toString();
+        const userId = (employee.user as any)._id.toString();
         await NotificationEmitter.taskAssigned(task, userId);
       }
     }
@@ -228,7 +230,7 @@ export const updateTask = async (req: Request, res: Response) => {
     
     // Safely get user ID for timeline
     const updatedBy = req.body.updatedBy || 
-                     (task.assignedBy ? task.assignedBy._id?.toString() || task.assignedBy.toString() : null);
+                     (task.assignedBy ? (task.assignedBy as any)._id.toString() : null);
     
     if (!updatedBy) {
       return res.status(400).json({ message: 'Unable to determine user for timeline event' });
@@ -289,7 +291,8 @@ export const deleteTask = async (req: Request, res: Response) => {
     }
     
     // Safely get assignedBy ID
-    const assignedById = task.assignedBy ? task.assignedBy.toString() : null;
+    const assignedById = task.assignedBy ? 
+      (task.assignedBy as any)._id.toString() : null;
     
     if (assignedById) {
       await createTimelineEvent(
@@ -338,7 +341,7 @@ export const addTaskComment = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Task not found' });
     }
     
-    task.comments.push({ user, comment, createdAt: new Date() });
+    task.comments.push({ user, comment, mentions: [], createdAt: new Date() });
     await task.save();
     await task.populate('comments.user', 'firstName lastName');
     
@@ -457,9 +460,12 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Task not found' });
     }
     
+    // Clean up invalid tags before saving
+    task.tags = task.tags.filter(tag => tag.name && tag.name.trim());
+    
     const oldStatus = task.status;
     task.status = status;
-    await task.save();
+    await task.save({ validateBeforeSave: true });
     
     await task.populate('project', 'name');
     await task.populate('assignedTo', 'firstName lastName');
@@ -600,5 +606,205 @@ export const createFromTemplate = async (req: Request, res: Response) => {
     res.status(201).json(task);
   } catch (error) {
     res.status(400).json({ message: 'Error creating from template', error });
+  }
+};
+
+export const startTimeTracking = async (req: Request, res: Response) => {
+  try {
+    const { user, description } = req.body;
+    
+    if (!user) return res.status(400).json({ message: 'User ID is required' });
+    
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const activeEntry = task.timeEntries.find(e => e.user.toString() === user && !e.endTime);
+    if (activeEntry) return res.status(400).json({ message: 'Timer already running for this user' });
+    
+    task.timeEntries.push({ user, startTime: new Date(), duration: 0, description: description?.trim() });
+    await task.save();
+    
+    const { io } = await import('../server');
+    io.emit('task:timer:started', { taskId: task._id, userId: user });
+    
+    res.json({ success: true, entry: task.timeEntries[task.timeEntries.length - 1] });
+  } catch (error) {
+    console.error('Error starting timer:', error);
+    res.status(500).json({ message: 'Error starting timer', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const stopTimeTracking = async (req: Request, res: Response) => {
+  try {
+    const { user } = req.body;
+    
+    if (!user) return res.status(400).json({ message: 'User ID is required' });
+    
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const entry = task.timeEntries.find(e => e.user.toString() === user && !e.endTime);
+    if (!entry) return res.status(400).json({ message: 'No active timer found for this user' });
+    
+    entry.endTime = new Date();
+    entry.duration = Math.max(1, Math.round((entry.endTime.getTime() - entry.startTime.getTime()) / 1000 / 60));
+    task.actualHours = Number(task.timeEntries.reduce((sum, e) => sum + (e.duration / 60), 0).toFixed(2));
+    await task.save();
+    
+    const { io } = await import('../server');
+    io.emit('task:timer:stopped', { taskId: task._id, userId: user, duration: entry.duration });
+    
+    res.json({ success: true, entry, actualHours: task.actualHours });
+  } catch (error) {
+    console.error('Error stopping timer:', error);
+    res.status(500).json({ message: 'Error stopping timer', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const addAttachment = async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    const { uploadedBy } = req.body;
+    
+    if (!file) return res.status(400).json({ message: 'No file uploaded' });
+    if (!uploadedBy) return res.status(400).json({ message: 'Uploader ID is required' });
+    
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      // Clean up uploaded file if task not found
+      const fs = await import('fs');
+      const path = await import('path');
+      const filePath = path.join(__dirname, '../../uploads', file.filename);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return res.status(404).json({ message: 'Task not found' });
+    }
+    
+    const attachment = {
+      filename: file.filename,
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      url: `/uploads/${file.filename}`,
+      uploadedBy,
+      uploadedAt: new Date()
+    };
+    
+    task.attachments.push(attachment);
+    await task.save();
+    
+    const { io } = await import('../server');
+    const addedAttachment = task.attachments[task.attachments.length - 1] as any;
+    io.emit('task:attachment:added', { taskId: task._id, attachment: addedAttachment });
+    
+    const responseAttachment = task.attachments[task.attachments.length - 1] as any;
+    res.json({ success: true, attachment: responseAttachment });
+  } catch (error) {
+    console.error('Error adding attachment:', error);
+    // Clean up file on error
+    if (req.file) {
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const filePath = path.join(__dirname, '../../uploads', req.file.filename);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch (cleanupError) {
+        console.error('Error cleaning up file:', cleanupError);
+      }
+    }
+    res.status(500).json({ message: 'Error adding attachment', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const removeAttachment = async (req: Request, res: Response) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const attachmentIndex = task.attachments.findIndex(a => 
+      (a as any)._id?.toString() === req.params.attachmentId);
+    if (attachmentIndex === -1) return res.status(404).json({ message: 'Attachment not found' });
+    
+    const attachment = task.attachments[attachmentIndex];
+    task.attachments = task.attachments.filter((_, index) => index !== attachmentIndex);
+    await task.save();
+    
+    // Delete file from disk
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const filePath = path.join(__dirname, '../../uploads', attachment.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (fileError) {
+      console.error('Error deleting file:', fileError);
+      // Continue even if file deletion fails
+    }
+    
+    const { io } = await import('../server');
+    io.emit('task:attachment:removed', { taskId: task._id, attachmentId: req.params.attachmentId });
+    
+    res.json({ success: true, message: 'Attachment removed successfully' });
+  } catch (error) {
+    console.error('Error removing attachment:', error);
+    res.status(500).json({ message: 'Error removing attachment', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const addTag = async (req: Request, res: Response) => {
+  try {
+    const { name, color } = req.body;
+    
+    if (!name?.trim()) return res.status(400).json({ message: 'Tag name is required' });
+    
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const trimmedName = name.trim();
+    if (task.tags.some(t => t.name.toLowerCase() === trimmedName.toLowerCase())) {
+      return res.status(400).json({ message: 'Tag already exists' });
+    }
+    
+    const hexColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+    const validColor = color && hexColorRegex.test(color) ? color : '#3b82f6';
+    
+    task.tags.push({ name: trimmedName, color: validColor });
+    await task.save();
+    
+    const { io } = await import('../server');
+    io.emit('task:tag:added', { taskId: task._id, tag: task.tags[task.tags.length - 1] });
+    
+    res.json({ success: true, tag: task.tags[task.tags.length - 1] });
+  } catch (error) {
+    console.error('Error adding tag:', error);
+    res.status(500).json({ message: 'Error adding tag', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const removeTag = async (req: Request, res: Response) => {
+  try {
+    const { name } = req.body;
+    
+    if (!name) return res.status(400).json({ message: 'Tag name is required' });
+    
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const initialLength = task.tags.length;
+    task.tags = task.tags.filter(t => t.name !== name);
+    
+    if (task.tags.length === initialLength) {
+      return res.status(404).json({ message: 'Tag not found' });
+    }
+    
+    await task.save();
+    
+    const { io } = await import('../server');
+    io.emit('task:tag:removed', { taskId: task._id, tagName: name });
+    
+    res.json({ success: true, message: 'Tag removed successfully' });
+  } catch (error) {
+    console.error('Error removing tag:', error);
+    res.status(500).json({ message: 'Error removing tag', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

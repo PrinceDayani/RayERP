@@ -1,6 +1,6 @@
 export interface Budget {
   _id: string;
-  projectId: string;
+  projectId?: string;
   projectName: string;
   totalBudget: number;
   currency: string;

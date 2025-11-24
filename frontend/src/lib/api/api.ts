@@ -30,7 +30,7 @@ api.interceptors.request.use(
     
     // Fix for URL path handling
     if (config.url) {
-      config.url = config.url.replace(/([^:])\/\//g, '₹1/');
+      config.url = config.url.replace(/([^:])\/\//g, '$1/');
     }
     
     // Add timeout to prevent hanging requests

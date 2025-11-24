@@ -12,6 +12,12 @@ import { Download, FileText, Users, Target, MessageSquare, Phone, Calendar, Tren
 import { exportToPDF, exportToExcel, exportToCSV, exportToText, ExportData } from '@/lib/exportUtils';
 import toast from 'react-hot-toast';
 import { reportsAPI } from '@/lib/api/reportsAPI';
+import { projectsAPI } from '@/lib/api/projectsAPI';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ExternalLink } from 'lucide-react';
+import { formatCurrency, getUserPreferredCurrency } from '@/utils/currency';
+import { useCurrency } from '@/hooks/useCurrency';
 
 const COLORS = {
   primary: '#3b82f6',
@@ -35,6 +41,13 @@ export default function ReportsPage() {
   const [projectReportsData, setProjectReportsData] = useState<any>(null);
   const [taskReportsData, setTaskReportsData] = useState<any>(null);
   const [teamProductivityData, setTeamProductivityData] = useState<any[]>([]);
+  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [currency, setCurrency] = useState('INR');
+  const router = useRouter();
+
+  useEffect(() => {
+    setCurrency(getUserPreferredCurrency());
+  }, []);
 
   useEffect(() => {
     fetchAllReports();
@@ -66,22 +79,59 @@ export default function ReportsPage() {
     try {
       const dateParams = getDateRange();
       
-      const [overviewRes, employeeRes, projectRes, taskRes, productivityRes] = await Promise.all([
-        reportsAPI.getOverview(dateParams),
-        reportsAPI.getEmployeeReports(dateParams),
-        reportsAPI.getProjectReports(dateParams),
-        reportsAPI.getTaskReports(dateParams),
-        reportsAPI.getTeamProductivity(dateParams)
-      ]);
+      // Fetch projects
+      try {
+        const projectsRes = await projectsAPI.getAll();
+        const projects = projectsRes?.data?.projects || projectsRes?.data || projectsRes || [];
+        setAllProjects(Array.isArray(projects) ? projects : []);
+      } catch (err) {
+        console.error('Error fetching projects:', err);
+        setAllProjects([]);
+      }
       
-      setOverviewData(overviewRes.data);
-      setEmployeeReportsData(employeeRes.data);
-      setProjectReportsData(projectRes.data);
-      setTaskReportsData(taskRes.data);
-      setTeamProductivityData(productivityRes.data || []);
+      // Fetch other reports with individual error handling
+      try {
+        const overviewRes = await reportsAPI.getOverview(dateParams);
+        setOverviewData(overviewRes.data);
+      } catch (err) {
+        console.error('Error fetching overview:', err);
+        setOverviewData(null);
+      }
+
+      try {
+        const employeeRes = await reportsAPI.getEmployeeReports(dateParams);
+        setEmployeeReportsData(employeeRes.data);
+      } catch (err) {
+        console.error('Error fetching employee reports:', err);
+        setEmployeeReportsData(null);
+      }
+
+      try {
+        const projectRes = await reportsAPI.getProjectReports(dateParams);
+        setProjectReportsData(projectRes.data);
+      } catch (err) {
+        console.error('Error fetching project reports:', err);
+        setProjectReportsData(null);
+      }
+
+      try {
+        const taskRes = await reportsAPI.getTaskReports(dateParams);
+        setTaskReportsData(taskRes.data);
+      } catch (err) {
+        console.error('Error fetching task reports:', err);
+        setTaskReportsData(null);
+      }
+
+      try {
+        const productivityRes = await reportsAPI.getTeamProductivity(dateParams);
+        setTeamProductivityData(productivityRes.data || []);
+      } catch (err) {
+        console.error('Error fetching team productivity:', err);
+        setTeamProductivityData([]);
+      }
     } catch (error) {
       console.error('Error fetching reports:', error);
-      toast.error('Failed to load reports data');
+      toast.error('Some reports failed to load. Check console for details.');
     } finally {
       setLoading(false);
     }
@@ -174,15 +224,18 @@ export default function ReportsPage() {
     attendance: Math.round(emp.completionRate)
   }));
 
-  const projectReports = projectReportsData?.statusBreakdown?.map((proj: any) => ({
-    name: proj.status,
+  const projectReports = allProjects.map((proj: any) => ({
+    _id: proj._id,
+    name: proj.name,
     status: proj.status,
-    progress: projectReportsData?.progress?.avgProgress || 0,
-    budget: proj.totalBudget || 0,
+    progress: proj.progress || 0,
+    budget: proj.budget || 0,
     spent: proj.spentBudget || 0,
-    team: 0,
-    dueDate: new Date().toISOString()
-  })) || [];
+    team: proj.team?.length || 0,
+    dueDate: proj.endDate,
+    priority: proj.priority,
+    manager: proj.manager
+  }));
 
   const taskAnalytics = taskReportsData?.statusBreakdown?.map((task: any) => ({
     category: task.status,
@@ -372,9 +425,15 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-green-500" />
-            Project Status & Budget Report
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-green-500" />
+              Project Status & Budget Report
+            </div>
+            <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/projects')}>
+              View All Projects
+              <ExternalLink className="h-4 w-4 ml-2" />
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -383,16 +442,25 @@ export default function ReportsPage() {
               <div className="text-center py-8 text-muted-foreground">
                 No project data available
               </div>
-            ) : projectReports.map((project, index) => (
-              <div key={index} className="bg-muted/50 p-4 rounded-lg">
+            ) : projectReports.map((project) => (
+              <div key={project._id} className="bg-muted/50 p-4 rounded-lg hover:bg-muted/70 transition-colors">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium">{project.name}</h3>
+                  <Link href={`/dashboard/projects/${project._id}`} className="hover:underline">
+                    <h3 className="font-medium text-lg flex items-center gap-2">
+                      {project.name}
+                      <ExternalLink className="h-4 w-4" />
+                    </h3>
+                  </Link>
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${getStatusColor(project.status)}`}></div>
-                    <span className="text-sm text-muted-foreground">{project.status}</span>
+                    <Badge variant={project.priority === 'high' || project.priority === 'critical' ? 'destructive' : 'default'}>
+                      {project.priority}
+                    </Badge>
+                    <Badge variant={project.status === 'completed' ? 'default' : project.status === 'active' ? 'secondary' : 'outline'}>
+                      {project.status}
+                    </Badge>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Progress</span>
                     <div className="font-medium">{project.progress}%</div>
@@ -400,19 +468,80 @@ export default function ReportsPage() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Budget</span>
-                    <div className="font-medium">${project.budget.toLocaleString()}</div>
+                    <div className="font-medium">{formatCurrency(project.budget, currency)}</div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Spent</span>
-                    <div className="font-medium">${project.spent.toLocaleString()}</div>
+                    <div className="font-medium text-orange-600">{formatCurrency(project.spent, currency)}</div>
+                    <div className="text-xs text-muted-foreground">{project.budget > 0 ? Math.round((project.spent / project.budget) * 100) : 0}% used</div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Team Size</span>
                     <div className="font-medium">{project.team} members</div>
                   </div>
+                  <div>
+                    <span className="text-muted-foreground">Due Date</span>
+                    <div className="font-medium text-xs">{new Date(project.dueDate).toLocaleDateString()}</div>
+                  </div>
                 </div>
               </div>
             ))}
+          </div>
+          
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Budget Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={projectReports.slice(0, 5)}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="name" className="text-muted-foreground" angle={-45} textAnchor="end" height={80} />
+                      <YAxis className="text-muted-foreground" />
+                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }} />
+                      <Bar dataKey="budget" fill={COLORS.primary} name="Budget" />
+                      <Bar dataKey="spent" fill={COLORS.warning} name="Spent" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Progress Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Completed', value: projectReports.filter(p => p.status === 'completed').length },
+                          { name: 'Active', value: projectReports.filter(p => p.status === 'active').length },
+                          { name: 'Planning', value: projectReports.filter(p => p.status === 'planning').length },
+                          { name: 'On Hold', value: projectReports.filter(p => p.status === 'on-hold').length },
+                        ].filter(d => d.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {[COLORS.success, COLORS.primary, COLORS.warning, COLORS.danger].map((color, index) => (
+                          <Cell key={`cell-${index}`} fill={color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </CardContent>
       </Card>
@@ -687,6 +816,18 @@ export default function ReportsPage() {
               <SelectItem value="marketing">Marketing</SelectItem>
               <SelectItem value="hr">Human Resources</SelectItem>
               <SelectItem value="finance">Finance</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={currency} onValueChange={(val) => { setCurrency(val); localStorage.setItem('preferredCurrency', val); }}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="INR">₹ INR</SelectItem>
+              <SelectItem value="USD">$ USD</SelectItem>
+              <SelectItem value="EUR">€ EUR</SelectItem>
+              <SelectItem value="GBP">£ GBP</SelectItem>
             </SelectContent>
           </Select>
           

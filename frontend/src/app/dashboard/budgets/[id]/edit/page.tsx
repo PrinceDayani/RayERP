@@ -36,10 +36,10 @@ export default function EditBudgetPage() {
       const data = await getBudget(budgetId);
       setBudget(data);
       setFormData({
-        projectName: data.projectName,
-        totalBudget: data.totalBudget.toString(),
-        currency: data.currency,
-        categories: data.categories
+        projectName: data.projectName || '',
+        totalBudget: data.totalBudget?.toString() || '0',
+        currency: data.currency || 'INR',
+        categories: data.categories || []
       });
     } catch (error) {
       console.error('Error fetching budget:', error);
@@ -51,15 +51,30 @@ export default function EditBudgetPage() {
   const handleSave = async () => {
     try {
       setSaving(true);
+      const cleanedCategories = formData.categories.map(cat => {
+        const cleanedItems = cat.items.map(item => {
+          const { _id, ...rest } = item;
+          return _id && _id.length === 24 ? item : rest;
+        });
+        const { _id, ...catRest } = cat;
+        return {
+          ...(_id && _id.length === 24 ? { _id } : {}),
+          ...catRest,
+          items: cleanedItems
+        };
+      });
+      
       await updateBudget(budgetId, {
         projectName: formData.projectName,
         totalBudget: Number(formData.totalBudget),
         currency: formData.currency,
-        categories: formData.categories
+        categories: cleanedCategories,
+        status: budget?.status || 'draft'
       });
       router.push(`/dashboard/budgets/${budgetId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating budget:', error);
+      alert(error?.response?.data?.message || 'Failed to update budget');
     } finally {
       setSaving(false);
     }

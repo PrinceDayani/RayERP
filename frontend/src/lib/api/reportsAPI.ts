@@ -54,3 +54,5 @@ export const reportsAPI = {
     return response.json();
   }
 };
+
+export default reportsAPI;

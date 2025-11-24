@@ -10,8 +10,10 @@ import { ArrowLeft, Edit, Send, CheckCircle, XCircle, Clock, DollarSign, Trendin
 import { getBudget, submitForApproval } from '@/lib/api/budgetAPI';
 import { Budget } from '@/types/budget';
 import { formatCurrency, formatCurrencySmart } from '@/utils/currency';
+import { useCurrency } from '@/hooks/useCurrency';
 
 export default function BudgetDetailPage() {
+  const { displayCurrency } = useCurrency();
   const [budget, setBudget] = useState<Budget | null>(null);
   const [loading, setLoading] = useState(true);
   const params = useParams();
@@ -81,6 +83,7 @@ export default function BudgetDetailPage() {
 
   // Calculate derived values for display
   const actualSpent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
+  const remainingBudget = budget.totalBudget - actualSpent;
 
   return (
       <div className="p-6 space-y-6">

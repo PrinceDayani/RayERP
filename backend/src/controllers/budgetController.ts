@@ -61,8 +61,6 @@ export const getBudgets = async (req: Request, res: Response) => {
 
     const [budgets, total] = await Promise.all([
       Budget.find(filter)
-        .populate('projectId', 'name description')
-        .populate('createdBy', 'name email')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit)),
@@ -86,10 +84,7 @@ export const getBudgets = async (req: Request, res: Response) => {
 
 export const getBudgetById = async (req: Request, res: Response) => {
   try {
-    const budget = await Budget.findById(req.params.id)
-      .populate('projectId', 'name description')
-      .populate('createdBy', 'name email')
-      .populate('approvals.userId', 'name email');
+    const budget = await Budget.findById(req.params.id);
 
     if (!budget) {
       return res.status(404).json({ success: false, message: 'Budget not found' });
@@ -175,7 +170,7 @@ export const approveBudget = async (req: Request, res: Response) => {
 
     // Find the current approval level
     const currentApproval = budget.approvals?.find(
-      approval => approval.userId.toString() === req.user!.id && approval.status === 'pending'
+      approval => approval.userId?.toString() === req.user!.id && approval.status === 'pending'
     );
 
     if (currentApproval) {
@@ -234,7 +229,7 @@ export const rejectBudget = async (req: Request, res: Response) => {
 
     // Find the current approval level
     const currentApproval = budget.approvals?.find(
-      approval => approval.userId.toString() === req.user!.id && approval.status === 'pending'
+      approval => approval.userId?.toString() === req.user!.id && approval.status === 'pending'
     );
 
     if (currentApproval) {

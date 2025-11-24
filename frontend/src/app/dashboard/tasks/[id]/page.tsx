@@ -16,8 +16,14 @@ import {
   AlertCircle,
   CheckSquare,
   Edit,
-  MessageSquare
+  MessageSquare,
+  Paperclip,
+  Timer,
+  Trash2
 } from 'lucide-react';
+import TimeTracker from '@/components/tasks/TimeTracker';
+import AttachmentManager from '@/components/tasks/AttachmentManager';
+import TagManager from '@/components/tasks/TagManager';
 import { tasksAPI, Task } from '@/lib/api/tasksAPI';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -50,8 +56,28 @@ export default function TaskDetailsPage() {
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [employeeId, setEmployeeId] = useState<string>('');
 
   const taskId = params.id as string;
+
+  useEffect(() => {
+    // Get employee ID from user
+    const fetchEmployee = async () => {
+      if (user?.employeeId) {
+        setEmployeeId(user.employeeId);
+      }
+    };
+    fetchEmployee();
+  }, [user]);
+
+  const refreshTask = async () => {
+    try {
+      const response = await tasksAPI.getById(taskId);
+      setTask(response.data || response);
+    } catch (err) {
+      console.error('Error refreshing task:', err);
+    }
+  };
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -150,6 +176,23 @@ export default function TaskDetailsPage() {
           >
             <Edit className="h-4 w-4 mr-2" />
             Edit Task
+          </Button>
+          <Button 
+            onClick={async () => {
+              if (confirm('Are you sure you want to delete this task?')) {
+                try {
+                  await tasksAPI.delete(taskId);
+                  router.push('/dashboard/tasks');
+                } catch (err) {
+                  console.error('Error deleting task:', err);
+                  alert('Failed to delete task');
+                }
+              }
+            }}
+            variant="destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Task
           </Button>
         </div>
       </div>
@@ -254,33 +297,61 @@ export default function TaskDetailsPage() {
             )}
           </div>
 
-          {/* Tags */}
-          {task.tags && task.tags.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h3 className="font-semibold mb-2">Tags</h3>
-                <div className="flex flex-wrap gap-2">
-                  {task.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
 
-          {/* Timestamps */}
-          <Separator />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-            <div>
-              <p>Created: {new Date(task.createdAt).toLocaleString()}</p>
-            </div>
-            <div>
-              <p>Updated: {new Date(task.updatedAt).toLocaleString()}</p>
-            </div>
-          </div>
+
+        </CardContent>
+      </Card>
+
+      {/* Time Tracking */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Timer className="h-5 w-5" />
+            Time Tracking
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TimeTracker 
+            taskId={taskId} 
+            userId={employeeId}
+            timeEntries={task.timeEntries}
+            onUpdate={refreshTask}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Tags */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Tag className="h-5 w-5" />
+            Tags
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TagManager 
+            taskId={taskId}
+            tags={task.tags}
+            onUpdate={refreshTask}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Attachments */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Paperclip className="h-5 w-5" />
+            Attachments
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AttachmentManager 
+            taskId={taskId}
+            userId={employeeId}
+            attachments={task.attachments}
+            onUpdate={refreshTask}
+          />
         </CardContent>
       </Card>
 
@@ -312,6 +383,11 @@ export default function TaskDetailsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Timestamps */}
+      <div className="text-sm text-muted-foreground text-center pb-4">
+        Created: {new Date(task.createdAt).toLocaleString()} | Updated: {new Date(task.updatedAt).toLocaleString()}
+      </div>
     </div>
   );
 }

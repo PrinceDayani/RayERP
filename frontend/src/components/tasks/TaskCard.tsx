@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, User, Edit, Eye } from "lucide-react";
+import { Calendar, User, Edit, Eye, Trash2 } from "lucide-react";
 
 interface Task {
   _id: string;
@@ -19,6 +19,7 @@ interface TaskCardProps {
   task: Task;
   onView?: (id: string) => void;
   onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 const getStatusColor = (status: string) => {
@@ -40,7 +41,7 @@ const getPriorityColor = (priority: string) => {
   }
 };
 
-export default function TaskCard({ task, onView, onEdit }: TaskCardProps) {
+export default function TaskCard({ task, onView, onEdit, onDelete }: TaskCardProps) {
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardContent className="p-6">
@@ -72,7 +73,7 @@ export default function TaskCard({ task, onView, onEdit }: TaskCardProps) {
           </div>
         </div>
 
-        {(onView || onEdit) && (
+        {(onView || onEdit || onDelete) && (
           <div className="flex gap-2">
             {onView && (
               <Button 
@@ -92,6 +93,19 @@ export default function TaskCard({ task, onView, onEdit }: TaskCardProps) {
                 onClick={() => onEdit(task._id)}
               >
                 <Edit className="w-4 h-4" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => {
+                  if (confirm('Are you sure you want to delete this task?')) {
+                    onDelete(task._id);
+                  }
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
               </Button>
             )}
           </div>

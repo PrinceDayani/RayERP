@@ -49,7 +49,29 @@ const getBudgetsByStatus = async (req: any, res: any) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-const getProjectBudgetsWithApprovals = getBudgets;
+const getProjectBudgetsWithApprovals = async (req: any, res: any) => {
+  try {
+    // Extract projectId from parent route params
+    const projectId = req.params.id;
+    
+    if (!projectId) {
+      return res.status(400).json({ success: false, message: 'Project ID is required' });
+    }
+
+    // Find all budgets for this project
+    const budgets = await require('../models/Budget').default.find({ projectId });
+    
+    // If no budgets found, return empty array
+    if (!budgets || budgets.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // Return the first budget (or all budgets if needed)
+    res.json(budgets[0] || budgets);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 const createMasterBudget = createBudget;
 const getMasterBudgets = async (req: any, res: any) => {
   try {
@@ -118,15 +140,45 @@ router.post('/:id/submit', canManageBudgets, submitForApproval);
 
 // Project budget routes - nested under projects/:id/budget
 router.get('/', canViewBudgets, getProjectBudgetsWithApprovals);
-router.get('/:budgetId', canViewBudgets, getBudgetById);
-router.post('/', canManageBudgets, createBudget);
-router.put('/:budgetId', canManageBudgets, updateBudget);
-router.delete('/:budgetId', canManageBudgets, deleteBudget);
-router.post('/:budgetId/approve', canApproveBudgets, approveBudget);
-router.post('/:budgetId/reject', canApproveBudgets, rejectBudget);
-router.post('/:budgetId/unapprove', canApproveBudgets, unapproveBudget);
-router.post('/:budgetId/unreject', canApproveBudgets, unrejectBudget);
-router.post('/:budgetId/submit', canManageBudgets, submitForApproval);
+router.get('/:budgetId', canViewBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, getBudgetById);
+router.post('/', canManageBudgets, (req, res, next) => {
+  // Inject projectId from parent route into request body
+  if (req.params.id && !req.body.projectId) {
+    req.body.projectId = req.params.id;
+  }
+  next();
+}, createBudget);
+router.put('/:budgetId', canManageBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, updateBudget);
+router.delete('/:budgetId', canManageBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, deleteBudget);
+router.post('/:budgetId/approve', canApproveBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, approveBudget);
+router.post('/:budgetId/reject', canApproveBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, rejectBudget);
+router.post('/:budgetId/unapprove', canApproveBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, unapproveBudget);
+router.post('/:budgetId/unreject', canApproveBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, unrejectBudget);
+router.post('/:budgetId/submit', canManageBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, submitForApproval);
 
 // Master budget routes
 router.post('/master', canManageBudgets, createMasterBudget);

@@ -189,6 +189,57 @@ export class NotificationEmitter {
     this.sendToUser(userId, notification);
   }
 
+  static async taskDueSoon(task: any) {
+    const assignedTo = task.assignedTo;
+    const userId = typeof assignedTo === 'object' && assignedTo.user ? assignedTo.user.toString() : null;
+    
+    if (userId) {
+      const notification: NotificationData = {
+        type: 'task',
+        title: '⏰ Task Due in 24 Hours',
+        message: `Task "${task.title}" is due tomorrow`,
+        priority: 'high',
+        actionUrl: `/dashboard/tasks/${task._id}`,
+        metadata: { taskId: task._id, taskTitle: task.title, dueDate: task.dueDate }
+      };
+      await this.sendToUser(userId, notification);
+    }
+  }
+
+  static async taskDueToday(task: any) {
+    const assignedTo = task.assignedTo;
+    const userId = typeof assignedTo === 'object' && assignedTo.user ? assignedTo.user.toString() : null;
+    
+    if (userId) {
+      const notification: NotificationData = {
+        type: 'task',
+        title: '🔔 Task Due Today',
+        message: `Task "${task.title}" is due today!`,
+        priority: 'urgent',
+        actionUrl: `/dashboard/tasks/${task._id}`,
+        metadata: { taskId: task._id, taskTitle: task.title, dueDate: task.dueDate }
+      };
+      await this.sendToUser(userId, notification);
+    }
+  }
+
+  static async taskOverdue(task: any) {
+    const assignedTo = task.assignedTo;
+    const userId = typeof assignedTo === 'object' && assignedTo.user ? assignedTo.user.toString() : null;
+    
+    if (userId) {
+      const notification: NotificationData = {
+        type: 'error',
+        title: '⚠️ Task Overdue',
+        message: `Task "${task.title}" is overdue!`,
+        priority: 'urgent',
+        actionUrl: `/dashboard/tasks/${task._id}`,
+        metadata: { taskId: task._id, taskTitle: task.title, dueDate: task.dueDate }
+      };
+      await this.sendToUser(userId, notification);
+    }
+  }
+
   // Budget notifications
   static budgetAlert(budget: any, message: string, priority: 'low' | 'medium' | 'high' | 'urgent' = 'high') {
     const notification: NotificationData = {
