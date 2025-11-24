@@ -413,7 +413,7 @@ export const getJournalEntries = async (req: Request, res: Response) => {
     
     const query: any = {};
     if (startDate && endDate) {
-      query.date = {
+      query.entryDate = {
         $gte: new Date(startDate as string),
         $lte: new Date(endDate as string)
       };
@@ -423,8 +423,8 @@ export const getJournalEntries = async (req: Request, res: Response) => {
     
     const journalEntries = await JournalEntry.find(query)
       .populate('lines.account', 'code name type')
-      .populate('createdBy', 'name email')
-      .sort({ date: -1, entryNumber: -1 })
+      .populate('createdBy', 'firstName lastName email')
+      .sort({ entryDate: -1, entryNumber: -1 })
       .limit(Number(limit))
       .skip(skip)
       .lean();
@@ -445,7 +445,8 @@ export const getJournalEntries = async (req: Request, res: Response) => {
     console.error('Full error:', error);
     res.status(500).json({ 
       message: 'Error fetching journal entries',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
     });
   }
 };
