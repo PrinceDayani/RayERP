@@ -38,7 +38,7 @@ export default function TaskTemplatesPage() {
   const handleSave = async () => {
     try {
       if (editingTemplate) {
-        await tasksAPI.update(editingTemplate._id, formData);
+        await tasksAPI.update(editingTemplate._id, { ...formData, priority: formData.priority as 'low' | 'medium' | 'high' | 'critical' });
       } else {
         await tasksAPI.create({ ...formData, isTemplate: true, templateName: formData.title } as any);
       }

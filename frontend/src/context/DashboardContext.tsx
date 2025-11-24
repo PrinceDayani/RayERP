@@ -73,7 +73,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         totalRevenue: orderStatsData.totalRevenue || 0,
         pendingOrders: orderStatsData.pendingOrders || 0,
         lowStockItems: inventorySummaryData.lowStockCount || 0,
-        totalCustomers: customerStatsData.totalCount || 0,
+        totalCustomers: (customerStatsData as any).totalCount || 0,
         totalProducts: inventorySummaryData.totalItems || 0,
       });
 

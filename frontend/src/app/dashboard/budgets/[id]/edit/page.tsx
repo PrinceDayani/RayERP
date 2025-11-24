@@ -70,7 +70,7 @@ export default function EditBudgetPage() {
         currency: formData.currency,
         categories: cleanedCategories,
         status: budget?.status || 'draft'
-      });
+      } as any);
       router.push(`/dashboard/budgets/${budgetId}`);
     } catch (error: any) {
       console.error('Error updating budget:', error);

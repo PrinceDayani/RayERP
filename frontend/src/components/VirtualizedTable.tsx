@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FixedSizeList as List } from 'react-window';
+const { FixedSizeList } = require('react-window') as any;
 
 interface Column {
   key: string;
@@ -93,14 +93,14 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
       </div>
 
       {/* Virtualized Body */}
-      <List
+      <FixedSizeList
         height={height}
         itemCount={sortedData.length}
         itemSize={rowHeight}
         width="100%"
       >
         {Row}
-      </List>
+      </FixedSizeList>
     </div>
   );
 };

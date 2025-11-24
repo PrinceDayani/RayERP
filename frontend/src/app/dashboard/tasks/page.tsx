@@ -41,7 +41,7 @@ export default function TaskManagementPage() {
 
   const exportTasks = () => {
     const csvContent = computed.filteredTasks.map(task => 
-      `"${task.title}","${task.status}","${task.priority}","${task.assignee?.name || ''}","${task.project?.name || ''}","${task.dueDate || ''}"`
+      `"${task.title}","${task.status}","${task.priority}","${(task.assignedTo as any)?.firstName || ''} ${(task.assignedTo as any)?.lastName || ''}","${task.project?.name || ''}","${task.dueDate || ''}"`
     ).join('\n');
     
     const blob = new Blob([`Title,Status,Priority,Assignee,Project,Due Date\n${csvContent}`], { type: 'text/csv' });

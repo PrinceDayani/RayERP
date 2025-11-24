@@ -11,6 +11,8 @@ export interface IActivityLog extends Document {
   projectId?: mongoose.Types.ObjectId;
   status: 'success' | 'error' | 'warning';
   details: string;
+  description?: string;
+  type?: string;
   metadata?: any;
   ipAddress: string;
   visibility: 'all' | 'management' | 'project_team' | 'private';

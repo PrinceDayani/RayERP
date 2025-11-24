@@ -350,7 +350,7 @@ export default function BudgetTemplatesPage() {
         type: "labor",
         allocatedAmount: 0,
         items: []
-      }]
+      }] as any
     }));
   };
 
@@ -358,7 +358,7 @@ export default function BudgetTemplatesPage() {
     setFormData(prev => ({
       ...prev,
       categories: prev.categories.map(cat =>
-        cat._id === categoryId
+        (cat as any)._id === categoryId
           ? {
               ...cat,
               items: [...cat.items, {
@@ -379,7 +379,7 @@ export default function BudgetTemplatesPage() {
     setFormData(prev => ({
       ...prev,
       categories: prev.categories.map(cat =>
-        cat._id === id ? { ...cat, [field]: value } : cat
+        (cat as any)._id === id ? { ...cat, [field]: value } : cat
       )
     }));
   };
@@ -388,11 +388,11 @@ export default function BudgetTemplatesPage() {
     setFormData(prev => ({
       ...prev,
       categories: prev.categories.map(cat =>
-        cat._id === categoryId
+        (cat as any)._id === categoryId
           ? {
               ...cat,
               items: cat.items.map(item => {
-                if (item._id === itemId) {
+                if ((item as any)._id === itemId) {
                   const updated = { ...item, [field]: value };
                   if (field === "quantity" || field === "unitCost") {
                     updated.totalCost = updated.quantity * updated.unitCost;
@@ -410,7 +410,7 @@ export default function BudgetTemplatesPage() {
   const removeCategory = (id: string) => {
     setFormData(prev => ({
       ...prev,
-      categories: prev.categories.filter(cat => cat._id !== id)
+      categories: prev.categories.filter(cat => (cat as any)._id !== id)
     }));
   };
 
@@ -418,8 +418,8 @@ export default function BudgetTemplatesPage() {
     setFormData(prev => ({
       ...prev,
       categories: prev.categories.map(cat =>
-        cat._id === categoryId
-          ? { ...cat, items: cat.items.filter(item => item._id !== itemId) }
+        (cat as any)._id === categoryId
+          ? { ...cat, items: cat.items.filter(item => (item as any)._id !== itemId) }
           : cat
       )
     }));
@@ -539,16 +539,16 @@ export default function BudgetTemplatesPage() {
                 </div>
 
                 {formData.categories.map((category) => (
-                  <Card key={category._id}>
+                  <Card key={(category as any)._id}>
                     <CardHeader className="pb-3">
                       <div className="flex gap-4 items-center">
                         <Input
                           placeholder="Category name"
                           value={category.name}
-                          onChange={(e) => updateCategory(category._id!, "name", e.target.value)}
+                          onChange={(e) => updateCategory((category as any)._id!, "name", e.target.value)}
                           className="flex-1"
                         />
-                        <Select value={category.type} onValueChange={(value) => updateCategory(category._id!, "type", value)}>
+                        <Select value={category.type} onValueChange={(value) => updateCategory((category as any)._id!, "type", value)}>
                           <SelectTrigger className="w-40">
                             <SelectValue />
                           </SelectTrigger>
@@ -559,11 +559,11 @@ export default function BudgetTemplatesPage() {
                             <SelectItem value="overhead">Overhead</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button type="button" variant="outline" size="sm" onClick={() => addItem(category._id!)}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => addItem((category as any)._id!)}>
                           <Plus className="w-4 h-4 mr-2" />
                           Item
                         </Button>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => removeCategory(category._id!)}>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => removeCategory((category as any)._id!)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -571,13 +571,13 @@ export default function BudgetTemplatesPage() {
                     <CardContent>
                       <div className="space-y-2">
                         {category.items.map((item) => (
-                          <div key={item._id} className="grid grid-cols-6 gap-2">
-                            <Input placeholder="Item name" value={item.name} onChange={(e) => updateItem(category._id!, item._id!, "name", e.target.value)} />
-                            <Input placeholder="Description" value={item.description} onChange={(e) => updateItem(category._id!, item._id!, "description", e.target.value)} />
-                            <Input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => updateItem(category._id!, item._id!, "quantity", Number(e.target.value))} />
-                            <Input type="number" placeholder="Unit cost" value={item.unitCost} onChange={(e) => updateItem(category._id!, item._id!, "unitCost", Number(e.target.value))} />
+                          <div key={(item as any)._id} className="grid grid-cols-6 gap-2">
+                            <Input placeholder="Item name" value={item.name} onChange={(e) => updateItem((category as any)._id!, (item as any)._id!, "name", e.target.value)} />
+                            <Input placeholder="Description" value={item.description} onChange={(e) => updateItem((category as any)._id!, (item as any)._id!, "description", e.target.value)} />
+                            <Input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => updateItem((category as any)._id!, (item as any)._id!, "quantity", Number(e.target.value))} />
+                            <Input type="number" placeholder="Unit cost" value={item.unitCost} onChange={(e) => updateItem((category as any)._id!, (item as any)._id!, "unitCost", Number(e.target.value))} />
                             <div className="text-sm font-medium flex items-center">${item.totalCost.toLocaleString()}</div>
-                            <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(category._id!, item._id!)}>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => removeItem((category as any)._id!, (item as any)._id!)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
@@ -585,7 +585,7 @@ export default function BudgetTemplatesPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                ))
               </div>
 
               <div className="flex justify-end gap-2">

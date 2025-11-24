@@ -61,13 +61,10 @@ export default function TaskDetailsPage() {
   const taskId = params.id as string;
 
   useEffect(() => {
-    // Get employee ID from user
-    const fetchEmployee = async () => {
-      if (user?.employeeId) {
-        setEmployeeId(user.employeeId);
-      }
-    };
-    fetchEmployee();
+    // Get employee ID from user._id
+    if (user?._id) {
+      setEmployeeId(user._id);
+    }
   }, [user]);
 
   const refreshTask = async () => {
@@ -331,7 +328,9 @@ export default function TaskDetailsPage() {
         <CardContent>
           <TagManager 
             taskId={taskId}
-            tags={task.tags}
+            tags={Array.isArray(task.tags) && task.tags.length > 0 && typeof task.tags[0] === 'string' 
+              ? (task.tags as string[]).map((t: string) => ({ name: t, color: '#3B82F6' })) 
+              : (task.tags as any)}
             onUpdate={refreshTask}
           />
         </CardContent>
