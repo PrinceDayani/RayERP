@@ -12,12 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Plus, Download, Search, Printer, Bell, Clock, TrendingUp, BarChart3, Calendar, AlertTriangle } from 'lucide-react';
+import { FileText, Plus, Download, Search, Printer, Bell, Clock, TrendingUp, BarChart3, Calendar, AlertTriangle, DollarSign, CreditCard, Filter, RefreshCw } from 'lucide-react';
 import { getBillDetails, createBillDetail, updateBillPayment, getBillStatement, getAccounts } from '@/lib/api/generalLedgerAPI';
 import { billsApi } from '@/lib/api/billsApi';
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
-const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
+const COLORS = ['#0ea5e9', '#8b5cf6', '#ec4899', '#f59e0b'];
 
 export default function BillsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -213,66 +213,98 @@ export default function BillsPage() {
   }, []);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-screen bg-gray-50 p-8 space-y-8">
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <FileText className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-3xl font-bold">Bill Management</h1>
-            <p className="text-gray-600">Track, manage, and pay bills with aging analysis</p>
-          </div>
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900">Bill Management</h1>
+          <p className="text-gray-500 mt-2">Track and manage your bills efficiently</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowForm(true)}><Plus className="w-4 h-4 mr-2" />New Bill</Button>
-          <Button variant="outline" onClick={() => handleExport('csv')}><Download className="w-4 h-4 mr-2" />CSV</Button>
-          <Button variant="outline" onClick={() => handleExport('pdf')}><Download className="w-4 h-4 mr-2" />PDF</Button>
-          <Button variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-2" />Print</Button>
+        <div className="flex gap-3">
+          <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />New Bill
+          </Button>
+          <Button variant="outline" onClick={() => handleExport('csv')}>
+            <Download className="w-4 h-4 mr-2" />Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => handleExport('pdf')}>
+            <Download className="w-4 h-4 mr-2" />Export PDF
+          </Button>
         </div>
       </div>
 
       {reminders.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className="border-l-4 border-l-orange-500 bg-orange-50">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5 text-orange-600" />
-              <div>
-                <p className="font-semibold text-orange-800">{reminders.length} bills due within 7 days</p>
-                <p className="text-sm text-orange-700">Total amount: ?{reminders.reduce((sum, b) => sum + b.balanceAmount, 0).toFixed(2)}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Bell className="h-5 w-5 text-orange-600" />
+                <div>
+                  <p className="font-semibold text-orange-900">{reminders.length} bills due within 7 days</p>
+                  <p className="text-sm text-orange-700">Total: ₹{reminders.reduce((sum, b) => sum + b.balanceAmount, 0).toLocaleString('en-IN')}</p>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-600">Total Bills</p>
-            <p className="text-2xl font-bold">{summary?.totalBills || 0}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Total Bills</p>
+                <p className="text-3xl font-bold text-gray-900">{summary?.totalBills || 0}</p>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <FileText className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-600">Total Amount</p>
-            <p className="text-2xl font-bold">?{summary?.totalAmount?.toFixed(2) || 0}</p>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Total Amount</p>
+                <p className="text-3xl font-bold text-gray-900">₹{(summary?.totalAmount || 0).toLocaleString('en-IN')}</p>
+              </div>
+              <div className="p-3 bg-purple-50 rounded-lg">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-600">Paid</p>
-            <p className="text-2xl font-bold text-green-600">?{summary?.totalPaid?.toFixed(2) || 0}</p>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Paid</p>
+                <p className="text-3xl font-bold text-green-600">₹{(summary?.totalPaid || 0).toLocaleString('en-IN')}</p>
+              </div>
+              <div className="p-3 bg-green-50 rounded-lg">
+                <CreditCard className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-gray-600">Outstanding</p>
-            <p className="text-2xl font-bold text-red-600">?{summary?.totalBalance?.toFixed(2) || 0}</p>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Outstanding</p>
+                <p className="text-3xl font-bold text-red-600">₹{(summary?.totalBalance || 0).toLocaleString('en-IN')}</p>
+              </div>
+              <div className="p-3 bg-red-50 rounded-lg">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="list">
-        <TabsList>
+      <Tabs defaultValue="list" className="space-y-6">
+        <TabsList className="bg-white border shadow-sm">
           <TabsTrigger value="list">Bills List</TabsTrigger>
           <TabsTrigger value="aging">Aging Analysis</TabsTrigger>
           <TabsTrigger value="charts">Charts</TabsTrigger>
@@ -280,21 +312,21 @@ export default function BillsPage() {
         </TabsList>
 
         <TabsContent value="list">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>All Bills</CardTitle>
-                <div className="flex gap-2">
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="border-b">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <CardTitle className="text-xl font-semibold">All Bills</CardTitle>
+                <div className="flex gap-2 flex-wrap">
                   <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                    <Input id="search-input" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 w-48" />
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                    <Input id="search-input" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 w-48" />
                   </div>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
                       <SelectItem value="paid">Paid</SelectItem>
                       <SelectItem value="partial">Partial</SelectItem>
                       <SelectItem value="unpaid">Unpaid</SelectItem>
@@ -309,12 +341,15 @@ export default function BillsPage() {
                     </SelectContent>
                   </Select>
                   {selectedBills.size > 0 && (
-                    <Button onClick={handleBulkPayment}>Pay Selected ({selectedBills.size})</Button>
+                    <Button onClick={handleBulkPayment} className="bg-green-600 hover:bg-green-700">
+                      Pay Selected ({selectedBills.size})
+                    </Button>
                   )}
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -330,24 +365,31 @@ export default function BillsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredBills.map(bill => (
-                    <TableRow key={bill._id}>
+                  {filteredBills.map((bill, idx) => (
+                    <TableRow key={bill._id} className="hover:bg-gray-50">
                       <TableCell>
                         <Checkbox checked={selectedBills.has(bill._id)} onCheckedChange={() => toggleBill(bill._id)} />
                       </TableCell>
                       <TableCell className="font-medium">{bill.billReference}</TableCell>
                       <TableCell>{new Date(bill.billDate).toLocaleDateString('en-IN')}</TableCell>
                       <TableCell>
-                        {new Date(bill.dueDate).toLocaleDateString('en-IN')}
-                        {new Date(bill.dueDate) < new Date() && bill.status !== 'paid' && (
-                          <AlertTriangle className="inline h-4 w-4 ml-2 text-red-600" />
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span className={new Date(bill.dueDate) < new Date() && bill.status !== 'paid' ? 'text-red-600' : ''}>
+                            {new Date(bill.dueDate).toLocaleDateString('en-IN')}
+                          </span>
+                          {new Date(bill.dueDate) < new Date() && bill.status !== 'paid' && (
+                            <AlertTriangle className="h-4 w-4 text-red-600" />
+                          )}
+                        </div>
                       </TableCell>
-                      <TableCell className="text-right">?{bill.billAmount.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">?{bill.paidAmount.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">?{bill.balanceAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-medium">₹{bill.billAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right text-green-600">₹{bill.paidAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right text-red-600 font-medium">₹{bill.balanceAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                       <TableCell>
-                        <Badge variant={bill.status === 'paid' ? 'default' : bill.status === 'partial' ? 'secondary' : 'destructive'}>
+                        <Badge 
+                          variant={bill.status === 'paid' ? 'default' : bill.status === 'partial' ? 'secondary' : 'destructive'}
+                          className={bill.status === 'paid' ? 'bg-green-100 text-green-700' : bill.status === 'partial' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}
+                        >
                           {bill.status}
                         </Badge>
                       </TableCell>
@@ -359,46 +401,58 @@ export default function BillsPage() {
                               await updateBillPayment(bill._id, { paymentAmount: Number(amt) });
                               loadBills(selectedAccount);
                             }
-                          }}>Pay</Button>
+                          }}>
+                            Pay
+                          </Button>
                         )}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="aging">
-          <div className="grid grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Aging Analysis</CardTitle>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="border-b">
+                <CardTitle className="text-xl font-semibold">Aging Analysis</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="pt-6">
+                <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={agingData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip formatter={(value: any) => `?${value.toLocaleString('en-IN')}`} />
-                    <Bar dataKey="value" fill="#3b82f6" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="name" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip 
+                      formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                    />
+                    <Bar dataKey="value" fill="url(#colorGradient)" radius={[8, 8, 0, 0]} />
+                    <defs>
+                      <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor="#6366f1" stopOpacity={0.8}/>
+                      </linearGradient>
+                    </defs>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Aging Breakdown</CardTitle>
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="border-b">
+                <CardTitle className="text-xl font-semibold">Aging Breakdown</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 <div className="space-y-4">
                   {agingData.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center">
-                      <span className="font-medium">{item.name}</span>
-                      <span className="text-lg font-bold">?{item.value.toLocaleString('en-IN')}</span>
+                    <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                      <span className="font-medium text-gray-700">{item.name}</span>
+                      <span className="text-lg font-semibold text-gray-900">₹{item.value.toLocaleString('en-IN')}</span>
                     </div>
                   ))}
                 </div>
@@ -408,38 +462,57 @@ export default function BillsPage() {
         </TabsContent>
 
         <TabsContent value="charts">
-          <div className="grid grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Status Distribution</CardTitle>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="border-b">
+                <CardTitle className="text-xl font-semibold">Status Distribution</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="pt-6">
+                <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
-                    <Pie data={statINRata} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                    <Pie 
+                      data={statINRata} 
+                      dataKey="value" 
+                      nameKey="name" 
+                      cx="50%" 
+                      cy="50%" 
+                      outerRadius={110} 
+                      label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
                       {statINRata.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index]} />
                       ))}
                     </Pie>
-                    <Tooltip />
-                    <Legend />
+                    <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                    <Legend verticalAlign="bottom" height={36} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Trend</CardTitle>
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="border-b">
+                <CardTitle className="text-xl font-semibold">Monthly Trend</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+              <CardContent className="pt-6">
+                <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value: any) => `?${value.toLocaleString('en-IN')}`} />
-                    <Line type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="month" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip 
+                      formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="amount" 
+                      stroke="#3b82f6" 
+                      strokeWidth={3} 
+                      dot={{ fill: '#3b82f6', r: 5 }}
+                      activeDot={{ r: 7 }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -448,11 +521,12 @@ export default function BillsPage() {
         </TabsContent>
 
         <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment History</CardTitle>
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="border-b">
+              <CardTitle className="text-xl font-semibold">Payment History</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -464,15 +538,18 @@ export default function BillsPage() {
                 </TableHeader>
                 <TableBody>
                   {bills.filter(b => b.paidAmount > 0).map(bill => (
-                    <TableRow key={bill._id}>
+                    <TableRow key={bill._id} className="hover:bg-gray-50">
                       <TableCell>{new Date(bill.billDate).toLocaleDateString('en-IN')}</TableCell>
-                      <TableCell>{bill.billReference}</TableCell>
-                      <TableCell className="text-right">?{bill.paidAmount.toFixed(2)}</TableCell>
-                      <TableCell>Bank Transfer</TableCell>
+                      <TableCell className="font-medium">{bill.billReference}</TableCell>
+                      <TableCell className="text-right font-medium text-green-600">₹{bill.paidAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">Bank Transfer</Badge>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -484,8 +561,8 @@ export default function BillsPage() {
             <DialogTitle>Create New Bill</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label>Account</Label>
                 <Select value={formData.accountId} onValueChange={(val) => setFormData({...formData, accountId: val})}>
                   <SelectTrigger>
@@ -496,35 +573,36 @@ export default function BillsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Bill Reference</Label>
-                <Input value={formData.billReference} onChange={(e) => setFormData({...formData, billReference: e.target.value})} required />
+                <Input value={formData.billReference} onChange={(e) => setFormData({...formData, billReference: e.target.value})} required placeholder="e.g., INV-2024-001" />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Bill Date</Label>
                 <Input type="date" value={formData.billDate} onChange={(e) => setFormData({...formData, billDate: e.target.value})} required />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Due Date</Label>
                 <Input type="date" value={formData.dueDate} onChange={(e) => setFormData({...formData, dueDate: e.target.value})} required />
               </div>
-              <div>
-                <Label>Amount</Label>
-                <Input type="number" step="0.01" value={formData.billAmount} onChange={(e) => setFormData({...formData, billAmount: Number(e.target.value)})} required />
+              <div className="space-y-2">
+                <Label>Amount (₹)</Label>
+                <Input type="number" step="0.01" value={formData.billAmount} onChange={(e) => setFormData({...formData, billAmount: Number(e.target.value)})} required placeholder="0.00" />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-6">
                 <Checkbox checked={formData.recurring} onCheckedChange={(checked) => setFormData({...formData, recurring: checked as boolean})} />
                 <Label>Recurring Bill</Label>
               </div>
             </div>
-            <Button type="submit">Create Bill</Button>
+            <div className="flex gap-2 pt-4">
+              <Button type="submit" className="flex-1">Create Bill</Button>
+              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      <div className="text-xs text-gray-500">
-        <p>Shortcuts: Ctrl+N (New), Ctrl+P (Print), Ctrl+F (Search), Ctrl+E (Export)</p>
-      </div>
+
     </div>
   );
 }
