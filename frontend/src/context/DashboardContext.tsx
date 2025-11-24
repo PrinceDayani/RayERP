@@ -5,7 +5,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { initializeSocket, getSocket } from '@/lib/socket';
 import reportsAPI from '@/lib/api/reportsAPI';
-import analyticsAPI from '@/lib/api/analyticsAPI';
+import { analyticsAPI } from '@/lib/api/analyticsAPI';
 import { toast } from '@/components/ui/use-toast';
 
 interface DashboardContextProps {
@@ -57,7 +57,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           console.error("Error fetching order stats:", err);
           return {};
         }),
-        analyticsAPI.getDashboardStats().catch((err: any) => {
+        analyticsAPI.getAnalytics().catch((err: any) => {
           console.error("Error fetching customer stats:", err);
           return {};
         }),

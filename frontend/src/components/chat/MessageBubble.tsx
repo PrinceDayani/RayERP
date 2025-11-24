@@ -14,7 +14,9 @@ import {
   Trash2, 
   Smile,
   FileText,
-  Download
+  Download,
+  Eye,
+  Edit3
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -99,7 +101,7 @@ export default function MessageBubble({
       case 'read':
         return <CheckCheck className="w-3 h-3 text-blue-500" />;
       case 'failed':
-        return <AlertCircle className="w-3 h-3 text-red-500 cursor-pointer" title="Failed to send. Click to retry." />;
+        return <AlertCircle className="w-3 h-3 text-red-500 cursor-pointer" />;
       default:
         return <Check className="w-3 h-3 text-gray-400" />;
     }

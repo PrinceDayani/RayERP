@@ -52,6 +52,22 @@ export const reportsAPI = {
     });
     if (!response.ok) throw new Error('Failed to fetch team productivity');
     return response.json();
+  },
+
+  getOrderStatus: async () => {
+    const response = await fetch(`${API_URL}/api/reports/orders`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to fetch order status');
+    return response.json();
+  },
+
+  getInventoryStatus: async () => {
+    const response = await fetch(`${API_URL}/api/reports/inventory`, {
+      headers: getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to fetch inventory status');
+    return response.json();
   }
 };
 

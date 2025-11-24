@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, CheckCircle2, Circle } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';

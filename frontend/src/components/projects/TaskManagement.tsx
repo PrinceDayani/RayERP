@@ -243,7 +243,9 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
       assignedTo: typeof task.assignedTo === 'object' ? task.assignedTo._id : task.assignedTo,
       dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
       estimatedHours: task.estimatedHours || 0,
-      tags: task.tags || []
+      tags: Array.isArray(task.tags) && task.tags.length > 0 && typeof task.tags[0] === 'object' 
+        ? task.tags.map((t: any) => t.name) 
+        : (task.tags || [])
     });
     setIsEditDialogOpen(true);
   };

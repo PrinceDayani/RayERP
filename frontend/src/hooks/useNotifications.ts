@@ -162,7 +162,7 @@ export const useNotifications = () => {
       socket.off('system:alert');
       socket.off('root:notification');
     };
-  }, [socket, addNotification]);
+  }, [socket]);
 
   const addNotification = useCallback((notification: Notification) => {
     setNotifications(prev => {

@@ -49,7 +49,7 @@ export default function TaskBoard({ onEditTask, onCommentTask }: TaskBoardProps)
     try {
       setUpdatingTasks(prev => new Set(prev).add(taskId));
       await tasksAPI.updateStatus(taskId, newStatus);
-      actions.updateTaskLocal({ ...originalTask, status: newStatus });
+      actions.updateTaskLocal({ ...originalTask, status: newStatus as Task['status'] });
     } catch (error: any) {
       console.error('Error updating task status:', error);
       alert('Failed to update task status');

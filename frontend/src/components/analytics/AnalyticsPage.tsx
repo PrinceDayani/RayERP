@@ -8,7 +8,15 @@ import { RefreshCw, Users, FolderKanban, CheckSquare, TrendingUp, Activity, Targ
 import DateRangePicker from "@/components/analytics/DateRangePicker";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { analyticsApi } from "@/lib/api";
-import { ApiError } from "@/lib/api/analyticsAPI";
+// ApiError class for analytics errors
+class ApiError extends Error {
+  code: string;
+  constructor(message: string, code: string) {
+    super(message);
+    this.code = code;
+    this.name = 'ApiError';
+  }
+}
 
 interface EmployeeMetrics {
   total: number;

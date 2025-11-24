@@ -74,7 +74,6 @@ export const groupTasksByStatus = (tasks: Task[]) => {
     'in-progress': tasks.filter(t => t.status === 'in-progress'),
     review: tasks.filter(t => t.status === 'review'),
     completed: tasks.filter(t => t.status === 'completed'),
-    blocked: tasks.filter(t => t.status === 'blocked'),
   };
 };
 

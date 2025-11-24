@@ -2,10 +2,11 @@ import api from './api';
 import { Budget, BudgetTemplate, BudgetApproval } from '@/types/budget';
 
 export interface CreateBudgetRequest {
-  projectId: string;
+  projectId?: string;
   projectName: string;
   totalBudget: number;
   currency: string;
+  status?: 'draft' | 'pending' | 'approved' | 'rejected';
   categories: {
     name: string;
     type: 'labor' | 'materials' | 'equipment' | 'overhead';

@@ -46,7 +46,20 @@ export interface BudgetTemplate {
   name: string;
   description: string;
   projectType: string;
-  categories: Omit<BudgetCategory, '_id' | 'spentAmount'>[];
+  categories: Array<{
+    _id?: string;
+    name: string;
+    type: 'labor' | 'materials' | 'equipment' | 'overhead';
+    allocatedAmount: number;
+    items: Array<{
+      _id?: string;
+      name: string;
+      description: string;
+      quantity: number;
+      unitCost: number;
+      totalCost: number;
+    }>;
+  }>;
   isDefault: boolean;
   createdAt: string;
 }

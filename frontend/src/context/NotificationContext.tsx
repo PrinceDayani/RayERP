@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import io from 'socket.io-client';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 
 interface Notification {
   id: string;
@@ -92,7 +92,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       };
       
       addNotification(newNotification);
-      toast.warning(`Low stock alert: ${productName}`);
+      toast.error(`Low stock alert: ${productName}`);
     });
 
     // Listen for dashboard refresh

@@ -17,6 +17,12 @@ export interface Task {
     firstName: string;
     lastName: string;
   };
+  assignee?: {
+    _id: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+  };
   assignedBy: {
     _id: string;
     firstName: string;
@@ -25,7 +31,7 @@ export interface Task {
   dueDate: string;
   estimatedHours?: number;
   actualHours?: number;
-  tags?: { name: string; color: string }[];
+  tags?: string[] | { name: string; color: string }[];
   timeEntries?: Array<{
     user: string;
     startTime: string;
@@ -70,7 +76,10 @@ export interface CreateTaskData {
 export interface UpdateTaskData {
   title?: string;
   description?: string;
+  status?: 'todo' | 'in-progress' | 'review' | 'completed';
   assignedTo?: string;
+  assignedBy?: string;
+  project?: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
   dueDate?: string;
   estimatedHours?: number;
@@ -167,6 +176,12 @@ export const tasksAPI = {
   // Get task stats
   getStats: async () => {
     const response = await api.get('/tasks/stats');
+    return response.data;
+  },
+
+  // Get task templates
+  getTaskTemplates: async () => {
+    const response = await api.get('/tasks/templates');
     return response.data;
   },
 

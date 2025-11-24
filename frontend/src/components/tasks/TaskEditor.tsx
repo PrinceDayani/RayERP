@@ -78,7 +78,18 @@ export default function TaskEditor({ taskId, projectId, onSave, onCancel }: Task
     try {
       let savedTask;
       if (taskId) {
-        savedTask = await tasksAPI.update(taskId, formData);
+        const updateData = {
+          title: formData.title,
+          description: formData.description,
+          status: formData.status as 'todo' | 'in-progress' | 'review' | 'completed',
+          priority: formData.priority as 'low' | 'medium' | 'high' | 'critical',
+          dueDate: formData.dueDate,
+          estimatedHours: formData.estimatedHours,
+          assignedTo: formData.assignedTo,
+          assignedBy: formData.assignedBy,
+          project: formData.project
+        };
+        savedTask = await tasksAPI.update(taskId, updateData);
       } else {
         savedTask = await tasksAPI.create(formData as any);
       }

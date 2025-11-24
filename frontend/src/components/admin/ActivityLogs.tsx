@@ -79,12 +79,14 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
     const resources = ["user", "product", "order", "customer", "inventory", "system", "settings", "report"];
     const users = ["admin@example.com", "john@example.com", "jane@example.com", "manager@example.com"];
     const ipAddresses = ["192.168.1.1", "10.0.0.1", "172.16.0.1", "127.0.0.1", "45.123.45.67"];
+    const statuses: ('success' | 'error' | 'warning')[] = ['success', 'error', 'warning'];
     
     return Array.from({ length: count }, (_, i) => {
       const action = actions[Math.floor(Math.random() * actions.length)];
       const resource = resources[Math.floor(Math.random() * resources.length)];
       const userName = users[Math.floor(Math.random() * users.length)];
       const ipAddress = ipAddresses[Math.floor(Math.random() * ipAddresses.length)];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
       
       // Generate a timestamp within the last 30 days
       const date = new Date();
@@ -94,14 +96,17 @@ export function ActivityLogs({ isLoading }: ActivityLogsProps) {
         _id: (i + 1).toString(),
         action,
         resource,
+        resourceType: resource,
         details: `${action} ${resource} operation completed`,
         user: {
           _id: `user-${i}`,
           name: userName.split('@')[0],
           email: userName
         },
+        userName: userName.split('@')[0],
         timestamp: date.toISOString(),
         ipAddress,
+        status
       };
     }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   };

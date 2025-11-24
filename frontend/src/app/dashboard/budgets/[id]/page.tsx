@@ -29,7 +29,7 @@ export default function BudgetDetailPage() {
   const fetchBudget = async () => {
     try {
       const response = await getBudget(budgetId);
-      const budgetData = response?.data || response;
+      const budgetData = response;
       
       // Calculate derived properties
       const actualSpent = budgetData.categories.reduce((sum: number, cat: any) => sum + cat.spentAmount, 0);
