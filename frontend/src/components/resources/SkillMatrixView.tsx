@@ -37,7 +37,7 @@ export default function SkillMatrixView({ matrix, allSkills }: SkillMatrixViewPr
                   </td>
                   {row.skills.map((skillData) => (
                     <td key={skillData.skill} className="border p-2 text-center">
-                      {skillData.has ? (
+                      {skillData.level ? (
                         <Check className="w-5 h-5 text-green-600 mx-auto" />
                       ) : (
                         <X className="w-5 h-5 text-gray-300 mx-auto" />

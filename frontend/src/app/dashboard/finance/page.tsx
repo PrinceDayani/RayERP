@@ -39,9 +39,9 @@ export default function FinancePage() {
   };
 
   const coreModules = [
-    { title: 'General Ledger', description: 'Complete GL with currency support', icon: BookOpen, path: '/dashboard/finance/general-ledger', color: 'from-indigo-500 to-indigo-600', stat: 'Multi-currency', badge: 'New' },
+    { title: 'Master Ledger', description: 'All entries across all accounts', icon: BookOpen, path: '/dashboard/finance/master-ledger', color: 'from-indigo-500 to-indigo-600', stat: `${stats.entries} entries`, badge: 'New' },
     { title: 'Chart of Accounts', description: 'Account structure & hierarchy', icon: FolderOpen, path: '/dashboard/finance/chart-of-accounts', color: 'from-blue-500 to-blue-600', stat: `${stats.accounts} accounts` },
-    { title: 'Journal Entries', description: 'Record financial transactions', icon: FileText, path: '/dashboard/finance/journal-entry', color: 'from-green-500 to-green-600', stat: `${stats.entries} entries` },
+    { title: 'Journal Entries', description: 'Record financial transactions', icon: FileText, path: '/dashboard/finance/journal-entry', color: 'from-green-500 to-green-600', stat: 'Create new' },
     { title: 'Vouchers', description: 'Payment, Receipt, Contra, Sales, Purchase', icon: Receipt, path: '/dashboard/finance/vouchers', color: 'from-purple-500 to-purple-600', stat: '8 types', badge: 'Complete' },
     { title: 'Account Ledger', description: 'Transaction history by account', icon: BookOpen, path: '/dashboard/finance/account-ledger', color: 'from-cyan-500 to-cyan-600', stat: 'View ledger' }
   ];

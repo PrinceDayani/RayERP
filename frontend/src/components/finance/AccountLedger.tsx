@@ -11,6 +11,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Download, Filter, Plus, TrendingUp, TrendingDown, ArrowLeft, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface LedgerEntry {
   _id: string;
@@ -41,6 +42,7 @@ interface AccountLedgerProps {
 const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId }) => {
   const params = useParams();
   const router = useRouter();
+  const { formatAmount } = useCurrency();
   const accountId = propAccountId || (params.id as string);
   
   const [account, setAccount] = useState<Account | null>(null);
@@ -182,7 +184,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Current Balance</p>
-                    <p className="text-2xl font-bold mt-1">${account.currentBalance.toFixed(2)}</p>
+                    <p className="text-2xl font-bold mt-1">{formatAmount(account.currentBalance)}</p>
                   </div>
                   <Badge variant="outline" className="capitalize">{account.type}</Badge>
                 </div>
@@ -193,7 +195,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Debits</p>
-                    <p className="text-2xl font-bold mt-1 text-red-600">${totalDebits.toFixed(2)}</p>
+                    <p className="text-2xl font-bold mt-1 text-red-600">{formatAmount(totalDebits)}</p>
                   </div>
                   <TrendingUp className="w-8 h-8 text-red-600" />
                 </div>
@@ -204,7 +206,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Credits</p>
-                    <p className="text-2xl font-bold mt-1 text-green-600">${totalCredits.toFixed(2)}</p>
+                    <p className="text-2xl font-bold mt-1 text-green-600">{formatAmount(totalCredits)}</p>
                   </div>
                   <TrendingDown className="w-8 h-8 text-green-600" />
                 </div>
@@ -216,7 +218,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                   <div>
                     <p className="text-sm text-gray-600">Net Change</p>
                     <p className={`text-2xl font-bold mt-1 ${netChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      ${Math.abs(netChange).toFixed(2)}
+                      {formatAmount(Math.abs(netChange))}
                     </p>
                   </div>
                   <Badge variant={netChange >= 0 ? 'default' : 'destructive'}>
@@ -310,17 +312,17 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {entry.debit > 0 ? (
-                          <span className="text-red-600 font-semibold">${entry.debit.toFixed(2)}</span>
+                          <span className="text-red-600 font-semibold">{formatAmount(entry.debit)}</span>
                         ) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {entry.credit > 0 ? (
-                          <span className="text-green-600 font-semibold">${entry.credit.toFixed(2)}</span>
+                          <span className="text-green-600 font-semibold">{formatAmount(entry.credit)}</span>
                         ) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono font-bold">
                         <span className={entry.balance >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          ${entry.balance.toFixed(2)}
+                          {formatAmount(entry.balance)}
                         </span>
                       </TableCell>
                     </TableRow>
@@ -332,8 +334,8 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-600">Showing {entries.length} entries</span>
                     <div className="flex gap-4">
-                      <span className="text-gray-600">Total Debits: <span className="font-semibold text-red-600">${totalDebits.toFixed(2)}</span></span>
-                      <span className="text-gray-600">Total Credits: <span className="font-semibold text-green-600">${totalCredits.toFixed(2)}</span></span>
+                      <span className="text-gray-600">Total Debits: <span className="font-semibold text-red-600">{formatAmount(totalDebits)}</span></span>
+                      <span className="text-gray-600">Total Credits: <span className="font-semibold text-green-600">{formatAmount(totalCredits)}</span></span>
                     </div>
                   </div>
                 </div>

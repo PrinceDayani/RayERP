@@ -74,10 +74,13 @@ export default function InlineAllocationEditor({
 
     setIsValidating(true);
     
+    const selectedEmployee = employees.find(e => e._id === formData.employee);
+    const selectedProject = projects.find(p => p._id === formData.project);
+    
     const updatedAllocation = {
       _id: allocation._id,
-      employee: formData.employee,
-      project: formData.project,
+      employee: selectedEmployee || allocation.employee,
+      project: selectedProject || allocation.project,
       allocatedHours: formData.allocatedHours,
       startDate: format(formData.startDate, 'yyyy-MM-dd'),
       endDate: format(formData.endDate, 'yyyy-MM-dd'),

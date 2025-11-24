@@ -27,7 +27,7 @@ interface AllocationFiltersProps {
 
 export default function AllocationFilters({ filters, onFilterChange, activeFilters }: AllocationFiltersProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date } | undefined>();
 
   const handleFilterChange = (key: string, value: any) => {
     const newFilters = { ...activeFilters, [key]: value };
@@ -37,7 +37,7 @@ export default function AllocationFilters({ filters, onFilterChange, activeFilte
     onFilterChange(newFilters);
   };
 
-  const handleDateRangeChange = (range: { from?: Date; to?: Date }) => {
+  const handleDateRangeChange = (range: { from?: Date; to?: Date } | undefined) => {
     setDateRange(range);
     if (range.from && range.to) {
       onFilterChange({
@@ -49,7 +49,7 @@ export default function AllocationFilters({ filters, onFilterChange, activeFilte
   };
 
   const clearAllFilters = () => {
-    setDateRange({});
+    setDateRange(undefined);
     onFilterChange({});
   };
 
@@ -108,8 +108,8 @@ export default function AllocationFilters({ filters, onFilterChange, activeFilte
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange.from ? (
-                  dateRange.to ? (
+                {dateRange?.from ? (
+                  dateRange?.to ? (
                     <>
                       {format(dateRange.from, "LLL dd, y")} -{" "}
                       {format(dateRange.to, "LLL dd, y")}
@@ -126,9 +126,9 @@ export default function AllocationFilters({ filters, onFilterChange, activeFilte
               <Calendar
                 initialFocus
                 mode="range"
-                defaultMonth={dateRange.from}
-                selected={dateRange}
-                onSelect={handleDateRangeChange}
+                defaultMonth={dateRange?.from}
+                selected={dateRange as any}
+                onSelect={(range) => handleDateRangeChange(range || {})}
                 numberOfMonths={2}
               />
             </PopoverContent>

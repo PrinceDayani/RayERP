@@ -134,7 +134,7 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
   reference: String,
   
   lines: [{
-    account: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount', required: true },
+    account: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
     debit: { type: Number, default: 0 },
     credit: { type: Number, default: 0 },
     description: String,
@@ -183,7 +183,7 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
   
   budgetCheckPerformed: { type: Boolean, default: false },
   budgetWarnings: [{
-    account: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' },
+    account: { type: Schema.Types.ObjectId, ref: 'Account' },
     budgetAmount: Number,
     actualAmount: Number,
     variance: Number,

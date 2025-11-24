@@ -422,11 +422,12 @@ export const getJournalEntries = async (req: Request, res: Response) => {
     const skip = (Number(page) - 1) * Number(limit);
     
     const journalEntries = await JournalEntry.find(query)
-      .populate('lines.account', 'code name')
+      .populate('lines.account', 'code name type')
       .populate('createdBy', 'name email')
       .sort({ date: -1, entryNumber: -1 })
       .limit(Number(limit))
-      .skip(skip);
+      .skip(skip)
+      .lean();
 
     const total = await JournalEntry.countDocuments(query);
 
@@ -441,7 +442,11 @@ export const getJournalEntries = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error('Error fetching journal entries:', error);
-    res.status(500).json({ message: 'Error fetching journal entries' });
+    console.error('Full error:', error);
+    res.status(500).json({ 
+      message: 'Error fetching journal entries',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 

@@ -52,6 +52,10 @@ export default function LedgerPage() {
     }
   };
 
+  const handleRowClick = (accountId: string) => {
+    router.push(`/dashboard/finance/account-ledger/${accountId}`);
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -92,7 +96,11 @@ export default function LedgerPage() {
               </TableHeader>
               <TableBody>
                 {filteredAccounts.map((account) => (
-                  <TableRow key={account._id}>
+                  <TableRow 
+                    key={account._id} 
+                    className="cursor-pointer hover:bg-muted/50" 
+                    onClick={() => handleRowClick(account._id)}
+                  >
                     <TableCell className="font-mono">{account.code}</TableCell>
                     <TableCell>{account.name}</TableCell>
                     <TableCell className="capitalize">{account.type}</TableCell>
@@ -102,7 +110,10 @@ export default function LedgerPage() {
                     <TableCell className="text-right">
                       <Button
                         size="sm"
-                        onClick={() => router.push(`/dashboard/finance/account-ledger/${account._id}`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRowClick(account._id);
+                        }}
                       >
                         View Ledger
                       </Button>

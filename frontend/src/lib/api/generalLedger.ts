@@ -48,8 +48,8 @@ export interface ExchangeRate {
 
 // Accounts
 export const getAccounts = async (currency?: string) => {
-  const params = currency ? { currency } : {};
-  const response = await api.get('/general-ledger/accounts', { params });
+  const params = currency ? { currency } : undefined;
+  const response = await api.get('/general-ledger/accounts', params ? { params } : undefined);
   return response.data;
 };
 
@@ -70,7 +70,7 @@ export const deleteAccount = async (id: string) => {
 
 // Journal Entries
 export const getJournalEntries = async (filters?: any) => {
-  const response = await api.get('/general-ledger/journal-entries', { params: filters });
+  const response = await api.get('/general-ledger/journal-entries', filters ? { params: filters } : undefined);
   return response.data;
 };
 
@@ -85,7 +85,7 @@ export const updateJournalEntry = async (id: string, data: Partial<JournalEntry>
 };
 
 export const postJournalEntry = async (id: string) => {
-  const response = await api.post(`/general-ledger/journal-entries/${id}/post`);
+  const response = await api.post(`/general-ledger/journal-entries/${id}/post`, {});
   return response.data;
 };
 
@@ -130,12 +130,12 @@ export const updateExchangeRate = async (data: Partial<ExchangeRate>) => {
 // Reports
 export const getTrialBalance = async (currency?: string, date?: string) => {
   const params = { ...(currency && { currency }), ...(date && { date }) };
-  const response = await api.get('/general-ledger/trial-balance', { params });
+  const response = await api.get('/general-ledger/trial-balance', Object.keys(params).length > 0 ? { params } : undefined);
   return response.data;
 };
 
 export const getAccountLedger = async (accountId: string, filters?: any) => {
-  const response = await api.get(`/general-ledger/accounts/${accountId}/ledger`, { params: filters });
+  const response = await api.get(`/general-ledger/accounts/${accountId}/ledger`, filters ? { params: filters } : undefined);
   return response.data;
 };
 

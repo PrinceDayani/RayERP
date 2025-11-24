@@ -73,17 +73,25 @@ export const analyticsApi = {
 };
 
 export const api = {
-  async get(endpoint: string) {
-    const response = await fetch(`${API_BASE_URL}/api${endpoint}`);
+  async get(endpoint: string, options?: { params?: any }) {
+    const url = new URL(`${API_BASE_URL}/api${endpoint}`);
+    if (options?.params) {
+      Object.entries(options.params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          url.searchParams.append(key, String(value));
+        }
+      });
+    }
+    const response = await fetch(url.toString());
     if (!response.ok) throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
     return response.json();
   },
 
-  async post(endpoint: string, data: any) {
+  async post(endpoint: string, data?: any) {
     const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      body: data ? JSON.stringify(data) : undefined,
     });
     if (!response.ok) throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
     return response.json();
