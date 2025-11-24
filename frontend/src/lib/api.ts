@@ -82,36 +82,69 @@ export const api = {
         }
       });
     }
-    const response = await fetch(url.toString());
-    if (!response.ok) throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+    const token = localStorage.getItem('auth-token');
+    const response = await fetch(url.toString(), {
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('API Error:', { status: response.status, endpoint, error: errorData });
+      throw new ApiError(response.status, errorData.message || `HTTP error! status: ${response.status}`, errorData);
+    }
     return response.json();
   },
 
   async post(endpoint: string, data?: any) {
+    const token = localStorage.getItem('auth-token');
     const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
       body: data ? JSON.stringify(data) : undefined,
     });
-    if (!response.ok) throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('API Error:', { status: response.status, endpoint, error: errorData });
+      throw new ApiError(response.status, errorData.message || `HTTP error! status: ${response.status}`, errorData);
+    }
     return response.json();
   },
 
   async put(endpoint: string, data: any) {
+    const token = localStorage.getItem('auth-token');
     const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('API Error:', { status: response.status, endpoint, error: errorData });
+      throw new ApiError(response.status, errorData.message || `HTTP error! status: ${response.status}`, errorData);
+    }
     return response.json();
   },
 
   async delete(endpoint: string) {
+    const token = localStorage.getItem('auth-token');
     const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
       method: 'DELETE',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
     });
-    if (!response.ok) throw new ApiError(response.status, `HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('API Error:', { status: response.status, endpoint, error: errorData });
+      throw new ApiError(response.status, errorData.message || `HTTP error! status: ${response.status}`, errorData);
+    }
     return response.json();
   }
 };

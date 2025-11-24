@@ -501,28 +501,64 @@ export const createJournalEntry = async (req: Request, res: Response) => {
       });
     }
 
-    const lastEntry = await JournalEntry.findOne().sort({ entryNumber: -1 });
-    const nextNumber = lastEntry 
-      ? parseInt(lastEntry.entryNumber.replace('JE', '')) + 1 
-      : 1;
-    const entryNumber = `JE${nextNumber.toString().padStart(6, '0')}`;
-
     const entryDate = new Date(date);
-    const journalEntry = new JournalEntry({
-      entryNumber,
-      date: entryDate,
-      entryDate: entryDate,
-      reference: reference || '',
-      description,
-      lines: sanitizedLines,
-      totalDebit,
-      totalCredit,
-      periodYear: entryDate.getFullYear(),
-      periodMonth: entryDate.getMonth() + 1,
-      createdBy: userId
-    });
+    let journalEntry;
+    let retries = 5;
+    
+    while (retries > 0) {
+      try {
+        // Get all entry numbers to find the actual next available number
+        const existingNumbers = await JournalEntry.find({}, { entryNumber: 1 })
+          .sort({ entryNumber: -1 })
+          .limit(100)
+          .lean();
+        
+        const usedNumbers = new Set(
+          existingNumbers.map(e => parseInt(e.entryNumber.replace('JE', '')))
+        );
+        
+        let nextNumber = 1;
+        if (existingNumbers.length > 0) {
+          const lastNumber = parseInt(existingNumbers[0].entryNumber.replace('JE', ''));
+          nextNumber = lastNumber + 1;
+          
+          // Find first available number if there are gaps
+          while (usedNumbers.has(nextNumber)) {
+            nextNumber++;
+          }
+        }
+        
+        const entryNumber = `JE${nextNumber.toString().padStart(6, '0')}`;
 
-    await journalEntry.save();
+        journalEntry = new JournalEntry({
+          entryNumber,
+          date: entryDate,
+          entryDate: entryDate,
+          reference: reference || '',
+          description,
+          lines: sanitizedLines,
+          totalDebit,
+          totalCredit,
+          periodYear: entryDate.getFullYear(),
+          periodMonth: entryDate.getMonth() + 1,
+          createdBy: userId
+        });
+
+        await journalEntry.save();
+        break;
+      } catch (error: any) {
+        if (error.code === 11000 && retries > 1) {
+          retries--;
+          await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
+          continue;
+        }
+        throw error;
+      }
+    }
+    
+    if (!journalEntry) {
+      throw new Error('Failed to create journal entry after retries');
+    }
     
     await journalEntry.populate([
       { path: 'lines.account', select: 'code name' },

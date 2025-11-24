@@ -45,21 +45,39 @@ export default function VouchersPage() {
   useEffect(() => {
     fetchVouchers();
     fetchAccounts();
-    fetchStats();
   }, [filterType, filterStatus, searchTerm]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [vouchers]);
 
   const fetchVouchers = async () => {
     try {
       const params = new URLSearchParams();
-      if (filterType !== 'all') params.append('voucherType', filterType);
-      if (filterStatus !== 'all') params.append('status', filterStatus);
+      params.append('limit', '100');
       if (searchTerm) params.append('search', searchTerm);
       
-      const res = await fetch(`${API_URL}/api/vouchers?${params}`, {
+      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries?${params}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
-      setVouchers(data.data || []);
+      const entries = data.journalEntries || data.data || [];
+      
+      // Map journal entries to voucher format
+      const mappedVouchers = entries.map((entry: any) => ({
+        _id: entry._id,
+        voucherNumber: entry.entryNumber,
+        voucherType: 'journal',
+        date: entry.entryDate || entry.date,
+        partyName: entry.reference || '',
+        narration: entry.description,
+        totalAmount: entry.totalDebit || 0,
+        status: entry.isPosted ? 'posted' : 'draft',
+        createdAt: entry.createdAt,
+        lines: entry.lines
+      }));
+      
+      setVouchers(mappedVouchers);
     } catch (error) {
       console.error('Error fetching vouchers:', error);
     }
@@ -79,13 +97,19 @@ export default function VouchersPage() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/vouchers/stats`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
+      // Calculate stats from vouchers data
+      const statsData: any = {};
+      voucherTypes.forEach(type => {
+        const filtered = vouchers.filter(v => v.voucherType === type.value);
+        statsData[type.value] = {
+          count: filtered.length,
+          totalAmount: filtered.reduce((sum, v) => sum + (v.totalAmount || 0), 0),
+          posted: filtered.filter(v => v.status === 'posted').length
+        };
       });
-      const data = await res.json();
-      setStats(data.data || {});
+      setStats(statsData);
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error('Error calculating stats:', error);
     }
   };
 
@@ -144,18 +168,27 @@ export default function VouchersPage() {
         payload.invoiceDate = formData.invoiceDate;
       }
 
-      console.log('Sending payload:', payload);
-      const res = await fetch(`${API_URL}/api/vouchers`, {
+      // Convert to journal entry format
+      const journalPayload = {
+        date: payload.date,
+        reference: payload.reference || `${selectedType.toUpperCase()}-${Date.now()}`,
+        description: payload.narration,
+        lines: payload.lines
+      };
+
+      console.log('Sending journal entry payload:', journalPayload);
+      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(journalPayload)
       });
 
       const data = await res.json();
       console.log('Response:', { status: res.status, data });
+      console.log('Response headers:', Object.fromEntries(res.headers.entries()));
 
       if (res.ok) {
         toast({ title: 'Success', description: 'Voucher created successfully' });
@@ -164,7 +197,9 @@ export default function VouchersPage() {
         fetchVouchers();
         fetchStats();
       } else {
-        toast({ title: 'Error', description: data.message || 'Failed to create voucher', variant: 'destructive' });
+        console.error('Server error response:', data);
+        const errorMsg = data.message || data.error || JSON.stringify(data) || 'Failed to create voucher';
+        toast({ title: 'Error', description: errorMsg, variant: 'destructive' });
       }
     } catch (error) {
       console.error('Error creating voucher:', error);
