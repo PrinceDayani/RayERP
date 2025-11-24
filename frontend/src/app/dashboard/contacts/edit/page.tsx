@@ -39,7 +39,7 @@ function ContactEditContent() {
   
   const ContactForm = require('@/components/Forms/ContactForm').default;
   const { getContact, updateContact } = require('@/lib/api/index');
-  const { FiArrowLeft } = require('react-icons/fi');
+  const { ArrowLeft } = require('lucide-react');
 
   useEffect(() => {
     const fetchContact = async () => {
@@ -118,7 +118,7 @@ function ContactEditContent() {
           onClick={() => router.push('/dashboard/contact')}
           className="flex items-center text-blue-600 hover:text-blue-800"
         >
-          <FiArrowLeft className="mr-1" /> Back to Contacts
+          <ArrowLeft className="mr-1" /> Back to Contacts
         </button>
         <h1 className="text-2xl font-bold">Edit Contact</h1>
       </div>
