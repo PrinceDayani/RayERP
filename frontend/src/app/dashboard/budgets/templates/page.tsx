@@ -585,7 +585,7 @@ export default function BudgetTemplatesPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))
+                ))}
               </div>
 
               <div className="flex justify-end gap-2">
