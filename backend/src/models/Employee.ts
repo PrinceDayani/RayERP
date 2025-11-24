@@ -1,5 +1,14 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export type SkillLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+
+export interface ISkill {
+  skill: string;
+  level: SkillLevel;
+  yearsOfExperience?: number;
+  lastUpdated?: Date;
+}
+
 export interface IEmployee extends Document {
   employeeId: string;
   firstName: string;
@@ -24,7 +33,8 @@ export interface IEmployee extends Document {
     relationship: string;
     phone: string;
   };
-  skills: string[];
+  skills: string[]; // Legacy field for backward compatibility
+  skillsEnhanced: ISkill[]; // New enhanced skills field
   avatarUrl?: string;
   manager?: mongoose.Types.ObjectId;
   user: mongoose.Types.ObjectId;
@@ -56,7 +66,13 @@ const employeeSchema = new Schema<IEmployee>({
     relationship: String,
     phone: String
   },
-  skills: [String],
+  skills: [String], // Legacy field for backward compatibility
+  skillsEnhanced: [{
+    skill: { type: String, required: true },
+    level: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert'], required: true },
+    yearsOfExperience: { type: Number, min: 0 },
+    lastUpdated: { type: Date, default: Date.now }
+  }],
   avatarUrl: { type: String },
   manager: { type: Schema.Types.ObjectId, ref: 'Employee' },
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true }

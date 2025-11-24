@@ -557,14 +557,14 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
             <div className="space-y-4">
               <Label>Select Role</Label>
               <Select 
-                value={selectedRoles[0] || ""} 
-                onValueChange={(value) => setSelectedRoles(value ? [value] : [])}
+                value={selectedRoles[0] || "no-role"} 
+                onValueChange={(value) => setSelectedRoles(value && value !== "no-role" ? [value] : [])}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No Role</SelectItem>
+                  <SelectItem value="no-role">No Role</SelectItem>
                   {activeRoles.map((role) => (
                     <SelectItem key={role._id} value={role._id}>
                       <div>
