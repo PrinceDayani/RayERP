@@ -39,6 +39,46 @@ export interface Employee {
   departments?: string[];
 }
 
+export interface DepartmentAnalytics {
+  overview: {
+    totalEmployees: number;
+    totalProjects: number;
+    budget: number;
+    budgetUtilization: number;
+    activeProjects: number;
+    completedProjects: number;
+  };
+  employeeStats: {
+    byPosition: Record<string, number>;
+    byStatus: Record<string, number>;
+  };
+  projectStats: {
+    byStatus: Record<string, number>;
+    totalBudget: number;
+  };
+  activityTrends: {
+    totalActivities: number;
+    recentActivities: any[];
+    activityByType: Record<string, number>;
+  };
+  performance: {
+    employeeGrowth: number;
+    projectCompletionRate: string;
+    budgetEfficiency: string;
+  };
+}
+
+export interface ActivityLog {
+  _id: string;
+  timestamp: string;
+  userName: string;
+  action: string;
+  resource: string;
+  resourceType: string;
+  details: string;
+  status: 'success' | 'error' | 'warning';
+}
+
 export const departmentApi = {
   getAll: async (search?: string, status?: string) => {
     const params = new URLSearchParams();
@@ -115,6 +155,37 @@ export const departmentApi = {
 
   removePermission: async (id: string, permission: string) => {
     const { data } = await api.post(`/departments/${id}/permissions/remove`, { permission });
+    return data;
+  },
+
+  deleteWithConfirmation: async (id: string, confirmText: string) => {
+    const { data } = await api.delete(`/departments/${id}`, { data: { confirmText } });
+    return data;
+  },
+
+  getAnalytics: async (id: string) => {
+    const { data } = await api.get(`/departments/${id}/analytics`);
+    return data;
+  },
+
+  getProjects: async (id: string) => {
+    const { data } = await api.get(`/departments/${id}/projects`);
+    return data;
+  },
+
+  getNotifications: async (id: string) => {
+    const { data } = await api.get(`/departments/${id}/notifications`);
+    return data;
+  },
+
+  getActivityLogs: async (id: string, params?: { page?: number; limit?: number; action?: string; dateFrom?: string; dateTo?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.action) queryParams.append('action', params.action);
+    if (params?.dateFrom) queryParams.append('dateFrom', params.dateFrom);
+    if (params?.dateTo) queryParams.append('dateTo', params.dateTo);
+    const { data } = await api.get(`/departments/${id}/activity-logs?${queryParams.toString()}`);
     return data;
   },
 };

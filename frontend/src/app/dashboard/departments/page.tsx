@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, Building, Edit, Trash2, Users, Search, Filter, TrendingUp, Mail, Phone, MapPin, Calendar, BarChart3, Loader2, UserPlus, X, CheckCircle2, AlertCircle, Shield } from "lucide-react";
+import { Plus, Building, Edit, Trash2, Users, Search, Filter, TrendingUp, Mail, Phone, MapPin, Calendar, BarChart3, Loader2, UserPlus, X, CheckCircle2, AlertCircle, Shield, Activity, Bell, FolderOpen, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,15 @@ export default function DepartmentsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAnalyticsDialogOpen, setIsAnalyticsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [deptProjects, setDeptProjects] = useState<any[]>([]);
+  const [deptNotifications, setDeptNotifications] = useState<any[]>([]);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [selectedDept, setSelectedDept] = useState<Department | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -205,15 +214,31 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this department?')) return;
+  const handleDelete = (dept: Department) => {
+    setDepartmentToDelete(dept);
+    setDeleteConfirmText("");
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!departmentToDelete || deleteConfirmText !== departmentToDelete.name) {
+      toast({ title: "Error", description: "Please type the department name exactly to confirm deletion", variant: "destructive" });
+      return;
+    }
+    
     try {
-      await departmentApi.delete(id);
+      setSubmitting(true);
+      await departmentApi.deleteWithConfirmation(departmentToDelete._id, deleteConfirmText);
       toast({ title: "Success", description: "Department deleted successfully" });
+      setIsDeleteDialogOpen(false);
+      setDepartmentToDelete(null);
+      setDeleteConfirmText("");
       fetchDepartments();
       fetchStats();
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.message || "Failed to delete department", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -295,6 +320,50 @@ export default function DepartmentsPage() {
       toast({ title: "Success", description: "Permission removed" });
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.message || "Failed to remove permission", variant: "destructive" });
+    }
+  };
+
+  const openAnalyticsDialog = async (dept: Department) => {
+    setSelectedDept(dept);
+    try {
+      setLoading(true);
+      const [analyticsRes, projectsRes, notificationsRes, logsRes] = await Promise.all([
+        departmentApi.getAnalytics(dept._id),
+        departmentApi.getProjects(dept._id),
+        departmentApi.getNotifications(dept._id),
+        departmentApi.getActivityLogs(dept._id, { limit: 20 })
+      ]);
+      
+      setAnalytics(analyticsRes.data);
+      setDeptProjects(projectsRes.data);
+      setDeptNotifications(notificationsRes.data);
+      setActivityLogs(logsRes.data.logs || []);
+      setIsAnalyticsDialogOpen(true);
+    } catch (error: any) {
+      toast({ title: "Error", description: "Failed to load analytics", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openViewDialog = async (dept: Department) => {
+    setSelectedDept(dept);
+    try {
+      setLoading(true);
+      const [employeesRes, projectsRes, notificationsRes] = await Promise.all([
+        departmentApi.getEmployees(dept._id),
+        departmentApi.getProjects(dept._id),
+        departmentApi.getNotifications(dept._id)
+      ]);
+      
+      setDeptEmployees(Array.isArray(employeesRes.data) ? employeesRes.data : employeesRes.data?.data || []);
+      setDeptProjects(projectsRes.data);
+      setDeptNotifications(notificationsRes.data.slice(0, 10));
+      setIsViewDialogOpen(true);
+    } catch (error: any) {
+      toast({ title: "Error", description: "Failed to load department details", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -443,8 +512,16 @@ export default function DepartmentsPage() {
                     <p className="text-lg font-bold">{dept.permissions?.length || 0}</p>
                   </div>
                 </div>
-                <div className="flex space-x-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => openAssignDialog(dept)}>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={() => openViewDialog(dept)}>
+                    <Eye className="w-4 h-4 mr-1" />
+                    View
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openAnalyticsDialog(dept)}>
+                    <BarChart3 className="w-4 h-4 mr-1" />
+                    Analytics
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openAssignDialog(dept)}>
                     <UserPlus className="w-4 h-4 mr-1" />
                     Assign
                   </Button>
@@ -454,7 +531,7 @@ export default function DepartmentsPage() {
                   <Button variant="outline" size="sm" onClick={() => handleEdit(dept)}>
                     <Edit className="w-4 h-4" />
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(dept._id)}>
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(dept)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -850,6 +927,393 @@ export default function DepartmentsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsPermissionDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="w-5 h-5" />
+              Delete Department
+            </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the department and remove all associated data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <p className="text-sm font-medium text-destructive mb-2">
+                Department: {departmentToDelete?.name}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Employees: {departmentToDelete?.employeeCount} • Budget: {departmentToDelete && formatAmount(departmentToDelete.budget)}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmText" className="text-sm font-medium">
+                Type <span className="font-mono bg-muted px-1 rounded">{departmentToDelete?.name}</span> to confirm:
+              </Label>
+              <Input
+                id="confirmText"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Enter department name"
+                className="font-mono"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete} 
+              disabled={submitting || deleteConfirmText !== departmentToDelete?.name}
+            >
+              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Delete Department
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Analytics Dialog */}
+      <Dialog open={isAnalyticsDialogOpen} onOpenChange={setIsAnalyticsDialogOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              Analytics - {selectedDept?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Comprehensive analytics and insights for this department
+            </DialogDescription>
+          </DialogHeader>
+          {analytics && (
+            <Tabs defaultValue="overview" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="employees">Employees</TabsTrigger>
+                <TabsTrigger value="projects">Projects</TabsTrigger>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="overview" className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{analytics.overview.totalEmployees}</div>
+                      <p className="text-xs text-muted-foreground">Total Employees</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{analytics.overview.totalProjects}</div>
+                      <p className="text-xs text-muted-foreground">Total Projects</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{formatAmount(analytics.overview.budget)}</div>
+                      <p className="text-xs text-muted-foreground">Budget</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{analytics.performance.projectCompletionRate}%</div>
+                      <p className="text-xs text-muted-foreground">Completion Rate</p>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Employee Distribution</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {Object.entries(analytics.employeeStats.byPosition).map(([position, count]) => (
+                          <div key={position} className="flex justify-between items-center">
+                            <span className="text-sm">{position}</span>
+                            <Badge variant="outline">{count as number}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Project Status</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {Object.entries(analytics.projectStats.byStatus).map(([status, count]) => (
+                          <div key={status} className="flex justify-between items-center">
+                            <span className="text-sm capitalize">{status}</span>
+                            <Badge variant={status === 'completed' ? 'default' : 'secondary'}>{count as number}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="employees" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Employee Status Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      {Object.entries(analytics.employeeStats.byStatus).map(([status, count]) => (
+                        <div key={status} className="text-center p-4 bg-muted/50 rounded-lg">
+                          <div className="text-2xl font-bold">{count as number}</div>
+                          <p className="text-sm text-muted-foreground capitalize">{status}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="projects" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{analytics.overview.activeProjects}</div>
+                      <p className="text-xs text-muted-foreground">Active Projects</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{analytics.overview.completedProjects}</div>
+                      <p className="text-xs text-muted-foreground">Completed Projects</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{formatAmount(analytics.projectStats.totalBudget)}</div>
+                      <p className="text-xs text-muted-foreground">Project Budget</p>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Recent Projects</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {deptProjects.slice(0, 5).map((project) => (
+                        <div key={project._id} className="flex justify-between items-center p-2 border rounded">
+                          <div>
+                            <p className="font-medium text-sm">{project.name}</p>
+                            <p className="text-xs text-muted-foreground">{project.description}</p>
+                          </div>
+                          <Badge variant={project.status === 'completed' ? 'default' : 'secondary'}>
+                            {project.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="activity" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{analytics.activityTrends.totalActivities}</div>
+                      <p className="text-xs text-muted-foreground">Total Activities</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{Object.keys(analytics.activityTrends.activityByType).length}</div>
+                      <p className="text-xs text-muted-foreground">Activity Types</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold">{analytics.activityTrends.recentActivities.length}</div>
+                      <p className="text-xs text-muted-foreground">Recent Activities</p>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Activity Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {Object.entries(analytics.activityTrends.activityByType).map(([type, count]) => (
+                        <div key={type} className="flex justify-between items-center">
+                          <span className="text-sm capitalize">{type}</span>
+                          <Badge variant="outline">{count as number}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Recent Activity Log</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {activityLogs.map((log) => (
+                        <div key={log._id} className="flex items-start gap-2 p-2 border rounded text-sm">
+                          <Activity className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                          <div className="flex-1">
+                            <p className="font-medium">{log.action} - {log.resource}</p>
+                            <p className="text-xs text-muted-foreground">{log.details}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(log.timestamp).toLocaleString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAnalyticsDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Department Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              {selectedDept?.name} - Department Overview
+            </DialogTitle>
+            <DialogDescription>
+              View employees, projects, and notifications for this department
+            </DialogDescription>
+          </DialogHeader>
+          <Tabs defaultValue="employees" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="employees">Employees ({deptEmployees.length})</TabsTrigger>
+              <TabsTrigger value="projects">Projects ({deptProjects.length})</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications ({deptNotifications.length})</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="employees" className="space-y-4">
+              <div className="grid gap-4">
+                {deptEmployees.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No employees assigned</p>
+                  </div>
+                ) : (
+                  deptEmployees.map((employee) => (
+                    <Card key={employee._id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                              <Users className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{employee.firstName} {employee.lastName}</p>
+                              <p className="text-sm text-muted-foreground">{employee.position}</p>
+                              <p className="text-xs text-muted-foreground">{employee.email}</p>
+                            </div>
+                          </div>
+                          <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
+                            {employee.status}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="projects" className="space-y-4">
+              <div className="grid gap-4">
+                {deptProjects.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FolderOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No projects found</p>
+                  </div>
+                ) : (
+                  deptProjects.map((project) => (
+                    <Card key={project._id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium">{project.name}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
+                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                              <span>Budget: {formatAmount(project.budget || 0)}</span>
+                              <span>Start: {new Date(project.startDate).toLocaleDateString()}</span>
+                              {project.endDate && <span>End: {new Date(project.endDate).toLocaleDateString()}</span>}
+                            </div>
+                          </div>
+                          <Badge variant={project.status === 'completed' ? 'default' : project.status === 'active' ? 'secondary' : 'outline'}>
+                            {project.status}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="notifications" className="space-y-4">
+              <div className="grid gap-4">
+                {deptNotifications.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Bell className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No notifications</p>
+                  </div>
+                ) : (
+                  deptNotifications.map((notification) => (
+                    <Card key={notification._id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <Bell className="w-4 h-4 mt-1 text-muted-foreground" />
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{notification.action} - {notification.resource}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{notification.details}</p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {new Date(notification.timestamp).toLocaleString()} • {notification.userName}
+                            </p>
+                          </div>
+                          <Badge variant={notification.status === 'success' ? 'default' : notification.status === 'error' ? 'destructive' : 'secondary'}>
+                            {notification.status}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
               Close
             </Button>
           </DialogFooter>
