@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "./Navbar";
 import { 
   ChevronLeft, 
@@ -199,15 +200,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-red-50 to-red-100 dark:from-gray-800 dark:to-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="flex items-center justify-center">
-                  <div className="h-10 w-10 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center shadow-lg">
-                    <Building2 className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="ml-3">
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">RayERP</span>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Enterprise Solution</p>
-                  </div>
-                </div>
+                <Image src="/RAYlogo.webp" alt="RayERP Logo" width={180} height={60} className="object-contain" />
               </div>
             </div>
           </div>
@@ -238,22 +231,12 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex items-center justify-between">
             {!collapsed && (
               <div className="flex items-center space-x-3">
-                <div className="flex items-center justify-center">
-                  <div className="h-10 w-10 bg-gradient-to-br from-red-600 to-red-700 rounded-xl flex items-center justify-center shadow-lg">
-                    <Building2 className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="ml-3">
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">RayERP</span>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Enterprise Solution</p>
-                  </div>
-                </div>
+                <Image src="/RAYlogo.webp" alt="RayERP Logo" width={180} height={60} className="object-contain" />
               </div>
             )}
             {collapsed && (
               <div className="flex items-center justify-center w-full">
-                <div className="h-8 w-8 bg-gradient-to-br from-red-600 to-red-700 rounded-lg flex items-center justify-center shadow-lg">
-                  <Building2 className="h-4 w-4 text-white" />
-                </div>
+                <Image src="/RAYlogo.webp" alt="RayERP Logo" width={40} height={40} className="object-contain" />
               </div>
             )}
             <TooltipProvider>

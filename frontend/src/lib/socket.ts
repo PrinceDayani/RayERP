@@ -24,7 +24,13 @@ export const initializeSocket = async (token?: string): Promise<SocketType | nul
 
   // Check if sockets should be enabled
   if (!shouldEnableSocket()) {
-    console.log('🔌 Socket connections disabled in development');
+    console.log('🔌 Socket connections disabled');
+    return null;
+  }
+
+  // Disable sockets in production on AWS App Runner
+  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_ENABLE_SOCKET === 'false') {
+    console.log('🔌 Socket connections disabled in production');
     return null;
   }
 
