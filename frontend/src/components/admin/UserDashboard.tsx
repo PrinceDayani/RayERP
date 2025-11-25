@@ -93,53 +93,41 @@ const Dashboard = () => {
   // Refs
   const socketRef = useRef<any>(null);
 
-  // Fetch analytics and trends
+  // Fetch analytics and trends with real-time updates
   useEffect(() => {
     if (!isAuthenticated) return;
     
     let mounted = true;
     
-    Promise.all([
-      analyticsAPI.getAnalytics(),
-      trendsAPI.getTrends()
-    ]).then(([analyticsData, trendsData]) => {
-      console.log('Analytics Data:', analyticsData);
-      console.log('Trends Data:', trendsData);
-      if (mounted && analyticsData) {
-        // Ensure all required fields exist
-        const completeData = {
-          projectProgress: analyticsData.projectProgress || [],
-          taskDistribution: analyticsData.taskDistribution || [],
-          monthlyRevenue: analyticsData.monthlyRevenue || [
-            { month: 'Jan', revenue: 0, expenses: 0 },
-            { month: 'Feb', revenue: 0, expenses: 0 },
-            { month: 'Mar', revenue: 0, expenses: 0 },
-            { month: 'Apr', revenue: 0, expenses: 0 },
-            { month: 'May', revenue: 0, expenses: 0 },
-            { month: 'Jun', revenue: 0, expenses: 0 },
-            { month: 'Jul', revenue: 0, expenses: 0 },
-            { month: 'Aug', revenue: 0, expenses: 0 },
-            { month: 'Sep', revenue: 0, expenses: 0 },
-            { month: 'Oct', revenue: 0, expenses: 0 },
-            { month: 'Nov', revenue: 0, expenses: 0 },
-            { month: 'Dec', revenue: 0, expenses: 0 }
-          ],
-          teamProductivity: analyticsData.teamProductivity || [
-            { name: 'Development', completed: 0, pending: 0 },
-            { name: 'Design', completed: 0, pending: 0 },
-            { name: 'Marketing', completed: 0, pending: 0 },
-            { name: 'Sales', completed: 0, pending: 0 }
-          ],
-          recentActivity: analyticsData.recentActivity || []
-        };
-        setAnalytics(completeData);
-        if (trendsData) setTrends(trendsData);
+    const fetchData = async () => {
+      try {
+        const [analyticsData, trendsData] = await Promise.all([
+          analyticsAPI.getAnalytics(),
+          trendsAPI.getTrends()
+        ]);
+        
+        if (mounted && analyticsData) {
+          setAnalytics({
+            projectProgress: analyticsData.projectProgress || [],
+            taskDistribution: analyticsData.taskDistribution || [],
+            monthlyRevenue: analyticsData.monthlyRevenue || [],
+            teamProductivity: analyticsData.teamProductivity || [],
+            recentActivity: analyticsData.recentActivity || []
+          });
+          if (trendsData) setTrends(trendsData);
+        }
+      } catch (error) {
+        console.error("Error fetching analytics:", error);
       }
-    }).catch(error => {
-      console.error("Error fetching analytics:", error);
-    });
+    };
     
-    return () => { mounted = false; };
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // Refresh every 30s
+    
+    return () => { 
+      mounted = false;
+      clearInterval(interval);
+    };
   }, [isAuthenticated]);
 
   // Real-time activity feed listener
