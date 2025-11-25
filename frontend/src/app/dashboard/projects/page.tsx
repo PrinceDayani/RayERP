@@ -23,6 +23,7 @@ import employeesAPI, { type Employee } from "@/lib/api/employeesAPI";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import ProjectViews from "@/components/projects/ProjectViews";
 
 interface ProjectStats {
   totalProjects: number;
@@ -435,7 +436,7 @@ const ProjectManagementDashboard: React.FC = () => {
                       </Button>
                       <Button size="sm" variant="outline" className="flex-1 hover:bg-primary hover:text-primary-foreground"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
-                        <Coins className="h-3.5 w-3.5 mr-1.5" />
+                        <DollarSign className="h-3.5 w-3.5 mr-1.5" />
                         Budget
                       </Button>
                     </div>
@@ -447,45 +448,7 @@ const ProjectManagementDashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="projects">
-          <Card className="card-modern">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-primary" />
-                All Projects
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProjects.map((project) => (
-                  <Card key={project._id} className="card-modern hover-lift cursor-pointer group"
-                        onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
-                    <CardContent className="p-6 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
-                          <Briefcase className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground line-clamp-1">{project.name}</h3>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
-                      <div className="flex gap-2">
-                        <Badge className={getStatusColor(project.status)} variant="secondary">{project.status}</Badge>
-                        <Badge className={getPriorityColor(project.priority)}>{project.priority}</Badge>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">Progress</span>
-                          <span className="font-medium">{project.progress}%</span>
-                        </div>
-                        <Progress value={project.progress} className="h-1.5" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <ProjectViews projects={projects} onProjectsUpdate={setProjects} />
         </TabsContent>
 
         <TabsContent value="budgets">

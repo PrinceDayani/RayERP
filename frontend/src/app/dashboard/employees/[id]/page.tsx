@@ -18,6 +18,9 @@ import attendanceAPI from '@/lib/api/attendanceAPI';
 import leaveAPI from '@/lib/api/leaveAPI';
 import { toast } from '@/components/ui/use-toast';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import SkillMatrix from '@/components/employee/SkillMatrix';
+import ProjectHistory from '@/components/employee/ProjectHistory';
+import AttendanceInsights from '@/components/employee/AttendanceInsights';
 
 interface Employee {
   _id: string;
@@ -44,6 +47,8 @@ interface Employee {
     phone: string;
   };
   skills: string[];
+  projects?: any[];
+  skillsMatrix?: any[];
   createdAt: string;
   updatedAt: string;
 }
@@ -63,6 +68,8 @@ export default function EmployeeDetailPage() {
   });
   const [recentAttendance, setRecentAttendance] = useState([]);
   const [recentLeaves, setRecentLeaves] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [skillsMatrix, setSkillsMatrix] = useState([]);
 
   useEffect(() => {
     if (employeeId) {
@@ -71,6 +78,8 @@ export default function EmployeeDetailPage() {
       fetchLeaveBalance();
       fetchRecentAttendance();
       fetchRecentLeaves();
+      fetchProjects();
+      fetchSkillsMatrix();
     }
   }, [employeeId]);
 
@@ -131,6 +140,36 @@ export default function EmployeeDetailPage() {
     } catch (error) {
       console.error('Error fetching recent leaves:', error);
     }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      // This would be replaced with actual API call
+      const mockProjects = employee?.projects || [];
+      setProjects(mockProjects);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const fetchSkillsMatrix = async () => {
+    try {
+      // This would be replaced with actual API call
+      const mockSkills = employee?.skillsMatrix || [];
+      setSkillsMatrix(mockSkills);
+    } catch (error) {
+      console.error('Error fetching skills matrix:', error);
+    }
+  };
+
+  const handleProjectsUpdate = (updatedProjects: any[]) => {
+    setProjects(updatedProjects);
+    // Here you would also call API to update projects
+  };
+
+  const handleSkillsUpdate = (updatedSkills: any[]) => {
+    setSkillsMatrix(updatedSkills);
+    // Here you would also call API to update skills
   };
 
   const getStatusBadge = (status: string) => {
@@ -281,7 +320,7 @@ export default function EmployeeDetailPage() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 h-12 bg-muted/50 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-6 h-12 bg-muted/50 p-1 rounded-xl">
           <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <User className="w-4 h-4 mr-2" /> Overview
           </TabsTrigger>
@@ -290,6 +329,12 @@ export default function EmployeeDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="leaves" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Calendar className="w-4 h-4 mr-2" /> Leaves
+          </TabsTrigger>
+          <TabsTrigger value="projects" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Briefcase className="w-4 h-4 mr-2" /> Projects
+          </TabsTrigger>
+          <TabsTrigger value="skills" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Award className="w-4 h-4 mr-2" /> Skills
           </TabsTrigger>
           <TabsTrigger value="performance" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <BarChart3 className="w-4 h-4 mr-2" /> Performance
@@ -408,38 +453,18 @@ export default function EmployeeDetailPage() {
         </TabsContent>
 
         <TabsContent value="attendance" className="space-y-6">
-          {/* Attendance Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                <p className="text-3xl font-bold text-green-600">{attendanceStats.presentDays}</p>
-                <p className="text-sm text-muted-foreground">Present Days</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Clock className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                <p className="text-3xl font-bold text-yellow-600">{attendanceStats.lateDays}</p>
-                <p className="text-sm text-muted-foreground">Late Days</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Activity className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-3xl font-bold text-blue-600">{attendanceStats.totalHours.toFixed(0)}</p>
-                <p className="text-sm text-muted-foreground">Total Hours</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 text-center">
-                <TrendingUp className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-                <p className="text-3xl font-bold text-purple-600">{attendanceStats.averageHours.toFixed(1)}</p>
-                <p className="text-sm text-muted-foreground">Avg Hours/Day</p>
-              </CardContent>
-            </Card>
-          </div>
-
+          <AttendanceInsights 
+            employeeId={employeeId}
+            attendanceData={recentAttendance.map((record: any) => ({
+              date: record.date,
+              checkIn: record.checkIn ? new Date(record.checkIn).toTimeString().slice(0, 5) : undefined,
+              checkOut: record.checkOut ? new Date(record.checkOut).toTimeString().slice(0, 5) : undefined,
+              totalHours: record.totalHours,
+              status: record.status,
+              breakTime: record.breakTime || 0
+            }))}
+          />
+          
           {/* Recent Attendance */}
           <Card>
             <CardHeader>
@@ -514,6 +539,24 @@ export default function EmployeeDetailPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="projects">
+          <ProjectHistory
+            employeeId={employeeId}
+            projects={projects}
+            onProjectsUpdate={handleProjectsUpdate}
+            editable={true}
+          />
+        </TabsContent>
+
+        <TabsContent value="skills">
+          <SkillMatrix
+            employeeId={employeeId}
+            skills={skillsMatrix}
+            onSkillsUpdate={handleSkillsUpdate}
+            editable={true}
+          />
         </TabsContent>
 
         <TabsContent value="performance">

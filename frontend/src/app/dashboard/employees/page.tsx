@@ -35,6 +35,7 @@ import attendanceAPI from "@/lib/api/attendanceAPI";
 import leaveAPI, { Leave } from "@/lib/api/leaveAPI";
 import employeeReportAPI from "@/lib/api/employeeReportAPI";
 import { EmployeeList } from "@/components/employee";
+import EmployeeFilters from "@/components/employee/EmployeeFilters";
 
 interface LeaveCreateRequest {
   employee: string;
@@ -97,6 +98,14 @@ const EmployeeManagementDashboard = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    search: '',
+    department: '',
+    position: '',
+    status: '',
+    hireYear: '',
+    skills: []
+  });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -194,13 +203,43 @@ const EmployeeManagementDashboard = () => {
   };
 
   const filteredEmployees = employees.filter(employee => {
-    const searchLower = searchTerm.toLowerCase();
+    // Search filter
+    const searchLower = (filters.search || searchTerm).toLowerCase();
     const nameMatch = `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchLower);
     const idMatch = employee.employeeId.toLowerCase().includes(searchLower);
+    const emailMatch = employee.email.toLowerCase().includes(searchLower);
     const deptMatch = employee.department?.toLowerCase().includes(searchLower) || false;
     const deptsMatch = employee.departments?.some(dept => dept.toLowerCase().includes(searchLower)) || false;
-    return nameMatch || idMatch || deptMatch || deptsMatch;
+    
+    const searchMatches = !searchLower || nameMatch || idMatch || emailMatch || deptMatch || deptsMatch;
+    
+    // Department filter
+    const departmentMatches = !filters.department || 
+      employee.department === filters.department ||
+      employee.departments?.includes(filters.department);
+    
+    // Position filter
+    const positionMatches = !filters.position || employee.position === filters.position;
+    
+    // Status filter
+    const statusMatches = !filters.status || employee.status === filters.status;
+    
+    // Hire year filter
+    const hireYearMatches = !filters.hireYear || 
+      new Date(employee.hireDate).getFullYear().toString() === filters.hireYear;
+    
+    // Skills filter (would need skills data in employee object)
+    const skillsMatch = filters.skills.length === 0; // Placeholder for skills filtering
+    
+    return searchMatches && departmentMatches && positionMatches && statusMatches && hireYearMatches && skillsMatch;
   });
+
+  // Get unique values for filters
+  const departments = [...new Set(employees.flatMap(emp => 
+    emp.departments && emp.departments.length > 0 ? emp.departments : [emp.department]
+  ).filter(Boolean))];
+  const positions = [...new Set(employees.map(emp => emp.position).filter(Boolean))];
+  const skills = []; // Placeholder - would come from employee skills data
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -394,23 +433,23 @@ const EmployeeManagementDashboard = () => {
           </TabsContent>
 
           <TabsContent value="employees">
+            {/* Enhanced Filters */}
+            <EmployeeFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              departments={departments}
+              positions={positions}
+              skills={skills}
+            />
+            
             <Card className="card-modern">
               <CardHeader className="pb-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5 text-primary" />
-                    All Employees
+                    All Employees ({filteredEmployees.length})
                   </CardTitle>
                   <div className="flex gap-3 w-full sm:w-auto">
-                    <div className="relative flex-1 sm:flex-none">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search employees..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 w-full sm:w-64 bg-muted/50 border-0 focus:bg-background"
-                      />
-                    </div>
                     <Button onClick={() => router.push("/dashboard/employees/create")} className="btn-primary-gradient">
                       <Plus className="h-4 w-4 mr-2" />
                       Add Employee

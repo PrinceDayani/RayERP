@@ -24,6 +24,7 @@ import { toast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 import attendanceAPI, { TodayStats } from '@/lib/api/attendanceAPI';
 import employeeAPI from '@/lib/api/employeesAPI';
+import AttendanceDashboard from '@/components/employee/AttendanceDashboard';
 
 interface AttendanceRecord {
   _id: string;
@@ -487,78 +488,14 @@ const AttendanceManagement = () => {
           </TabsContent>
 
           <TabsContent value="records">
-            <Card>
-              <CardHeader>
-                <CardTitle>Attendance Records</CardTitle>
-                <div className="flex gap-4">
-                  <div>
-                    <Label>Date</Label>
-                    <Input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Employee</Label>
-                    <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="All employees" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All employees</SelectItem>
-                        {employees.map((emp) => (
-                          <SelectItem key={emp._id} value={emp._id}>
-                            {`${emp.firstName} ${emp.lastName}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Employee</th>
-                        <th className="text-left p-2">Date</th>
-                        <th className="text-left p-2">Check-in</th>
-                        <th className="text-left p-2">Check-out</th>
-                        <th className="text-left p-2">Hours</th>
-                        <th className="text-left p-2">Status</th>
-                        <th className="text-left p-2">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {attendance.map((record) => (
-                        <tr key={record._id} className="border-b hover:bg-gray-50">
-                          <td className="p-2">
-                            <div>
-                              <p className="font-medium">{record.employee.firstName} {record.employee.lastName}</p>
-                              <p className="text-sm text-gray-600">{record.employee.employeeId}</p>
-                            </div>
-                          </td>
-                          <td className="p-2">{new Date(record.date).toLocaleDateString()}</td>
-                          <td className="p-2">{new Date(record.checkIn).toLocaleTimeString()}</td>
-                          <td className="p-2">
-                            {record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : '-'}
-                          </td>
-                          <td className="p-2">{record.totalHours.toFixed(1)}h</td>
-                          <td className="p-2">
-                            <Badge className={getStatusColor(record.status)}>
-                              {record.status}
-                            </Badge>
-                          </td>
-                          <td className="p-2">{record.notes || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <AttendanceDashboard
+              attendanceData={attendance}
+              employees={employees}
+              onRefresh={refreshData}
+              onMarkAttendance={handleMarkAttendance}
+              onCheckIn={handleCheckIn}
+              onCheckOut={handleCheckOut}
+            />
           </TabsContent>
 
           <TabsContent value="checkin">

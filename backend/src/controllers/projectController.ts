@@ -1127,6 +1127,184 @@ export const getProjectActivity = async (req: Request, res: Response) => {
   }
 };
 
+export const addProjectInstruction = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { title, content, type, priority } = req.body;
+    const user = req.user;
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
+    const project = await Project.findById(id);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    const instruction = {
+      title,
+      content,
+      type: type || 'general',
+      priority: priority || 'medium',
+      createdBy: user._id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    project.instructions.push(instruction);
+    await project.save();
+    
+    const { io } = await import('../server');
+    io.emit('project:instruction:added', { projectId: id, instruction });
+    
+    res.status(201).json({ success: true, instruction });
+  } catch (error) {
+    res.status(500).json({ message: 'Error adding instruction', error });
+  }
+};
+
+export const updateProjectInstruction = async (req: Request, res: Response) => {
+  try {
+    const { id, instructionId } = req.params;
+    const { title, content, type, priority } = req.body;
+    
+    const project = await Project.findById(id);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    const instruction = project.instructions.id(instructionId);
+    if (!instruction) {
+      return res.status(404).json({ message: 'Instruction not found' });
+    }
+    
+    instruction.title = title || instruction.title;
+    instruction.content = content || instruction.content;
+    instruction.type = type || instruction.type;
+    instruction.priority = priority || instruction.priority;
+    instruction.updatedAt = new Date();
+    
+    await project.save();
+    
+    const { io } = await import('../server');
+    io.emit('project:instruction:updated', { projectId: id, instruction });
+    
+    res.json({ success: true, instruction });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating instruction', error });
+  }
+};
+
+export const deleteProjectInstruction = async (req: Request, res: Response) => {
+  try {
+    const { id, instructionId } = req.params;
+    
+    const project = await Project.findById(id);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    project.instructions.id(instructionId)?.remove();
+    await project.save();
+    
+    const { io } = await import('../server');
+    io.emit('project:instruction:deleted', { projectId: id, instructionId });
+    
+    res.json({ success: true, message: 'Instruction deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting instruction', error });
+  }
+};
+
+export const reorderTasks = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { tasks } = req.body;
+    
+    const project = await Project.findById(id);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+    
+    const updatePromises = tasks.map((task: any) => 
+      Task.findByIdAndUpdate(task.id, { 
+        order: task.order, 
+        column: task.column,
+        status: task.status 
+      })
+    );
+    
+    await Promise.all(updatePromises);
+    
+    const { io } = await import('../server');
+    io.emit('project:tasks:reordered', { projectId: id, tasks });
+    
+    res.json({ success: true, message: 'Tasks reordered successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error reordering tasks', error });
+  }
+};
+
+export const getProjectsByView = async (req: Request, res: Response) => {
+  try {
+    const { view } = req.query;
+    const user = req.user;
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
+    let query: any = {};
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    
+    if (roleName !== 'Root' && roleName !== 'Super Admin') {
+      const Employee = (await import('../models/Employee')).default;
+      const employee = await Employee.findOne({ user: user._id });
+      
+      const conditions: any[] = [
+        { members: user._id },
+        { owner: user._id }
+      ];
+      
+      if (employee) {
+        conditions.push({ team: employee._id });
+        conditions.push({ manager: employee._id });
+      }
+      
+      query = { $or: conditions };
+    }
+    
+    switch (view) {
+      case 'active':
+        query.status = 'active';
+        break;
+      case 'completed':
+        query.status = 'completed';
+        break;
+      case 'overdue':
+        query.endDate = { $lt: new Date() };
+        query.status = { $ne: 'completed' };
+        break;
+      case 'high-priority':
+        query.priority = { $in: ['high', 'critical'] };
+        break;
+    }
+    
+    const projects = await Project.find(query)
+      .populate('manager', 'firstName lastName')
+      .populate('team', 'firstName lastName')
+      .populate('owner', 'name email')
+      .populate('members', 'name email')
+      .populate('departments', 'name description')
+      .sort({ updatedAt: -1 });
+    
+    res.json(projects);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching projects by view', error });
+  }
+};
+
 export const getProjectTemplates = async (req: Request, res: Response) => {
   try {
     const templates = [

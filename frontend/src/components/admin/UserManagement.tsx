@@ -11,9 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { PlusIcon, SearchIcon, EditIcon, TrashIcon, UsersIcon, KeyRoundIcon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { PlusIcon, SearchIcon, EditIcon, TrashIcon, UsersIcon, KeyRoundIcon, ShieldIcon, ToggleLeftIcon, ToggleRightIcon } from "lucide-react";
 import adminAPI, { AdminUser } from "@/lib/api/adminAPI";
 import { compareRoles, getRoleDisplayName } from "@/lib/roleUtils";
+import { CreateRoleDialog } from "./CreateRoleDialog";
 
 interface UserManagementProps {
   isLoading: boolean;
@@ -22,14 +26,19 @@ interface UserManagementProps {
 export function UserManagement({ isLoading }: UserManagementProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [permissions, setPermissions] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("users");
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
+  const [isEditRoleOpen, setIsEditRoleOpen] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [bulkRole, setBulkRole] = useState("");
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+  const [currentRole, setCurrentRole] = useState<any>(null);
   const [resetPassword, setResetPassword] = useState({ newPassword: "", confirmPassword: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newUser, setNewUser] = useState({
@@ -40,45 +49,26 @@ export function UserManagement({ isLoading }: UserManagementProps) {
     confirmPassword: "",
   });
 
-  // Fetch roles from API
+  // Fetch data from API
   useEffect(() => {
-    const fetchRoles = async () => {
+    const fetchData = async () => {
       try {
-        const data = await adminAPI.getRoles();
-        console.log('Fetched roles:', data);
-        if (data && data.length > 0) {
-          setRoles(data);
-        } else {
-          console.warn('No roles returned from API');
-          toast.error('Failed to load roles. Please refresh the page.');
-        }
+        const [usersData, rolesData, permissionsData] = await Promise.all([
+          adminAPI.getUsers(),
+          adminAPI.getRoles(),
+          adminAPI.getPermissions()
+        ]);
+        setUsers(usersData);
+        setRoles(rolesData);
+        setPermissions(permissionsData);
       } catch (error) {
-        console.error("Failed to fetch roles:", error);
-        toast.error('Failed to load roles. Please check your connection.');
+        console.error("Failed to fetch data:", error);
+        toast.error('Failed to load data. Please check your connection.');
       }
     };
 
     if (!isLoading) {
-      fetchRoles();
-    }
-  }, [isLoading]);
-
-  // Fetch users from API
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        // Using adminAPI instead of direct fetch
-        const data = await adminAPI.getUsers();
-        console.log('Fetched users:', data);
-        setUsers(data);
-      } catch (error) {
-        console.error("Failed to fetch users:", error);
-        toast.error('Failed to load users. Please check your connection.');
-      }
-    };
-
-    if (!isLoading) {
-      fetchUsers();
+      fetchData();
     }
   }, [isLoading]);
 
@@ -89,6 +79,11 @@ export function UserManagement({ isLoading }: UserManagementProps) {
         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         roleStr.toLowerCase().includes(searchTerm.toLowerCase());
     }
+  );
+
+  const filteredRoles = roles.filter(role =>
+    role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    role.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleEditUser = (user: AdminUser) => {
@@ -325,6 +320,59 @@ export function UserManagement({ isLoading }: UserManagementProps) {
     }
   };
 
+  const handleRoleCreated = (createdRole: any) => {
+    setRoles([...roles, createdRole]);
+  };
+
+  const handleUpdateRole = async () => {
+    if (!currentRole) return;
+    try {
+      const updatedRole = await adminAPI.updateRole(currentRole._id, currentRole);
+      setRoles(roles.map(role => role._id === currentRole._id ? updatedRole : role));
+      setIsEditRoleOpen(false);
+      toast.success("Role updated successfully");
+    } catch (error) {
+      toast.error("Failed to update role");
+    }
+  };
+
+  const handleDeleteRole = async (roleId: string) => {
+    try {
+      await adminAPI.deleteRole(roleId);
+      setRoles(roles.filter(role => role._id !== roleId));
+      toast.success("Role deleted successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete role");
+    }
+  };
+
+  const handleToggleRoleStatus = async (roleId: string, isActive: boolean) => {
+    try {
+      await adminAPI.updateRole(roleId, { isActive });
+      setRoles(roles.map(role => role._id === roleId ? { ...role, isActive } : role));
+      toast.success(`Role ${isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      toast.error("Failed to update role status");
+    }
+  };
+
+  const groupedPermissions = permissions.reduce((acc, permission) => {
+    if (!acc[permission.category]) {
+      acc[permission.category] = [];
+    }
+    acc[permission.category].push(permission);
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  const handlePermissionChange = (permissionName: string, checked: boolean) => {
+    if (currentRole) {
+      const updatedPermissions = checked
+        ? [...currentRole.permissions, permissionName]
+        : currentRole.permissions.filter((p: string) => p !== permissionName);
+      setCurrentRole({ ...currentRole, permissions: updatedPermissions });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     if (dateString === "Never") return "Never";
     
@@ -383,7 +431,20 @@ export function UserManagement({ isLoading }: UserManagementProps) {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="users" className="flex items-center space-x-2">
+            <UsersIcon className="h-4 w-4" />
+            <span>Users</span>
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="flex items-center space-x-2">
+            <ShieldIcon className="h-4 w-4" />
+            <span>Roles</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="users" className="space-y-6 mt-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
@@ -866,6 +927,194 @@ export function UserManagement({ isLoading }: UserManagementProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        <TabsContent value="roles" className="space-y-6 mt-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="relative w-64">
+              <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search roles..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button onClick={() => setIsAddRoleOpen(true)}>
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Create Role
+            </Button>
+          </div>
+
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Permissions</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredRoles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                      No roles found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredRoles.map((role) => (
+                    <TableRow key={role._id}>
+                      <TableCell className="font-medium">{role.name}</TableCell>
+                      <TableCell>{role.description || "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {role.permissions.slice(0, 3).map((permission: string) => (
+                            <Badge key={permission} variant="secondary" className="text-xs">
+                              {permission}
+                            </Badge>
+                          ))}
+                          {role.permissions.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{role.permissions.length - 3} more
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={role.isActive ? "default" : "secondary"}>
+                          {role.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{new Date(role.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleToggleRoleStatus(role._id, !role.isActive)}
+                          >
+                            {role.isActive ? 
+                              <ToggleRightIcon className="h-4 w-4" /> : 
+                              <ToggleLeftIcon className="h-4 w-4" />
+                            }
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setCurrentRole({ ...role });
+                              setIsEditRoleOpen(true);
+                            }}
+                          >
+                            <EditIcon className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <TrashIcon className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Role</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{role.name}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteRole(role._id)}
+                                  className="bg-red-500 hover:bg-red-600"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Edit Role Dialog */}
+      <Dialog open={isEditRoleOpen} onOpenChange={setIsEditRoleOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Role</DialogTitle>
+            <DialogDescription>Update role details and permissions</DialogDescription>
+          </DialogHeader>
+          {currentRole && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-name" className="text-right">Name</Label>
+                <Input
+                  id="edit-name"
+                  className="col-span-3"
+                  value={currentRole.name}
+                  onChange={(e) => setCurrentRole({ ...currentRole, name: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-description" className="text-right">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  className="col-span-3"
+                  value={currentRole.description || ""}
+                  onChange={(e) => setCurrentRole({ ...currentRole, description: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right">Permissions</Label>
+                <div className="col-span-3 space-y-4">
+                  {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
+                    <div key={category} className="space-y-2">
+                      <h4 className="font-medium text-sm">{category}</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {categoryPermissions.map((permission) => (
+                          <div key={permission._id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`edit-${permission.name}`}
+                              checked={currentRole.permissions.includes(permission.name)}
+                              onCheckedChange={(checked) => 
+                                handlePermissionChange(permission.name, checked as boolean)
+                              }
+                            />
+                            <Label htmlFor={`edit-${permission.name}`} className="text-sm">
+                              {permission.name}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditRoleOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateRole}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Role Dialog */}
+      <CreateRoleDialog
+        open={isAddRoleOpen}
+        onOpenChange={setIsAddRoleOpen}
+        onRoleCreated={handleRoleCreated}
+      />
     </div>
   );
 }

@@ -13,6 +13,8 @@ export interface ITask extends Document {
   dueDate: Date;
   estimatedHours: number;
   actualHours: number;
+  order: number;
+  column: string;
   tags: {
     name: string;
     color: string;
@@ -89,6 +91,8 @@ const taskSchema = new Schema<ITask>({
   dueDate: { type: Date },
   estimatedHours: { type: Number, default: 0 },
   actualHours: { type: Number, default: 0 },
+  order: { type: Number, default: 0 },
+  column: { type: String, default: 'todo' },
   tags: [{
     name: { type: String, required: true },
     color: { type: String, default: '#3b82f6' }
@@ -149,5 +153,7 @@ taskSchema.index({ 'tags.name': 1 });
 taskSchema.index({ dueDate: 1, status: 1 });
 taskSchema.index({ assignedTo: 1, status: 1 });
 taskSchema.index({ project: 1, status: 1 });
+taskSchema.index({ project: 1, order: 1 });
+taskSchema.index({ project: 1, column: 1, order: 1 });
 
 export default mongoose.model<ITask>('Task', taskSchema);

@@ -28,6 +28,16 @@ export interface IRequiredSkill {
   priority: 'required' | 'preferred' | 'nice-to-have';
 }
 
+export interface IInstruction {
+  title: string;
+  content: string;
+  type: 'general' | 'task' | 'milestone' | 'safety' | 'quality';
+  priority: 'low' | 'medium' | 'high';
+  createdBy: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface IProject extends Document {
   name: string;
   description: string;
@@ -53,7 +63,8 @@ export interface IProject extends Document {
   dependencies: mongoose.Types.ObjectId[];
   template?: string;
   
-  requiredSkills: IRequiredSkill[]; // New field for project skill requirements
+  requiredSkills: IRequiredSkill[];
+  instructions: IInstruction[];
   
   createdAt: Date;
   updatedAt: Date;
@@ -93,6 +104,24 @@ const riskSchema = new Schema({
   identifiedDate: { type: Date, default: Date.now }
 }, { _id: true });
 
+const instructionSchema = new Schema({
+  title: { type: String, required: true },
+  content: { type: String, required: true },
+  type: { 
+    type: String, 
+    enum: ['general', 'task', 'milestone', 'safety', 'quality'], 
+    default: 'general' 
+  },
+  priority: { 
+    type: String, 
+    enum: ['low', 'medium', 'high'], 
+    default: 'medium' 
+  },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+}, { _id: true });
+
 const projectSchema = new Schema<IProject>({
   name: { type: String, required: true },
   description: { type: String, required: true },
@@ -130,7 +159,11 @@ const projectSchema = new Schema<IProject>({
     skill: { type: String, required: true },
     level: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert'], required: true },
     priority: { type: String, enum: ['required', 'preferred', 'nice-to-have'], default: 'required' }
-  }]
+  }],
+  instructions: [instructionSchema]
 }, { timestamps: true });
+
+projectSchema.index({ 'instructions.type': 1 });
+projectSchema.index({ 'instructions.priority': 1 });
 
 export default mongoose.model<IProject>('Project', projectSchema);

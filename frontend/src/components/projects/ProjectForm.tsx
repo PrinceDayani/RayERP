@@ -67,6 +67,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       ? project.departments.map(dept => typeof dept === 'object' ? (dept as any)._id : dept)
       : []
   );
+  const [instructions, setInstructions] = useState<Array<{title: string, content: string, type: string, priority: string}>>(
+    project?.instructions || []
+  );
+  const [newInstruction, setNewInstruction] = useState({ title: '', content: '', type: 'general', priority: 'medium' });
 
   useEffect(() => {
     fetchEmployees();
@@ -175,6 +179,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       team: selectedTeam.length > 0 ? selectedTeam : [],
       departments: selectedDepartments.length > 0 ? selectedDepartments : [],
       tags: tags.length > 0 ? tags : [],
+      instructions: instructions.filter(inst => inst.title.trim() && inst.content.trim()),
     };
 
     onSubmit(projectData);
@@ -216,6 +221,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       e.preventDefault();
       handleAddTag();
     }
+  };
+
+  const handleAddInstruction = () => {
+    if (newInstruction.title.trim() && newInstruction.content.trim()) {
+      setInstructions(prev => [...prev, { ...newInstruction }]);
+      setNewInstruction({ title: '', content: '', type: 'general', priority: 'medium' });
+    }
+  };
+
+  const handleRemoveInstruction = (index: number) => {
+    setInstructions(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -464,6 +480,80 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             ))}
           </div>
         )}
+      </div>
+
+      <div className="space-y-4">
+        <Label>Project Instructions</Label>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input
+              placeholder="Instruction title"
+              value={newInstruction.title}
+              onChange={(e) => setNewInstruction(prev => ({ ...prev, title: e.target.value }))}
+            />
+            <div className="flex gap-2">
+              <Select value={newInstruction.type} onValueChange={(value) => setNewInstruction(prev => ({ ...prev, type: value }))}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="task">Task</SelectItem>
+                  <SelectItem value="milestone">Milestone</SelectItem>
+                  <SelectItem value="safety">Safety</SelectItem>
+                  <SelectItem value="quality">Quality</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={newInstruction.priority} onValueChange={(value) => setNewInstruction(prev => ({ ...prev, priority: value }))}>
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Textarea
+              placeholder="Instruction content"
+              value={newInstruction.content}
+              onChange={(e) => setNewInstruction(prev => ({ ...prev, content: e.target.value }))}
+              rows={2}
+              className="flex-1"
+            />
+            <Button type="button" onClick={handleAddInstruction} variant="outline">
+              Add
+            </Button>
+          </div>
+          {instructions.length > 0 && (
+            <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+              {instructions.map((instruction, index) => (
+                <div key={index} className="flex items-start justify-between gap-2 p-2 bg-muted rounded">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium text-sm">{instruction.title}</h4>
+                      <Badge variant="outline" className="text-xs">{instruction.type}</Badge>
+                      <Badge variant="secondary" className="text-xs">{instruction.priority}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{instruction.content}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveInstruction(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-4 pt-4">

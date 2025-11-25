@@ -14,7 +14,11 @@ import {
   getDepartmentPermissions,
   addDepartmentPermission,
   removeDepartmentPermission,
-  getAllEmployeesForDepartment
+  getAllEmployeesForDepartment,
+  getDepartmentAnalytics,
+  getDepartmentProjects,
+  getDepartmentNotifications,
+  getDepartmentActivityLogs
 } from '../controllers/departmentController';
 import { protect } from '../middleware/auth.middleware';
 
@@ -28,6 +32,10 @@ router.get('/', getDepartments);
 router.get('/:id', getDepartmentById);
 router.get('/:id/employees', getDepartmentEmployees);
 router.get('/:id/permissions', getDepartmentPermissions);
+router.get('/:id/analytics', getDepartmentAnalytics);
+router.get('/:id/projects', getDepartmentProjects);
+router.get('/:id/notifications', getDepartmentNotifications);
+router.get('/:id/activity-logs', getDepartmentActivityLogs);
 router.post('/', createDepartment);
 router.post('/:id/assign-employees', assignEmployees);
 router.post('/:id/permissions/add', addDepartmentPermission);

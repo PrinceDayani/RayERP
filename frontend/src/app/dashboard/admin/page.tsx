@@ -9,10 +9,9 @@ import { SystemSettings } from "@/components/admin/SystemSettings";
 import { ActivityLogs } from "@/components/admin/ActivityLogs";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { AdminOverview } from "@/components/admin/AdminOverview";
-import { UnifiedRoleManagement } from "@/components/admin/UnifiedRoleManagement";
 import RoleGuard from "@/components/RoleGuard";
 import { UserRole } from "@/contexts/AuthContext";
-import { ShieldIcon, UsersIcon, SettingsIcon, ActivityIcon, LayoutDashboardIcon } from "lucide-react";
+import { UsersIcon, SettingsIcon, ActivityIcon, LayoutDashboardIcon } from "lucide-react";
 
 export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -41,18 +40,14 @@ export default function AdminPage() {
         <AdminStats isLoading={isLoading} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview" className="flex items-center space-x-2">
               <LayoutDashboardIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center space-x-2">
               <UsersIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Users</span>
-            </TabsTrigger>
-            <TabsTrigger value="roles" className="flex items-center space-x-2">
-              <ShieldIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Roles</span>
+              <span className="hidden sm:inline">Users & Roles</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center space-x-2">
               <SettingsIcon className="h-4 w-4" />
@@ -73,31 +68,14 @@ export default function AdminPage() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <UsersIcon className="h-5 w-5" />
-                  <span>User Management</span>
+                  <span>User & Role Management</span>
                 </CardTitle>
                 <CardDescription>
-                  Create, edit, and manage user accounts with permission controls
+                  Manage users, create roles, assign permissions, and control access
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <UserManagement isLoading={isLoading} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="roles" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <ShieldIcon className="h-5 w-5" />
-                  <span>Role & Permission Management</span>
-                </CardTitle>
-                <CardDescription>
-                  Define custom roles, set permissions, and manage access control
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <UnifiedRoleManagement isLoading={isLoading} />
               </CardContent>
             </Card>
           </TabsContent>

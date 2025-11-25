@@ -24,7 +24,12 @@ import {
   updateProjectMilestones,
   updateProjectRisks,
   calculateProjectProgress,
-  getProjectTemplates
+  getProjectTemplates,
+  addProjectInstruction,
+  updateProjectInstruction,
+  deleteProjectInstruction,
+  reorderTasks,
+  getProjectsByView
 } from '../controllers/projectController';
 import {
   getProjectFiles,
@@ -62,6 +67,7 @@ router.use(authenticateToken);
 // --- Core Project Routes ---
 router.get('/stats', getProjectStats);
 router.get('/timeline-data', getAllProjectsTimelineData);
+router.get('/by-view', getProjectsByView);
 router.get('/', getAllProjects);
 router.get('/:id', validateObjectId(), checkProjectAccess, getProjectById);
 router.post('/',
@@ -109,6 +115,12 @@ router.delete('/:id/tasks/:taskId',
   checkProjectAccess,
   deleteProjectTask
 );
+router.post('/:id/tasks/reorder',
+  validateObjectId(),
+  checkProjectAccess,
+  validateRequiredFields(['tasks']),
+  reorderTasks
+);
 
 // --- Member Management Routes ---
 router.get('/:id/members', validateObjectId(), checkProjectAccess, getProjectMembers);
@@ -134,6 +146,26 @@ router.get('/:id/activity', validateObjectId(), checkProjectAccess, getProjectAc
 router.get('/templates/list', getProjectTemplates);
 router.post('/:id/clone', validateObjectId(), checkProjectManagementAccess, cloneProjectController);
 router.get('/:id/export-template', validateObjectId(), checkProjectAccess, exportProjectAsTemplate);
+
+// --- Instructions Management Routes ---
+router.post('/:id/instructions',
+  validateObjectId(),
+  checkProjectAccess,
+  validateRequiredFields(['title', 'content']),
+  addProjectInstruction
+);
+router.put('/:id/instructions/:instructionId',
+  validateObjectId('id'),
+  validateObjectId('instructionId'),
+  checkProjectAccess,
+  updateProjectInstruction
+);
+router.delete('/:id/instructions/:instructionId',
+  validateObjectId('id'),
+  validateObjectId('instructionId'),
+  checkProjectAccess,
+  deleteProjectInstruction
+);
 
 // --- Milestone & Risk Management Routes ---
 router.put('/:id/milestones', validateObjectId(), checkProjectAccess, updateProjectMilestones);
