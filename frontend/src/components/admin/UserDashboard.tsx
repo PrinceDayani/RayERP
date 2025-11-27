@@ -35,7 +35,8 @@ import {
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
-  TrendingDown
+  TrendingDown,
+  Shield
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { initializeSocket, getSocket } from "@/lib/socket";
@@ -46,6 +47,7 @@ const EmployeeList = lazy(() => import('@/components/employee').then(m => ({ def
 const ProjectList = lazy(() => import('@/components/projects').then(m => ({ default: m.ProjectList })));
 const TaskList = lazy(() => import('@/components/tasks').then(m => ({ default: m.TaskList })));
 const FinanceAnalyticsDashboard = lazy(() => import('@/components/finance/FinanceAnalyticsDashboard'));
+import { UserManagement } from '@/components/admin/UserManagement';
 import { employeesAPI } from "@/lib/api/employeesAPI";
 import { projectsAPI } from "@/lib/api/projectsAPI";
 import { tasksAPI } from "@/lib/api/tasksAPI";
@@ -467,7 +469,7 @@ const Dashboard = () => {
 
         {/* Main Dashboard Content */}
         <Tabs defaultValue="overview" className="space-y-6 theme-transition" onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 w-full theme-card theme-shadow gap-1">
+          <TabsList className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-6 w-full theme-card theme-shadow gap-1">
             <TabsTrigger 
               value="overview" 
               className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -500,6 +502,12 @@ const Dashboard = () => {
                 Analytics
               </TabsTrigger>
             )}
+            <TabsTrigger 
+              value="roles"
+              className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Roles
+            </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -757,6 +765,32 @@ const Dashboard = () => {
               )}
             </TabsContent>
           )}
+
+          {/* Role Management Tab */}
+          <TabsContent value="roles" className="space-y-6">
+            {isAuthenticated ? (
+              <UserManagement isLoading={false} />
+            ) : (
+              <Card className="theme-card theme-shadow theme-transition">
+                <CardContent className="p-8 text-center theme-compact-padding">
+                  <Shield className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
+                    Role Management
+                  </h3>
+                  <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
+                    Login to manage roles and permissions.
+                  </p>
+                  <Button 
+                    onClick={() => router.push("/login")}
+                    size="lg"
+                    className="theme-button theme-touch-target theme-focusable theme-transition"
+                  >
+                    Login
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
           
 
         </Tabs>

@@ -62,7 +62,7 @@ export const getActivityLogs = async (filters?: ActivityFilters) => {
     
     const response = await fetch(`${API_URL}/api/activity?${params.toString()}`, {
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' }
+      headers: getAuthHeaders()
     });
     
     if (!response.ok) {
@@ -79,7 +79,7 @@ export const getActivityLogs = async (filters?: ActivityFilters) => {
 export const getActivityById = async (activityId: string): Promise<{ success: boolean; data: ActivityLog }> => {
   const response = await fetch(`${API_URL}/api/activity/${activityId}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' }
+    headers: getAuthHeaders()
   });
   
   if (!response.ok) throw new Error('Failed to fetch activity details');
@@ -89,7 +89,7 @@ export const getActivityById = async (activityId: string): Promise<{ success: bo
 export const getActivityStats = async (): Promise<{ success: boolean; data: ActivityStats }> => {
   const response = await fetch(`${API_URL}/api/activity/stats`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' }
+    headers: getAuthHeaders()
   });
   
   if (!response.ok) throw new Error('Failed to fetch activity stats');
@@ -108,7 +108,7 @@ export const createActivityLog = async (activityData: {
   const response = await fetch(`${API_URL}/api/activity`, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify(activityData)
   });
   
@@ -119,7 +119,7 @@ export const createActivityLog = async (activityData: {
 export const getBatchActivities = async (limit = 50) => {
   const response = await fetch(`${API_URL}/api/activity/batch?limit=${limit}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' }
+    headers: getAuthHeaders()
   });
   
   if (!response.ok) throw new Error('Failed to fetch batch activities');
@@ -139,7 +139,7 @@ export const getProjectActivity = async (projectId: string, filters?: ActivityFi
   
   const response = await fetch(`${API_URL}/api/projects/${projectId}/activity?${params.toString()}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' }
+    headers: getAuthHeaders()
   });
   
   if (!response.ok) throw new Error('Failed to fetch project activity');

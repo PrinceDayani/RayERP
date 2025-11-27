@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useAuth, Role } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "@/lib/toast";
-import { Shield, Plus, Trash2, Edit, X, Search, Eye } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/components/ui/use-toast";
+import { Shield, Plus, Trash2, Edit, Search, Eye, Users, Settings2, AlertCircle, CheckCircle2, Clock, Filter } from "lucide-react";
 
 const PERMISSIONS = {
   Projects: ['projects.view', 'projects.create', 'projects.update', 'projects.delete'],
@@ -29,27 +29,72 @@ const PERMISSIONS = {
   Settings: ['settings.view', 'settings.manage'],
 };
 
-export default function RolesPage() {
+export default function RoleManagement() {
   const { roles, fetchRoles, hasRole } = useAuth();
   const [openDialog, setOpenDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
   const [newRole, setNewRole] = useState({ name: '', description: '', level: 50 });
   const [editRole, setEditRole] = useState<any>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [bulkMode, setBulkMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewDialog, setViewDialog] = useState(false);
+  const [viewRole, setViewRole] = useState<any>(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [roleStats, setRoleStats] = useState({ total: 0, active: 0, system: 0, custom: 0 });
 
   useEffect(() => {
     fetchRoles();
+    calculateStats();
   }, []);
+
+  useEffect(() => {
+    calculateStats();
+  }, [roles]);
+
+  const calculateStats = () => {
+    const total = roles.length;
+    const active = roles.filter(r => !r.disabled).length;
+    const system = roles.filter(r => r.isDefault).length;
+    const custom = roles.filter(r => !r.isDefault).length;
+    setRoleStats({ total, active, system, custom });
+  };
+
+  const filteredRoles = roles.filter(role => {
+    const matchesSearch = role.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      role.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'active' && !role.disabled) ||
+      (statusFilter === 'system' && role.isDefault) ||
+      (statusFilter === 'custom' && !role.isDefault);
+    
+    return matchesSearch && matchesStatus;
+  });
 
   const handleCreateRole = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      if (!newRole.name.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Role name is required",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (newRole.level < 1 || newRole.level > 79) {
+        toast({
+          title: "Validation Error",
+          description: "Role level must be between 1 and 79",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rbac/roles`, {
         method: 'POST',
         headers: {
@@ -65,16 +110,28 @@ export default function RolesPage() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success('Role created successfully');
+        toast({
+          title: "Success",
+          description: "Role created successfully",
+          variant: "default"
+        });
         setNewRole({ name: '', description: '', level: 50 });
         setSelectedPermissions([]);
         setOpenDialog(false);
         fetchRoles();
       } else {
-        toast.error(data.message || 'Failed to create role');
+        toast({
+          title: "Error",
+          description: data.message || 'Failed to create role',
+          variant: "destructive"
+        });
       }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create role');
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to create role',
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -94,45 +151,25 @@ export default function RolesPage() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success('Role deleted successfully');
+        toast({
+          title: "Success",
+          description: "Role deleted successfully",
+          variant: "default"
+        });
         fetchRoles();
       } else {
-        toast.error(data.message || 'Failed to delete role');
+        toast({
+          title: "Error",
+          description: data.message || 'Failed to delete role',
+          variant: "destructive"
+        });
       }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to delete role');
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedRoles.length === 0) return;
-    if (!confirm(`Delete ${selectedRoles.length} role(s)?`)) return;
-
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rbac/roles/bulk-delete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
-        },
-        body: JSON.stringify({ roleIds: selectedRoles })
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to delete role',
+        variant: "destructive"
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success(data.message);
-        if (data.errors) {
-          data.errors.forEach((err: string) => toast.error(err));
-        }
-        setSelectedRoles([]);
-        setBulkMode(false);
-        fetchRoles();
-      } else {
-        toast.error(data.message || 'Failed to delete roles');
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to delete roles');
     }
   };
 
@@ -164,46 +201,31 @@ export default function RolesPage() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success('Role updated successfully');
+        toast({
+          title: "Success",
+          description: "Role updated successfully",
+          variant: "default"
+        });
         setEditDialog(false);
         setEditRole(null);
         fetchRoles();
       } else {
-        toast.error(data.message || 'Failed to update role');
+        toast({
+          title: "Error",
+          description: data.message || 'Failed to update role',
+          variant: "destructive"
+        });
       }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update role');
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to update role',
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
   };
-
-  const toggleRoleSelection = (roleId: string) => {
-    setSelectedRoles(prev => 
-      prev.includes(roleId) ? prev.filter(id => id !== roleId) : [...prev, roleId]
-    );
-  };
-
-  const toggleSelectAll = () => {
-    const selectableRoles = roles.filter(r => !r.isDefault && r.name?.toLowerCase() !== 'root');
-    if (selectedRoles.length === selectableRoles.length) {
-      setSelectedRoles([]);
-    } else {
-      setSelectedRoles(selectableRoles.map(r => r._id));
-    }
-  };
-
-  const cancelBulkMode = () => {
-    setBulkMode(false);
-    setSelectedRoles([]);
-  };
-
-  const selectableRolesCount = roles.filter(r => !r.isDefault && r.name?.toLowerCase() !== 'root').length;
-
-  const filteredRoles = roles.filter(role => 
-    role.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    role.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   if (!hasRole('Root')) {
     return (
@@ -221,11 +243,51 @@ export default function RolesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg border border-border/50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Roles</p>
+              <p className="text-2xl font-bold">{roleStats.total}</p>
+            </div>
+            <Shield className="h-8 w-8 text-blue-600" />
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-border/50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Active Roles</p>
+              <p className="text-2xl font-bold text-green-600">{roleStats.active}</p>
+            </div>
+            <CheckCircle2 className="h-8 w-8 text-green-600" />
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-border/50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">System Roles</p>
+              <p className="text-2xl font-bold text-purple-600">{roleStats.system}</p>
+            </div>
+            <Settings2 className="h-8 w-8 text-purple-600" />
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-border/50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Custom Roles</p>
+              <p className="text-2xl font-bold text-orange-600">{roleStats.custom}</p>
+            </div>
+            <Users className="h-8 w-8 text-orange-600" />
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-primary via-primary to-primary/70 bg-clip-text text-transparent">Role Management</h2>
           <p className="text-muted-foreground text-lg">
-            {bulkMode ? `${selectedRoles.length} of ${selectableRolesCount} roles selected` : 'Manage system roles and permissions'}
+            Manage system roles and permissions ({filteredRoles.length} of {roles.length} roles)
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -238,7 +300,23 @@ export default function RolesPage() {
               className="pl-10 bg-background border-border/50 focus:border-primary/50 transition-all duration-300"
             />
           </div>
-          <Button onClick={() => setOpenDialog(true)} className="bg-red-600 hover:bg-red-700 text-white">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="system">System</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => {
+            setNewRole({ name: '', description: '', level: 50 });
+            setSelectedPermissions([]);
+            setOpenDialog(true);
+          }} className="bg-red-600 hover:bg-red-700 text-white">
             <Plus className="h-4 w-4 mr-2" />
             Create Role
           </Button>
@@ -287,9 +365,19 @@ export default function RolesPage() {
                   </div>
                 </TableCell>
                 <TableCell className="py-4 px-6">
-                  <Badge className="bg-red-600 text-white hover:bg-red-700">
-                    Active
-                  </Badge>
+                  {role.isDefault ? (
+                    <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                      System
+                    </Badge>
+                  ) : role.disabled ? (
+                    <Badge className="bg-red-100 text-red-800 border-red-200">
+                      Inactive
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-green-100 text-green-800 border-green-200">
+                      Active
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="py-4 px-6 text-gray-600">
                   {new Date(role.createdAt || Date.now()).toLocaleDateString('en-US', {
@@ -300,7 +388,16 @@ export default function RolesPage() {
                 </TableCell>
                 <TableCell className="py-4 px-6">
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-gray-100">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 hover:bg-gray-100"
+                      onClick={() => {
+                        setViewRole(role);
+                        setViewDialog(true);
+                      }}
+                      title="View role details"
+                    >
                       <Eye className="h-4 w-4 text-gray-600" />
                     </Button>
                     {!role.isDefault && role.name?.toLowerCase() !== 'root' && (
@@ -332,8 +429,26 @@ export default function RolesPage() {
         {filteredRoles.length === 0 && (
           <div className="text-center py-16">
             <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No roles found</h3>
-            <p className="text-gray-500">Create your first role to get started.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {searchQuery || statusFilter !== 'all' ? 'No matching roles found' : 'No roles found'}
+            </h3>
+            <p className="text-gray-500">
+              {searchQuery || statusFilter !== 'all' 
+                ? 'Try adjusting your search or filter criteria' 
+                : 'Create your first role to get started.'}
+            </p>
+            {(searchQuery || statusFilter !== 'all') && (
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('all');
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -393,10 +508,56 @@ export default function RolesPage() {
                 </div>
               </TabsContent>
               
-              <TabsContent value="permissions" className="space-y-4 max-h-96 overflow-y-auto">
+              <TabsContent value="permissions" className="space-y-4 max-h-96 overflow-y-auto py-6">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    Selected: {selectedPermissions.length} permissions
+                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const allPerms = Object.values(PERMISSIONS).flat();
+                        setSelectedPermissions(allPerms);
+                      }}
+                    >
+                      Select All
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setSelectedPermissions([])}
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                </div>
                 {Object.entries(PERMISSIONS).map(([category, perms]) => (
-                  <div key={category} className="space-y-2">
-                    <h4 className="font-semibold text-sm">{category}</h4>
+                  <div key={category} className="space-y-2 border rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        {category}
+                      </h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const categorySelected = perms.every(p => selectedPermissions.includes(p));
+                          if (categorySelected) {
+                            setSelectedPermissions(selectedPermissions.filter(p => !perms.includes(p)));
+                          } else {
+                            setSelectedPermissions([...new Set([...selectedPermissions, ...perms])]);
+                          }
+                        }}
+                      >
+                        {perms.every(p => selectedPermissions.includes(p)) ? 'Deselect All' : 'Select All'}
+                      </Button>
+                    </div>
                     <div className="grid grid-cols-2 gap-2 pl-4">
                       {perms.map((perm) => (
                         <div key={perm} className="flex items-center space-x-2">
@@ -486,7 +647,7 @@ export default function RolesPage() {
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="permissions" className="space-y-4 max-h-96 overflow-y-auto">
+                <TabsContent value="permissions" className="space-y-4 max-h-96 overflow-y-auto py-6">
                   {Object.entries(PERMISSIONS).map(([category, perms]) => (
                     <div key={category} className="space-y-2">
                       <h4 className="font-semibold text-sm">{category}</h4>
@@ -524,6 +685,149 @@ export default function RolesPage() {
               </DialogFooter>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Role Dialog */}
+      <Dialog open={viewDialog} onOpenChange={setViewDialog}>
+        <DialogContent className="sm:max-w-[600px] bg-card/95 backdrop-blur-xl border border-border/50 shadow-2xl">
+          <DialogHeader className="space-y-3">
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent flex items-center gap-2">
+              <Shield className="h-6 w-6" />
+              {viewRole?.name}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Detailed information about this role
+            </DialogDescription>
+          </DialogHeader>
+          {viewRole && (
+            <div className="space-y-6 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-foreground">Role Name</Label>
+                  <p className="text-sm bg-muted/50 p-2 rounded">{viewRole.name}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-foreground">Level</Label>
+                  <p className="text-sm bg-muted/50 p-2 rounded">{viewRole.level}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground">Description</Label>
+                <p className="text-sm bg-muted/50 p-2 rounded">{viewRole.description || 'No description provided'}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground">Status</Label>
+                <div className="flex items-center gap-2">
+                  {viewRole.isDefault ? (
+                    <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                      <Settings2 className="h-3 w-3 mr-1" />
+                      System Role
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                      <Users className="h-3 w-3 mr-1" />
+                      Custom Role
+                    </Badge>
+                  )}
+                  {viewRole.disabled ? (
+                    <Badge className="bg-red-100 text-red-800 border-red-200">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Inactive
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-green-100 text-green-800 border-green-200">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Active
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Permissions ({viewRole.permissions?.length || 0})
+                </Label>
+                <div className="max-h-60 overflow-y-auto bg-muted/50 p-3 rounded border">
+                  {viewRole.permissions && viewRole.permissions.length > 0 ? (
+                    <div className="space-y-3">
+                      {Object.entries(PERMISSIONS).map(([category, perms]) => {
+                        const categoryPerms = perms.filter(p => viewRole.permissions.includes(p));
+                        if (categoryPerms.length === 0) return null;
+                        return (
+                          <div key={category} className="space-y-2">
+                            <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              {category} ({categoryPerms.length})
+                            </h5>
+                            <div className="grid grid-cols-2 gap-1">
+                              {categoryPerms.map((perm, index) => (
+                                <Badge key={index} variant="outline" className="text-xs justify-start bg-white">
+                                  {perm}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Shield className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        {viewRole.name === 'Root' ? 'Full system access (all permissions)' : 'No specific permissions assigned'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-foreground">Created</Label>
+                  <p className="text-sm bg-muted/50 p-2 rounded flex items-center gap-2">
+                    <Clock className="h-3 w-3" />
+                    {new Date(viewRole.createdAt || Date.now()).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-foreground">Last Updated</Label>
+                  <p className="text-sm bg-muted/50 p-2 rounded flex items-center gap-2">
+                    <Clock className="h-3 w-3" />
+                    {new Date(viewRole.updatedAt || viewRole.createdAt || Date.now()).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewDialog(false)}>
+              Close
+            </Button>
+            {viewRole && !viewRole.isDefault && viewRole.name?.toLowerCase() !== 'root' && (
+              <Button onClick={() => {
+                setViewDialog(false);
+                handleEditRole(viewRole);
+              }}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Role
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -45,10 +45,10 @@ export default function AdminPage() {
               <LayoutDashboardIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center space-x-2">
+            {/* <TabsTrigger value="users" className="flex items-center space-x-2">
               <UsersIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Users & Roles</span>
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger value="settings" className="flex items-center space-x-2">
               <SettingsIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Settings</span>

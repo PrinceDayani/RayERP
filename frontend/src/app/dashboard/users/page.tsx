@@ -48,8 +48,10 @@ import {
   Search,
   FileText,
   Check,
-  X
+  X,
+  Settings
 } from "lucide-react";
+import RoleManagement from './role-management';
 
 interface User {
   _id: string;
@@ -405,219 +407,248 @@ const UserManagement = () => {
           {/* Main Content Card */}
           <Card className="bg-card/95 backdrop-blur-sm border border-border/50 shadow-xl rounded-2xl overflow-hidden">
             <CardContent className="p-8">
-              {error && (
-                <div className="bg-destructive/10 border border-destructive/20 text-destructive px-6 py-4 rounded-xl mb-6 backdrop-blur-sm">
-                  <div className="flex items-center gap-2">
-                    <X className="h-4 w-4" />
-                    {error}
-                  </div>
-                </div>
-              )}
-              
-              <div className="mb-8 space-y-6">
-                <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
-                  <div className="relative w-full lg:w-96">
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      placeholder="Search users by name or email..."
-                      className="pl-12 h-12 bg-background/50 border-border/50 focus:bg-background focus:border-primary/50 transition-all duration-300 rounded-xl"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full lg:w-auto">
-                    <TabsList className="bg-muted/50 backdrop-blur-sm border border-border/50 rounded-xl p-1">
-                      <TabsTrigger value="all" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
-                        All Users
-                      </TabsTrigger>
-                      {hasMinimumRole(UserRole.ROOT) && (
-                        <TabsTrigger value={UserRole.ROOT} className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
-                          Root
+              <Tabs defaultValue="users" className="w-full">
+                <TabsList className="bg-muted/50 backdrop-blur-sm border border-border/50 rounded-xl p-1 mb-8">
+                  <TabsTrigger value="users" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300 flex items-center gap-2">
+                    <UserCog className="h-4 w-4" />
+                    User Management
+                  </TabsTrigger>
+                  {hasMinimumRole(UserRole.ROOT) && (
+                    <TabsTrigger value="roles" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300 flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      Role Management
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+                
+                <TabsContent value="users" className="space-y-6">
+                  {error && (
+                    <div className="bg-destructive/10 border border-destructive/20 text-destructive px-6 py-4 rounded-xl mb-6 backdrop-blur-sm">
+                      <div className="flex items-center gap-2">
+                        <X className="h-4 w-4" />
+                        {error}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="mb-8 space-y-6">
+                    <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
+                      <div className="relative w-full lg:w-96">
+                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                          placeholder="Search users by name or email..."
+                          className="pl-12 h-12 bg-background/50 border-border/50 focus:bg-background focus:border-primary/50 transition-all duration-300 rounded-xl"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                      </div>
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full lg:w-auto">
+                      <TabsList className="bg-muted/50 backdrop-blur-sm border border-border/50 rounded-xl p-1">
+                        <TabsTrigger value="all" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
+                          All Users
                         </TabsTrigger>
-                      )}
-                      {hasMinimumRole(UserRole.ROOT) && (
-                        <TabsTrigger value={UserRole.SUPER_ADMIN} className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
-                          Super Admin
+                        {hasMinimumRole(UserRole.ROOT) && (
+                          <TabsTrigger value={UserRole.ROOT} className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
+                            Root
+                          </TabsTrigger>
+                        )}
+                        {hasMinimumRole(UserRole.ROOT) && (
+                          <TabsTrigger value={UserRole.SUPER_ADMIN} className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
+                            Super Admin
+                          </TabsTrigger>
+                        )}
+                        {hasMinimumRole(UserRole.SUPER_ADMIN) && (
+                          <TabsTrigger value={UserRole.ADMIN} className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
+                            Admin
+                          </TabsTrigger>
+                        )}
+                        <TabsTrigger value={UserRole.NORMAL} className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
+                          Normal
                         </TabsTrigger>
-                      )}
-                      {hasMinimumRole(UserRole.SUPER_ADMIN) && (
-                        <TabsTrigger value={UserRole.ADMIN} className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
-                          Admin
-                        </TabsTrigger>
-                      )}
-                      <TabsTrigger value={UserRole.NORMAL} className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300">
-                        Normal
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                      </TabsList>
+                    </Tabs>
                 </div>
                 
-                <div className="flex flex-wrap gap-3">
-                  <Badge variant="outline" className="bg-muted/50 text-foreground border-border/50 px-3 py-1 rounded-full">
-                    Total: {users.length}
-                  </Badge>
-                  {activeTab !== 'all' && (
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 rounded-full">
-                      Filter: {activeTab}
-                    </Badge>
-                  )}
-                  {searchQuery && (
-                    <Badge variant="outline" className="bg-accent/50 text-accent-foreground border-accent/50 px-3 py-1 rounded-full">
-                      Search: {searchQuery}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              
-              {loading ? (
-                <div className="flex justify-center py-16">
-                  <div className="relative">
-                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-muted border-t-primary"></div>
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary/20 to-transparent animate-pulse"></div>
+                    <div className="flex flex-wrap gap-3">
+                      <Badge variant="outline" className="bg-muted/50 text-foreground border-border/50 px-3 py-1 rounded-full">
+                        Total: {users.length}
+                      </Badge>
+                      {activeTab !== 'all' && (
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 rounded-full">
+                          Filter: {activeTab}
+                        </Badge>
+                      )}
+                      {searchQuery && (
+                        <Badge variant="outline" className="bg-accent/50 text-accent-foreground border-accent/50 px-3 py-1 rounded-full">
+                          Search: {searchQuery}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ) : filteredUsers.length === 0 ? (
-                <div className="text-center py-16 bg-muted/20 rounded-2xl border border-border/50 backdrop-blur-sm">
-                  <div className="bg-muted/50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
-                    <FileText className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">No users found</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">
-                    {searchQuery 
-                      ? `No users match your search query "${searchQuery}"` 
-                      : `No users with role "${activeTab}"`}
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-border/50 overflow-hidden bg-card/50 backdrop-blur-sm shadow-lg">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30 border-b border-border/50 hover:bg-muted/40">
-                        <TableHead className="font-semibold text-foreground py-4 px-6">User</TableHead>
-                        <TableHead className="font-semibold text-foreground py-4 px-6">Role</TableHead>
-                        <TableHead className="hidden md:table-cell font-semibold text-foreground py-4 px-6">Created</TableHead>
-                        {hasMinimumRole(UserRole.SUPER_ADMIN) && (
-                          <TableHead className="font-semibold text-foreground py-4 px-6">Actions</TableHead>
-                        )}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUsers.map((user) => (
-                        <TableRow key={user._id} className="border-b border-border/30 hover:bg-muted/20 transition-colors duration-200">
-                          <TableCell className="py-4 px-6">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                                <span className="text-sm font-semibold text-primary">
-                                  {user.name.charAt(0).toUpperCase()}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="font-semibold text-foreground">{user.name}</p>
-                                <p className="text-sm text-muted-foreground">{user.email}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-4 px-6">
-                            {hasMinimumRole(UserRole.SUPER_ADMIN) && user._id !== currentUser?._id ? (
-                              <Select
-                                value={getRoleName(user.role)}
-                                onValueChange={(value) => handleRoleChange(user._id, value as UserRole)}
-                                disabled={
-                                  (getRoleName(user.role) === UserRole.ROOT && getRoleName(currentUser?.role) !== UserRole.ROOT) ||
-                                  (getRoleName(user.role) === UserRole.SUPER_ADMIN && getRoleName(currentUser?.role) !== UserRole.ROOT)
-                                }
-                              >
-                                <SelectTrigger className="w-[160px] bg-background/50 border-border/50 focus:bg-background focus:border-primary/50 transition-all duration-300">
-                                  <SelectValue>
-                                    <Badge className={`${getRoleBadgeColor(user.role)} border-0`}>
-                                      {getRoleName(user.role)}
-                                    </Badge>
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="bg-card/95 backdrop-blur-xl border border-border/50">
-                                  {roles.map((role) => {
-                                    const roleName = role.name;
-                                    if (roleName === 'Root' && !hasMinimumRole(UserRole.ROOT)) return null;
-                                    if (roleName === 'Superadmin' && !hasMinimumRole(UserRole.ROOT)) return null;
-                                    if (roleName === 'Admin' && !hasMinimumRole(UserRole.SUPER_ADMIN)) return null;
-                                    
-                                    return (
-                                      <SelectItem key={role._id} value={roleName} className="focus:bg-accent/50">
-                                        <div className="flex items-center">
-                                          <Shield className="h-4 w-4 mr-2 text-primary" />
-                                          {roleName}
-                                        </div>
-                                      </SelectItem>
-                                    );
-                                  })}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Badge className={`${getRoleBadgeColor(user.role)} border-0 px-3 py-1`}>
-                                {getRoleName(user.role)}
-                              </Badge>
+                  
+                  {loading ? (
+                    <div className="flex justify-center py-16">
+                      <div className="relative">
+                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-muted border-t-primary"></div>
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary/20 to-transparent animate-pulse"></div>
+                      </div>
+                    </div>
+                  ) : filteredUsers.length === 0 ? (
+                    <div className="text-center py-16 bg-muted/20 rounded-2xl border border-border/50 backdrop-blur-sm">
+                      <div className="bg-muted/50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+                        <FileText className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No users found</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto">
+                        {searchQuery 
+                          ? `No users match your search query "${searchQuery}"` 
+                          : `No users with role "${activeTab}"`}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-border/50 overflow-hidden bg-card/50 backdrop-blur-sm shadow-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/30 border-b border-border/50 hover:bg-muted/40">
+                            <TableHead className="font-semibold text-foreground py-4 px-6">User</TableHead>
+                            <TableHead className="font-semibold text-foreground py-4 px-6">Role</TableHead>
+                            <TableHead className="hidden md:table-cell font-semibold text-foreground py-4 px-6">Created</TableHead>
+                            {hasMinimumRole(UserRole.SUPER_ADMIN) && (
+                              <TableHead className="font-semibold text-foreground py-4 px-6">Actions</TableHead>
                             )}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell py-4 px-6 text-muted-foreground">
-                            {formatDate(user.createdAt)}
-                          </TableCell>
-                          {hasMinimumRole(UserRole.SUPER_ADMIN) && (
-                            <TableCell className="py-4 px-6">
-                              <div className="flex items-center gap-2">
-                                {user._id === currentUser?._id ? (
-                                  <Badge variant="outline" className="bg-accent/20 text-accent-foreground border-accent/30 px-3 py-1">
-                                    Current User
-                                  </Badge>
-                                ) : (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    className="bg-background/50 border-border/50 hover:bg-accent/50 transition-all duration-300 hover:scale-105"
-                                    onClick={() => {}}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredUsers.map((user) => (
+                            <TableRow key={user._id} className="border-b border-border/30 hover:bg-muted/20 transition-colors duration-200">
+                              <TableCell className="py-4 px-6">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                                    <span className="text-sm font-semibold text-primary">
+                                      {user.name.charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-foreground">{user.name}</p>
+                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-4 px-6">
+                                {hasMinimumRole(UserRole.SUPER_ADMIN) && user._id !== currentUser?._id ? (
+                                  <Select
+                                    value={getRoleName(user.role)}
+                                    onValueChange={(value) => handleRoleChange(user._id, value as UserRole)}
+                                    disabled={
+                                      (getRoleName(user.role) === UserRole.ROOT && getRoleName(currentUser?.role) !== UserRole.ROOT) ||
+                                      (getRoleName(user.role) === UserRole.SUPER_ADMIN && getRoleName(currentUser?.role) !== UserRole.ROOT)
+                                    }
                                   >
-                                    <FileText className="h-4 w-4" />
-                                    <span className="sr-only">View</span>
-                                  </Button>
+                                    <SelectTrigger className="w-[160px] bg-background/50 border-border/50 focus:bg-background focus:border-primary/50 transition-all duration-300">
+                                      <SelectValue>
+                                        <Badge className={`${getRoleBadgeColor(user.role)} border-0`}>
+                                          {getRoleName(user.role)}
+                                        </Badge>
+                                      </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-card/95 backdrop-blur-xl border border-border/50">
+                                      {roles.map((role) => {
+                                        const roleName = role.name;
+                                        if (roleName === 'Root' && !hasMinimumRole(UserRole.ROOT)) return null;
+                                        if (roleName === 'Superadmin' && !hasMinimumRole(UserRole.ROOT)) return null;
+                                        if (roleName === 'Admin' && !hasMinimumRole(UserRole.SUPER_ADMIN)) return null;
+                                        
+                                        return (
+                                          <SelectItem key={role._id} value={roleName} className="focus:bg-accent/50">
+                                            <div className="flex items-center">
+                                              <Shield className="h-4 w-4 mr-2 text-primary" />
+                                              {roleName}
+                                            </div>
+                                          </SelectItem>
+                                        );
+                                      })}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <Badge className={`${getRoleBadgeColor(user.role)} border-0 px-3 py-1`}>
+                                    {getRoleName(user.role)}
+                                  </Badge>
                                 )}
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                              </TableCell>
+                              <TableCell className="hidden md:table-cell py-4 px-6 text-muted-foreground">
+                                {formatDate(user.createdAt)}
+                              </TableCell>
+                              {hasMinimumRole(UserRole.SUPER_ADMIN) && (
+                                <TableCell className="py-4 px-6">
+                                  <div className="flex items-center gap-2">
+                                    {user._id === currentUser?._id ? (
+                                      <Badge variant="outline" className="bg-accent/20 text-accent-foreground border-accent/30 px-3 py-1">
+                                        Current User
+                                      </Badge>
+                                    ) : (
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="bg-background/50 border-border/50 hover:bg-accent/50 transition-all duration-300 hover:scale-105"
+                                        onClick={() => {
+                                          toast({
+                                            title: "User Details",
+                                            description: `${user.name} (${user.email}) - Role: ${getRoleName(user.role)}`
+                                          });
+                                        }}
+                                        title="View user details"
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        <span className="sr-only">View</span>
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
               
-              {/* Role Permissions Info */}
-              <div className="mt-8 p-6 bg-muted/20 rounded-2xl border border-border/50 backdrop-blur-sm">
-                <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-primary" />
-                  Role Permissions
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Badge className="bg-red-100 text-red-800 border-red-200 mt-0.5">Root</Badge>
-                      <p className="text-muted-foreground">Full system access, can create and manage all user types</p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Badge className="bg-purple-100 text-purple-800 border-purple-200 mt-0.5">Super Admin</Badge>
-                      <p className="text-muted-foreground">Extended administrative access, can manage Admins and Normal users</p>
+                  {/* Role Permissions Info */}
+                  <div className="mt-8 p-6 bg-muted/20 rounded-2xl border border-border/50 backdrop-blur-sm">
+                    <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-primary" />
+                      Role Permissions
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <Badge className="bg-red-100 text-red-800 border-red-200 mt-0.5">Root</Badge>
+                          <p className="text-muted-foreground">Full system access, can create and manage all user types</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <Badge className="bg-purple-100 text-purple-800 border-purple-200 mt-0.5">Super Admin</Badge>
+                          <p className="text-muted-foreground">Extended administrative access, can manage Admins and Normal users</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-200 mt-0.5">Admin</Badge>
+                          <p className="text-muted-foreground">Administrative access to manage system content and Normal users</p>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <Badge className="bg-green-100 text-green-800 border-green-200 mt-0.5">Normal</Badge>
+                          <p className="text-muted-foreground">Standard access to perform day-to-day operations</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Badge className="bg-blue-100 text-blue-800 border-blue-200 mt-0.5">Admin</Badge>
-                      <p className="text-muted-foreground">Administrative access to manage system content and Normal users</p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Badge className="bg-green-100 text-green-800 border-green-200 mt-0.5">Normal</Badge>
-                      <p className="text-muted-foreground">Standard access to perform day-to-day operations</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                </TabsContent>
+                
+                {hasMinimumRole(UserRole.ROOT) && (
+                  <TabsContent value="roles">
+                    <RoleManagement />
+                  </TabsContent>
+                )}
+              </Tabs>
             </CardContent>
           </Card>
         </div>
