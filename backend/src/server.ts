@@ -258,7 +258,7 @@ async function initializeRealTimeSystems() {
 }
 
 // MongoDB connection and server startup
-const PORT = Number(process.env.PORT);
+const PORT = Number(process.env.PORT) || 5000;
 const MONGODB_URI = process.env.MONGO_URI;
 
 // Optimize MongoDB connection

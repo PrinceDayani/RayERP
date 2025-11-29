@@ -39,11 +39,11 @@ export default function FinancePage() {
   };
 
   const coreModules = [
+    { title: 'Account Management', description: 'Universal account creation & management', icon: Building2, path: '/dashboard/finance/accounts', color: 'from-emerald-500 to-emerald-600', stat: `${stats.accounts} accounts`, badge: 'Enhanced' },
     { title: 'Master Ledger', description: 'All entries across all accounts', icon: BookOpen, path: '/dashboard/finance/master-ledger', color: 'from-indigo-500 to-indigo-600', stat: `${stats.entries} entries`, badge: 'New' },
     { title: 'Chart of Accounts', description: 'Account structure & hierarchy', icon: FolderOpen, path: '/dashboard/finance/chart-of-accounts', color: 'from-blue-500 to-blue-600', stat: `${stats.accounts} accounts` },
     { title: 'Journal Entries', description: 'Record financial transactions', icon: FileText, path: '/dashboard/finance/journal-entry', color: 'from-green-500 to-green-600', stat: 'Create new' },
-    { title: 'Vouchers', description: 'Payment, Receipt, Contra, Sales, Purchase', icon: Receipt, path: '/dashboard/finance/vouchers', color: 'from-purple-500 to-purple-600', stat: '8 types', badge: 'Complete' },
-    { title: 'Account Ledger', description: 'Transaction history by account', icon: BookOpen, path: '/dashboard/finance/account-ledger', color: 'from-cyan-500 to-cyan-600', stat: 'View ledger' }
+    { title: 'Vouchers', description: 'Payment, Receipt, Contra, Sales, Purchase', icon: Receipt, path: '/dashboard/finance/vouchers', color: 'from-purple-500 to-purple-600', stat: '8 types', badge: 'Complete' }
   ];
 
   const transactionModules = [
@@ -152,8 +152,8 @@ export default function FinancePage() {
           <h2 className="text-2xl font-bold text-foreground">Core Accounting</h2>
           <Badge variant="outline">Essential</Badge>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          {coreModules.map((module) => <ModuleCard key={module.path} module={module} />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {coreModules.map((module) => <ModuleCard key={module.path} module={module} size={module.title === 'Account Management' ? 'large' : 'normal'} />)}
         </div>
       </div>
 
