@@ -345,6 +345,14 @@ connectDB()
       logger.error('❌ Error initializing onboarding system:', error);
     }
     
+    // Initialize Account Types
+    try {
+      const { initializeAccountTypes } = await import('./utils/initializeAccountTypes');
+      await initializeAccountTypes();
+    } catch (error) {
+      logger.error('❌ Error initializing account types:', error);
+    }
+    
     // Initialize Finance & Accounting System
     try {
       const { initializeFinanceSystem, setupFinanceSocketEvents } = await import('./utils/initializeFinance');

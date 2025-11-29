@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Account } from '../models/Account';
+import { AccountType } from '../models/AccountType';
 import { generateEntryNumber } from '../utils/numberGenerator';
 
 // Bulk create accounts
@@ -71,6 +72,11 @@ export const createAccount = async (req: Request, res: Response) => {
     // Auto-generate account code if not provided
     if (!req.body.code) {
       req.body.code = await generateAccountCode(req.body.type);
+    }
+
+    // Set balance from openingBalance if provided
+    if (req.body.openingBalance && !req.body.balance) {
+      req.body.balance = req.body.openingBalance;
     }
 
     // Validate PAN format if provided
@@ -289,12 +295,29 @@ export const duplicateAccount = async (req: Request, res: Response) => {
 // Get account types for dropdown
 export const getAccountTypes = async (req: Request, res: Response) => {
   try {
-    const types = [
-      { value: 'asset', label: 'Asset', description: 'Resources owned by the business', nature: 'debit' },
-      { value: 'liability', label: 'Liability', description: 'Debts and obligations', nature: 'credit' },
-      { value: 'equity', label: 'Equity', description: 'Owner\'s equity and capital', nature: 'credit' },
-      { value: 'revenue', label: 'Revenue', description: 'Income and sales', nature: 'credit' },
-      { value: 'expense', label: 'Expense', description: 'Costs and expenses', nature: 'debit' }
+    // Get custom types from database
+    const customTypes = await AccountType.find({ isActive: true }).sort({ name: 1 });
+    
+    // Default system types
+    const systemTypes = [
+      { value: 'asset', label: 'Asset', description: 'Resources owned by the business', nature: 'debit', isSystem: true },
+      { value: 'liability', label: 'Liability', description: 'Debts and obligations', nature: 'credit', isSystem: true },
+      { value: 'equity', label: 'Equity', description: 'Owner\'s equity and capital', nature: 'credit', isSystem: true },
+      { value: 'revenue', label: 'Revenue', description: 'Income and sales', nature: 'credit', isSystem: true },
+      { value: 'expense', label: 'Expense', description: 'Costs and expenses', nature: 'debit', isSystem: true }
+    ];
+    
+    // Combine system and custom types
+    const allTypes = [
+      ...systemTypes,
+      ...customTypes.map(t => ({
+        _id: t._id,
+        value: t.value,
+        label: t.name,
+        description: t.description,
+        nature: t.nature,
+        isSystem: false
+      }))
     ];
     
     // Get count for each type
@@ -302,12 +325,131 @@ export const getAccountTypes = async (req: Request, res: Response) => {
       { $group: { _id: '$type', count: { $sum: 1 } } }
     ]);
     
-    const typesWithCounts = types.map(type => {
+    const typesWithCounts = allTypes.map(type => {
       const count = counts.find(c => c._id === type.value)?.count || 0;
       return { ...type, count };
     });
     
     res.json({ success: true, data: typesWithCounts });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Create custom account type
+export const createAccountType = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { name, description, nature } = req.body;
+    
+    // Validation
+    if (!name || !nature) {
+      return res.status(400).json({ success: false, message: 'Name and nature are required' });
+    }
+
+    if (name.length < 2 || name.length > 50) {
+      return res.status(400).json({ success: false, message: 'Name must be between 2 and 50 characters' });
+    }
+
+    if (!['debit', 'credit'].includes(nature)) {
+      return res.status(400).json({ success: false, message: 'Nature must be debit or credit' });
+    }
+
+    if (description && description.length > 200) {
+      return res.status(400).json({ success: false, message: 'Description must be less than 200 characters' });
+    }
+
+    // Sanitize and generate value from name
+    const sanitizedName = name.trim();
+    const value = sanitizedName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+
+    if (!value) {
+      return res.status(400).json({ success: false, message: 'Invalid account type name' });
+    }
+
+    // Check if type already exists
+    const existing = await AccountType.findOne({ 
+      $or: [
+        { name: { $regex: new RegExp(`^${sanitizedName}$`, 'i') } }, 
+        { value }
+      ] 
+    });
+    
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Account type already exists' });
+    }
+
+    const accountType = new AccountType({
+      name: sanitizedName,
+      value,
+      description: description?.trim(),
+      nature,
+      createdBy: req.user.id
+    });
+
+    await accountType.save();
+    res.status(201).json({ success: true, data: accountType, message: 'Account type created successfully' });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Update account type
+export const updateAccountType = async (req: Request, res: Response) => {
+  try {
+    const accountType = await AccountType.findById(req.params.id);
+    if (!accountType) {
+      return res.status(404).json({ success: false, message: 'Account type not found' });
+    }
+
+    if (accountType.isSystem) {
+      return res.status(403).json({ success: false, message: 'Cannot modify system account types' });
+    }
+
+    const { name, description, nature } = req.body;
+    
+    if (nature && !['debit', 'credit'].includes(nature)) {
+      return res.status(400).json({ success: false, message: 'Nature must be debit or credit' });
+    }
+
+    if (name) accountType.name = name;
+    if (description !== undefined) accountType.description = description;
+    if (nature) accountType.nature = nature;
+
+    await accountType.save();
+    res.json({ success: true, data: accountType, message: 'Account type updated successfully' });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Delete account type
+export const deleteAccountType = async (req: Request, res: Response) => {
+  try {
+    const accountType = await AccountType.findById(req.params.id);
+    if (!accountType) {
+      return res.status(404).json({ success: false, message: 'Account type not found' });
+    }
+
+    if (accountType.isSystem) {
+      return res.status(403).json({ success: false, message: 'Cannot delete system account types' });
+    }
+
+    // Check if any accounts use this type
+    const accountsUsingType = await Account.countDocuments({ type: accountType.value });
+    if (accountsUsingType > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Cannot delete account type. ${accountsUsingType} accounts are using this type.` 
+      });
+    }
+
+    accountType.isActive = false;
+    await accountType.save();
+    res.json({ success: true, message: 'Account type deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

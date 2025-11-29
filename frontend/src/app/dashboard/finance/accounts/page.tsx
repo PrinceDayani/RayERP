@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import UniversalAccountCreator from '@/components/finance/UniversalAccountCreator';
+import FinanceAccountCreationForm from '@/components/finance/AccountCreationForm';
 import { 
   Plus, 
   Search, 
@@ -56,6 +57,7 @@ interface Account {
 }
 
 export default function AccountsPage() {
+  const router = useRouter();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -216,7 +218,7 @@ export default function AccountsPage() {
                 <DialogTitle>Create New Account</DialogTitle>
               </DialogHeader>
               <div className="p-4">
-                <UniversalAccountCreator
+                <FinanceAccountCreationForm
                   onAccountCreated={(account) => {
                     setShowCreateDialog(false);
                     setDuplicateAccount(null);
@@ -336,7 +338,7 @@ export default function AccountsPage() {
                 </TableHeader>
                 <TableBody>
                   {accounts.map((account) => (
-                    <TableRow key={account._id}>
+                    <TableRow key={account._id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/dashboard/finance/account-ledger/${account._id}`)}>
                       <TableCell className="font-mono text-sm">
                         {account.code}
                       </TableCell>
@@ -411,7 +413,10 @@ export default function AccountsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setSelectedAccount(account)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedAccount(account);
+                            }}
                             title="View details"
                           >
                             <Eye className="w-4 h-4" />
@@ -419,7 +424,8 @@ export default function AccountsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setDuplicateAccount(account);
                               setShowCreateDialog(true);
                             }}
@@ -430,7 +436,10 @@ export default function AccountsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteAccount(account._id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAccount(account._id);
+                            }}
                             title="Deactivate account"
                           >
                             <Trash2 className="w-4 h-4" />

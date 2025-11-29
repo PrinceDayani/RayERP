@@ -1588,3 +1588,55 @@ export const recalculateBalances = async (req: Request, res: Response) => {
   }
 };
 
+
+export const exportInvoice = async (req: Request, res: Response) => {
+  try {
+    const { entryIds, format, accountId } = req.body;
+    
+    if (!entryIds || !Array.isArray(entryIds) || entryIds.length === 0) {
+      return res.status(400).json({ message: 'Entry IDs are required' });
+    }
+
+    const account = await Account.findById(accountId);
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+
+    // Get journal entries for selected IDs
+    const entries = await JournalEntry.find({
+      _id: { $in: entryIds }
+    }).sort({ entryDate: 1 });
+
+    // Generate simple text invoice
+    let content = `INVOICE\n\n`;
+    content += `Account: ${account.code} - ${account.name}\n`;
+    content += `Generated: ${new Date().toLocaleDateString()}\n\n`;
+    content += `${'='.repeat(80)}\n\n`;
+    
+    let totalDebit = 0, totalCredit = 0;
+    
+    for (const entry of entries) {
+      const line = entry.lines.find((l: any) => l.account?.toString() === accountId);
+      if (line) {
+        content += `Date: ${entry.entryDate?.toLocaleDateString() || entry.date?.toLocaleDateString()}\n`;
+        content += `Entry: ${entry.entryNumber}\n`;
+        content += `Description: ${line.description || entry.description}\n`;
+        content += `Debit: ${line.debit.toFixed(2)} | Credit: ${line.credit.toFixed(2)}\n`;
+        content += `${'-'.repeat(80)}\n`;
+        totalDebit += line.debit;
+        totalCredit += line.credit;
+      }
+    }
+    
+    content += `\nTotal Debit: ${totalDebit.toFixed(2)}\n`;
+    content += `Total Credit: ${totalCredit.toFixed(2)}\n`;
+    content += `Net: ${(totalDebit - totalCredit).toFixed(2)}\n`;
+
+    res.setHeader('Content-Type', format === 'pdf' ? 'application/pdf' : 'image/jpeg');
+    res.setHeader('Content-Disposition', `attachment; filename=invoice-${Date.now()}.${format}`);
+    res.send(Buffer.from(content));
+  } catch (error) {
+    logger.error('Error exporting invoice:', error);
+    res.status(500).json({ message: 'Error exporting invoice' });
+  }
+};

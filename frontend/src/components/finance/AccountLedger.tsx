@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, Filter, Plus, TrendingUp, TrendingDown, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Calendar, Download, Filter, Plus, TrendingUp, TrendingDown, ArrowLeft, RefreshCw, Edit, FileText, Image } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
@@ -55,6 +55,10 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
     page: 1,
     limit: 50
   });
+  const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
+  const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const fetchAccountLedger = async () => {
     try {
@@ -65,8 +69,9 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
       queryParams.append('page', filters.page.toString());
       queryParams.append('limit', filters.limit.toString());
 
+      const token = localStorage.getItem('auth-token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
-        credentials: 'include'
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (!response.ok) throw new Error('Failed to fetch account ledger');
@@ -87,6 +92,27 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
     }
   }, [accountId, filters]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!entries.length) return;
+      
+      const currentIndex = selectedEntry ? entries.findIndex(entry => entry._id === selectedEntry._id) : -1;
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextIndex = currentIndex < entries.length - 1 ? currentIndex + 1 : 0;
+        setSelectedEntry(entries[nextIndex]);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevIndex = currentIndex > 0 ? currentIndex - 1 : entries.length - 1;
+        setSelectedEntry(entries[prevIndex]);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [entries, selectedEntry]);
+
   const handleFilterChange = (field: string, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value, page: 1 }));
   };
@@ -98,8 +124,9 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
       if (filters.endDate) queryParams.append('endDate', filters.endDate);
       queryParams.append('export', 'true');
 
+      const token = localStorage.getItem('auth-token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
-        credentials: 'include'
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (!response.ok) throw new Error('Failed to export ledger');
@@ -115,6 +142,49 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
       document.body.removeChild(a);
     } catch (err) {
       console.error('Export failed:', err);
+    }
+  };
+
+  const exportInvoice = async (format: 'pdf' | 'jpg') => {
+    const entryIds = Array.from(selectedEntries);
+    if (entryIds.length === 0) return;
+
+    try {
+      const token = localStorage.getItem('auth-token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/export-invoice`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ entryIds, format, accountId })
+      });
+
+      if (!response.ok) throw new Error('Failed to export invoice');
+
+      const html = await response.text();
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(html);
+        newWindow.document.close();
+      }
+      setShowExportMenu(false);
+    } catch (err) {
+      console.error('Export invoice failed:', err);
+    }
+  };
+
+  const toggleEntrySelection = (entryId: string, e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      setSelectedEntries(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(entryId)) newSet.delete(entryId);
+        else newSet.add(entryId);
+        return newSet;
+      });
+    } else {
+      setSelectedEntry(entries.find(entry => entry._id === entryId) || null);
+      setSelectedEntries(new Set([entryId]));
     }
   };
 
@@ -149,81 +219,106 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
     <div className="p-6 space-y-6">
       {account && (
         <>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => router.back()}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold">Account Ledger</h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  <span className="font-mono font-semibold">{account.code}</span> - {account.name}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={fetchAccountLedger} variant="outline" size="sm">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-              <Button onClick={() => router.push('/dashboard/finance/journal-entry')} variant="default">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Entry
-              </Button>
-              <Button onClick={exportLedger} variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
+          <Card className="border-l-4 border-l-blue-500">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <ArrowLeft className="w-5 h-5" />
+                  </Button>
                   <div>
-                    <p className="text-sm text-gray-600">Current Balance</p>
-                    <p className="text-2xl font-bold mt-1">{formatAmount(account.currentBalance)}</p>
-                  </div>
-                  <Badge variant="outline" className="capitalize">{account.type}</Badge>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Total Debits</p>
-                    <p className="text-2xl font-bold mt-1 text-red-600">{formatAmount(totalDebits)}</p>
-                  </div>
-                  <TrendingUp className="w-8 h-8 text-red-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Total Credits</p>
-                    <p className="text-2xl font-bold mt-1 text-green-600">{formatAmount(totalCredits)}</p>
-                  </div>
-                  <TrendingDown className="w-8 h-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Net Change</p>
-                    <p className={`text-2xl font-bold mt-1 ${netChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatAmount(Math.abs(netChange))}
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                      Account Ledger
+                      <Badge variant="outline" className="capitalize text-sm">{account.type}</Badge>
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      <span className="font-mono font-semibold text-blue-600">{account.code}</span> • {account.name}
                     </p>
                   </div>
-                  <Badge variant={netChange >= 0 ? 'default' : 'destructive'}>
-                    {netChange >= 0 ? '+' : '-'}
-                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={fetchAccountLedger} variant="outline" size="sm">
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                  {selectedEntry && (
+                    <Button onClick={() => setShowEditDialog(true)} size="sm">
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  )}
+                  {selectedEntries.size > 0 && (
+                    <div className="relative">
+                      <Button onClick={() => setShowExportMenu(!showExportMenu)} size="sm" variant="default">
+                        <FileText className="w-4 h-4 mr-2" />
+                        Export Invoice ({selectedEntries.size})
+                      </Button>
+                      {showExportMenu && (
+                        <div className="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow-lg z-50">
+                          <button onClick={() => exportInvoice('pdf')} className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                            <FileText className="w-4 h-4" /> PDF
+                          </button>
+                          <button onClick={() => exportInvoice('jpg')} className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                            <Image className="w-4 h-4" /> JPG
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <Button onClick={() => router.push('/dashboard/finance/journal-entry')} size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Entry
+                  </Button>
+                  <Button onClick={exportLedger} variant="outline" size="sm">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="border-t-4 border-t-blue-500">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Current Balance</p>
+                    <p className="text-3xl font-bold mt-2">{formatAmount(account.currentBalance)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-t-4 border-t-red-500">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Debits</p>
+                    <p className="text-3xl font-bold mt-2 text-red-600">{formatAmount(totalDebits)}</p>
+                  </div>
+                  <TrendingUp className="w-8 h-8 text-red-500 opacity-20" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-t-4 border-t-green-500">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Credits</p>
+                    <p className="text-3xl font-bold mt-2 text-green-600">{formatAmount(totalCredits)}</p>
+                  </div>
+                  <TrendingDown className="w-8 h-8 text-green-500 opacity-20" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className={`border-t-4 ${netChange >= 0 ? 'border-t-green-500' : 'border-t-red-500'}`}>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Net Change</p>
+                    <p className={`text-3xl font-bold mt-2 ${netChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {netChange >= 0 ? '+' : '-'}{formatAmount(Math.abs(netChange))}
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -299,29 +394,33 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                 </TableHeader>
                 <TableBody>
                   {entries.map((entry, idx) => (
-                    <TableRow key={entry._id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">
+                    <TableRow 
+                      key={entry._id} 
+                      className={`cursor-pointer ${selectedEntries.has(entry._id) ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-gray-100'}`}
+                      onClick={(e) => toggleEntrySelection(entry._id, e)}
+                    >
+                      <TableCell className={`font-medium ${selectedEntries.has(entry._id) ? 'text-white' : ''}`}>
                         {format(new Date(entry.date), 'MMM dd, yyyy')}
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
-                      <TableCell className="font-mono text-sm text-gray-600">
+                      <TableCell className={`max-w-xs truncate ${selectedEntries.has(entry._id) ? 'text-white' : ''}`}>{entry.description}</TableCell>
+                      <TableCell className={`font-mono text-sm ${selectedEntries.has(entry._id) ? 'text-white' : 'text-gray-600'}`}>
                         {entry.reference}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        <Badge variant="outline">{entry.journalEntryId?.entryNumber}</Badge>
+                        <Badge variant={selectedEntries.has(entry._id) ? 'secondary' : 'outline'}>{entry.journalEntryId?.entryNumber}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {entry.debit > 0 ? (
-                          <span className="text-red-600 font-semibold">{formatAmount(entry.debit)}</span>
+                          <span className={`font-semibold ${selectedEntries.has(entry._id) ? 'text-red-200' : 'text-red-600'}`}>{formatAmount(entry.debit)}</span>
                         ) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {entry.credit > 0 ? (
-                          <span className="text-green-600 font-semibold">{formatAmount(entry.credit)}</span>
+                          <span className={`font-semibold ${selectedEntries.has(entry._id) ? 'text-green-200' : 'text-green-600'}`}>{formatAmount(entry.credit)}</span>
                         ) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono font-bold">
-                        <span className={entry.balance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        <span className={selectedEntries.has(entry._id) ? 'text-white' : (entry.balance >= 0 ? 'text-green-600' : 'text-red-600')}>
                           {formatAmount(entry.balance)}
                         </span>
                       </TableCell>
@@ -332,7 +431,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
               {entries.length > 0 && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg border-t">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Showing {entries.length} entries</span>
+                    <span className="text-gray-600">Showing {entries.length} entries {selectedEntries.size > 0 && `• ${selectedEntries.size} selected`}</span>
                     <div className="flex gap-4">
                       <span className="text-gray-600">Total Debits: <span className="font-semibold text-red-600">{formatAmount(totalDebits)}</span></span>
                       <span className="text-gray-600">Total Credits: <span className="font-semibold text-green-600">{formatAmount(totalCredits)}</span></span>
@@ -344,6 +443,49 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
           )}
         </CardContent>
       </Card>
+
+      {selectedEntry && showEditDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEditDialog(false)}>
+          <Card className="w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle>Edit Ledger Entry</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Date</Label>
+                  <Input type="date" defaultValue={selectedEntry.date.split('T')[0]} />
+                </div>
+                <div>
+                  <Label>Reference</Label>
+                  <Input defaultValue={selectedEntry.reference} />
+                </div>
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Input defaultValue={selectedEntry.description} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Debit</Label>
+                  <Input type="number" step="0.01" defaultValue={selectedEntry.debit} />
+                </div>
+                <div>
+                  <Label>Credit</Label>
+                  <Input type="number" step="0.01" defaultValue={selectedEntry.credit} />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
+                <Button onClick={() => {
+                  // TODO: Implement save logic
+                  setShowEditDialog(false);
+                }}>Save Changes</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

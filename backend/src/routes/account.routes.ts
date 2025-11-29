@@ -8,6 +8,9 @@ import {
   deleteAccount,
   duplicateAccount,
   getAccountTypes,
+  createAccountType,
+  updateAccountType,
+  deleteAccountType,
   bulkCreateAccounts
 } from '../controllers/accountController';
 
@@ -20,6 +23,9 @@ router.post('/bulk', bulkCreateAccounts);
 router.post('/:id/duplicate', duplicateAccount);
 router.get('/', getAccounts);
 router.get('/types', getAccountTypes);
+router.post('/types', createAccountType);
+router.put('/types/:id', updateAccountType);
+router.delete('/types/:id', deleteAccountType);
 router.get('/project/:projectId', getAccounts);
 router.get('/:id', getAccountById);
 router.put('/:id', updateAccount);

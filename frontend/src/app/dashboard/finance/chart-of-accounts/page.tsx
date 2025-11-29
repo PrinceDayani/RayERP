@@ -15,6 +15,7 @@ import { generalLedgerAPI, type Account } from '@/lib/api/generalLedgerAPI';
 import { chartOfAccountsAPI } from '@/lib/api/chartOfAccountsAPI';
 import { toast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import FinanceAccountCreationForm from '@/components/finance/AccountCreationForm';
 
 export default function ChartOfAccountsPage() {
   const router = useRouter();
@@ -509,14 +510,11 @@ export default function ChartOfAccountsPage() {
                 Create Account
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Account</DialogTitle>
-                <DialogDescription>
-                  Add a new account to your chart of accounts. Group accounts can contain sub-accounts.
-                </DialogDescription>
               </DialogHeader>
-              <CreateAccountForm />
+              <FinanceAccountCreationForm onAccountCreated={() => { setShowCreateDialog(false); fetchAccounts(); }} />
             </DialogContent>
           </Dialog>
         </div>

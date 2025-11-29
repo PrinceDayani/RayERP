@@ -59,6 +59,7 @@ import {
   getAccountBudgetStatus,
   recalculateBalances
 } from '../controllers/generalLedgerController';
+import { exportInvoice } from '../controllers/exportInvoice';
 import {
   getAuditLogs,
   getCashFlowReport,
@@ -205,5 +206,8 @@ router.post('/batch/delete', optionalPermission('finance.manage'), batchDeleteEn
 
 // Utility - Recalculate balances
 router.post('/recalculate-balances', optionalPermission('finance.manage'), recalculateBalances);
+
+// Export invoice
+router.post('/export-invoice', optionalPermission('finance.view'), exportInvoice);
 
 export default router;

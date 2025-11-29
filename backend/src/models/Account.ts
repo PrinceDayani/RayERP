@@ -151,7 +151,17 @@ const AccountSchema = new Schema<IAccount>({
   },
   taxInfo: {
     gstNo: { type: String, trim: true, uppercase: true },
-    panNo: { type: String, trim: true, uppercase: true, match: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/ },
+    panNo: { 
+      type: String, 
+      trim: true, 
+      uppercase: true, 
+      validate: {
+        validator: function(v: string) {
+          return !v || /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v);
+        },
+        message: 'Invalid PAN format'
+      }
+    },
     aadharNo: String,
     tanNo: { type: String, trim: true, uppercase: true },
     cinNo: { type: String, trim: true, uppercase: true },
@@ -177,11 +187,30 @@ const AccountSchema = new Schema<IAccount>({
     city: { type: String, trim: true },
     state: { type: String, trim: true },
     country: { type: String, trim: true, default: 'India' },
-    pincode: { type: String, trim: true, match: /^[0-9]{6}$/ }
+    pincode: { 
+      type: String, 
+      trim: true, 
+      validate: {
+        validator: function(v: string) {
+          return !v || /^[0-9]{6}$/.test(v);
+        },
+        message: 'Invalid PIN code format'
+      }
+    }
   },
   bankDetails: {
     accountNumber: { type: String, trim: true },
-    ifscCode: { type: String, trim: true, uppercase: true, match: /^[A-Z]{4}0[A-Z0-9]{6}$/ },
+    ifscCode: { 
+      type: String, 
+      trim: true, 
+      uppercase: true, 
+      validate: {
+        validator: function(v: string) {
+          return !v || /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v);
+        },
+        message: 'Invalid IFSC code format'
+      }
+    },
     bankName: { type: String, trim: true },
     branch: { type: String, trim: true },
     accountType: {
