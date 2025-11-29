@@ -63,6 +63,7 @@ import projectFinanceEnhanced from './projectFinanceEnhanced';
 import financialReportsEnhanced from './financialReportsEnhanced';
 import trendsRoutes from './trends';
 import analyticsDataRoutes from './analytics';
+import tallyInvoiceRoutes from './tallyInvoice.routes';
 
 import backupRoutes from './backupRoutes';
 import notificationRoutes from './notification.routes';
@@ -137,6 +138,7 @@ router.use('/journal-entry-templates', journalEntryTemplateRoutes);
 router.use('/project-finance', projectFinanceEnhanced);
 router.use('/financial-reports', financialReportRoutes);
 router.use('/financial-reports-enhanced', financialReportsEnhanced);
+router.use('/tally-invoices', tallyInvoiceRoutes);
 // Indian accounts merged into general-ledger
 
 // --- Health Check Endpoints ---

@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import QRCode from 'qrcode';
+import { tallyInvoiceAPI } from '../../lib/api/tallyInvoiceAPI';
 
 interface InvoiceData {
   _id: string;
@@ -63,14 +64,13 @@ export default function InvoiceViewer({ invoiceId, onClose }: InvoiceViewerProps
 
   const fetchInvoice = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tally-invoices/${invoiceId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const data = await res.json();
+      const result = await tallyInvoiceAPI.getById(invoiceId);
       
-      if (data.success) {
-        setInvoice(data.data);
-        await generateQRCode(data.data);
+      if (result.success && result.data) {
+        setInvoice(result.data);
+        await generateQRCode(result.data);
+      } else {
+        console.error('Failed to fetch invoice:', result.message);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -83,17 +83,29 @@ export default function InvoiceViewer({ invoiceId, onClose }: InvoiceViewerProps
     try {
       const qrData = JSON.stringify({
         invoiceNumber: invoiceData.invoiceNumber,
-        workOrderNumber: invoiceData.workOrderNumber,
-        amount: invoiceData.totalAmount,
-        date: invoiceData.invoiceDate,
-        gst: invoiceData.gstEnabled ? invoiceData.gstTotalAmount : 0,
-        party: invoiceData.partyName
+        workOrderNumber: invoiceData.workOrderNumber || 'N/A',
+        totalAmount: invoiceData.totalAmount,
+        subtotal: invoiceData.subtotal,
+        gstEnabled: invoiceData.gstEnabled,
+        gstAmount: invoiceData.gstEnabled ? invoiceData.gstTotalAmount : 0,
+        gstRate: invoiceData.gstRate || 0,
+        invoiceDate: invoiceData.invoiceDate,
+        dueDate: invoiceData.dueDate,
+        partyName: invoiceData.partyName,
+        partyGSTIN: invoiceData.partyGSTIN || 'N/A',
+        status: invoiceData.status,
+        currency: invoiceData.currency || 'INR',
+        paidAmount: invoiceData.paidAmount || 0,
+        balanceAmount: invoiceData.balanceAmount || invoiceData.totalAmount,
+        generatedBy: 'RayERP',
+        timestamp: new Date().toISOString()
       });
       
       const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
-        width: 150,
-        margin: 1,
-        color: { dark: '#000000', light: '#FFFFFF' }
+        width: 200,
+        margin: 2,
+        color: { dark: '#1e40af', light: '#ffffff' },
+        errorCorrectionLevel: 'M'
       });
       
       setQrCodeUrl(qrCodeDataUrl);
@@ -103,22 +115,10 @@ export default function InvoiceViewer({ invoiceId, onClose }: InvoiceViewerProps
   };
 
   const downloadPDF = async () => {
+    if (!invoice) return;
+    
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tally-invoices/${invoiceId}/pdf`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `invoice-${invoice?.invoiceNumber}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
+      await tallyInvoiceAPI.downloadPDF(invoiceId, invoice.invoiceNumber);
     } catch (error) {
       console.error('Error:', error);
     }
@@ -134,8 +134,8 @@ export default function InvoiceViewer({ invoiceId, onClose }: InvoiceViewerProps
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const formatDate = (date: string) => new Date(date).toLocaleDateString('en-IN');
-  const formatCurrency = (amount: number) => `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+  const formatDate = (date: string) => tallyInvoiceAPI.formatDate(date);
+  const formatCurrency = (amount: number) => tallyInvoiceAPI.formatCurrency(amount);
 
   if (loading) {
     return (
@@ -184,30 +184,66 @@ export default function InvoiceViewer({ invoiceId, onClose }: InvoiceViewerProps
         {/* Complete Invoice Details */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Party Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Bill To</CardTitle>
+          <Card className="border-2 border-blue-200">
+            <CardHeader className="bg-blue-50">
+              <CardTitle className="text-blue-800">Bill To Party</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="font-semibold text-lg">{invoice.partyName}</p>
-              {invoice.partyAddress && <p>{invoice.partyAddress}</p>}
-              {invoice.partyGSTIN && <p><strong>GSTIN:</strong> {invoice.partyGSTIN}</p>}
-              {invoice.partyEmail && <p><strong>Email:</strong> {invoice.partyEmail}</p>}
+            <CardContent className="space-y-3 pt-4">
+              <p className="font-bold text-xl text-blue-900">{invoice.partyName}</p>
+              {invoice.partyAddress && (
+                <div className="bg-gray-50 p-3 rounded">
+                  <p className="text-sm font-medium text-gray-700">Address:</p>
+                  <p className="text-gray-600">{invoice.partyAddress}</p>
+                </div>
+              )}
+              {invoice.partyGSTIN && (
+                <div className="bg-green-50 p-2 rounded">
+                  <p><strong className="text-green-800">GSTIN:</strong> <span className="font-mono text-green-700">{invoice.partyGSTIN}</span></p>
+                </div>
+              )}
+              {invoice.partyEmail && (
+                <p><strong>Email:</strong> <span className="text-blue-600">{invoice.partyEmail}</span></p>
+              )}
             </CardContent>
           </Card>
 
           {/* Invoice Metadata */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Invoice Details</CardTitle>
+          <Card className="border-2 border-green-200">
+            <CardHeader className="bg-green-50">
+              <CardTitle className="text-green-800">Invoice Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <p><strong>Date:</strong> {formatDate(invoice.invoiceDate)}</p>
-              <p><strong>Due Date:</strong> {formatDate(invoice.dueDate)}</p>
-              <p><strong>Type:</strong> {invoice.invoiceType || 'SALES'}</p>
-              <p><strong>Currency:</strong> {invoice.currency || 'INR'}</p>
-              <p><strong>Exchange Rate:</strong> {invoice.exchangeRate || 1}</p>
-              {invoice.paymentTerms && <p><strong>Payment Terms:</strong> {invoice.paymentTerms}</p>}
+            <CardContent className="space-y-3 pt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Invoice Date</p>
+                  <p className="font-semibold">{formatDate(invoice.invoiceDate)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Due Date</p>
+                  <p className="font-semibold text-red-600">{formatDate(invoice.dueDate)}</p>
+                </div>
+              </div>
+              {invoice.workOrderNumber && (
+                <div className="bg-yellow-50 p-3 rounded border border-yellow-200">
+                  <p><strong className="text-yellow-800">Work Order No:</strong> <span className="font-mono text-yellow-700">{invoice.workOrderNumber}</span></p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Type</p>
+                  <p className="font-semibold">{invoice.invoiceType || 'SALES'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Currency</p>
+                  <p className="font-semibold">{invoice.currency || 'INR'}</p>
+                </div>
+              </div>
+              {invoice.paymentTerms && (
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Payment Terms</p>
+                  <p className="font-semibold">{invoice.paymentTerms}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -236,21 +272,48 @@ export default function InvoiceViewer({ invoiceId, onClose }: InvoiceViewerProps
             </CardContent>
           </Card>
           
-          <Card>
-            <CardHeader>
-              <CardTitle>GST Details</CardTitle>
+          <Card className={invoice.gstEnabled ? "border-2 border-green-200" : "border-2 border-gray-200"}>
+            <CardHeader className={invoice.gstEnabled ? "bg-green-50" : "bg-gray-50"}>
+              <CardTitle className={invoice.gstEnabled ? "text-green-800" : "text-gray-600"}>GST Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3 pt-4">
               {invoice.gstEnabled ? (
                 <>
-                  <p><strong>GST Rate:</strong> {invoice.gstRate}%</p>
-                  {invoice.cgstAmount > 0 && <p><strong>CGST:</strong> {formatCurrency(invoice.cgstAmount)}</p>}
-                  {invoice.sgstAmount > 0 && <p><strong>SGST:</strong> {formatCurrency(invoice.sgstAmount)}</p>}
-                  {invoice.igstAmount > 0 && <p><strong>IGST:</strong> {formatCurrency(invoice.igstAmount)}</p>}
-                  <p><strong>Total GST:</strong> {formatCurrency(invoice.gstTotalAmount || 0)}</p>
+                  <div className="bg-green-100 p-3 rounded">
+                    <p className="font-bold text-green-800">GST Rate: {invoice.gstRate}%</p>
+                  </div>
+                  <div className="space-y-2">
+                    {invoice.cgstAmount > 0 && (
+                      <div className="flex justify-between items-center bg-blue-50 p-2 rounded">
+                        <span className="font-medium text-blue-800">CGST ({(invoice.gstRate / 2)}%):</span>
+                        <span className="font-bold text-blue-900">{formatCurrency(invoice.cgstAmount)}</span>
+                      </div>
+                    )}
+                    {invoice.sgstAmount > 0 && (
+                      <div className="flex justify-between items-center bg-blue-50 p-2 rounded">
+                        <span className="font-medium text-blue-800">SGST ({(invoice.gstRate / 2)}%):</span>
+                        <span className="font-bold text-blue-900">{formatCurrency(invoice.sgstAmount)}</span>
+                      </div>
+                    )}
+                    {invoice.igstAmount > 0 && (
+                      <div className="flex justify-between items-center bg-purple-50 p-2 rounded">
+                        <span className="font-medium text-purple-800">IGST ({invoice.gstRate}%):</span>
+                        <span className="font-bold text-purple-900">{formatCurrency(invoice.igstAmount)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="bg-green-200 p-3 rounded border-2 border-green-300">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-green-800">Total GST:</span>
+                      <span className="font-bold text-xl text-green-900">{formatCurrency(invoice.gstTotalAmount || 0)}</span>
+                    </div>
+                  </div>
                 </>
               ) : (
-                <p className="text-gray-500">GST Not Applicable</p>
+                <div className="text-center py-4">
+                  <p className="text-gray-500 font-medium">GST Not Applicable</p>
+                  <p className="text-sm text-gray-400">This invoice is not subject to GST</p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -331,16 +394,28 @@ export default function InvoiceViewer({ invoiceId, onClose }: InvoiceViewerProps
         </div>
 
         {/* QR Code */}
-        <Card>
-          <CardHeader>
-            <CardTitle>QR Code</CardTitle>
+        <Card className="border-2 border-blue-200">
+          <CardHeader className="bg-blue-50">
+            <CardTitle className="text-blue-800 text-center">Invoice Verification QR Code</CardTitle>
           </CardHeader>
-          <CardContent className="text-center">
+          <CardContent className="text-center pt-6">
             {qrCodeUrl ? (
-              <img src={qrCodeUrl} alt="Invoice QR Code" className="mx-auto border border-gray-300" />
+              <div className="space-y-4">
+                <div className="bg-white p-4 rounded-lg shadow-inner border-2 border-blue-100 inline-block">
+                  <img src={qrCodeUrl} alt="Invoice QR Code" className="mx-auto" />
+                </div>
+                <div className="bg-blue-50 p-3 rounded">
+                  <p className="text-sm font-medium text-blue-800">Scan to verify invoice details</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Contains: Invoice #{invoice.invoiceNumber}, Amount: {formatCurrency(invoice.totalAmount)}
+                    {invoice.workOrderNumber && `, WO: ${invoice.workOrderNumber}`}
+                    {invoice.gstEnabled && `, GST: ${formatCurrency(invoice.gstTotalAmount || 0)}`}
+                  </p>
+                </div>
+              </div>
             ) : (
-              <div className="w-[150px] h-[150px] border border-gray-300 flex items-center justify-center mx-auto">
-                <span className="text-gray-500 text-sm">QR Code</span>
+              <div className="w-[200px] h-[200px] border-2 border-dashed border-gray-300 flex items-center justify-center mx-auto rounded">
+                <span className="text-gray-500 text-sm">Generating QR Code...</span>
               </div>
             )}
           </CardContent>

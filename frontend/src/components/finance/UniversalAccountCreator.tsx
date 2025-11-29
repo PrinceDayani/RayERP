@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { Copy, Save, RefreshCw, Building2, CreditCard, FileText, MapPin, Phone, Mail, Banknote } from 'lucide-react';
+import { PANInput } from '@/components/ui/pan-input';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
 
@@ -610,15 +611,12 @@ export default function UniversalAccountCreator({ onAccountCreated, duplicateFro
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="panNo">PAN Number</Label>
-                  <Input
-                    id="panNo"
-                    value={formData.taxInfo.panNo}
-                    onChange={(e) => updateFormData('taxInfo', 'panNo', e.target.value)}
-                    placeholder="PAN"
-                  />
-                </div>
+                <PANInput
+                  value={formData.taxInfo.panNo}
+                  onChange={(value) => updateFormData('taxInfo', 'panNo', value)}
+                  label="PAN Number"
+                  placeholder="AAAAA9999A"
+                />
 
                 <div className="space-y-2">
                   <Label htmlFor="tanNo">TAN Number</Label>

@@ -152,3 +152,9 @@ export const convertAmount = async (amount: number, fromCurrency: string, toCurr
   const rate = await getExchangeRate(fromCurrency, toCurrency);
   return amount * (rate.rate || 1);
 };
+
+// Export Invoice
+export const exportInvoice = async (entryIds: string[], format: string, accountId: string) => {
+  const response = await api.post('/general-ledger/export-invoice', { entryIds, format, accountId });
+  return response.data;
+};

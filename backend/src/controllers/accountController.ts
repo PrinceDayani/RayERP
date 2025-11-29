@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Account } from '../models/Account';
 import { AccountType } from '../models/AccountType';
 import { generateEntryNumber } from '../utils/numberGenerator';
+import { validatePAN } from '../utils/panValidator';
 
 // Bulk create accounts
 export const bulkCreateAccounts = async (req: Request, res: Response) => {
@@ -80,8 +81,17 @@ export const createAccount = async (req: Request, res: Response) => {
     }
 
     // Validate PAN format if provided
-    if (req.body.taxInfo?.panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(req.body.taxInfo.panNo)) {
-      return res.status(400).json({ success: false, message: 'Invalid PAN format' });
+    if (req.body.taxInfo?.panNo) {
+      const panValidation = validatePAN(req.body.taxInfo.panNo);
+      if (!panValidation.isValid) {
+        return res.status(400).json({ 
+          success: false, 
+          message: panValidation.error || 'Invalid PAN format',
+          field: 'panNo'
+        });
+      }
+      // Use formatted PAN
+      req.body.taxInfo.panNo = panValidation.formatted;
     }
 
     // Validate IFSC format if provided
@@ -206,8 +216,17 @@ export const updateAccount = async (req: Request, res: Response) => {
     }
 
     // Validate PAN format if provided
-    if (req.body.taxInfo?.panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(req.body.taxInfo.panNo)) {
-      return res.status(400).json({ success: false, message: 'Invalid PAN format' });
+    if (req.body.taxInfo?.panNo) {
+      const panValidation = validatePAN(req.body.taxInfo.panNo);
+      if (!panValidation.isValid) {
+        return res.status(400).json({ 
+          success: false, 
+          message: panValidation.error || 'Invalid PAN format',
+          field: 'panNo'
+        });
+      }
+      // Use formatted PAN
+      req.body.taxInfo.panNo = panValidation.formatted;
     }
 
     // Validate IFSC format if provided

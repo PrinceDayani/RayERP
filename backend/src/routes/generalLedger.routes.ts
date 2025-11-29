@@ -57,9 +57,10 @@ import {
   deleteGLBudget,
   getBudgetVarianceReport,
   getAccountBudgetStatus,
-  recalculateBalances
+  recalculateBalances,
+  exportInvoice
 } from '../controllers/generalLedgerController';
-import { exportInvoice } from '../controllers/exportInvoice';
+// import { exportInvoice } from '../controllers/exportInvoice'; // Using the one from generalLedgerController instead
 import {
   getAuditLogs,
   getCashFlowReport,
@@ -206,6 +207,11 @@ router.post('/batch/delete', optionalPermission('finance.manage'), batchDeleteEn
 
 // Utility - Recalculate balances
 router.post('/recalculate-balances', optionalPermission('finance.manage'), recalculateBalances);
+
+// Test route
+router.get('/test-route', (req, res) => {
+  res.json({ success: true, message: 'General ledger routes are working', timestamp: new Date().toISOString() });
+});
 
 // Export invoice
 router.post('/export-invoice', optionalPermission('finance.view'), exportInvoice);

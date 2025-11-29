@@ -26,6 +26,7 @@ export interface IPaymentRecord {
 
 export interface IInvoice extends Document {
   invoiceNumber: string;
+  workOrderNumber?: string;
   invoiceType: 'SALES' | 'PURCHASE' | 'CREDIT_NOTE' | 'DEBIT_NOTE';
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'SENT' | 'VIEWED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'FACTORED';
   
@@ -36,6 +37,14 @@ export interface IInvoice extends Document {
   partyEmail?: string;
   partyAddress?: string;
   partyGSTIN?: string;
+  
+  // GST Details
+  gstEnabled: boolean;
+  gstRate?: number;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  igstAmount?: number;
+  gstTotalAmount?: number;
   
   // Dates
   invoiceDate: Date;
@@ -132,6 +141,7 @@ export interface IInvoice extends Document {
 
 const InvoiceSchema = new Schema<IInvoice>({
   invoiceNumber: { type: String, required: true, unique: true },
+  workOrderNumber: String,
   invoiceType: { type: String, enum: ['SALES', 'PURCHASE', 'CREDIT_NOTE', 'DEBIT_NOTE'], required: true },
   status: { type: String, enum: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'SENT', 'VIEWED', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELLED', 'FACTORED'], default: 'DRAFT' },
   
@@ -141,6 +151,13 @@ const InvoiceSchema = new Schema<IInvoice>({
   partyEmail: String,
   partyAddress: String,
   partyGSTIN: String,
+  
+  gstEnabled: { type: Boolean, default: false },
+  gstRate: Number,
+  cgstAmount: { type: Number, default: 0 },
+  sgstAmount: { type: Number, default: 0 },
+  igstAmount: { type: Number, default: 0 },
+  gstTotalAmount: { type: Number, default: 0 },
   
   invoiceDate: { type: Date, required: true },
   dueDate: { type: Date, required: true },

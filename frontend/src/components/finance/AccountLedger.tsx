@@ -70,7 +70,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
       queryParams.append('limit', filters.limit.toString());
 
       const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
+      const response = await fetch(`/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -125,7 +125,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
       queryParams.append('export', 'true');
 
       const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
+      const response = await fetch(`/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -151,7 +151,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
 
     try {
       const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/export-invoice`, {
+      const response = await fetch('/api/general-ledger/export-invoice', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -160,17 +160,47 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
         body: JSON.stringify({ entryIds, format, accountId })
       });
 
-      if (!response.ok) throw new Error('Failed to export invoice');
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to export invoice';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
 
-      const html = await response.text();
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(html);
-        newWindow.document.close();
+      // Handle different response types
+      const contentType = response.headers.get('content-type');
+      if (contentType && (contentType.includes('text/html') || contentType.includes('text/plain'))) {
+        const content = await response.text();
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          if (contentType.includes('text/html')) {
+            newWindow.document.write(content);
+          } else {
+            newWindow.document.write(`<pre>${content}</pre>`);
+          }
+          newWindow.document.close();
+        }
+      } else {
+        // Handle binary content (PDF, images)
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `invoice-${account?.code}-${Date.now()}.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
       }
       setShowExportMenu(false);
     } catch (err) {
       console.error('Export invoice failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to export invoice');
     }
   };
 

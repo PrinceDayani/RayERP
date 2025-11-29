@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '../ui/badge';
 import { toast } from 'react-hot-toast';
 import InvoiceViewer from './InvoiceViewer';
+import { tallyInvoiceAPI, TallyInvoice as TallyInvoiceType, TallyInvoiceData } from '../../lib/api/tallyInvoiceAPI';
 
 interface LineItem {
   description: string;
@@ -27,14 +28,27 @@ interface TallyInvoice {
   invoiceNumber: string;
   workOrderNumber?: string;
   partyName: string;
+  partyEmail?: string;
+  partyAddress?: string;
   partyGSTIN?: string;
   totalAmount: number;
+  subtotal: number;
   gstEnabled: boolean;
-  gstTotalAmount: number;
+  gstRate?: number;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  igstAmount?: number;
+  gstTotalAmount?: number;
   status: string;
   invoiceDate: string;
   dueDate: string;
   lineItems: LineItem[];
+  notes?: string;
+  currency?: string;
+  exchangeRate?: number;
+  paymentTerms?: string;
+  paidAmount?: number;
+  balanceAmount?: number;
 }
 
 export default function TallyInvoice() {
@@ -49,32 +63,12 @@ export default function TallyInvoice() {
 
   const fetchInvoices = async () => {
     try {
-      const token = localStorage.getItem('auth-token');
-      if (!token) {
-        toast.error('No authentication token found. Please login again.');
-        setLoading(false);
-        return;
-      }
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tally-invoices`, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const result = await tallyInvoiceAPI.getAll();
       
-      const data = await res.json();
-      
-      if (res.status === 401) {
-        toast.error('Authentication failed. Please login again.');
-        console.error('Auth error:', data);
-        return;
-      }
-      
-      if (data.success) {
-        setInvoices(data.data || []);
+      if (result.success && result.data) {
+        setInvoices(result.data);
       } else {
-        toast.error(data.message || 'Failed to fetch invoices');
+        toast.error(result.message || 'Failed to fetch invoices');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -86,23 +80,12 @@ export default function TallyInvoice() {
 
   const downloadPDF = async (invoiceId: string, invoiceNumber: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tally-invoices/${invoiceId}/pdf`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
+      const result = await tallyInvoiceAPI.downloadPDF(invoiceId, invoiceNumber);
       
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `invoice-${invoiceNumber}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success('Invoice downloaded successfully');
+      if (result.success) {
+        toast.success(result.message || 'Invoice downloaded successfully');
       } else {
-        toast.error('Failed to download invoice');
+        toast.error(result.message || 'Failed to download invoice');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -231,9 +214,10 @@ export default function TallyInvoice() {
                       <div>
                         <div className="text-sm font-medium text-gray-900">{invoice.invoiceNumber}</div>
                         {invoice.workOrderNumber && (
-                          <div className="text-sm text-gray-500">WO: {invoice.workOrderNumber}</div>
+                          <div className="text-sm text-blue-600 font-medium">WO: {invoice.workOrderNumber}</div>
                         )}
                         <div className="text-sm text-gray-500">{new Date(invoice.invoiceDate).toLocaleDateString('en-IN')}</div>
+                        <div className="text-xs text-gray-400">Due: {new Date(invoice.dueDate).toLocaleDateString('en-IN')}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -250,8 +234,19 @@ export default function TallyInvoice() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {invoice.gstEnabled ? (
                         <div>
-                          <Badge variant="secondary">GST</Badge>
-                          <div className="text-sm text-gray-500">₹{(invoice.gstTotalAmount || 0).toLocaleString()}</div>
+                          <Badge variant="secondary" className="mb-1">GST {invoice.gstRate}%</Badge>
+                          <div className="text-sm text-green-600 font-medium">₹{(invoice.gstTotalAmount || 0).toLocaleString()}</div>
+                          {invoice.cgstAmount > 0 && (
+                            <div className="text-xs text-gray-500">
+                              CGST: ₹{invoice.cgstAmount.toLocaleString()}<br/>
+                              SGST: ₹{invoice.sgstAmount.toLocaleString()}
+                            </div>
+                          )}
+                          {invoice.igstAmount > 0 && (
+                            <div className="text-xs text-gray-500">
+                              IGST: ₹{invoice.igstAmount.toLocaleString()}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <Badge variant="outline">No GST</Badge>
@@ -357,23 +352,35 @@ function TallyInvoiceForm({ onClose, onSuccess }: { onClose: () => void; onSucce
     setLoading(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tally-invoices`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
-        },
-        body: JSON.stringify(formData)
-      });
+      // Validate GSTIN if provided
+      if (formData.partyGSTIN && !tallyInvoiceAPI.validateGSTIN(formData.partyGSTIN)) {
+        toast.error('Invalid GSTIN format. Please check and try again.');
+        setLoading(false);
+        return;
+      }
 
-      const data = await res.json();
+      const invoiceData: TallyInvoiceData = {
+        partyName: formData.partyName,
+        partyEmail: formData.partyEmail || undefined,
+        partyAddress: formData.partyAddress || undefined,
+        partyGSTIN: formData.partyGSTIN || undefined,
+        workOrderNumber: formData.workOrderNumber || undefined,
+        gstEnabled: formData.gstEnabled,
+        gstRate: formData.gstEnabled ? formData.gstRate : undefined,
+        invoiceDate: formData.invoiceDate,
+        dueDate: formData.dueDate,
+        lineItems: formData.lineItems,
+        notes: formData.notes || undefined
+      };
+
+      const result = await tallyInvoiceAPI.create(invoiceData);
       
-      if (data.success) {
+      if (result.success) {
         toast.success('Tally invoice created successfully');
         onSuccess();
         onClose();
       } else {
-        toast.error(data.message || 'Failed to create invoice');
+        toast.error(result.message || 'Failed to create invoice');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -425,9 +432,19 @@ function TallyInvoiceForm({ onClose, onSuccess }: { onClose: () => void; onSucce
               <Input
                 id="partyGSTIN"
                 value={formData.partyGSTIN}
-                onChange={(e) => setFormData({ ...formData, partyGSTIN: e.target.value })}
+                onChange={(e) => {
+                  const gstin = e.target.value.toUpperCase();
+                  setFormData({ ...formData, partyGSTIN: gstin });
+                }}
                 placeholder="27XXXXXXXXXXXXX"
+                className={formData.partyGSTIN && !tallyInvoiceAPI.validateGSTIN(formData.partyGSTIN) ? 'border-red-500' : ''}
               />
+              {formData.partyGSTIN && !tallyInvoiceAPI.validateGSTIN(formData.partyGSTIN) && (
+                <p className="text-sm text-red-600 mt-1">Invalid GSTIN format</p>
+              )}
+              {formData.partyGSTIN && tallyInvoiceAPI.validateGSTIN(formData.partyGSTIN) && (
+                <p className="text-sm text-green-600 mt-1">Valid GSTIN format</p>
+              )}
             </div>
             <div>
               <Label htmlFor="workOrderNumber">Work Order Number</Label>
@@ -580,24 +597,50 @@ function TallyInvoiceForm({ onClose, onSuccess }: { onClose: () => void; onSucce
         </CardContent>
       </Card>
 
-      {/* Totals */}
-      <Card>
+      {/* Enhanced Totals with GST Breakdown */}
+      <Card className="border-2 border-green-200">
+        <CardHeader className="bg-green-50">
+          <CardTitle className="text-green-800">Invoice Summary</CardTitle>
+        </CardHeader>
         <CardContent className="pt-6">
-          <div className="space-y-2 text-right">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span>₹{subtotal.toFixed(2)}</span>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <span className="font-medium">Subtotal:</span>
+              <span className="font-bold">{tallyInvoiceAPI.formatCurrency(subtotal)}</span>
             </div>
+            
             {formData.gstEnabled && (
-              <div className="flex justify-between">
-                <span>GST ({formData.gstRate}%):</span>
-                <span>₹{gstAmount.toFixed(2)}</span>
+              <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                <div className="text-sm font-medium text-blue-800 mb-2">GST Breakdown ({formData.gstRate}%)</div>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span>CGST ({formData.gstRate / 2}%):</span>
+                    <span>{tallyInvoiceAPI.formatCurrency(gstAmount / 2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>SGST ({formData.gstRate / 2}%):</span>
+                    <span>{tallyInvoiceAPI.formatCurrency(gstAmount / 2)}</span>
+                  </div>
+                  <div className="flex justify-between font-medium border-t pt-1">
+                    <span>Total GST:</span>
+                    <span>{tallyInvoiceAPI.formatCurrency(gstAmount)}</span>
+                  </div>
+                </div>
               </div>
             )}
-            <div className="flex justify-between font-bold text-lg border-t pt-2">
-              <span>Total:</span>
-              <span>₹{total.toFixed(2)}</span>
+            
+            <div className="flex justify-between items-center p-3 bg-green-100 rounded border-2 border-green-300">
+              <span className="font-bold text-lg text-green-800">Grand Total:</span>
+              <span className="font-bold text-xl text-green-900">{tallyInvoiceAPI.formatCurrency(total)}</span>
             </div>
+            
+            {formData.workOrderNumber && (
+              <div className="bg-yellow-50 p-2 rounded border border-yellow-200">
+                <div className="text-sm text-yellow-800">
+                  <strong>Work Order:</strong> {formData.workOrderNumber}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

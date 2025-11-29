@@ -493,6 +493,15 @@ export const batchDeleteEntries = async (entryIds: string[]) => {
   return data;
 };
 
+// Export Invoice
+export const exportInvoice = async (entryIds: string[], format: string, accountId: string) => {
+  const response = await axios.post(`${BASE_URL}/export-invoice`, { entryIds, format, accountId }, { 
+    headers: getAuthHeaders(),
+    responseType: 'blob'
+  });
+  return response;
+};
+
 // Export as namespace
 export const generalLedgerAPI = {
   getGroups,
@@ -563,5 +572,6 @@ export const generalLedgerAPI = {
   deleteScenario,
   applyScenario,
   batchPostEntries,
-  batchDeleteEntries
+  batchDeleteEntries,
+  exportInvoice
 };
