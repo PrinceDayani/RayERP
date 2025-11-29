@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { 
-  DollarSign, Settings, Save, RefreshCw, Globe, 
+  Settings, Save, RefreshCw, Globe, 
   Briefcase, Users, Shield, Eye, Grid3X3, List, 
   BarChart3, FileText, Upload, Download
 } from "lucide-react";
@@ -226,7 +226,6 @@ const CurrencyProjectSettings: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
             Currency Settings
           </CardTitle>
         </CardHeader>

@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { 
   Grid3X3, List, Calendar, BarChart3, Clock, AlertTriangle, 
-  CheckCircle, TrendingUp, Users, DollarSign, Target, Activity,
+  CheckCircle, TrendingUp, Users, Target, Activity,
   Filter, SortAsc, Eye, Briefcase
 } from "lucide-react";
 import { useRouter } from "next/navigation";

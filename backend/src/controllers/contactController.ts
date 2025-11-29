@@ -15,7 +15,7 @@ const getUserId = (req: Request): string => {
 export const getContacts = async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
-    const { status = 'active' } = req.query;
+    const { status } = req.query;
     
     const filter: any = { createdBy: userId };
     if (status && status !== 'all') {

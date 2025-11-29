@@ -436,7 +436,7 @@ const ProjectManagementDashboard: React.FC = () => {
                       </Button>
                       <Button size="sm" variant="outline" className="flex-1 hover:bg-primary hover:text-primary-foreground"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
-                        <DollarSign className="h-3.5 w-3.5 mr-1.5" />
+                        <Coins className="h-3.5 w-3.5 mr-1.5" />
                         Budget
                       </Button>
                     </div>

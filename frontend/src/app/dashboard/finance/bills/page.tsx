@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Plus, Download, Search, Printer, Bell, Clock, TrendingUp, BarChart3, Calendar, AlertTriangle, DollarSign, CreditCard, Filter, RefreshCw } from 'lucide-react';
+import { FileText, Plus, Download, Search, Printer, Bell, Clock, TrendingUp, BarChart3, Calendar, AlertTriangle, CreditCard, Filter, RefreshCw } from 'lucide-react';
 import { getBillDetails, createBillDetail, updateBillPayment, getBillStatement, getAccounts } from '@/lib/api/generalLedgerAPI';
 import { billsApi } from '@/lib/api/billsApi';
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
