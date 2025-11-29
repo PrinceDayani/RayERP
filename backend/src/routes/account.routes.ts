@@ -5,7 +5,10 @@ import {
   getAccounts,
   getAccountById,
   updateAccount,
-  deleteAccount
+  deleteAccount,
+  duplicateAccount,
+  getAccountTypes,
+  bulkCreateAccounts
 } from '../controllers/accountController';
 
 const router = express.Router();
@@ -13,7 +16,10 @@ const router = express.Router();
 router.use(authenticateToken);
 
 router.post('/', createAccount);
+router.post('/bulk', bulkCreateAccounts);
+router.post('/:id/duplicate', duplicateAccount);
 router.get('/', getAccounts);
+router.get('/types', getAccountTypes);
 router.get('/project/:projectId', getAccounts);
 router.get('/:id', getAccountById);
 router.put('/:id', updateAccount);

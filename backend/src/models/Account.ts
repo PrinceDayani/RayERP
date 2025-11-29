@@ -12,6 +12,7 @@ export interface IAccount extends Document {
   isActive: boolean;
   isGroup: boolean;
   description?: string;
+  notes?: string;
   createdBy?: mongoose.Types.ObjectId;
   openingBalance: number;
   currency: string;
@@ -34,6 +35,10 @@ export interface IAccount extends Document {
     tanNo?: string;
     cinNo?: string;
     taxRate?: number;
+    tdsApplicable?: boolean;
+    tdsRate?: number;
+    tdsSection?: string;
+    tdsCategory?: 'individual' | 'company' | 'firm' | 'other';
   };
   contactInfo?: {
     primaryEmail?: string;
@@ -54,11 +59,15 @@ export interface IAccount extends Document {
     ifscCode?: string;
     bankName?: string;
     branch?: string;
+    accountType?: 'savings' | 'current' | 'cc' | 'od';
+    swiftCode?: string;
   };
   creditLimit?: number;
   tags?: string[];
   createdAt: Date;
   updatedAt: Date;
+  isUniversal?: boolean;
+  companyId?: mongoose.Types.ObjectId;
 }
 
 const AccountSchema = new Schema<IAccount>({
@@ -77,6 +86,13 @@ const AccountSchema = new Schema<IAccount>({
     type: String,
     required: true,
     enum: ['asset', 'liability', 'equity', 'revenue', 'expense']
+  },
+  accountNature: {
+    type: String,
+    enum: ['debit', 'credit'],
+    default: function() {
+      return ['asset', 'expense'].includes(this.type) ? 'debit' : 'credit';
+    }
   },
   subType: {
     type: String,
@@ -125,37 +141,55 @@ const AccountSchema = new Schema<IAccount>({
     type: String,
     trim: true
   },
+  notes: {
+    type: String,
+    trim: true
+  },
   projectId: {
     type: Schema.Types.ObjectId,
     ref: 'Project'
   },
   taxInfo: {
-    gstNo: String,
-    panNo: String,
+    gstNo: { type: String, trim: true, uppercase: true },
+    panNo: { type: String, trim: true, uppercase: true, match: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/ },
     aadharNo: String,
-    tanNo: String,
-    cinNo: String,
-    taxRate: Number
+    tanNo: { type: String, trim: true, uppercase: true },
+    cinNo: { type: String, trim: true, uppercase: true },
+    taxRate: { type: Number, default: 0, min: 0, max: 100 },
+    tdsApplicable: { type: Boolean, default: false },
+    tdsRate: { type: Number, default: 0, min: 0, max: 100 },
+    tdsSection: { type: String, trim: true },
+    tdsCategory: {
+      type: String,
+      enum: ['individual', 'company', 'firm', 'other'],
+      default: 'individual'
+    }
   },
   contactInfo: {
-    primaryEmail: String,
-    secondaryEmail: String,
-    primaryPhone: String,
-    secondaryPhone: String,
-    mobile: String,
-    fax: String,
-    website: String,
-    address: String,
-    city: String,
-    state: String,
-    country: String,
-    pincode: String
+    primaryEmail: { type: String, trim: true, lowercase: true },
+    secondaryEmail: { type: String, trim: true, lowercase: true },
+    primaryPhone: { type: String, trim: true },
+    secondaryPhone: { type: String, trim: true },
+    mobile: { type: String, trim: true },
+    fax: { type: String, trim: true },
+    website: { type: String, trim: true, lowercase: true },
+    address: { type: String, trim: true },
+    city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    country: { type: String, trim: true, default: 'India' },
+    pincode: { type: String, trim: true, match: /^[0-9]{6}$/ }
   },
   bankDetails: {
-    accountNumber: String,
-    ifscCode: String,
-    bankName: String,
-    branch: String
+    accountNumber: { type: String, trim: true },
+    ifscCode: { type: String, trim: true, uppercase: true, match: /^[A-Z]{4}0[A-Z0-9]{6}$/ },
+    bankName: { type: String, trim: true },
+    branch: { type: String, trim: true },
+    accountType: {
+      type: String,
+      enum: ['savings', 'current', 'cc', 'od'],
+      default: 'savings'
+    },
+    swiftCode: { type: String, trim: true, uppercase: true }
   },
   creditLimit: {
     type: Number,
@@ -206,6 +240,15 @@ const AccountSchema = new Schema<IAccount>({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: false
+  },
+  isUniversal: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  companyId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Company'
   }
 }, {
   timestamps: true
@@ -216,6 +259,9 @@ AccountSchema.index({ type: 1 });
 AccountSchema.index({ isActive: 1 });
 AccountSchema.index({ subGroupId: 1 });
 AccountSchema.index({ type: 1, isActive: 1 });
+AccountSchema.index({ 'taxInfo.gstNo': 1 });
+AccountSchema.index({ 'taxInfo.panNo': 1 });
+AccountSchema.index({ name: 'text', code: 'text' });
 
 const Account = mongoose.model<IAccount>('Account', AccountSchema);
 export { Account };
