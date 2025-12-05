@@ -1,21 +1,29 @@
 import rateLimit from 'express-rate-limit';
 
-export const generalLimiter = rateLimit({
+// General API rate limiter
+export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
-  message: { success: false, message: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later' }
 });
 
+// Strict limiter for expensive operations
 export const strictLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
-  message: { success: false, message: 'Too many requests, please try again later.' },
+  max: 10,
+  message: { message: 'Too many requests for this operation, please try again later' }
 });
 
-export const authLimiter = rateLimit({
+// Forecast generation limiter
+export const forecastLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { success: false, message: 'Too many authentication attempts, please try again later.' },
+  max: 10,
+  message: { message: 'Too many forecast requests, please try again later' }
+});
+
+// Variance report limiter
+export const varianceLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { message: 'Too many variance report requests, please try again later' }
 });

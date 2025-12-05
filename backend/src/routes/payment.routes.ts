@@ -1,9 +1,12 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { requireFinanceAccess } from '../middleware/financePermission.middleware';
 import {
   createPayment,
   getPayments,
   getPaymentById,
+  updatePayment,
+  deletePayment,
   updatePaymentStatus,
   approvePayment,
   processRefund,
@@ -19,17 +22,19 @@ const router = express.Router();
 
 router.use(authenticateToken);
 
-router.post('/', createPayment);
-router.post('/batch', batchPayments);
-router.get('/', getPayments);
-router.get('/analytics', getPaymentAnalytics);
-router.get('/:id', getPaymentById);
-router.put('/:id/status', updatePaymentStatus);
-router.post('/:id/approve', approvePayment);
-router.post('/:id/refund', processRefund);
-router.post('/:id/dispute', raiseDispute);
-router.post('/:id/reconcile', reconcilePayment);
-router.post('/:id/journal-entry', createJournalEntry);
-router.post('/:id/reminder', sendReminder);
+router.post('/', requireFinanceAccess('payments.create'), createPayment);
+router.post('/batch', requireFinanceAccess('payments.create'), batchPayments);
+router.get('/', requireFinanceAccess('payments.view'), getPayments);
+router.get('/analytics', requireFinanceAccess('payments.view'), getPaymentAnalytics);
+router.get('/:id', requireFinanceAccess('payments.view'), getPaymentById);
+router.put('/:id', requireFinanceAccess('payments.edit'), updatePayment);
+router.delete('/:id', requireFinanceAccess('payments.delete'), deletePayment);
+router.put('/:id/status', requireFinanceAccess('payments.edit'), updatePaymentStatus);
+router.post('/:id/approve', requireFinanceAccess('payments.approve'), approvePayment);
+router.post('/:id/refund', requireFinanceAccess('payments.edit'), processRefund);
+router.post('/:id/dispute', requireFinanceAccess('payments.edit'), raiseDispute);
+router.post('/:id/reconcile', requireFinanceAccess('payments.edit'), reconcilePayment);
+router.post('/:id/journal-entry', requireFinanceAccess('payments.create'), createJournalEntry);
+router.post('/:id/reminder', requireFinanceAccess('payments.view'), sendReminder);
 
 export default router;

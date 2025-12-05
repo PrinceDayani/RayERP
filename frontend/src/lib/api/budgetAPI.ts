@@ -3,13 +3,16 @@ import { Budget, BudgetTemplate, BudgetApproval } from '@/types/budget';
 
 export interface CreateBudgetRequest {
   projectId?: string;
-  projectName: string;
+  departmentId?: string;
+  projectName?: string;
+  departmentName?: string;
+  budgetType: 'project' | 'department' | 'special';
   totalBudget: number;
   currency: string;
   status?: 'draft' | 'pending' | 'approved' | 'rejected';
   categories: {
     name: string;
-    type: 'labor' | 'materials' | 'equipment' | 'overhead';
+    type: 'labor' | 'materials' | 'equipment' | 'overhead' | 'special';
     allocatedAmount: number;
     items: {
       name: string;
@@ -51,7 +54,7 @@ export const getAllBudgets = async (): Promise<Budget[]> => {
 
 export const getBudget = async (id: string): Promise<Budget> => {
   const response = await api.get(`/budgets/${id}`);
-  return response.data;
+  return response.data?.data || response.data;
 };
 
 export const createBudget = async (budgetData: CreateBudgetRequest): Promise<Budget> => {
@@ -64,9 +67,16 @@ export const updateBudget = async (id: string, budgetData: Partial<CreateBudgetR
   return response.data;
 };
 
-export const deleteBudget = async (id: string): Promise<void> => {
-  await api.delete(`/budgets/${id}`);
+export const requestBudgetDeletion = async (id: string): Promise<Budget> => {
+  const response = await api.post(`/budgets/${id}/request-delete`);
+  return response.data;
 };
+
+export const approveBudgetDeletion = async (id: string): Promise<void> => {
+  await api.delete(`/budgets/${id}/approve-delete`);
+};
+
+export const deleteBudget = requestBudgetDeletion;
 
 // Budget approval operations
 export const getPendingApprovals = async (): Promise<Budget[]> => {
@@ -93,6 +103,16 @@ export const rejectBudget = async (id: string, data: ApprovalRequest): Promise<B
 
 export const submitForApproval = async (id: string): Promise<Budget> => {
   const response = await api.post(`/budgets/${id}/submit`);
+  return response.data;
+};
+
+export const sendToReview = async (id: string): Promise<Budget> => {
+  const response = await api.post(`/budgets/${id}/send-to-review`);
+  return response.data;
+};
+
+export const returnToReview = async (id: string): Promise<Budget> => {
+  const response = await api.post(`/budgets/${id}/return-to-review`);
   return response.data;
 };
 
@@ -169,6 +189,16 @@ export const syncProjectBudgets = async (): Promise<{ success: boolean; message:
   return response.data;
 };
 
+export const allocateBudget = async (id: string, data: { categoryName: string; allocatedAmount: number; categoryType?: string }): Promise<Budget> => {
+  const response = await api.post(`/budgets/${id}/allocate`, data);
+  return response.data;
+};
+
+export const trackBudgetUtilization = async (id: string): Promise<any> => {
+  const response = await api.get(`/budgets/${id}/track`);
+  return response.data;
+};
+
 const budgetAPI = {
   getBudgets,
   getAllBudgets,
@@ -190,6 +220,10 @@ const budgetAPI = {
   unapproveBudget,
   unrejectBudget,
   syncProjectBudgets,
+  allocateBudget,
+  trackBudgetUtilization,
+  requestBudgetDeletion,
+  approveBudgetDeletion,
 };
 
 export default budgetAPI;

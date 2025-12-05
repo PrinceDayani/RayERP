@@ -93,16 +93,16 @@ export const getResourceAllocations = async (req: Request, res: Response) => {
     // Apply additional filters
     if (department) {
       allocations = allocations.filter(alloc => 
-        alloc.employee.department?.name === department
+        (alloc.employee as any).department?.name === department
       );
     }
     
     if (search) {
       const searchLower = (search as string).toLowerCase();
       allocations = allocations.filter(alloc => 
-        alloc.employee.firstName.toLowerCase().includes(searchLower) ||
-        alloc.employee.lastName.toLowerCase().includes(searchLower) ||
-        alloc.project.name.toLowerCase().includes(searchLower) ||
+        (alloc.employee as any).firstName.toLowerCase().includes(searchLower) ||
+        (alloc.employee as any).lastName.toLowerCase().includes(searchLower) ||
+        (alloc.project as any).name.toLowerCase().includes(searchLower) ||
         alloc.role.toLowerCase().includes(searchLower)
       );
     }
@@ -296,7 +296,7 @@ export const getCapacityPlanning = async (req: Request, res: Response) => {
           _id: emp._id, 
           name: `${emp.firstName} ${emp.lastName}`, 
           position: emp.position, 
-          department: emp.department?.name,
+          department: (emp.department as any)?.name,
           skills: emp.skills 
         },
         capacity,
@@ -855,13 +855,13 @@ export const getEmployeeSummary = async (req: Request, res: Response) => {
         _id: emp._id,
         name: `${emp.firstName} ${emp.lastName}`,
         position: emp.position,
-        department: emp.department?.name,
+        department: (emp.department as any)?.name,
         totalHours,
         bookedHours,
         freeHours: Math.max(0, totalHours - bookedHours),
         utilizationPercentage,
         allocations: allocations.map(alloc => ({
-          project: alloc.project.name,
+          project: (alloc.project as any)?.name || alloc.project,
           hours: alloc.allocatedHours,
           role: alloc.role
         })),
@@ -900,8 +900,8 @@ export const exportAllocations = async (req: Request, res: Response) => {
     // Transform data based on includeFields
     const exportData = allocations.map(alloc => {
       const row: any = {};
-      if (includeFields.employee) row.employee = `${alloc.employee.firstName} ${alloc.employee.lastName}`;
-      if (includeFields.project) row.project = alloc.project.name;
+      if (includeFields.employee) row.employee = `${(alloc.employee as any).firstName} ${(alloc.employee as any).lastName}`;
+      if (includeFields.project) row.project = (alloc.project as any).name;
       if (includeFields.hours) row.allocatedHours = alloc.allocatedHours;
       if (includeFields.dates) {
         row.startDate = alloc.startDate.toISOString().split('T')[0];
@@ -1002,8 +1002,7 @@ export const getGanttData = async (req: Request, res: Response) => {
         status: project.status || 'in_progress',
         project: {
           _id: project._id,
-          name: project.name,
-          color: project.color || '#3b82f6'
+          name: project.name
         }
       };
     }));

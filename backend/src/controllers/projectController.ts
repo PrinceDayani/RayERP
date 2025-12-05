@@ -34,48 +34,97 @@ const emitProjectStats = async () => {
 
 export const getAllProjects = async (req: Request, res: Response) => {
   try {
+    console.log('\n=== GET ALL PROJECTS REQUEST ===');
     const user = req.user;
     if (!user) {
+      console.log('❌ No user found in request');
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    let query: any = {};
-    
-    // Get role name (handle both populated and unpopulated role)
+    console.log('User:', { id: user._id, name: user.name, email: user.email });
+    const userRole = user.role as any;
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    console.log('Role info:', { level: userRole?.level, name: roleName, roleType: typeof user.role });
     
-    // Root and Super Admin can see all projects
-    if (roleName === 'Root' || roleName === 'Super Admin') {
-      query = {};
+    // Root/Director/Super Admin get full access to all projects
+    if (userRole?.level >= 80 || roleName === 'Root' || roleName === 'Super Admin') {
+      console.log(`✅ ROOT ACCESS - User ${user.name} fetching all projects`);
+      const count = await Project.countDocuments();
+      console.log(`Total projects in DB: ${count}`);
+      
+      const projects = await Project.find({})
+        .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
+        .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
+        .populate({ path: 'owner', select: 'name email', strictPopulate: false })
+        .populate({ path: 'members', select: 'name email', strictPopulate: false })
+        .populate({ path: 'departments', select: 'name description', strictPopulate: false });
+      
+      console.log(`✅ Returning ${projects.length} projects:`, projects.map(p => ({ id: p._id, name: p.name })));
+      console.log('=== END REQUEST ===\n');
+      return res.json(projects);
     }
-    // All other users can only see projects they're assigned to
-    else {
-      // Find employee record linked to this user
-      const Employee = (await import('../models/Employee')).default;
-      const employee = await Employee.findOne({ user: user._id });
-      
-      const conditions: any[] = [
-        { members: user._id },
-        { owner: user._id }
-      ];
-      
-      // If user has an employee record, check team and manager fields
-      if (employee) {
-        conditions.push({ team: employee._id });
-        conditions.push({ manager: employee._id });
+    console.log('⚠️ User is not root, applying filters...');
+
+    // Get user's department permissions
+    const Employee = (await import('../models/Employee')).default;
+    const Department = (await import('../models/Department')).default;
+    const employee = await Employee.findOne({ user: user._id });
+    
+    let hasProjectViewPermission = false;
+    if (employee) {
+      const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
+      if (departmentNames.length > 0) {
+        const departments = await Department.find({ name: { $in: departmentNames }, status: 'active' });
+        hasProjectViewPermission = departments.some(dept => 
+          dept.permissions && dept.permissions.includes('projects.view')
+        );
       }
-      
-      query = { $or: conditions };
     }
 
-    const projects = await Project.find(query)
+    // Find projects user is assigned to (full access)
+    const assignedConditions: any[] = [
+      { members: user._id },
+      { owner: user._id }
+    ];
+    
+    if (employee) {
+      assignedConditions.push({ team: employee._id });
+      assignedConditions.push({ manager: employee._id });
+    }
+    
+    const assignedProjects = await Project.find({ $or: assignedConditions })
       .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
       .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
       .populate({ path: 'owner', select: 'name email', strictPopulate: false })
       .populate({ path: 'members', select: 'name email', strictPopulate: false })
       .populate({ path: 'departments', select: 'name description', strictPopulate: false });
+
+    // If user has department permission, also show basic info of department projects
+    if (hasProjectViewPermission && employee) {
+      const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
+      const departmentProjects = await Project.find({ 
+        departments: { $in: departmentNames },
+        _id: { $nin: assignedProjects.map(p => p._id) } // Exclude already assigned projects
+      }).select('name status priority startDate endDate departments');
+      
+      // Return assigned projects with full details + department projects with basic info
+      return res.json([
+        ...assignedProjects,
+        ...departmentProjects.map(p => ({
+          _id: p._id,
+          name: p.name,
+          status: p.status,
+          priority: p.priority,
+          startDate: p.startDate,
+          endDate: p.endDate,
+          departments: p.departments,
+          isBasicView: true // Flag to indicate limited access
+        }))
+      ]);
+    }
     
-    res.json(projects);
+    // Return only assigned projects
+    res.json(assignedProjects);
   } catch (error) {
     console.error('Error fetching projects:', error);
     res.status(500).json({ message: 'Error fetching projects', error: error instanceof Error ? error.message : 'Unknown error' });
@@ -89,6 +138,24 @@ export const getProjectById = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
+    const userRole = user.role as any;
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    
+    // Root/Director/Super Admin get full access
+    if (userRole?.level >= 80 || roleName === 'Root' || roleName === 'Super Admin') {
+      const project = await Project.findById(req.params.id)
+        .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
+        .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
+        .populate({ path: 'owner', select: 'name email', strictPopulate: false })
+        .populate({ path: 'members', select: 'name email', strictPopulate: false })
+        .populate({ path: 'departments', select: 'name description', strictPopulate: false });
+      
+      if (!project) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
+      return res.json(project);
+    }
+
     const project = await Project.findById(req.params.id)
       .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
       .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
@@ -100,12 +167,10 @@ export const getProjectById = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    // Check access: Root/Super Admin can see all, others only if they're assigned
-    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    // Check if user is assigned to project
     const isMember = project.members.some(m => m && m._id && m._id.toString() === user._id.toString());
     const isOwner = project.owner && project.owner._id && project.owner._id.toString() === user._id.toString();
     
-    // Find employee record to check team/manager fields
     const Employee = (await import('../models/Employee')).default;
     const employee = await Employee.findOne({ user: user._id });
     
@@ -117,11 +182,45 @@ export const getProjectById = async (req: Request, res: Response) => {
       isManager = project.manager && project.manager._id && project.manager._id.toString() === employee._id.toString();
     }
     
-    if (roleName !== 'Root' && roleName !== 'Super Admin' && !isMember && !isOwner && !isTeamMember && !isManager) {
-      return res.status(403).json({ message: 'Access denied: You are not assigned to this project' });
+    const isAssigned = isMember || isOwner || isTeamMember || isManager;
+    
+    // If assigned, return full project details
+    if (isAssigned) {
+      return res.json(project);
     }
-
-    res.json(project);
+    
+    // Check department permission for basic view
+    if (employee) {
+      const Department = (await import('../models/Department')).default;
+      const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
+      
+      if (departmentNames.length > 0) {
+        const departments = await Department.find({ name: { $in: departmentNames }, status: 'active' });
+        const hasProjectViewPermission = departments.some(dept => 
+          dept.permissions && dept.permissions.includes('projects.view')
+        );
+        
+        // Check if project belongs to user's department
+        const projectDepartments = project.departments.map((d: any) => (d && typeof d === 'object' && d.name) ? d.name : d.toString());
+        const hasAccessToDepartment = departmentNames.some(dept => projectDepartments.includes(dept));
+        
+        if (hasProjectViewPermission && hasAccessToDepartment) {
+          // Return basic project info only
+          return res.json({
+            _id: project._id,
+            name: project.name,
+            status: project.status,
+            priority: project.priority,
+            startDate: project.startDate,
+            endDate: project.endDate,
+            departments: project.departments,
+            isBasicView: true
+          });
+        }
+      }
+    }
+    
+    return res.status(403).json({ message: 'Access denied: You are not assigned to this project' });
   } catch (error) {
     console.error('Error fetching project by ID:', error);
     res.status(500).json({ message: 'Error fetching project', error: error instanceof Error ? error.message : 'Unknown error' });
@@ -1174,7 +1273,7 @@ export const updateProjectInstruction = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Project not found' });
     }
     
-    const instruction = project.instructions.id(instructionId);
+    const instruction = (project.instructions as any).id(instructionId);
     if (!instruction) {
       return res.status(404).json({ message: 'Instruction not found' });
     }
@@ -1205,7 +1304,7 @@ export const deleteProjectInstruction = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Project not found' });
     }
     
-    project.instructions.id(instructionId)?.remove();
+    (project.instructions as any).id(instructionId)?.remove();
     await project.save();
     
     const { io } = await import('../server');

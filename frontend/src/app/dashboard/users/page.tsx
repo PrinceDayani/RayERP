@@ -51,7 +51,7 @@ import {
   X,
   Settings
 } from "lucide-react";
-import RoleManagement from './role-management';
+import { UnifiedRoleManagement } from '@/components/admin/UnifiedRoleManagement';
 
 interface User {
   _id: string;
@@ -62,7 +62,7 @@ interface User {
 }
 
 const UserManagement = () => {
-  const { user: currentUser, hasMinimumLevel, roles } = useAuth();
+  const { user: currentUser, hasMinimumLevel, roles, hasPermission } = useAuth();
   
   const hasMinimumRole = (role: UserRole) => {
     if (!hasMinimumLevel) return false;
@@ -291,7 +291,7 @@ const UserManagement = () => {
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh
                 </Button>
-                {hasMinimumRole(UserRole.SUPER_ADMIN) && (
+                {hasPermission('users.create') && (
                   <Dialog open={openDialog} onOpenChange={setOpenDialog}>
                     <DialogTrigger asChild>
                       <Button 
@@ -413,7 +413,7 @@ const UserManagement = () => {
                     <UserCog className="h-4 w-4" />
                     User Management
                   </TabsTrigger>
-                  {hasMinimumRole(UserRole.ROOT) && (
+                  {hasPermission('roles.view') && (
                     <TabsTrigger value="roles" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300 flex items-center gap-2">
                       <Settings className="h-4 w-4" />
                       Role Management
@@ -513,7 +513,7 @@ const UserManagement = () => {
                             <TableHead className="font-semibold text-foreground py-4 px-6">User</TableHead>
                             <TableHead className="font-semibold text-foreground py-4 px-6">Role</TableHead>
                             <TableHead className="hidden md:table-cell font-semibold text-foreground py-4 px-6">Created</TableHead>
-                            {hasMinimumRole(UserRole.SUPER_ADMIN) && (
+                            {(hasPermission('users.edit') || hasPermission('users.delete') || hasPermission('users.assign_roles')) && (
                               <TableHead className="font-semibold text-foreground py-4 px-6">Actions</TableHead>
                             )}
                           </TableRow>
@@ -535,7 +535,7 @@ const UserManagement = () => {
                                 </div>
                               </TableCell>
                               <TableCell className="py-4 px-6">
-                                {hasMinimumRole(UserRole.SUPER_ADMIN) && user._id !== currentUser?._id ? (
+                                {hasPermission('users.assign_roles') && user._id !== currentUser?._id ? (
                                   <Select
                                     value={getRoleName(user.role)}
                                     onValueChange={(value) => handleRoleChange(user._id, value as UserRole)}
@@ -578,7 +578,7 @@ const UserManagement = () => {
                               <TableCell className="hidden md:table-cell py-4 px-6 text-muted-foreground">
                                 {formatDate(user.createdAt)}
                               </TableCell>
-                              {hasMinimumRole(UserRole.SUPER_ADMIN) && (
+                              {(hasPermission('users.edit') || hasPermission('users.delete')) && (
                                 <TableCell className="py-4 px-6">
                                   <div className="flex items-center gap-2">
                                     {user._id === currentUser?._id ? (
@@ -586,21 +586,25 @@ const UserManagement = () => {
                                         Current User
                                       </Badge>
                                     ) : (
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm"
-                                        className="bg-background/50 border-border/50 hover:bg-accent/50 transition-all duration-300 hover:scale-105"
-                                        onClick={() => {
-                                          toast({
-                                            title: "User Details",
-                                            description: `${user.name} (${user.email}) - Role: ${getRoleName(user.role)}`
-                                          });
-                                        }}
-                                        title="View user details"
-                                      >
-                                        <FileText className="h-4 w-4" />
-                                        <span className="sr-only">View</span>
-                                      </Button>
+                                      <>
+                                        {hasPermission('users.edit') && (
+                                          <Button 
+                                            variant="outline" 
+                                            size="sm"
+                                            className="bg-background/50 border-border/50 hover:bg-accent/50 transition-all duration-300 hover:scale-105"
+                                            onClick={() => {
+                                              toast({
+                                                title: "User Details",
+                                                description: `${user.name} (${user.email}) - Role: ${getRoleName(user.role)}`
+                                              });
+                                            }}
+                                            title="View user details"
+                                          >
+                                            <FileText className="h-4 w-4" />
+                                            <span className="sr-only">View</span>
+                                          </Button>
+                                        )}
+                                      </>
                                     )}
                                   </div>
                                 </TableCell>
@@ -643,9 +647,9 @@ const UserManagement = () => {
                   </div>
                 </TabsContent>
                 
-                {hasMinimumRole(UserRole.ROOT) && (
+                {hasPermission('roles.view') && (
                   <TabsContent value="roles">
-                    <RoleManagement />
+                    <UnifiedRoleManagement isLoading={loading} />
                   </TabsContent>
                 )}
               </Tabs>

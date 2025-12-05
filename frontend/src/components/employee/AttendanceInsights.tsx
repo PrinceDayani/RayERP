@@ -191,7 +191,7 @@ export default function AttendanceInsights({ employeeId, attendanceData, period 
           <BarChart3 className="w-5 h-5 text-primary" />
           Attendance Insights
         </h3>
-        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+        <Select value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as 'week' | 'month' | 'quarter' | 'year')}>
           <SelectTrigger className="w-32">
             <SelectValue />
           </SelectTrigger>

@@ -7,7 +7,11 @@ import {
   deleteBudget,
   approveBudget,
   rejectBudget,
-  getBudgetSummary
+  getBudgetSummary,
+  allocateBudget,
+  trackBudgetUtilization,
+  requestBudgetDeletion,
+  approveBudgetDeletion
 } from '../controllers/budgetController';
 
 // Alias existing functions for route compatibility
@@ -110,7 +114,18 @@ const unrejectBudget = async (req: any, res: any) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
-import { canManageBudgets, canApproveBudgets, canViewBudgets } from '../middleware/budgetAuth';
+import { 
+  canViewBudgets, 
+  canCreateBudgets, 
+  canEditBudgets, 
+  canDeleteBudgets, 
+  canApproveBudgets, 
+  canAllocateBudgets, 
+  canTrackBudgets 
+} from '../middleware/budgetAuth';
+import { getConsolidatedView, createMasterBudget as createMasterBudgetConsolidation } from '../controllers/budgetConsolidationController';
+import { bulkRollover } from '../controllers/budgetRolloverController';
+import { compareBudgets, compareByPeriod } from '../controllers/budgetComparisonController';
 
 const router = express.Router({ mergeParams: true });
 const { authenticateToken } = require('../middleware/auth.middleware');
@@ -121,22 +136,30 @@ router.use(authenticateToken);
 // General budget routes (not project-specific) - specific routes BEFORE dynamic :id
 router.get('/all', canViewBudgets, getAllBudgets);
 router.get('/pending', canViewBudgets, getPendingApprovals);
-router.get('/analytics', canViewBudgets, getBudgetAnalytics);
-router.get('/check', canViewBudgets, checkBudgets);
+router.get('/analytics', canTrackBudgets, getBudgetAnalytics);
+router.get('/check', canTrackBudgets, checkBudgets);
+router.get('/consolidation', canViewBudgets, getConsolidatedView);
+router.post('/consolidation/master', canCreateBudgets, createMasterBudgetConsolidation);
+router.post('/bulk-rollover', canCreateBudgets, bulkRollover);
+router.post('/compare', canViewBudgets, compareBudgets);
+router.post('/compare-period', canViewBudgets, compareByPeriod);
 router.get('/project/:projectId', canViewBudgets, getBudgetsByProject);
 router.get('/status/:status', canViewBudgets, getBudgetsByStatus);
-router.post('/create', canManageBudgets, createBudget);
+router.post('/create', canCreateBudgets, createBudget);
 router.post('/sync-projects', canApproveBudgets, syncProjectBudgets);
 router.get('/:id', canViewBudgets, getBudgetById);
-router.put('/:id', canManageBudgets, updateBudget);
-router.delete('/:id', canManageBudgets, deleteBudget);
+router.get('/:id/track', canTrackBudgets, trackBudgetUtilization);
+router.put('/:id', canEditBudgets, updateBudget);
+router.post('/:id/request-delete', canDeleteBudgets, requestBudgetDeletion);
+router.delete('/:id/approve-delete', canApproveBudgets, approveBudgetDeletion);
 
 // Approval routes
 router.post('/:id/approve', canApproveBudgets, approveBudget);
 router.post('/:id/reject', canApproveBudgets, rejectBudget);
 router.post('/:id/unapprove', canApproveBudgets, unapproveBudget);
 router.post('/:id/unreject', canApproveBudgets, unrejectBudget);
-router.post('/:id/submit', canManageBudgets, submitForApproval);
+router.post('/:id/submit', canEditBudgets, submitForApproval);
+router.post('/:id/allocate', canAllocateBudgets, allocateBudget);
 
 // Project budget routes - nested under projects/:id/budget
 router.get('/', canViewBudgets, getProjectBudgetsWithApprovals);
@@ -144,21 +167,24 @@ router.get('/:budgetId', canViewBudgets, (req, res, next) => {
   req.params.id = req.params.budgetId;
   next();
 }, getBudgetById);
-router.post('/', canManageBudgets, (req, res, next) => {
-  // Inject projectId from parent route into request body
+router.post('/', canCreateBudgets, (req, res, next) => {
   if (req.params.id && !req.body.projectId) {
     req.body.projectId = req.params.id;
   }
   next();
 }, createBudget);
-router.put('/:budgetId', canManageBudgets, (req, res, next) => {
+router.put('/:budgetId', canEditBudgets, (req, res, next) => {
   req.params.id = req.params.budgetId;
   next();
 }, updateBudget);
-router.delete('/:budgetId', canManageBudgets, (req, res, next) => {
+router.post('/:budgetId/request-delete', canDeleteBudgets, (req, res, next) => {
   req.params.id = req.params.budgetId;
   next();
-}, deleteBudget);
+}, requestBudgetDeletion);
+router.delete('/:budgetId/approve-delete', canApproveBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, approveBudgetDeletion);
 router.post('/:budgetId/approve', canApproveBudgets, (req, res, next) => {
   req.params.id = req.params.budgetId;
   next();
@@ -175,13 +201,21 @@ router.post('/:budgetId/unreject', canApproveBudgets, (req, res, next) => {
   req.params.id = req.params.budgetId;
   next();
 }, unrejectBudget);
-router.post('/:budgetId/submit', canManageBudgets, (req, res, next) => {
+router.post('/:budgetId/submit', canEditBudgets, (req, res, next) => {
   req.params.id = req.params.budgetId;
   next();
 }, submitForApproval);
+router.post('/:budgetId/allocate', canAllocateBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, allocateBudget);
+router.get('/:budgetId/track', canTrackBudgets, (req, res, next) => {
+  req.params.id = req.params.budgetId;
+  next();
+}, trackBudgetUtilization);
 
 // Master budget routes
-router.post('/master', canManageBudgets, createMasterBudget);
+router.post('/master', canCreateBudgets, createMasterBudget);
 router.get('/master', canViewBudgets, getMasterBudgets);
 router.get('/hierarchy', canViewBudgets, getBudgetHierarchy);
 

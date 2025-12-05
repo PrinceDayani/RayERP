@@ -68,6 +68,18 @@ export const attendanceAPI = {
     return response.data;
   },
 
+  mark: async (data: {
+    employee: string;
+    date: string;
+    status: string;
+    checkIn: string;
+    checkOut?: string;
+    notes?: string;
+  }) => {
+    const response = await api.post('/attendance/mark', data);
+    return response.data;
+  },
+
   markAttendance: async (data: {
     employee: string;
     date: string;
@@ -77,6 +89,16 @@ export const attendanceAPI = {
     notes?: string;
   }) => {
     const response = await api.post('/attendance/mark', data);
+    return response.data;
+  },
+
+  edit: async (id: string, data: {
+    status?: string;
+    checkIn?: string;
+    checkOut?: string;
+    notes?: string;
+  }) => {
+    const response = await api.put(`/attendance/${id}`, data);
     return response.data;
   },
 

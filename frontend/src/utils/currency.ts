@@ -5,25 +5,25 @@ export type NumberFormat = 'indian' | 'international' | 'auto';
 // Format large numbers in Indian style (Lakhs/Crores)
 export const formatIndianNumber = (amount: number): string => {
   if (amount >= 10000000) { // 1 Crore
-    return `${(amount / 10000000).toFixed(2)} Cr`;
+    return `${(amount / 10000000)} Cr`;
   } else if (amount >= 100000) { // 1 Lakh
-    return `${(amount / 100000).toFixed(2)} L`;
+    return `${(amount / 100000)} L`;
   } else if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(2)} K`;
+    return `${(amount / 1000)} K`;
   }
-  return amount.toFixed(2);
+  return amount.toString();
 };
 
 // Format large numbers in International style (Million/Billion)
 export const formatInternationalNumber = (amount: number): string => {
   if (amount >= 1000000000) { // 1 Billion
-    return `${(amount / 1000000000).toFixed(2)} B`;
+    return `${(amount / 1000000000)} B`;
   } else if (amount >= 1000000) { // 1 Million
-    return `${(amount / 1000000).toFixed(2)} M`;
+    return `${(amount / 1000000)} M`;
   } else if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(2)} K`;
+    return `${(amount / 1000)} K`;
   }
-  return amount.toFixed(2);
+  return amount.toString();
 };
 
 const getUserCurrency = (): string => {
@@ -54,13 +54,17 @@ export const formatCurrency = (
   showSymbol: boolean = true,
   compact: boolean = false
 ): string => {
+  if (amount === null || amount === undefined || isNaN(amount)) {
+    amount = 0;
+  }
+  
   const currency = currencyCode || getUserCurrency();
   const numberFormat = getUserNumberFormat();
   
   if (!showSymbol) {
     return amount.toLocaleString('en-US', {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 20
     });
   }
 
@@ -93,7 +97,7 @@ export const formatCurrency = (
   
   const formatted = amount.toLocaleString(locale, {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 20
   });
 
   return `${currency} ${formatted}`;
@@ -154,5 +158,5 @@ export const DEFAULT_CURRENCY_SYMBOL = APP_CONFIG.currency.symbol;
 
 // Helper to format currency with smart compact notation
 export const formatCurrencySmart = (amount: number, currencyCode?: string): string => {
-  return formatCurrency(amount, currencyCode, true, amount >= 100000);
+  return formatCurrency(amount, currencyCode, true, false);
 };

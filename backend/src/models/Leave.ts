@@ -12,6 +12,9 @@ export interface ILeave extends Document {
   approvedBy?: mongoose.Types.ObjectId;
   approvedDate?: Date;
   rejectionReason?: string;
+  cancelledBy?: mongoose.Types.ObjectId;
+  cancelledDate?: Date;
+  cancellationReason?: string;
   documents?: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -37,6 +40,9 @@ const leaveSchema = new Schema<ILeave>({
   approvedBy: { type: Schema.Types.ObjectId, ref: 'Employee' },
   approvedDate: Date,
   rejectionReason: String,
+  cancelledBy: { type: Schema.Types.ObjectId, ref: 'Employee' },
+  cancelledDate: Date,
+  cancellationReason: String,
   documents: [String]
 }, { timestamps: true });
 

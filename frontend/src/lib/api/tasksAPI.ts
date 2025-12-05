@@ -113,6 +113,12 @@ export const tasksAPI = {
     return response.data;
   },
 
+  // Edit task
+  edit: async (id: string, taskData: UpdateTaskData) => {
+    const response = await api.put(`/tasks/${id}`, taskData);
+    return response.data;
+  },
+
   // Update task
   update: async (id: string, taskData: UpdateTaskData) => {
     const response = await api.put(`/tasks/${id}`, taskData);
@@ -122,6 +128,12 @@ export const tasksAPI = {
   // Delete task
   delete: async (id: string) => {
     const response = await api.delete(`/tasks/${id}`);
+    return response.data;
+  },
+
+  // View all tasks
+  viewAll: async () => {
+    const response = await api.get('/tasks');
     return response.data;
   },
 

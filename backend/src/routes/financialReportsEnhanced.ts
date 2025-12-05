@@ -1,11 +1,9 @@
 import express from 'express';
 import { protect as auth } from '../middleware/auth.middleware';
-import { generalLimiter } from '../middleware/rateLimiter.middleware';
 import { validateAccountId, validateScheduleEmail } from '../middleware/validation.middleware';
 import { logger } from '../utils/logger';
 
 const router = express.Router();
-router.use(generalLimiter);
 
 router.get('/profit-loss-budget', auth, async (req, res) => {
   try {

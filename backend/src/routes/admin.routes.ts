@@ -24,7 +24,7 @@ import {
   getUserPermissions
 } from '../controllers/rbacController';
 import { authenticateToken } from '../middleware/auth.middleware';
-import { requireRole } from '../middleware/role.middleware';
+import { requirePermission } from '../middleware/rbac.middleware';
 import {
   logAdminActivity,
   logUserManagement,
@@ -34,18 +34,17 @@ import {
 
 const router = express.Router();
 
-// Apply authentication and admin role requirement to all routes
+// Apply authentication to all routes
 router.use(authenticateToken);
-router.use(requireRole(['admin', 'super_admin', 'root']));
 
 // Admin stats
-router.get('/stats', logAdminActivity({ action: 'view_stats', resource: 'admin_dashboard' }), getAdminStats);
+router.get('/stats', requirePermission('admin.view'), logAdminActivity({ action: 'view_stats', resource: 'admin_dashboard' }), getAdminStats);
 
 // User management
-router.get('/users', logUserManagement('view_users'), getAdminUsers);
-router.post('/users', logUserManagement('create_user'), createAdminUser);
-router.put('/users/:userId', logUserManagement('update_user'), updateAdminUser);
-router.delete('/users/:userId', logUserManagement('delete_user'), deleteAdminUser);
+router.get('/users', requirePermission('users.manage'), logUserManagement('view_users'), getAdminUsers);
+router.post('/users', requirePermission('users.manage'), logUserManagement('create_user'), createAdminUser);
+router.put('/users/:userId', requirePermission('users.manage'), logUserManagement('update_user'), updateAdminUser);
+router.delete('/users/:userId', requirePermission('users.delete'), logUserManagement('delete_user'), deleteAdminUser);
 
 // Activity logs
 router.get('/logs', logAdminActivity({ action: 'view_logs', resource: 'activity_logs' }), getActivityLogs);
@@ -59,22 +58,22 @@ router.options('/export-logs', (req, res) => {
 });
 
 // Settings
-router.get('/settings', logAdminActivity({ action: 'view_settings', resource: 'system_settings' }), getAdminSettings);
-router.put('/settings/general', logSystemManagement('update_general_settings'), updateGeneralSettings);
-router.put('/settings/security', logSecurityAction('update_security_settings'), updateSecuritySettings);
-router.put('/settings/notifications', logSystemManagement('update_notification_settings'), updateNotificationSettings);
-router.put('/settings/backup', logSystemManagement('update_backup_settings'), updateBackupSettings);
+router.get('/settings', requirePermission('system.view'), logAdminActivity({ action: 'view_settings', resource: 'system_settings' }), getAdminSettings);
+router.put('/settings/general', requirePermission('system.manage'), logSystemManagement('update_general_settings'), updateGeneralSettings);
+router.put('/settings/security', requirePermission('system.manage'), logSecurityAction('update_security_settings'), updateSecuritySettings);
+router.put('/settings/notifications', requirePermission('system.manage'), logSystemManagement('update_notification_settings'), updateNotificationSettings);
+router.put('/settings/backup', requirePermission('system.manage'), logSystemManagement('update_backup_settings'), updateBackupSettings);
 
 // Backup
-router.post('/backup/manual', logSystemManagement('trigger_manual_backup'), triggerManualBackup);
+router.post('/backup/manual', requirePermission('system.manage'), logSystemManagement('trigger_manual_backup'), triggerManualBackup);
 
 // RBAC endpoints
-router.get('/rbac/roles', logAdminActivity({ action: 'view_roles', resource: 'role_management' }), getRoles);
-router.post('/rbac/roles', logSecurityAction('create_role'), createRole);
-router.put('/rbac/roles/:roleId', logSecurityAction('update_role'), updateRole);
-router.delete('/rbac/roles/:roleId', logSecurityAction('delete_role'), deleteRole);
-router.get('/rbac/permissions', logAdminActivity({ action: 'view_permissions', resource: 'permission_management' }), getPermissions);
-router.put('/rbac/users/:userId/roles', logSecurityAction('assign_user_roles'), assignRolesToUser);
-router.get('/rbac/users/:userId/permissions', logAdminActivity({ action: 'view_user_permissions', resource: 'user_permissions' }), getUserPermissions);
+router.get('/rbac/roles', requirePermission('roles.view'), logAdminActivity({ action: 'view_roles', resource: 'role_management' }), getRoles);
+router.post('/rbac/roles', requirePermission('roles.manage'), logSecurityAction('create_role'), createRole);
+router.put('/rbac/roles/:roleId', requirePermission('roles.manage'), logSecurityAction('update_role'), updateRole);
+router.delete('/rbac/roles/:roleId', requirePermission('roles.delete'), logSecurityAction('delete_role'), deleteRole);
+router.get('/rbac/permissions', requirePermission('roles.view'), logAdminActivity({ action: 'view_permissions', resource: 'permission_management' }), getPermissions);
+router.put('/rbac/users/:userId/roles', requirePermission('roles.manage'), logSecurityAction('assign_user_roles'), assignRolesToUser);
+router.get('/rbac/users/:userId/permissions', requirePermission('users.view'), logAdminActivity({ action: 'view_user_permissions', resource: 'user_permissions' }), getUserPermissions);
 
 export default router;

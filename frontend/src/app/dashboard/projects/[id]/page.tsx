@@ -314,10 +314,10 @@ const ProjectDetailPage = () => {
                 <div>
                   <p className="text-sm font-medium text-orange-700 dark:text-orange-300">Budget</p>
                   <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                    {budget ? `${budget.currency} ${budget.totalBudget?.toLocaleString()}` : '₹0'}
+                    {budget?.totalBudget ? `${budget.currency || '₹'} ${budget.totalBudget.toLocaleString()}` : `₹${(project.budget || 0).toLocaleString()}`}
                   </p>
                   <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                    {budget ? `${budget.currency} ${budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0).toLocaleString()} spent` : '₹0 spent'}
+                    {budget?.totalBudget ? `${budget.currency || '₹'} ${((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()} spent` : `₹${(project.spentBudget || 0).toLocaleString()} spent`}
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-orange-200 dark:bg-orange-800 rounded-full flex items-center justify-center">
@@ -376,22 +376,41 @@ const ProjectDetailPage = () => {
               <CardTitle className="text-sm font-medium">Budget Health</CardTitle>
             </CardHeader>
             <CardContent>
-              {budget ? (
+              {budget?.totalBudget ? (
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Utilization</span>
                     <span className="font-medium">
-                      {budget.totalBudget > 0 ? ((budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) / budget.totalBudget) * 100).toFixed(0) : 0}%
+                      {(((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)) / budget.totalBudget * 100).toFixed(0)}%
                     </span>
                   </div>
                   <Progress 
-                    value={budget.totalBudget > 0 ? (budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) / budget.totalBudget) * 100 : 0} 
+                    value={((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)) / budget.totalBudget * 100} 
                     className="h-2" 
                   />
                   <div className="flex justify-between text-xs pt-1">
                     <span className="text-muted-foreground">Remaining</span>
                     <span className="font-medium text-green-600">
-                      {budget.currency} {(budget.totalBudget - budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()}
+                      {budget.currency || '₹'} {(budget.totalBudget - ((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0))).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ) : (project.budget || 0) > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Utilization</span>
+                    <span className="font-medium">
+                      {((project.spentBudget || 0) / project.budget * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={(project.spentBudget || 0) / project.budget * 100} 
+                    className="h-2" 
+                  />
+                  <div className="flex justify-between text-xs pt-1">
+                    <span className="text-muted-foreground">Remaining</span>
+                    <span className="font-medium text-green-600">
+                      ₹{(project.budget - (project.spentBudget || 0)).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -621,7 +640,7 @@ const ProjectDetailPage = () => {
                         <div className="text-center">
                           <BarChart3 className="h-8 w-8 mx-auto text-green-600 mb-2" />
                           <p className="text-sm text-muted-foreground">Spent</p>
-                          <p className="text-2xl font-bold">{budget.currency} {budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0).toLocaleString()}</p>
+                          <p className="text-2xl font-bold">{budget.currency} {((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -630,7 +649,7 @@ const ProjectDetailPage = () => {
                         <div className="text-center">
                           <Users className="h-8 w-8 mx-auto text-orange-600 mb-2" />
                           <p className="text-sm text-muted-foreground">Remaining</p>
-                          <p className="text-2xl font-bold">{budget.currency} {(budget.totalBudget - budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()}</p>
+                          <p className="text-2xl font-bold">{budget.currency} {(budget.totalBudget - ((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0))).toLocaleString()}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -638,12 +657,12 @@ const ProjectDetailPage = () => {
                     <div className="mt-6">
                       <div className="flex justify-between text-sm mb-2">
                         <span>Budget Utilization</span>
-                        <span>{((budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) / budget.totalBudget) * 100).toFixed(1)}%</span>
+                        <span>{(((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) / budget.totalBudget) * 100).toFixed(1)}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-3">
                         <div 
                           className="bg-blue-600 h-3 rounded-full transition-all duration-300" 
-                          style={{ width: `${Math.min((budget.categories?.reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) / budget.totalBudget) * 100, 100)}%` }}
+                          style={{ width: `${Math.min(((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0) / budget.totalBudget) * 100, 100)}%` }}
                         ></div>
                       </div>
                     </div>

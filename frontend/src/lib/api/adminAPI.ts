@@ -396,6 +396,123 @@ const adminAPI = {
       throw error;
     }
   },
+
+  // System Administration APIs
+  getAuditTrail: async (params?: any) => {
+    try {
+      const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+      return await apiRequest(`/api/audit-trail${queryString}`);
+    } catch (error) {
+      console.error('Error fetching audit trail:', error);
+      throw error;
+    }
+  },
+
+  exportAuditTrail: async (filters: any) => {
+    try {
+      return await apiRequest('/api/audit-trail/export', {
+        method: 'POST',
+        body: JSON.stringify(filters)
+      });
+    } catch (error) {
+      console.error('Error exporting audit trail:', error);
+      throw error;
+    }
+  },
+
+  getSystemLogs: async (params?: any) => {
+    try {
+      const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+      return await apiRequest(`/api/system-logs${queryString}`);
+    } catch (error) {
+      console.error('Error fetching system logs:', error);
+      throw error;
+    }
+  },
+
+  exportSystemLogs: async (filters: any) => {
+    try {
+      return await apiRequest('/api/system-logs/export', {
+        method: 'POST',
+        body: JSON.stringify(filters)
+      });
+    } catch (error) {
+      console.error('Error exporting system logs:', error);
+      throw error;
+    }
+  },
+
+  getNotificationSettings: async () => {
+    try {
+      return await apiRequest('/api/notification-settings');
+    } catch (error) {
+      console.error('Error fetching notification settings:', error);
+      throw error;
+    }
+  },
+
+  updateNotificationSettingsNew: async (settings: any) => {
+    try {
+      return await apiRequest('/api/notification-settings', {
+        method: 'PUT',
+        body: JSON.stringify(settings)
+      });
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+      throw error;
+    }
+  },
+
+  exportData: async (module: string, format: string, filters: any) => {
+    try {
+      return await apiRequest('/api/data-export', {
+        method: 'POST',
+        body: JSON.stringify({ module, format, filters })
+      });
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      throw error;
+    }
+  },
+
+  getExportJobs: async () => {
+    try {
+      return await apiRequest('/api/data-export/jobs');
+    } catch (error) {
+      console.error('Error fetching export jobs:', error);
+      throw error;
+    }
+  },
+
+  getBackups: async () => {
+    try {
+      return await apiRequest('/api/backup/logs');
+    } catch (error) {
+      console.error('Error fetching backups:', error);
+      throw error;
+    }
+  },
+
+  createBackup: async () => {
+    try {
+      return await apiRequest('/api/backup/download');
+    } catch (error) {
+      console.error('Error creating backup:', error);
+      throw error;
+    }
+  },
+
+  restoreBackup: async (backupId: string) => {
+    try {
+      return await apiRequest('/api/backup/restore', {
+        method: 'POST',
+        body: JSON.stringify({ backupId })
+      });
+    } catch (error) {
+      console.error('Error restoring backup:', error);
+      throw error;
+    }
+  },
 };
 
 export default adminAPI;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,6 +18,8 @@ import adminAPI from "@/lib/api/adminAPI";
 import { toast } from "@/components/ui/use-toast";
 import { logActivity } from "@/lib/activityLogger";
 import { CreateRoleDialog } from "./CreateRoleDialog";
+import { ModernRoleDialog } from "./ModernRoleDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Role {
   _id: string;
@@ -51,17 +53,20 @@ interface UnifiedRoleManagementProps {
 }
 
 export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps) {
+  const { hasPermission } = useAuth();
   const [roles, setRoles] = useState<Role[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const hasFetchedRef = useRef(false);
   
   // Role management states
   const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
   const [isEditRoleOpen, setIsEditRoleOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<Role | null>(null);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [newRole, setNewRole] = useState({
     name: "",
     description: "",
@@ -74,6 +79,9 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    
     const fetchData = async () => {
       try {
         const [rolesData, usersData, permissionsData] = await Promise.all([
@@ -93,10 +101,8 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
       }
     };
 
-    if (!isLoading) {
-      fetchData();
-    }
-  }, [isLoading]);
+    fetchData();
+  }, []);
 
   const filteredRoles = roles.filter(role => {
     const matchesSearch = role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -289,10 +295,12 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => setIsAddRoleOpen(true)}>
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Create Role
-            </Button>
+            {hasPermission('roles.create') && (
+              <Button onClick={() => { setDialogMode('create'); setIsAddRoleOpen(true); }}>
+                <PlusIcon className="mr-2 h-4 w-4" />
+                Create Role
+              </Button>
+            )}
           </div>
 
           <div className="rounded-md border">
@@ -320,18 +328,22 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                       <TableCell className="font-medium">{role.name}</TableCell>
                       <TableCell>{role.description || "-"}</TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {role.permissions.slice(0, 3).map((permission) => (
-                            <Badge key={permission} variant="secondary" className="text-xs">
-                              {permission}
-                            </Badge>
-                          ))}
-                          {role.permissions.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{role.permissions.length - 3} more
-                            </Badge>
-                          )}
-                        </div>
+                        {role.permissions.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">No permissions</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {role.permissions.slice(0, 2).map((permission) => (
+                              <Badge key={permission} variant="secondary" className="text-xs">
+                                {permission.replace(/_/g, ' ')}
+                              </Badge>
+                            ))}
+                            {role.permissions.length > 2 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{role.permissions.length - 2} more
+                              </Badge>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={role.isActive ? "default" : "secondary"}>
@@ -341,32 +353,38 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                       <TableCell>{new Date(role.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleToggleRoleStatus(role._id, !role.isActive)}
-                          >
-                            {role.isActive ? 
-                              <ToggleRightIcon className="h-4 w-4" /> : 
-                              <ToggleLeftIcon className="h-4 w-4" />
-                            }
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setCurrentRole({ ...role });
-                              setIsEditRoleOpen(true);
-                            }}
-                          >
-                            <EditIcon className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <TrashIcon className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
+                          {hasPermission('roles.edit') && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleToggleRoleStatus(role._id, !role.isActive)}
+                            >
+                              {role.isActive ? 
+                                <ToggleRightIcon className="h-4 w-4" /> : 
+                                <ToggleLeftIcon className="h-4 w-4" />
+                              }
+                            </Button>
+                          )}
+                          {hasPermission('roles.edit') && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setCurrentRole({ ...role });
+                                setDialogMode('edit');
+                                setIsEditRoleOpen(true);
+                              }}
+                            >
+                              <EditIcon className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {hasPermission('roles.delete') && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <TrashIcon className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Role</AlertDialogTitle>
@@ -391,7 +409,8 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
-                          </AlertDialog>
+                            </AlertDialog>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -460,19 +479,21 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setCurrentUser(user);
-                          // Set the first RBAC role as selected, or empty if none
-                          setSelectedRoles(user.roles && user.roles.length > 0 ? [user.roles[0]._id] : []);
-                          setIsAssignRoleOpen(true);
-                        }}
-                      >
-                        <ShieldIcon className="mr-2 h-4 w-4" />
-                        Assign Role
-                      </Button>
+                      {hasPermission('users.assign_roles') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCurrentUser(user);
+                            // Set the first RBAC role as selected, or empty if none
+                            setSelectedRoles(user.roles && user.roles.length > 0 ? [user.roles[0]._id] : []);
+                            setIsAssignRoleOpen(true);
+                          }}
+                        >
+                          <ShieldIcon className="mr-2 h-4 w-4" />
+                          Assign Role
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -484,62 +505,175 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
 
       {/* Edit Role Dialog */}
       <Dialog open={isEditRoleOpen} onOpenChange={setIsEditRoleOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Role</DialogTitle>
-            <DialogDescription>Update role details and permissions</DialogDescription>
-          </DialogHeader>
-          {currentRole && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-name" className="text-right">Name</Label>
-                <Input
-                  id="edit-name"
-                  className="col-span-3"
-                  value={currentRole.name}
-                  onChange={(e) => setCurrentRole({ ...currentRole, name: e.target.value })}
-                />
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
+          <DialogHeader className="pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <ShieldIcon className="h-5 w-5 text-primary" />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-description" className="text-right">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  className="col-span-3"
-                  value={currentRole.description || ""}
-                  onChange={(e) => setCurrentRole({ ...currentRole, description: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label className="text-right">Permissions</Label>
-                <div className="col-span-3 space-y-4">
-                  {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
-                    <div key={category} className="space-y-2">
-                      <h4 className="font-medium text-sm">{category}</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {categoryPermissions.map((permission) => (
-                          <div key={permission._id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`edit-${permission.name}`}
-                              checked={currentRole.permissions.includes(permission.name)}
-                              onCheckedChange={(checked) => 
-                                handlePermissionChange(permission.name, checked as boolean, true)
-                              }
-                            />
-                            <Label htmlFor={`edit-${permission.name}`} className="text-sm">
-                              {permission.name}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div>
+                <DialogTitle className="text-xl font-semibold">Edit Role</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Modify role details and permissions for {currentRole?.name}
+                </DialogDescription>
               </div>
             </div>
+          </DialogHeader>
+          
+          {currentRole && (
+            <Tabs defaultValue="details" className="flex-1">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="details" className="flex items-center gap-2">
+                  <EditIcon className="h-4 w-4" />
+                  Role Details
+                </TabsTrigger>
+                <TabsTrigger value="permissions" className="flex items-center gap-2">
+                  <ShieldIcon className="h-4 w-4" />
+                  Permissions ({currentRole.permissions.length})
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details" className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-name" className="text-sm font-medium">Role Name *</Label>
+                    <Input
+                      id="edit-name"
+                      placeholder="Enter role name"
+                      value={currentRole.name}
+                      onChange={(e) => setCurrentRole({ ...currentRole, name: e.target.value })}
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Status</Label>
+                    <div className="flex items-center gap-2 h-10">
+                      <Badge variant={currentRole.isActive ? "default" : "secondary"}>
+                        {currentRole.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-description" className="text-sm font-medium">Description</Label>
+                  <Textarea
+                    id="edit-description"
+                    placeholder="Describe the role's purpose and responsibilities"
+                    value={currentRole.description || ""}
+                    onChange={(e) => setCurrentRole({ ...currentRole, description: e.target.value })}
+                    rows={4}
+                    className="resize-none"
+                  />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="permissions" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-medium">Manage Permissions</h3>
+                    <Badge variant="outline" className="text-xs">
+                      {currentRole.permissions.length} selected
+                    </Badge>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const allPermissionNames = permissions.map(p => p.name);
+                        setCurrentRole({ ...currentRole, permissions: allPermissionNames });
+                      }}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentRole({ ...currentRole, permissions: [] })}
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="max-h-[400px] overflow-y-auto border rounded-lg">
+                  <div className="p-4 space-y-6">
+                    {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => {
+                      const categorySelected = categoryPermissions.filter(p => 
+                        currentRole.permissions.includes(p.name)
+                      ).length;
+                      const categoryTotal = categoryPermissions.length;
+                      
+                      return (
+                        <div key={category} className="space-y-3">
+                          <div className="flex items-center gap-3 pb-2 border-b">
+                            <Checkbox
+                              id={`category-${category}`}
+                              checked={categorySelected === categoryTotal}
+                              onCheckedChange={(checked) => {
+                                const categoryPermissionNames = categoryPermissions.map(p => p.name);
+                                if (checked) {
+                                  const newPermissions = [...new Set([...currentRole.permissions, ...categoryPermissionNames])];
+                                  setCurrentRole({ ...currentRole, permissions: newPermissions });
+                                } else {
+                                  const newPermissions = currentRole.permissions.filter(
+                                    p => !categoryPermissionNames.includes(p)
+                                  );
+                                  setCurrentRole({ ...currentRole, permissions: newPermissions });
+                                }
+                              }}
+                            />
+                            <Label htmlFor={`category-${category}`} className="font-semibold cursor-pointer">
+                              {category}
+                            </Label>
+                            <Badge variant="secondary" className="text-xs ml-auto">
+                              {categorySelected}/{categoryTotal}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 pl-6">
+                            {categoryPermissions.map((permission) => (
+                              <div key={permission._id} className="flex items-start space-x-2 p-2 rounded hover:bg-muted/50">
+                                <Checkbox
+                                  id={`edit-${permission.name}`}
+                                  checked={currentRole.permissions.includes(permission.name)}
+                                  onCheckedChange={(checked) => 
+                                    handlePermissionChange(permission.name, checked as boolean, true)
+                                  }
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <Label 
+                                    htmlFor={`edit-${permission.name}`} 
+                                    className="text-sm cursor-pointer block"
+                                  >
+                                    {permission.name.replace(/_/g, ' ')}
+                                  </Label>
+                                  {permission.description && (
+                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                      {permission.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditRoleOpen(false)}>Cancel</Button>
-            <Button onClick={handleUpdateRole}>Save Changes</Button>
+          
+          <DialogFooter className="border-t pt-4 mt-6">
+            <Button variant="outline" onClick={() => setIsEditRoleOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateRole} disabled={!currentRole?.name.trim()} className="min-w-[120px]">
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -586,11 +720,27 @@ export function UnifiedRoleManagement({ isLoading }: UnifiedRoleManagementProps)
         </DialogContent>
       </Dialog>
 
-      {/* Create Role Dialog */}
-      <CreateRoleDialog
-        open={isAddRoleOpen}
-        onOpenChange={setIsAddRoleOpen}
-        onRoleCreated={handleRoleCreated}
+      {/* Modern Role Dialogs */}
+      <ModernRoleDialog
+        open={isAddRoleOpen || isEditRoleOpen}
+        onOpenChange={(open) => {
+          setIsAddRoleOpen(false);
+          setIsEditRoleOpen(false);
+          if (!open) setCurrentRole(null);
+        }}
+        onSuccess={() => {
+          const fetchData = async () => {
+            try {
+              const rolesData = await adminAPI.getRoles();
+              setRoles(rolesData);
+            } catch (error) {
+              console.error('Failed to refresh roles:', error);
+            }
+          };
+          fetchData();
+        }}
+        role={currentRole}
+        mode={dialogMode}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, Edit, Trash2 } from 'lucide-react';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
 interface Account {
   _id: string;
@@ -18,6 +19,12 @@ interface Account {
 
 const ChartOfAccounts = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
+
+  const { getRowProps } = useKeyboardNavigation({
+    items: accounts,
+    onSelect: (account) => console.log('Selected account:', account),
+    enabled: true
+  });
 
   useEffect(() => {
     const storedAccounts = localStorage.getItem('gl_accounts');
@@ -70,8 +77,8 @@ const ChartOfAccounts = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              accounts.map((account) => (
-                <TableRow key={account._id} className="border-gray-700 hover:bg-gray-700/50">
+              accounts.map((account, index) => (
+                <TableRow key={account._id} {...getRowProps(index)} className="border-gray-700 hover:bg-gray-700/50">
                   <TableCell className="text-gray-300 font-mono">{account.code}</TableCell>
                   <TableCell className="text-gray-200 font-medium">{account.name}</TableCell>
                   <TableCell>

@@ -173,6 +173,13 @@ export function useAdminPermissions() {
     return resourcePermissions[resource as keyof typeof resourcePermissions] || {};
   };
 
+  // Memoize user ID to prevent infinite loops
+  const userId = useMemo(() => user?._id, [user?._id]);
+  const userRole = useMemo(() => 
+    typeof user?.role === 'string' ? user.role : user?.role?.name,
+    [user?.role]
+  );
+
   // Calculate permissions based on user role and explicit permissions
   useEffect(() => {
     const calculatePermissions = () => {
@@ -349,7 +356,7 @@ export function useAdminPermissions() {
     };
 
     calculatePermissions();
-  }, [user, isAuthenticated]);
+  }, [userId, userRole, isAuthenticated]);
 
   return {
     permissions,

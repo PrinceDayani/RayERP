@@ -221,4 +221,6 @@ JournalEntrySchema.index({ status: 1, entryDate: 1 });
 JournalEntrySchema.index({ periodYear: 1, periodMonth: 1 });
 JournalEntrySchema.index({ isRecurring: 1, nextRecurringDate: 1 });
 
-export default mongoose.model<IJournalEntry>('JournalEntry', JournalEntrySchema);
+const JournalEntry = mongoose.model<IJournalEntry>('JournalEntry', JournalEntrySchema);
+export { JournalEntry };
+export default JournalEntry;

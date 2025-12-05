@@ -1,14 +1,12 @@
 import express from 'express';
 import { createRecurringEntry, getRecurringEntries, updateRecurringEntry, deleteRecurringEntry, processRecurringEntries } from '../controllers/recurringEntryController';
 import { protect } from '../middleware/auth.middleware';
-import { generalLimiter } from '../middleware/rateLimiter.middleware';
 import { validateRecurringEntry, validateSkipNext, validateVariables, validateApprovalConfig, validateBatchApprove } from '../middleware/validation.middleware';
 import { logger } from '../utils/logger';
 
 const router = express.Router();
 
 router.use(protect);
-router.use(generalLimiter);
 
 router.post('/', createRecurringEntry);
 router.get('/', getRecurringEntries);

@@ -15,12 +15,12 @@ const router = Router();
 
 router.use(protect);
 
-router.get('/', requirePermission('view_employees'), getAllEmployees);
-router.get('/:id', requirePermission('view_employees'), getEmployeeById);
-router.post('/', requirePermission('create_employee'), createEmployee);
-router.put('/:id', requirePermission('update_employee'), updateEmployee);
-router.delete('/:id', requirePermission('delete_employee'), deleteEmployee);
-router.get('/:id/tasks', requirePermission('view_employees'), getEmployeeTasks);
-router.get('/:id/tasks/stats', requirePermission('view_employees'), getEmployeeTaskStats);
+router.get('/', requirePermission('employees.view'), getAllEmployees);
+router.get('/:id', requirePermission('employees.view'), getEmployeeById);
+router.post('/', requirePermission('employees.create'), createEmployee);
+router.put('/:id', requirePermission('employees.edit'), updateEmployee);
+router.delete('/:id', requirePermission('employees.delete'), deleteEmployee);
+router.get('/:id/tasks', requirePermission('employees.view'), getEmployeeTasks);
+router.get('/:id/tasks/stats', requirePermission('employees.view'), getEmployeeTaskStats);
 
 export default router;

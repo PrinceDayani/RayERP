@@ -50,6 +50,7 @@ import {
 import { cloneProject, exportProjectAsTemplate } from '../controllers/projectTemplateController';
 import budgetRoutes from './budgetRoutes';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { requirePermission, requireAnyPermission } from '../middleware/rbac.middleware';
 import { checkProjectAccess, checkProjectManagementAccess } from '../middleware/projectAccess.middleware';
 import {
   validateObjectId,
@@ -65,28 +66,30 @@ const router = Router();
 router.use(authenticateToken);
 
 // --- Core Project Routes ---
-router.get('/stats', getProjectStats);
-router.get('/timeline-data', getAllProjectsTimelineData);
-router.get('/by-view', getProjectsByView);
-router.get('/', getAllProjects);
-router.get('/:id', validateObjectId(), checkProjectAccess, getProjectById);
+router.get('/stats', requirePermission('projects.view'), getProjectStats);
+router.get('/timeline-data', requirePermission('projects.view'), getAllProjectsTimelineData);
+router.get('/by-view', requirePermission('projects.view'), getProjectsByView);
+router.get('/', requirePermission('projects.view'), getAllProjects);
+router.get('/:id', validateObjectId(), requirePermission('projects.view'), checkProjectAccess, getProjectById);
 router.post('/',
-  checkProjectManagementAccess,
+  requirePermission('projects.create'),
   validateRequiredFields(['name', 'description', 'startDate', 'endDate', 'manager']),
   validateProjectStatus,
   validatePriority,
   validateDateRange,
   createProject
 );
+import { requireProjectPermission } from '../middleware/projectPermission.middleware';
+
 router.put('/:id',
   validateObjectId(),
-  checkProjectAccess,
+  requireProjectPermission('projects.edit', false),
   validateProjectStatus,
   validatePriority,
   validateDateRange,
   updateProject
 );
-router.delete('/:id', validateObjectId(), checkProjectManagementAccess, deleteProject);
+router.delete('/:id', validateObjectId(), requirePermission('projects.delete'), deleteProject);
 router.patch('/:id/status',
   validateObjectId(),
   checkProjectAccess,
@@ -126,14 +129,14 @@ router.post('/:id/tasks/reorder',
 router.get('/:id/members', validateObjectId(), checkProjectAccess, getProjectMembers);
 router.post('/:id/members',
   validateObjectId(),
-  checkProjectManagementAccess,
+  requireProjectPermission('projects.manage_team', true),
   validateRequiredFields(['memberId']),
   addProjectMember
 );
 router.delete('/:id/members/:memberId',
   validateObjectId('id'),
   validateObjectId('memberId'),
-  checkProjectManagementAccess,
+  requireProjectPermission('projects.manage_team', true),
   removeProjectMember
 );
 
@@ -144,7 +147,7 @@ router.get('/:id/activity', validateObjectId(), checkProjectAccess, getProjectAc
 
 // --- Template & Cloning Routes ---
 router.get('/templates/list', getProjectTemplates);
-router.post('/:id/clone', validateObjectId(), checkProjectManagementAccess, cloneProjectController);
+router.post('/:id/clone', validateObjectId(), requirePermission('projects.create'), cloneProjectController);
 router.get('/:id/export-template', validateObjectId(), checkProjectAccess, exportProjectAsTemplate);
 
 // --- Instructions Management Routes ---

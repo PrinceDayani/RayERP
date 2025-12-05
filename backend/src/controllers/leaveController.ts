@@ -82,6 +82,39 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
   }
 };
 
+export const cancelLeave = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { cancelledBy, cancellationReason } = req.body;
+    
+    const leave = await Leave.findById(id);
+    if (!leave) {
+      return res.status(404).json({ message: 'Leave request not found' });
+    }
+    
+    // Only allow cancellation of pending or approved leaves
+    if (leave.status === 'cancelled' || leave.status === 'rejected') {
+      return res.status(400).json({ message: 'Cannot cancel this leave request' });
+    }
+    
+    const updatedLeave = await Leave.findByIdAndUpdate(id, {
+      status: 'cancelled',
+      cancelledBy,
+      cancelledDate: new Date(),
+      cancellationReason
+    }, { new: true })
+      .populate('employee', 'firstName lastName employeeId')
+      .populate('approvedBy', 'firstName lastName')
+      .populate('cancelledBy', 'firstName lastName');
+    
+    const { io } = await import('../server');
+    io.emit('leave:cancelled', updatedLeave);
+    res.json(updatedLeave);
+  } catch (error) {
+    res.status(400).json({ message: 'Error cancelling leave', error });
+  }
+};
+
 export const getLeaveBalance = async (req: Request, res: Response) => {
   try {
     const { employeeId } = req.params;

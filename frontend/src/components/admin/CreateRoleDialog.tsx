@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import adminAPI from "@/lib/api/adminAPI";
 import { toast } from "@/components/ui/use-toast";
@@ -59,14 +60,7 @@ export function CreateRoleDialog({ open, onOpenChange, onRoleCreated }: CreateRo
       return;
     }
 
-    if (newRole.permissions.length === 0) {
-      toast({
-        title: "Error",
-        description: "At least one permission is required",
-        variant: "destructive"
-      });
-      return;
-    }
+
 
     setIsLoading(true);
     try {
@@ -162,36 +156,96 @@ export function CreateRoleDialog({ open, onOpenChange, onRoleCreated }: CreateRo
             </div>
 
             {/* Permissions */}
-            <div className="space-y-4">
-              <Label className="text-sm font-medium">Permissions</Label>
-              <div className="space-y-6">
-                {Object.entries(groupedPermissions)
-                  .filter(([category]) => category !== 'Order Management' && category !== 'Product Management')
-                  .map(([category, categoryPermissions]) => (
-                  <div key={category} className="space-y-3">
-                    <h4 className="font-medium text-base text-gray-900">{category}</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      {categoryPermissions.map((permission) => (
-                        <div key={permission._id} className="flex items-center space-x-3">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Permissions ({newRole.permissions.length} selected)</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const allPermissionNames = permissions.map(p => p.name);
+                      setNewRole({ ...newRole, permissions: allPermissionNames });
+                    }}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNewRole({ ...newRole, permissions: [] })}
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => {
+                  const categorySelected = categoryPermissions.filter(p => 
+                    newRole.permissions.includes(p.name)
+                  ).length;
+                  const categoryTotal = categoryPermissions.length;
+                  
+                  return (
+                    <div key={category} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
                           <Checkbox
-                            id={`new-${permission.name}`}
-                            checked={newRole.permissions.includes(permission.name)}
-                            onCheckedChange={(checked) => 
-                              handlePermissionChange(permission.name, checked as boolean)
-                            }
-                            className="rounded-full"
+                            id={`category-new-${category}`}
+                            checked={categorySelected === categoryTotal}
+                            onCheckedChange={(checked) => {
+                              const categoryPermissionNames = categoryPermissions.map(p => p.name);
+                              if (checked) {
+                                const newPermissions = [...new Set([...newRole.permissions, ...categoryPermissionNames])];
+                                setNewRole({ ...newRole, permissions: newPermissions });
+                              } else {
+                                const newPermissions = newRole.permissions.filter(
+                                  p => !categoryPermissionNames.includes(p)
+                                );
+                                setNewRole({ ...newRole, permissions: newPermissions });
+                              }
+                            }}
                           />
-                          <Label 
-                            htmlFor={`new-${permission.name}`} 
-                            className="text-sm font-normal cursor-pointer flex-1"
-                          >
-                            {permission.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          <Label htmlFor={`category-new-${category}`} className="font-semibold text-sm cursor-pointer">
+                            {category}
                           </Label>
+                          <Badge variant="secondary" className="text-xs">
+                            {categorySelected}/{categoryTotal}
+                          </Badge>
                         </div>
-                      ))}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 ml-6">
+                        {categoryPermissions.map((permission) => (
+                          <div key={permission._id} className="flex items-start space-x-2">
+                            <Checkbox
+                              id={`new-${permission.name}`}
+                              checked={newRole.permissions.includes(permission.name)}
+                              onCheckedChange={(checked) => 
+                                handlePermissionChange(permission.name, checked as boolean)
+                              }
+                            />
+                            <div className="flex-1">
+                              <Label 
+                                htmlFor={`new-${permission.name}`} 
+                                className="text-sm font-normal cursor-pointer leading-tight"
+                              >
+                                {permission.name.replace(/_/g, ' ')}
+                              </Label>
+                              {permission.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {permission.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

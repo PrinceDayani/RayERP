@@ -1,7 +1,8 @@
 import express from 'express';
 import { protect } from '../middleware/auth.middleware';
+import { requirePermission } from '../middleware/permission.middleware';
 import { validateRequiredFields } from '../middleware/validation.middleware';
-import { query } from 'express-validator';
+const { query } = require('express-validator');
 
 const router = express.Router();
 
@@ -10,6 +11,7 @@ const router = express.Router();
 // Get audit logs
 router.get('/',
   protect,
+  requirePermission('audit.view'),
   [
     query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
@@ -111,7 +113,7 @@ router.get('/',
 );
 
 // Get audit log statistics
-router.get('/stats', protect, async (req, res) => {
+router.get('/stats', protect, requirePermission('audit.view'), async (req, res) => {
   try {
     const stats = {
       totalLogs: 1250,
@@ -146,7 +148,7 @@ router.get('/stats', protect, async (req, res) => {
 });
 
 // Get audit log by ID
-router.get('/:id', protect, async (req, res) => {
+router.get('/:id', protect, requirePermission('audit.view'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -196,6 +198,7 @@ router.get('/:id', protect, async (req, res) => {
 // Export audit logs
 router.post('/export',
   protect,
+  requirePermission('logs.export'),
   async (req, res) => {
     try {
       const { format = 'csv', filters = {} } = req.body;
@@ -226,7 +229,7 @@ router.post('/export',
 );
 
 // Get compliance report
-router.get('/compliance/report', protect, async (req, res) => {
+router.get('/compliance/report', protect, requirePermission('audit.view'), async (req, res) => {
   try {
     const complianceReport = {
       reportDate: new Date(),
@@ -281,7 +284,7 @@ router.get('/compliance/report', protect, async (req, res) => {
 });
 
 // Get security events
-router.get('/security/events', protect, async (req, res) => {
+router.get('/security/events', protect, requirePermission('audit.view'), async (req, res) => {
   try {
     const securityEvents = [
       {
@@ -324,6 +327,7 @@ router.get('/security/events', protect, async (req, res) => {
 // Create audit log entry (internal use)
 router.post('/log',
   protect,
+  requirePermission('audit.view'),
   async (req, res) => {
     try {
       const {

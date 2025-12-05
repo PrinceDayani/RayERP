@@ -53,6 +53,8 @@ import {
   syncGoogleCalendar
 } from '../controllers/taskCalendarController';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { requirePermission } from '../middleware/rbac.middleware';
+import { requireTaskPermission } from '../middleware/taskPermission.middleware';
 import { upload } from '../middleware/upload.middleware';
 import {
   validateObjectId,
@@ -66,7 +68,7 @@ const router = Router();
 router.use(authenticateToken);
 
 // Stats route must come before parameterized routes
-router.get('/stats', async (req, res) => {
+router.get('/stats', requirePermission('tasks.view'), async (req, res) => {
   try {
     const { getTaskStats } = await import('../utils/taskUtils');
     const stats = await getTaskStats();
@@ -76,9 +78,10 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-router.get('/', getAllTasks);
-router.get('/:id', validateObjectId(), getTaskById);
+router.get('/', requireTaskPermission('tasks.view_all', false), getAllTasks);
+router.get('/:id', validateObjectId(), requirePermission('tasks.view'), getTaskById);
 router.post('/', 
+  requireTaskPermission('tasks.assign', false),
   validateRequiredFields(['title', 'description', 'project', 'assignedTo', 'assignedBy']),
   validateTaskStatus,
   validatePriority,
@@ -86,11 +89,12 @@ router.post('/',
 );
 router.put('/:id', 
   validateObjectId(),
+  requirePermission('tasks.edit'),
   validateTaskStatus,
   validatePriority,
   updateTask
 );
-router.delete('/:id', validateObjectId(), deleteTask);
+router.delete('/:id', validateObjectId(), requirePermission('tasks.delete'), deleteTask);
 router.post('/:id/comments', 
   validateObjectId(),
   validateRequiredFields(['comment', 'user']),
@@ -104,6 +108,7 @@ router.post('/:id/timeline',
 );
 router.patch('/:id/status', 
   validateObjectId(),
+  requireTaskPermission('tasks.change_status', true),
   validateRequiredFields(['status']),
   validateTaskStatus,
   updateTaskStatus

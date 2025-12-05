@@ -2,20 +2,23 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Search, Eye, Edit, Trash2, Coins, TrendingUp, Clock, CheckCircle, XCircle, Send, RefreshCw, Download, Filter, BarChart3, Copy, Star, Command, TrendingDown, AlertTriangle, Activity } from 'lucide-react';
-import { getAllBudgets, createBudget, deleteBudget, submitForApproval, getBudgetAnalytics, getPendingApprovals, syncProjectBudgets } from '@/lib/api/budgetAPI';
+import { Plus, Search, Eye, Edit, Trash2, Coins, TrendingUp, Clock, CheckCircle, XCircle, Send, RefreshCw, Download, Filter, BarChart3, Copy, Star, Command, TrendingDown, AlertTriangle, Activity, DollarSign, PieChart, FileText, Users, Calendar, Target } from 'lucide-react';
+import { getAllBudgets, createBudget, requestBudgetDeletion, approveBudgetDeletion, submitForApproval, sendToReview, getBudgetAnalytics, getPendingApprovals, syncProjectBudgets } from '@/lib/api/budgetAPI';
+import BudgetCreateDialog from '@/components/budget/BudgetCreateDialog';
+import api from '@/lib/api';
 import { Budget } from '@/types/budget';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { initializeSocket, disconnectSocket, getSocket } from '@/lib/socket';
 import { formatCurrency, formatCurrencySmart } from '@/utils/currency';
+import NumberFormatSwitcher from '@/components/budget/NumberFormatSwitcher';
 import { toast } from '@/components/ui/use-toast';
 import auditLogger from '@/lib/auditLog';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -31,15 +34,15 @@ export default function BudgetsPage() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [quickView, setQuickView] = useState<Budget | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
   const { displayCurrency, setDisplayCurrency, convertCurrency, formatAmount: formatCurrencyAmount } = useCurrency();
-  const [newBudget, setNewBudget] = useState({
-    projectName: '',
-    totalBudget: '',
-    currency: 'INR',
-    budgetType: 'project'
-  });
+  const [projects, setProjects] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<Budget[]>([]);
   const router = useRouter();
   const { user } = useAuth();
+  const isDirector = user?.role?.name === 'Director' || user?.role?.name === 'Root';
+  const hasApprovePermission = user?.permissions?.includes('budgets.approve') || user?.permissions?.includes('*');
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -86,6 +89,7 @@ export default function BudgetsPage() {
       await createBudget({
         projectId: '',
         projectName: `${budget.projectName} (Copy)`,
+        budgetType: budget.budgetType || 'special',
         totalBudget: budget.totalBudget,
         currency: budget.currency,
         categories: budget.categories.map(c => ({
@@ -120,7 +124,139 @@ export default function BudgetsPage() {
   useEffect(() => {
     fetchBudgets();
     fetchAnalytics();
+    fetchProjects();
+    fetchDepartments();
+    fetchPendingApprovals();
+
+    // Setup Socket.IO for real-time updates
+    const initSocket = async () => {
+      const socket = await initializeSocket();
+      if (!socket) return;
+      
+      socket.on('budget:created', () => {
+        fetchBudgets();
+        fetchAnalytics();
+      });
+      
+      socket.on('budget:updated', () => {
+        fetchBudgets();
+        fetchAnalytics();
+      });
+      
+      socket.on('budget:deleted', () => {
+        fetchBudgets();
+        fetchAnalytics();
+      });
+      
+      socket.on('budget:approved', () => {
+        fetchBudgets();
+        fetchPendingApprovals();
+        fetchAnalytics();
+      });
+      
+      socket.on('budget:rejected', () => {
+        fetchBudgets();
+        fetchPendingApprovals();
+        fetchAnalytics();
+      });
+    };
+
+    initSocket();
+
+    return () => {
+      disconnectSocket();
+    };
   }, []);
+
+  const fetchPendingApprovals = async () => {
+    try {
+      const data = await getPendingApprovals();
+      setPendingApprovals(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching pending approvals:', error);
+    }
+  };
+
+  const fetchProjects = async () => {
+    console.log('🚀 fetchProjects CALLED');
+    try {
+      console.log('\n=== FRONTEND: Fetching projects ===');
+      console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
+      console.log('Calling: /projects');
+      
+      const response = await api.get('/projects');
+      
+      console.log('✅ Response status:', response.status);
+      console.log('✅ Response data type:', typeof response.data);
+      console.log('✅ Response data is Array?:', Array.isArray(response.data));
+      console.log('✅ Response data length:', Array.isArray(response.data) ? response.data.length : 'N/A');
+      console.log('✅ Response data:', response.data);
+      console.log('=== END FRONTEND REQUEST ===\n');
+      
+      const projectsData = Array.isArray(response.data) ? response.data : (response.data?.data || response.data || []);
+      console.log('📦 projectsData after extraction:', projectsData);
+      console.log('📦 projectsData length:', projectsData.length);
+      
+      if (!Array.isArray(projectsData)) {
+        console.error('❌ projectsData is not an array!', projectsData);
+        setProjects([]);
+        toast({
+          title: 'Error',
+          description: 'Invalid projects data format received from server.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      if (projectsData.length === 0) {
+        console.warn('⚠️ No projects found in database');
+        toast({
+          title: 'No Projects',
+          description: 'No projects found. Create a project first or use Department/Special budget types.',
+          variant: 'default'
+        });
+      }
+      
+      const transformedProjects = projectsData.map((p: any) => {
+        console.log('🔄 Transforming project:', p);
+        return {
+          _id: p._id || p.id,
+          name: p.name || p.projectName || 'Unnamed Project'
+        };
+      });
+      console.log('✅ Transformed projects:', transformedProjects);
+      
+      setProjects(transformedProjects);
+      console.log('✅ Projects state set with', transformedProjects.length, 'projects');
+    } catch (error: any) {
+      console.error('❌ Error fetching projects:', error);
+      console.error('❌ Error message:', error?.message);
+      console.error('❌ Error status:', error?.response?.status);
+      console.error('❌ Error response data:', error?.response?.data);
+      console.error('❌ Full error response:', JSON.stringify(error?.response, null, 2));
+      toast({
+        title: 'Error Loading Projects',
+        description: error?.response?.data?.message || 'Failed to load projects. You can still create Department or Special budgets.',
+        variant: 'destructive'
+      });
+      setProjects([]);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await api.get('/departments');
+      const deptData = response.data?.data || response.data || [];
+      const transformedDepts = deptData.map((d: any) => ({
+        _id: d._id || d.id,
+        name: d.name || 'Unnamed Department'
+      }));
+      setDepartments(transformedDepts);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+      setDepartments([]);
+    }
+  };
 
 
 
@@ -128,9 +264,11 @@ export default function BudgetsPage() {
     try {
       const allBudgets = await getAllBudgets();
       const pendingBudgets = await getPendingApprovals();
+      
       const allBudgetsArray = Array.isArray(allBudgets) ? allBudgets : [];
       const pendingBudgetsArray = Array.isArray(pendingBudgets) ? pendingBudgets : [];
       const combined = [...allBudgetsArray, ...pendingBudgetsArray.filter(pb => !allBudgetsArray.find(ab => ab._id === pb._id))];
+      
       setBudgets(combined);
     } catch (error) {
       console.error('Error fetching budgets:', error);
@@ -275,81 +413,7 @@ export default function BudgetsPage() {
     toast({ title: 'Success', description: 'Budgets exported successfully' });
   };
 
-  const validateBudget = () => {
-    const errors: string[] = [];
-    
-    if (!newBudget.projectName.trim()) {
-      errors.push('Project name is required');
-    } else if (newBudget.projectName.length < 3) {
-      errors.push('Project name must be at least 3 characters');
-    } else if (newBudget.projectName.length > 100) {
-      errors.push('Project name must not exceed 100 characters');
-    }
-    
-    if (!newBudget.totalBudget) {
-      errors.push('Budget amount is required');
-    } else {
-      const amount = Number(newBudget.totalBudget);
-      if (isNaN(amount)) {
-        errors.push('Budget amount must be a valid number');
-      } else if (amount <= 0) {
-        errors.push('Budget amount must be greater than 0');
-      } else if (amount > 1000000000) {
-        errors.push('Budget amount exceeds maximum limit (1 billion)');
-      }
-    }
-    
-    if (!newBudget.currency) {
-      errors.push('Currency is required');
-    }
-    
-    return errors;
-  };
 
-  const handleCreateBudget = async () => {
-    const errors = validateBudget();
-    
-    if (errors.length > 0) {
-      toast({
-        title: 'Validation Error',
-        description: errors.join('. '),
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    try {
-      const result = await createBudget({
-        projectId: '',
-        projectName: newBudget.projectName.trim(),
-        totalBudget: Number(newBudget.totalBudget),
-        currency: newBudget.currency,
-        categories: []
-      });
-      
-      // Audit log
-      if (user) {
-        auditLogger.logBudgetCreated(
-          user._id,
-          user.name,
-          result._id || 'new',
-          { projectName: newBudget.projectName, totalBudget: Number(newBudget.totalBudget), currency: newBudget.currency }
-        );
-      }
-      
-      toast({ title: 'Success', description: 'Budget created successfully' });
-      setShowCreateDialog(false);
-      setNewBudget({ projectName: '', totalBudget: '', currency: 'INR', budgetType: 'project' });
-      fetchBudgets();
-    } catch (error: any) {
-      console.error('Error creating budget:', error);
-      toast({
-        title: 'Error',
-        description: error?.response?.data?.message || 'Failed to create budget',
-        variant: 'destructive',
-      });
-    }
-  };
 
   const handleSubmitForApproval = async (budgetId: string) => {
     const budget = budgets.find(b => b._id === budgetId);
@@ -420,36 +484,44 @@ export default function BudgetsPage() {
     return { allowed: true, reason: '' };
   };
 
-  const handleDeleteBudget = async (budgetId: string) => {
+  const handleRequestDeletion = async (budgetId: string) => {
     const budget = budgets.find(b => b._id === budgetId);
     if (!budget) return;
     
-    const permission = canDeleteBudget(budget);
-    if (!permission.allowed) {
+    if (budget.status !== 'draft') {
       toast({
-        title: 'Action Not Allowed',
-        description: permission.reason,
+        title: 'Cannot Delete',
+        description: 'Only draft budgets can be deleted',
         variant: 'destructive',
       });
       return;
     }
     
-    if (confirm('Are you sure you want to delete this budget? This action cannot be undone.')) {
+    if (confirm('Request deletion approval from Director?')) {
       try {
-        await deleteBudget(budgetId);
-        
-        // Audit log
-        if (user) {
-          auditLogger.logBudgetDeleted(user._id, user.name, budgetId);
-        }
-        
+        await requestBudgetDeletion(budgetId);
+        toast({ title: 'Success', description: 'Deletion request submitted for Director approval' });
+        fetchBudgets();
+      } catch (error: any) {
+        toast({
+          title: 'Error',
+          description: error?.response?.data?.message || 'Failed to request deletion',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  const handleApproveDeletion = async (budgetId: string) => {
+    if (confirm('Approve this budget deletion?')) {
+      try {
+        await approveBudgetDeletion(budgetId);
         toast({ title: 'Success', description: 'Budget deleted successfully' });
         fetchBudgets();
       } catch (error: any) {
-        console.error('Error deleting budget:', error);
         toast({
           title: 'Error',
-          description: error?.response?.data?.message || 'Failed to delete budget',
+          description: error?.response?.data?.message || 'Failed to approve deletion',
           variant: 'destructive',
         });
       }
@@ -494,6 +566,7 @@ export default function BudgetsPage() {
     switch (status) {
       case 'approved': return 'bg-green-100 text-green-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'in-review': return 'bg-blue-100 text-blue-800';
       case 'rejected': return 'bg-red-100 text-red-800';
       case 'draft': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -504,6 +577,7 @@ export default function BudgetsPage() {
     switch (status) {
       case 'approved': return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'pending': return <Clock className="w-4 h-4 text-yellow-600" />;
+      case 'in-review': return <Eye className="w-4 h-4 text-blue-600" />;
       case 'rejected': return <XCircle className="w-4 h-4 text-red-600" />;
       default: return <Clock className="w-4 h-4 text-gray-600" />;
     }
@@ -517,10 +591,11 @@ export default function BudgetsPage() {
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">Budgets</h1>
-            <p className="text-sm text-muted-foreground">{filteredBudgets.length} of {budgets.length} budgets • Viewing in {displayCurrency}</p>
+            <h1 className="text-3xl font-bold">Budget Dashboard</h1>
+            <p className="text-sm text-muted-foreground mt-1">Comprehensive budget management, analytics & approvals</p>
           </div>
           <div className="flex gap-2">
+            <NumberFormatSwitcher />
             <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
               <SelectTrigger className="w-24">
                 <SelectValue />
@@ -541,76 +616,50 @@ export default function BudgetsPage() {
             <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/budgets/analytics')}>
               <BarChart3 className="w-4 h-4" />
             </Button>
+            <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/budgets/comparison')}>
+              Compare
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/budgets/consolidation')}>
+              Consolidation
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/budgets/rollover')}>
+              Rollover
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/budgets/custom-reports')}>
+              Custom Reports
+            </Button>
             {(user?.role.name === 'Root' || user?.role.name === 'Super Admin' || user?.role.name === 'Admin' || user?.role.name === 'Manager') && (
               <Button variant="outline" size="sm" onClick={handleSyncBudgets}>
                 <RefreshCw className="w-4 h-4" />
               </Button>
             )}
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Budget
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Budget</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Project Name <span className="text-red-500">*</span></label>
-                    <Input
-                      value={newBudget.projectName}
-                      onChange={(e) => setNewBudget({ ...newBudget, projectName: e.target.value })}
-                      placeholder="Enter project name (min 3 characters)"
-                      maxLength={100}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {newBudget.projectName.length}/100 characters
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Total Budget <span className="text-red-500">*</span></label>
-                    <Input
-                      type="number"
-                      value={newBudget.totalBudget}
-                      onChange={(e) => setNewBudget({ ...newBudget, totalBudget: e.target.value })}
-                      placeholder="Enter amount (max 1,000,000,000)"
-                      min="1"
-                      max="1000000000"
-                      step="1"
-                    />
-                    {newBudget.totalBudget && Number(newBudget.totalBudget) > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatAmount(Number(newBudget.totalBudget), newBudget.currency)}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Currency</label>
-                    <Select value={newBudget.currency} onValueChange={(value) => setNewBudget({ ...newBudget, currency: value })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="INR">INR</SelectItem>
-                        <SelectItem value="INR">INR</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="GBP">GBP</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-                    <Button onClick={handleCreateBudget}>Create</Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Budget
+            </Button>
+            <BudgetCreateDialog
+              open={showCreateDialog}
+              onOpenChange={setShowCreateDialog}
+              onSuccess={fetchBudgets}
+              projects={projects}
+              departments={departments}
+            />
           </div>
         </div>
 
+        {/* Main Dashboard Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="approvals">
+              Approvals {pendingApprovals.length > 0 && <Badge className="ml-2" variant="destructive">{pendingApprovals.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="budgets">All Budgets</TabsTrigger>
+          </TabsList>
+
+          {/* OVERVIEW TAB */}
+          <TabsContent value="overview" className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -669,30 +718,375 @@ export default function BudgetsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab('approvals')}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Status Overview</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingApprovals.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.byStatus.pending} pending • {stats.byStatus.draft} drafts
+              </p>
+              {pendingApprovals.length > 0 && (
+                <Button variant="link" className="p-0 h-auto mt-2 text-xs" onClick={(e) => { e.stopPropagation(); setActiveTab('approvals'); }}>
+                  Review now →
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                Budget Distribution
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Approved</span>
+                <span className="font-semibold">{stats.byStatus.approved}</span>
+              </div>
+              <Progress value={(stats.byStatus.approved / budgets.length) * 100} className="h-1" />
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Pending</span>
+                <span className="font-semibold">{stats.byStatus.pending}</span>
+              </div>
+              <Progress value={(stats.byStatus.pending / budgets.length) * 100} className="h-1" />
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Draft</span>
+                <span className="font-semibold">{stats.byStatus.draft}</span>
+              </div>
+              <Progress value={(stats.byStatus.draft / budgets.length) * 100} className="h-1" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <PieChart className="h-4 w-4" />
+                Top Categories
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {budgets.length > 0 ? (
+                <div className="space-y-2">
+                  {Array.from(new Set(budgets.flatMap(b => b.categories.map(c => c.name)))).slice(0, 4).map((cat, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground truncate">{cat}</span>
+                      <span className="font-semibold">{budgets.filter(b => b.categories.some(c => c.name === cat)).length}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No categories yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Recent Activity
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Approved</span>
-                  <span className="font-semibold">{stats.byStatus.approved}</span>
+                  <span className="text-muted-foreground">Created Today</span>
+                  <span className="font-semibold">
+                    {budgets.filter(b => new Date(b.createdAt).toDateString() === new Date().toDateString()).length}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Pending</span>
-                  <span className="font-semibold">{stats.byStatus.pending}</span>
+                  <span className="text-muted-foreground">This Week</span>
+                  <span className="font-semibold">
+                    {budgets.filter(b => {
+                      const weekAgo = new Date();
+                      weekAgo.setDate(weekAgo.getDate() - 7);
+                      return new Date(b.createdAt) > weekAgo;
+                    }).length}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Draft</span>
-                  <span className="font-semibold">{stats.byStatus.draft}</span>
+                  <span className="text-muted-foreground">This Month</span>
+                  <span className="font-semibold">
+                    {budgets.filter(b => new Date(b.createdAt).getMonth() === new Date().getMonth()).length}
+                  </span>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Recent Budgets */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Budgets</CardTitle>
+            <CardDescription>Latest budget activities</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {budgets.slice(0, 5).map((budget) => {
+                const spent = budget.status === 'approved' ? budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0) : 0;
+                const util = budget.totalBudget > 0 ? (spent / budget.totalBudget) * 100 : 0;
+                return (
+                  <div key={budget._id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => router.push(`/dashboard/budgets/${budget._id}`)}>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium">{budget.projectName || budget.departmentName}</h4>
+                        <Badge variant="outline" className="text-xs">{budget.budgetType}</Badge>
+                        <Badge className={getStatusColor(budget.status)}>{budget.status}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {formatAmount(convertCurrency(budget.totalBudget, budget.currency, displayCurrency), displayCurrency)}
+                      </p>
+                    </div>
+                    {budget.status === 'approved' && (
+                      <div className="text-right">
+                        <div className="text-sm font-semibold">{util.toFixed(0)}%</div>
+                        <Progress value={util} className="w-20 h-1 mt-1" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+          </TabsContent>
+
+          {/* ANALYTICS TAB */}
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Total Allocated</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{formatAmount(stats.total, displayCurrency)}</div>
+                  <p className="text-xs text-muted-foreground mt-2">Across {budgets.length} budgets</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{formatAmount(stats.spent, displayCurrency)}</div>
+                  <p className="text-xs text-muted-foreground mt-2">{stats.avgUtilization.toFixed(1)}% utilization</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Available</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{formatAmount(stats.remaining, displayCurrency)}</div>
+                  <p className="text-xs text-muted-foreground mt-2">Ready to allocate</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Budget by Type</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {['project', 'department', 'special'].map(type => {
+                      const count = budgets.filter(b => b.budgetType === type).length;
+                      const total = budgets.filter(b => b.budgetType === type).reduce((sum, b) => sum + convertCurrency(b.totalBudget, b.currency, displayCurrency), 0);
+                      return (
+                        <div key={type}>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm capitalize">{type}</span>
+                            <span className="text-sm font-semibold">{formatAmount(total, displayCurrency)}</span>
+                          </div>
+                          <Progress value={(total / stats.total) * 100} className="h-2" />
+                          <p className="text-xs text-muted-foreground mt-1">{count} budget{count !== 1 ? 's' : ''}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Utilization Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Over Budget', color: 'bg-red-500', count: stats.overBudget },
+                      { label: 'High (80-100%)', color: 'bg-orange-500', count: stats.highUtilization },
+                      { label: 'Medium (50-80%)', color: 'bg-yellow-500', count: budgets.filter(b => {
+                        const s = b.categories.reduce((cs, c) => cs + c.spentAmount, 0);
+                        const u = b.totalBudget > 0 ? (s / b.totalBudget) * 100 : 0;
+                        return u >= 50 && u < 80;
+                      }).length },
+                      { label: 'Low (<50%)', color: 'bg-green-500', count: budgets.filter(b => {
+                        const s = b.categories.reduce((cs, c) => cs + c.spentAmount, 0);
+                        const u = b.totalBudget > 0 ? (s / b.totalBudget) * 100 : 0;
+                        return u < 50;
+                      }).length }
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${item.color}`} />
+                          <span className="text-sm">{item.label}</span>
+                        </div>
+                        <span className="font-semibold">{item.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Budget Performance</CardTitle>
+                <CardDescription>Top performing budgets by utilization</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {budgets
+                    .filter(b => b.status === 'approved')
+                    .sort((a, b) => {
+                      const aSpent = a.categories.reduce((s, c) => s + c.spentAmount, 0);
+                      const bSpent = b.categories.reduce((s, c) => s + c.spentAmount, 0);
+                      const aUtil = a.totalBudget > 0 ? (aSpent / a.totalBudget) * 100 : 0;
+                      const bUtil = b.totalBudget > 0 ? (bSpent / b.totalBudget) * 100 : 0;
+                      return bUtil - aUtil;
+                    })
+                    .slice(0, 5)
+                    .map((budget) => {
+                      const spent = budget.categories.reduce((s, c) => s + c.spentAmount, 0);
+                      const util = budget.totalBudget > 0 ? (spent / budget.totalBudget) * 100 : 0;
+                      return (
+                        <div key={budget._id} className="flex items-center gap-4">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">{budget.projectName || budget.departmentName}</div>
+                            <div className="text-xs text-muted-foreground">{formatAmount(convertCurrency(budget.totalBudget, budget.currency, displayCurrency), displayCurrency)}</div>
+                          </div>
+                          <div className="flex items-center gap-2 w-32">
+                            <Progress value={util} className="flex-1 h-2" />
+                            <span className="text-sm font-semibold w-12 text-right">{util.toFixed(0)}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* APPROVALS TAB */}
+          <TabsContent value="approvals" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending Approvals</CardTitle>
+                <CardDescription>Budgets awaiting your approval</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pendingApprovals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                    <p className="text-muted-foreground">No pending approvals</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingApprovals.map((budget) => (
+                      <Card key={budget._id} className="border-yellow-200 bg-yellow-50/30">
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h4 className="font-semibold">{budget.projectName || budget.departmentName}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Submitted {new Date(budget.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="bg-yellow-100">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Pending
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 mb-4">
+                            <div>
+                              <span className="text-xs text-muted-foreground">Total Budget</span>
+                              <p className="font-semibold">{formatCurrency(budget.totalBudget, budget.currency)}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-muted-foreground">Categories</span>
+                              <p className="font-semibold">{budget.categories.length}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-muted-foreground">Type</span>
+                              <p className="font-semibold capitalize">{budget.budgetType}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => router.push(`/dashboard/budgets/${budget._id}`)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Review
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/budgets/${budget._id}`)}>
+                              View Details
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Approval History</CardTitle>
+                <CardDescription>Recently approved or rejected budgets</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {budgets
+                    .filter(b => b.status === 'approved' || b.status === 'rejected')
+                    .slice(0, 5)
+                    .map((budget) => (
+                      <div key={budget._id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          {budget.status === 'approved' ? (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-600" />
+                          )}
+                          <div>
+                            <div className="font-medium">{budget.projectName || budget.departmentName}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {formatCurrency(budget.totalBudget, budget.currency)}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge className={getStatusColor(budget.status)}>
+                          {budget.status}
+                        </Badge>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ALL BUDGETS TAB */}
+          <TabsContent value="budgets" className="space-y-6">
         {(stats.overBudget > 0 || stats.highUtilization > 0) && (
           <Card className="border-orange-200 bg-orange-50/50">
             <CardContent className="pt-6">
@@ -713,15 +1107,14 @@ export default function BudgetsPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-              <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-                <TabsList>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="draft">Draft</TabsTrigger>
-                  <TabsTrigger value="pending">Pending</TabsTrigger>
-                  <TabsTrigger value="approved">Approved</TabsTrigger>
-                  <TabsTrigger value="rejected">Rejected</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className="flex gap-2">
+                <Button variant={statusFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setStatusFilter('all')}>All</Button>
+                <Button variant={statusFilter === 'draft' ? 'default' : 'outline'} size="sm" onClick={() => setStatusFilter('draft')}>Draft</Button>
+                <Button variant={statusFilter === 'in-review' ? 'default' : 'outline'} size="sm" onClick={() => setStatusFilter('in-review')}>In Review</Button>
+                <Button variant={statusFilter === 'pending' ? 'default' : 'outline'} size="sm" onClick={() => setStatusFilter('pending')}>Pending</Button>
+                <Button variant={statusFilter === 'approved' ? 'default' : 'outline'} size="sm" onClick={() => setStatusFilter('approved')}>Approved</Button>
+                <Button variant={statusFilter === 'rejected' ? 'default' : 'outline'} size="sm" onClick={() => setStatusFilter('rejected')}>Rejected</Button>
+              </div>
               <div className="flex gap-2 flex-1 md:flex-initial">
                 <div className="relative flex-1 md:w-64">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -771,11 +1164,19 @@ export default function BudgetsPage() {
                           <Star className={`h-4 w-4 ${isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
                         </Button>
                         <h3 className="text-lg font-semibold cursor-pointer hover:text-primary" onClick={() => setQuickView(budget)}>
-                          {budget.projectName}
+                          {budget.departmentName || budget.projectName || 'Special Budget'}
                         </h3>
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {budget.budgetType}
+                        </Badge>
                         {budget.currency !== displayCurrency && (
                           <Badge variant="outline" className="text-xs">
                             {budget.currency}
+                          </Badge>
+                        )}
+                        {budget.deleteApprovalStatus === 'pending' && (
+                          <Badge variant="destructive" className="text-xs">
+                            Deletion Pending
                           </Badge>
                         )}
                       </div>
@@ -863,7 +1264,7 @@ export default function BudgetsPage() {
                       <Eye className="w-4 h-4 mr-2" />
                       View Details
                     </Button>
-                    {budget.status === 'draft' && (
+                    {budget.status === 'draft' && !budget.deleteApprovalStatus && (
                       <>
                         {canEditBudget(budget).allowed && (
                           <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/budgets/${budget._id}/edit`)}>
@@ -876,6 +1277,22 @@ export default function BudgetsPage() {
                           Duplicate
                         </Button>
                         <Button 
+                          variant="outline"
+                          size="sm" 
+                          onClick={async () => {
+                            try {
+                              await sendToReview(budget._id);
+                              toast({ title: 'Success', description: 'Budget sent to review' });
+                              fetchBudgets();
+                            } catch (error: any) {
+                              toast({ title: 'Error', description: 'Failed to send to review', variant: 'destructive' });
+                            }
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Send to Review
+                        </Button>
+                        <Button 
                           size="sm" 
                           onClick={() => handleSubmitForApproval(budget._id)}
                           disabled={!canSubmitBudget(budget).allowed}
@@ -885,12 +1302,33 @@ export default function BudgetsPage() {
                           Submit
                         </Button>
                         {canDeleteBudget(budget).allowed && (
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteBudget(budget._id)}>
+                          <Button variant="destructive" size="sm" onClick={() => handleRequestDeletion(budget._id)}>
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
+                            Request Delete
                           </Button>
                         )}
                       </>
+                    )}
+                    {budget.status === 'in-review' && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/budgets/${budget._id}`)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          Review
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleSubmitForApproval(budget._id)}
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          Submit for Approval
+                        </Button>
+                      </>
+                    )}
+                    {budget.deleteApprovalStatus === 'pending' && (isDirector || hasApprovePermission) && (
+                      <Button variant="destructive" size="sm" onClick={() => handleApproveDeletion(budget._id)}>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Approve Deletion
+                      </Button>
                     )}
                     {budget.status === 'pending' && (
                       <Button size="sm" onClick={() => router.push('/dashboard/budgets/approvals')}>
@@ -916,6 +1354,10 @@ export default function BudgetsPage() {
             <p className="text-muted-foreground">No budgets found</p>
           </div>
         )}
+          </TabsContent>
+        </Tabs>
+
+        {/* End of Main Content */}
 
         {/* Keyboard Shortcuts Dialog */}
         <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>

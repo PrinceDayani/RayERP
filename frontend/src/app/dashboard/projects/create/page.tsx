@@ -91,7 +91,7 @@ const CreateProjectPage = () => {
     if (!projectForm.name || !projectForm.description || !projectForm.manager) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields (Name, Description, Manager)",
         variant: "destructive",
       });
       return;
@@ -108,13 +108,17 @@ const CreateProjectPage = () => {
 
     try {
       setLoading(true);
+      console.log('📝 Creating project with data:', projectForm);
+      
       const projectData = {
         ...projectForm,
         startDate: projectForm.startDate.toISOString(),
         endDate: projectForm.endDate.toISOString(),
       };
 
+      console.log('📤 Sending project data:', projectData);
       const newProject = await createProject(projectData);
+      console.log('✅ Project created:', newProject);
       
       toast({
         title: "Success",
@@ -122,11 +126,12 @@ const CreateProjectPage = () => {
       });
       
       router.push(`/dashboard/projects/${newProject._id}`);
-    } catch (error) {
-      console.error("Error creating project:", error);
+    } catch (error: any) {
+      console.error("❌ Error creating project:", error);
+      console.error("❌ Error response:", error?.response?.data);
       toast({
         title: "Error",
-        description: "Failed to create project",
+        description: error?.response?.data?.message || error?.message || "Failed to create project",
         variant: "destructive",
       });
     } finally {
@@ -325,21 +330,28 @@ const CreateProjectPage = () => {
 
                 <div>
                   <Label>Project Manager *</Label>
-                  <Select 
-                    value={projectForm.manager} 
-                    onValueChange={(value) => setProjectForm({ ...projectForm, manager: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select project manager" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.map((employee) => (
-                        <SelectItem key={employee._id} value={employee._id}>
-                          {`${employee.firstName} ${employee.lastName}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {employees.length === 0 ? (
+                    <div className="p-3 border rounded-md bg-yellow-50 border-yellow-200">
+                      <p className="text-sm text-yellow-800 font-medium">No employees available</p>
+                      <p className="text-xs text-yellow-700 mt-1">Please create an employee first to assign as project manager.</p>
+                    </div>
+                  ) : (
+                    <Select 
+                      value={projectForm.manager} 
+                      onValueChange={(value) => setProjectForm({ ...projectForm, manager: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select project manager" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((employee) => (
+                          <SelectItem key={employee._id} value={employee._id}>
+                            {`${employee.firstName} ${employee.lastName}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </CardContent>
             </Card>

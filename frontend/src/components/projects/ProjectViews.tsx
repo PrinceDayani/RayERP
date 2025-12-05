@@ -14,24 +14,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
-
-interface Project {
-  _id: string;
-  name: string;
-  description: string;
-  status: 'planning' | 'active' | 'on-hold' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  progress: number;
-  startDate: string;
-  endDate: string;
-  budget: number;
-  spentBudget: number;
-  manager: any;
-  team: any[];
-  departments: any[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { Project } from "@/lib/api/projectsAPI";
 
 interface ProjectViewsProps {
   projects: Project[];
@@ -316,7 +299,7 @@ const ProjectViews: React.FC<ProjectViewsProps> = ({ projects, onProjectsUpdate 
                   <CardContent className="p-3 space-y-2">
                     <h4 className="font-medium text-sm line-clamp-2">{project.name}</h4>
                     <div className="flex items-center justify-between">
-                      <Badge className={getPriorityColor(project.priority)} size="sm">
+                      <Badge className={getPriorityColor(project.priority)}>
                         {project.priority}
                       </Badge>
                       <span className="text-xs text-muted-foreground">

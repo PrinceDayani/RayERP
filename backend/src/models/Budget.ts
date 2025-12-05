@@ -10,9 +10,10 @@ export interface IBudgetItem {
 
 export interface IBudgetCategory {
   name: string;
-  type: 'labor' | 'materials' | 'equipment' | 'overhead';
+  type: 'labor' | 'materials' | 'equipment' | 'overhead' | 'special';
   allocatedAmount: number;
   spentAmount: number;
+  currency?: string;
   items: IBudgetItem[];
 }
 
@@ -25,11 +26,16 @@ export interface IBudgetApproval {
 }
 
 export interface IBudget extends Document {
-  projectId: mongoose.Types.ObjectId;
-  projectName: string;
+  projectId?: mongoose.Types.ObjectId;
+  departmentId?: mongoose.Types.ObjectId;
+  projectName?: string;
+  departmentName?: string;
+  budgetName?: string;
   fiscalYear: number;
   fiscalPeriod: string;
   totalBudget: number;
+  totalAmount?: number;
+  allocatedAmount?: number;
   actualSpent: number;
   remainingBudget: number;
   utilizationPercentage: number;
@@ -38,8 +44,24 @@ export interface IBudget extends Document {
   categories: IBudgetCategory[];
   approvals: IBudgetApproval[];
   parentBudgetId?: mongoose.Types.ObjectId;
-  budgetType: 'project' | 'master' | 'department';
+  budgetType: 'project' | 'department' | 'special';
+  deleteApprovalStatus?: 'pending' | 'approved' | 'rejected';
+  deleteRequestedBy?: mongoose.Types.ObjectId;
+  deleteRequestedAt?: Date;
+  budgetVersion?: number;
+  previousVersionId?: mongoose.Types.ObjectId;
+  isLatestVersion?: boolean;
+  revisionHistory?: Array<{
+    version: number;
+    revisedBy: mongoose.Types.ObjectId;
+    revisedAt: Date;
+    reason: string;
+    changes: any;
+    approvedBy: mongoose.Types.ObjectId;
+    approvedAt: Date;
+  }>;
   createdBy: mongoose.Types.ObjectId;
+  createdByDepartment: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -62,17 +84,18 @@ const budgetCategorySchema = new Schema<IBudgetCategory>({
   name: { type: String, required: true },
   type: { 
     type: String, 
-    enum: ['labor', 'materials', 'equipment', 'overhead'], 
+    enum: ['labor', 'materials', 'equipment', 'overhead', 'special'], 
     required: true 
   },
   allocatedAmount: { type: Number, default: 0, min: 0 },
   spentAmount: { type: Number, default: 0, min: 0 },
+  currency: { type: String },
   items: [budgetItemSchema]
 });
 
-// Auto-calculate allocated amount from items
+// Auto-calculate allocated amount from items only if not explicitly set
 budgetCategorySchema.pre('validate', function(next) {
-  if (this.items && this.items.length > 0) {
+  if (this.items && this.items.length > 0 && (!this.allocatedAmount || this.allocatedAmount === 0)) {
     this.allocatedAmount = this.items.reduce((sum, item) => sum + item.totalCost, 0);
   }
   next();
@@ -92,10 +115,15 @@ const budgetApprovalSchema = new Schema<IBudgetApproval>({
 
 const budgetSchema = new Schema<IBudget>({
   projectId: { type: Schema.Types.ObjectId, ref: 'Project' },
+  departmentId: { type: Schema.Types.ObjectId, ref: 'Department' },
   projectName: String,
+  departmentName: String,
+  budgetName: String,
   fiscalYear: { type: Number, required: true, default: () => new Date().getFullYear() },
   fiscalPeriod: { type: String, required: true, default: 'Q1' },
   totalBudget: { type: Number, required: true, min: 0 },
+  totalAmount: { type: Number, min: 0 },
+  allocatedAmount: { type: Number, min: 0 },
   actualSpent: { type: Number, default: 0, min: 0 },
   remainingBudget: { type: Number, default: 0 },
   utilizationPercentage: { type: Number, default: 0, min: 0, max: 100 },
@@ -110,15 +138,42 @@ const budgetSchema = new Schema<IBudget>({
   parentBudgetId: { type: Schema.Types.ObjectId, ref: 'Budget' },
   budgetType: { 
     type: String, 
-    enum: ['project', 'master', 'department'], 
-    default: 'project' 
+    enum: ['project', 'department', 'special'], 
+    required: true 
   },
+  deleteApprovalStatus: { 
+    type: String, 
+    enum: ['pending', 'approved', 'rejected'] 
+  },
+  deleteRequestedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  deleteRequestedAt: Date,
+  
+  // Version Control
+  budgetVersion: { type: Number, default: 1 },
+  previousVersionId: { type: Schema.Types.ObjectId, ref: 'Budget' },
+  isLatestVersion: { type: Boolean, default: true },
+  revisionHistory: [{
+    version: Number,
+    revisedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    revisedAt: Date,
+    reason: String,
+    changes: Schema.Types.Mixed,
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: Date
+  }],
+  
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
+  createdByDepartment: { type: Schema.Types.ObjectId, ref: 'Department', required: false }
+}, { timestamps: true });
 
 budgetSchema.pre('save', function(next) {
+  // Validation: Budget must have project OR department (except special budgets)
+  if (this.budgetType !== 'special') {
+    if (!this.projectId && !this.departmentId) {
+      return next(new Error('Budget must be assigned to either a Project or Department'));
+    }
+  }
+  
   this.updatedAt = new Date();
   
   // Calculate totals from categories
@@ -152,8 +207,12 @@ budgetSchema.pre('save', function(next) {
 
 // Add indexes
 budgetSchema.index({ projectId: 1, fiscalYear: 1 });
+budgetSchema.index({ departmentId: 1, fiscalYear: 1 });
 budgetSchema.index({ budgetType: 1, status: 1 });
 budgetSchema.index({ parentBudgetId: 1 });
+budgetSchema.index({ createdByDepartment: 1 });
+budgetSchema.index({ budgetVersion: 1, isLatestVersion: 1 });
+budgetSchema.index({ previousVersionId: 1 });
 
 // Virtual for budget variance
 budgetSchema.virtual('budgetVariance').get(function() {

@@ -68,7 +68,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       : []
   );
   const [instructions, setInstructions] = useState<Array<{title: string, content: string, type: string, priority: string}>>(
-    project?.instructions || []
+    (project as any)?.instructions || []
   );
   const [newInstruction, setNewInstruction] = useState({ title: '', content: '', type: 'general', priority: 'medium' });
 

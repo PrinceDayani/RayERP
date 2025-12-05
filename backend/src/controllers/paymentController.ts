@@ -37,12 +37,16 @@ export const getPayments = async (req: Request, res: Response) => {
     if (projectId) filter.projectId = projectId;
 
     const payments = await Payment.find(filter)
-      .populate('invoiceId', 'invoiceNumber totalAmount')
+      .populate('invoiceIds', 'invoiceNumber totalAmount')
       .populate('customerId', 'name email')
       .populate('projectId', 'name')
+      .populate('allocations.invoiceId', 'invoiceNumber')
+      .populate('allocations.accountId', 'name code')
+      .populate('createdBy', 'name email')
       .sort({ createdAt: -1 })
       .limit(Number(limit) * 1)
-      .skip((Number(page) - 1) * Number(limit));
+      .skip((Number(page) - 1) * Number(limit))
+      .lean();
 
     const total = await Payment.countDocuments(filter);
     
@@ -59,14 +63,38 @@ export const getPayments = async (req: Request, res: Response) => {
 export const getPaymentById = async (req: Request, res: Response) => {
   try {
     const payment = await Payment.findById(req.params.id)
-      .populate('invoiceId', 'invoiceNumber totalAmount')
+      .populate('invoiceIds', 'invoiceNumber totalAmount')
       .populate('customerId', 'name email')
-      .populate('projectId', 'name');
+      .populate('projectId', 'name')
+      .populate('allocations.invoiceId', 'invoiceNumber')
+      .populate('allocations.accountId', 'name code')
+      .populate('createdBy', 'name email')
+      .lean();
     
     if (!payment) {
       return res.status(404).json({ success: false, message: 'Payment not found' });
     }
     res.json({ success: true, data: payment });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updatePayment = async (req: Request, res: Response) => {
+  try {
+    const payment = await Payment.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    res.json({ success: true, data: payment });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deletePayment = async (req: Request, res: Response) => {
+  try {
+    const payment = await Payment.findByIdAndDelete(req.params.id);
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    res.json({ success: true, message: 'Payment deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

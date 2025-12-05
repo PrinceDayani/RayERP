@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/toast";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,7 @@ export function UserManagement({ isLoading }: UserManagementProps) {
   const [currentRole, setCurrentRole] = useState<any>(null);
   const [resetPassword, setResetPassword] = useState({ newPassword: "", confirmPassword: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasFetchedRef = useRef(false);
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -51,6 +52,10 @@ export function UserManagement({ isLoading }: UserManagementProps) {
 
   // Fetch data from API
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    
+    let isMounted = true;
     const fetchData = async () => {
       try {
         const [usersData, rolesData, permissionsData] = await Promise.all([
@@ -58,19 +63,23 @@ export function UserManagement({ isLoading }: UserManagementProps) {
           adminAPI.getRoles(),
           adminAPI.getPermissions()
         ]);
-        setUsers(usersData);
-        setRoles(rolesData);
-        setPermissions(permissionsData);
+        if (isMounted) {
+          setUsers(usersData);
+          setRoles(rolesData);
+          setPermissions(permissionsData);
+        }
       } catch (error) {
         console.error("Failed to fetch data:", error);
-        toast.error('Failed to load data. Please check your connection.');
+        if (isMounted) {
+          toast.error('Failed to load data. Please check your connection.');
+        }
       }
     };
 
-    if (!isLoading) {
-      fetchData();
-    }
-  }, [isLoading]);
+    fetchData();
+
+    return () => { isMounted = false; };
+  }, []);
 
   const filteredUsers = users.filter(
     (user) => {
@@ -356,13 +365,13 @@ export function UserManagement({ isLoading }: UserManagementProps) {
     }
   };
 
-  const groupedPermissions = permissions.reduce((acc, permission) => {
+  const groupedPermissions = Array.isArray(permissions) ? (permissions as any[]).reduce((acc, permission) => {
     if (!acc[permission.category]) {
       acc[permission.category] = [];
     }
     acc[permission.category].push(permission);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, any[]>) : {};
 
   const handlePermissionChange = (permissionName: string, checked: boolean) => {
     if (currentRole) {
@@ -1081,7 +1090,7 @@ export function UserManagement({ isLoading }: UserManagementProps) {
                     <div key={category} className="space-y-2">
                       <h4 className="font-medium text-sm">{category}</h4>
                       <div className="grid grid-cols-2 gap-2">
-                        {categoryPermissions.map((permission) => (
+                        {(categoryPermissions as any[]).map((permission) => (
                           <div key={permission._id} className="flex items-center space-x-2">
                             <Checkbox
                               id={`edit-${permission.name}`}

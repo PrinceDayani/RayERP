@@ -5,6 +5,7 @@ import { Account } from '../models/Account';
 import { GLBudget } from '../models/GLBudget';
 import AllocationRule from '../models/AllocationRule';
 import { protect } from '../middleware/auth.middleware';
+import { requireFinanceAccess } from '../middleware/financePermission.middleware';
 import multer from 'multer';
 import fs from 'fs';
 
@@ -78,7 +79,7 @@ const applyAllocationRules = async (lines: any[]) => {
 };
 
 // VALIDATE Journal Entry (Real-time)
-router.post('/validate', async (req, res) => {
+router.post('/validate', requireFinanceAccess('journal.view'), async (req, res) => {
   try {
     const { lines, date } = req.body;
     const year = new Date(date).getFullYear();
@@ -90,7 +91,7 @@ router.post('/validate', async (req, res) => {
 });
 
 // CREATE Journal Entry
-router.post('/', async (req, res) => {
+router.post('/', requireFinanceAccess('journal.create'), async (req, res) => {
   try {
     const { entryDate, lines } = req.body;
     const year = new Date(entryDate).getFullYear();
@@ -132,7 +133,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET All Journal Entries
-router.get('/', async (req, res) => {
+router.get('/', requireFinanceAccess('journal.view'), async (req, res) => {
   try {
     const { status, type, fromDate, toDate, year, month } = req.query;
     const filter: any = {};
@@ -153,7 +154,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET Journal Entry Stats
-router.get('/stats', async (req, res) => {
+router.get('/stats', requireFinanceAccess('journal.view'), async (req, res) => {
   try {
     const stats = {
       total: await JournalEntry.countDocuments(),
@@ -170,7 +171,7 @@ router.get('/stats', async (req, res) => {
 });
 
 // POST Journal Entry - Approve
-router.post('/:id/approve', async (req, res) => {
+router.post('/:id/approve', requireFinanceAccess('journal.approve'), async (req, res) => {
   try {
     const entry = await JournalEntry.findById(req.params.id);
     if (!entry) return res.status(404).json({ success: false, message: 'Entry not found' });
@@ -203,7 +204,7 @@ router.post('/:id/approve', async (req, res) => {
 });
 
 // POST Journal Entry - Post
-router.post('/:id/post', async (req, res) => {
+router.post('/:id/post', requireFinanceAccess('journal.post'), async (req, res) => {
   try {
     const entry = await JournalEntry.findById(req.params.id);
     if (!entry) return res.status(404).json({ success: false, message: 'Entry not found' });
@@ -530,7 +531,7 @@ router.post('/:id/attachment', upload.single('file'), async (req, res) => {
 });
 
 // GET Entry by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireFinanceAccess('journal.view'), async (req, res) => {
   try {
     const entry = await JournalEntry.findById(req.params.id).populate('lines.account lines.costCenter createdBy postedBy');
     if (!entry) return res.status(404).json({ success: false, message: 'Entry not found' });
@@ -541,7 +542,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // PUT Update Entry
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireFinanceAccess('journal.edit'), async (req, res) => {
   try {
     const entry = await JournalEntry.findById(req.params.id);
     if (!entry) return res.status(404).json({ success: false, message: 'Entry not found' });
@@ -571,7 +572,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE Entry
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireFinanceAccess('journal.delete'), async (req, res) => {
   try {
     const entry = await JournalEntry.findById(req.params.id);
     if (!entry) return res.status(404).json({ success: false, message: 'Entry not found' });

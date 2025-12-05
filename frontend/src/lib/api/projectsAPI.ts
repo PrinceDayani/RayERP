@@ -65,6 +65,11 @@ export const projectsAPI = {
     return response.data;
   },
 
+  edit: async (id: string, projectData: Partial<Project>) => {
+    const response = await api.put(`/projects/${id}`, projectData);
+    return response.data;
+  },
+
   update: async (id: string, projectData: Partial<Project>) => {
     const response = await api.put(`/projects/${id}`, projectData);
     return response.data;
@@ -73,6 +78,21 @@ export const projectsAPI = {
   delete: async (id: string) => {
     const response = await api.delete(`/projects/${id}`);
     return response.data;
+  },
+
+  archive: async (id: string) => {
+    const response = await api.patch(`/projects/${id}/status`, { status: 'archived' });
+    return response.data;
+  },
+
+  manageTeam: async (id: string, action: 'add' | 'remove', memberId: string) => {
+    if (action === 'add') {
+      const response = await api.post(`/projects/${id}/members`, { memberId });
+      return response.data;
+    } else {
+      const response = await api.delete(`/projects/${id}/members/${memberId}`);
+      return response.data;
+    }
   },
 
   // Tasks
@@ -166,8 +186,11 @@ export const projectsAPI = {
 export const getAllProjects = projectsAPI.getAll;
 export const getProjectById = projectsAPI.getById;
 export const createProject = projectsAPI.create;
+export const editProject = projectsAPI.edit;
 export const updateProject = projectsAPI.update;
 export const deleteProject = projectsAPI.delete;
+export const archiveProject = projectsAPI.archive;
+export const manageProjectTeam = projectsAPI.manageTeam;
 export const getProjectTasks = projectsAPI.getTasks;
 export const createProjectTask = projectsAPI.createTask;
 export const updateProjectTask = projectsAPI.updateTask;

@@ -18,8 +18,8 @@ export const performanceMiddleware = (req: Request, res: Response, next: NextFun
   const startMemory = process.memoryUsage();
 
   // Override res.end to capture response time
-  const originalEnd = res.end;
-  res.end = function(...args: any[]) {
+  const originalEnd = res.end.bind(res);
+  res.end = function(...args: any[]): Response {
     const duration = Date.now() - startTime;
     const endMemory = process.memoryUsage();
     
@@ -53,8 +53,8 @@ export const performanceMiddleware = (req: Request, res: Response, next: NextFun
     res.setHeader('X-Response-Time', `${duration}ms`);
     res.setHeader('X-Memory-Usage', `${Math.round(metrics.memoryUsage.heapUsed / 1024 / 1024)}MB`);
 
-    originalEnd.apply(this, args);
-  };
+    return originalEnd(...args);
+  } as any;
 
   next();
 };

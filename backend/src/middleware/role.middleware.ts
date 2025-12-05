@@ -91,3 +91,33 @@ export const requireRole = (allowedRoles: string[]) => {
     }
   };
 };
+
+export const authorizeAboveLevel = (minimumLevel: number) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user || !req.user.role) {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Access forbidden: No role assigned'
+        });
+      }
+
+      const userRole = req.user.role as any;
+      const roleLevel = userRole.level || 0;
+
+      if (roleLevel <= minimumLevel) {
+        return res.status(403).json({
+          success: false,
+          message: `Access forbidden: Requires role level above ${minimumLevel}`
+        });
+      }
+
+      next();
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error checking authorization'
+      });
+    }
+  };
+};

@@ -33,6 +33,7 @@ interface AttendanceRecord {
     firstName: string;
     lastName: string;
     employeeId: string;
+    department: string;
   };
   date: string;
   checkIn: string;

@@ -80,134 +80,124 @@ import { requirePermission } from '../middleware/rbac.middleware';
 
 const router = express.Router();
 
+import { requireFinanceAccess } from '../middleware/financePermission.middleware';
+
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
 
-// Permission middleware - bypass in development if user is authenticated
-const optionalPermission = (permission: string) => {
-  return (req: any, res: any, next: any) => {
-    if (req.user) {
-      // User is authenticated, allow access
-      return next();
-    }
-    // Fallback to permission check
-    return requirePermission(permission)(req, res, next);
-  };
-};
-
 // Indian Accounting - Groups
-router.get('/groups', optionalPermission('finance.view'), getGroups);
-router.get('/groups/:id', optionalPermission('finance.view'), getGroupById);
-router.post('/groups', optionalPermission('finance.manage'), createGroup);
-router.put('/groups/:id', optionalPermission('finance.manage'), updateGroup);
-router.delete('/groups/:id', optionalPermission('finance.manage'), deleteGroup);
+router.get('/groups', requireFinanceAccess('accounts.view'), getGroups);
+router.get('/groups/:id', requireFinanceAccess('accounts.view'), getGroupById);
+router.post('/groups', requireFinanceAccess('accounts.create'), createGroup);
+router.put('/groups/:id', requireFinanceAccess('accounts.edit'), updateGroup);
+router.delete('/groups/:id', requireFinanceAccess('accounts.delete'), deleteGroup);
 
 // Indian Accounting - Sub-Groups
-router.get('/sub-groups', optionalPermission('finance.view'), getSubGroups);
-router.get('/sub-groups/:id', optionalPermission('finance.view'), getSubGroupById);
-router.post('/sub-groups', optionalPermission('finance.manage'), createSubGroup);
-router.put('/sub-groups/:id', optionalPermission('finance.manage'), updateSubGroup);
-router.delete('/sub-groups/:id', optionalPermission('finance.manage'), deleteSubGroup);
+router.get('/sub-groups', requireFinanceAccess('accounts.view'), getSubGroups);
+router.get('/sub-groups/:id', requireFinanceAccess('accounts.view'), getSubGroupById);
+router.post('/sub-groups', requireFinanceAccess('accounts.create'), createSubGroup);
+router.put('/sub-groups/:id', requireFinanceAccess('accounts.edit'), updateSubGroup);
+router.delete('/sub-groups/:id', requireFinanceAccess('accounts.delete'), deleteSubGroup);
 
 // Indian Accounting - Ledgers
-router.get('/ledgers', optionalPermission('finance.view'), getLedgers);
-router.get('/ledgers/:id', optionalPermission('finance.view'), getLedgerById);
-router.post('/ledgers', optionalPermission('finance.manage'), createLedger);
-router.put('/ledgers/:id', optionalPermission('finance.manage'), updateLedger);
-router.delete('/ledgers/:id', optionalPermission('finance.manage'), deleteLedger);
+router.get('/ledgers', requireFinanceAccess('ledger.view'), getLedgers);
+router.get('/ledgers/:id', requireFinanceAccess('ledger.view'), getLedgerById);
+router.post('/ledgers', requireFinanceAccess('accounts.create'), createLedger);
+router.put('/ledgers/:id', requireFinanceAccess('accounts.edit'), updateLedger);
+router.delete('/ledgers/:id', requireFinanceAccess('accounts.delete'), deleteLedger);
 
 // Hierarchy
-router.get('/hierarchy', optionalPermission('finance.view'), getAccountHierarchy);
+router.get('/hierarchy', requireFinanceAccess('accounts.view'), getAccountHierarchy);
 
 // Legacy Account routes
-router.get('/accounts', optionalPermission('finance.view'), getAccounts);
-router.post('/accounts', optionalPermission('finance.manage'), createAccount);
-router.put('/accounts/:id', optionalPermission('finance.manage'), updateAccount);
-router.delete('/accounts/:id', optionalPermission('finance.manage'), deleteAccount);
+router.get('/accounts', requireFinanceAccess('accounts.view'), getAccounts);
+router.post('/accounts', requireFinanceAccess('accounts.create'), createAccount);
+router.put('/accounts/:id', requireFinanceAccess('accounts.edit'), updateAccount);
+router.delete('/accounts/:id', requireFinanceAccess('accounts.delete'), deleteAccount);
 
 // Journal entry routes
-router.get('/journal-entries', optionalPermission('finance.view'), getJournalEntries);
-router.get('/journal-entries/:id', optionalPermission('finance.view'), getJournalEntry);
-router.get('/journal-entries/:id/audit-trail', optionalPermission('finance.view'), getJournalEntry);
-router.post('/journal-entries', optionalPermission('finance.manage'), createJournalEntry);
-router.put('/journal-entries/:id', optionalPermission('finance.manage'), updateJournalEntry);
-router.post('/journal-entries/:id/post', optionalPermission('finance.manage'), postJournalEntry);
-router.delete('/journal-entries/:id', optionalPermission('finance.manage'), deleteJournalEntry);
+router.get('/journal-entries', requireFinanceAccess('journal.view'), getJournalEntries);
+router.get('/journal-entries/:id', requireFinanceAccess('journal.view'), getJournalEntry);
+router.get('/journal-entries/:id/audit-trail', requireFinanceAccess('journal.view'), getJournalEntry);
+router.post('/journal-entries', requireFinanceAccess('journal.create'), createJournalEntry);
+router.put('/journal-entries/:id', requireFinanceAccess('journal.edit'), updateJournalEntry);
+router.post('/journal-entries/:id/post', requireFinanceAccess('journal.post'), postJournalEntry);
+router.delete('/journal-entries/:id', requireFinanceAccess('journal.delete'), deleteJournalEntry);
 
 // Reports
-router.get('/trial-balance', optionalPermission('finance.view'), getTrialBalance);
-router.get('/accounts/:accountId/ledger', optionalPermission('finance.view'), getAccountLedger);
-router.get('/reports', optionalPermission('finance.view'), getFinancialReports);
+router.get('/trial-balance', requireFinanceAccess('ledger.view'), getTrialBalance);
+router.get('/accounts/:accountId/ledger', requireFinanceAccess('ledger.view'), getAccountLedger);
+router.get('/reports', requireFinanceAccess('ledger.view'), getFinancialReports);
 
 // Transaction automation
-router.post('/transactions/journal', optionalPermission('finance.manage'), createTransactionJournal);
+router.post('/transactions/journal', requireFinanceAccess('journal.create'), createTransactionJournal);
 
 // Voucher Types
-router.get('/vouchers/:voucherType', optionalPermission('finance.view'), getVouchersByType);
+router.get('/vouchers/:voucherType', requireFinanceAccess('ledger.view'), getVouchersByType);
 
 // Multi-Currency
-router.get('/currencies', optionalPermission('finance.view'), getCurrencies);
-router.post('/currencies', optionalPermission('finance.manage'), createCurrency);
-router.put('/currencies/:id', optionalPermission('finance.manage'), updateCurrency);
-router.delete('/currencies/:id', optionalPermission('finance.manage'), deleteCurrency);
-router.get('/exchange-rates', optionalPermission('finance.view'), getExchangeRate);
-router.post('/exchange-rates', optionalPermission('finance.manage'), updateExchangeRate);
+router.get('/currencies', requireFinanceAccess('accounts.view'), getCurrencies);
+router.post('/currencies', requireFinanceAccess('accounts.create'), createCurrency);
+router.put('/currencies/:id', requireFinanceAccess('accounts.edit'), updateCurrency);
+router.delete('/currencies/:id', requireFinanceAccess('accounts.delete'), deleteCurrency);
+router.get('/exchange-rates', requireFinanceAccess('accounts.view'), getExchangeRate);
+router.post('/exchange-rates', requireFinanceAccess('accounts.edit'), updateExchangeRate);
 
 // Cost Centers
-router.get('/cost-centers', optionalPermission('finance.view'), getCostCenters);
-router.post('/cost-centers', optionalPermission('finance.manage'), createCostCenter);
-router.put('/cost-centers/:id', optionalPermission('finance.manage'), updateCostCenter);
-router.delete('/cost-centers/:id', optionalPermission('finance.manage'), deleteCostCenter);
-router.get('/cost-centers/:costCenterId/report', optionalPermission('finance.view'), getCostCenterReport);
+router.get('/cost-centers', requireFinanceAccess('accounts.view'), getCostCenters);
+router.post('/cost-centers', requireFinanceAccess('accounts.create'), createCostCenter);
+router.put('/cost-centers/:id', requireFinanceAccess('accounts.edit'), updateCostCenter);
+router.delete('/cost-centers/:id', requireFinanceAccess('accounts.delete'), deleteCostCenter);
+router.get('/cost-centers/:costCenterId/report', requireFinanceAccess('ledger.view'), getCostCenterReport);
 
 // Bill-wise Details
-router.get('/accounts/:accountId/bills', optionalPermission('finance.view'), getBillDetails);
-router.post('/bills', optionalPermission('finance.manage'), createBillDetail);
-router.put('/bills/:billId', optionalPermission('finance.manage'), updateBillDetail);
-router.delete('/bills/:billId', optionalPermission('finance.manage'), deleteBillDetail);
-router.put('/bills/:billId/payment', optionalPermission('finance.manage'), updateBillPayment);
-router.get('/accounts/:accountId/bill-statement', optionalPermission('finance.view'), getBillStatement);
+router.get('/accounts/:accountId/bills', requireFinanceAccess('bills.view'), getBillDetails);
+router.post('/bills', requireFinanceAccess('bills.create'), createBillDetail);
+router.put('/bills/:billId', requireFinanceAccess('bills.edit'), updateBillDetail);
+router.delete('/bills/:billId', requireFinanceAccess('bills.delete'), deleteBillDetail);
+router.put('/bills/:billId/payment', requireFinanceAccess('bills.edit'), updateBillPayment);
+router.get('/accounts/:accountId/bill-statement', requireFinanceAccess('bills.view'), getBillStatement);
 
 // Interest Calculations
-router.post('/accounts/:accountId/calculate-interest', optionalPermission('finance.view'), calculateInterest);
-router.post('/accounts/:accountId/post-interest', optionalPermission('finance.manage'), postInterestEntry);
-router.get('/accounts/:accountId/interest-report', optionalPermission('finance.view'), getInterestReport);
+router.post('/accounts/:accountId/calculate-interest', requireFinanceAccess('ledger.view'), calculateInterest);
+router.post('/accounts/:accountId/post-interest', requireFinanceAccess('journal.create'), postInterestEntry);
+router.get('/accounts/:accountId/interest-report', requireFinanceAccess('ledger.view'), getInterestReport);
 
 // GL Budgets
-router.get('/budgets', optionalPermission('finance.view'), getGLBudgets);
-router.post('/budgets', optionalPermission('finance.manage'), createGLBudget);
-router.put('/budgets/:id', optionalPermission('finance.manage'), updateGLBudget);
-router.delete('/budgets/:id', optionalPermission('finance.manage'), deleteGLBudget);
-router.get('/budgets/variance-report', optionalPermission('finance.view'), getBudgetVarianceReport);
-router.get('/accounts/:accountId/budget-status', optionalPermission('finance.view'), getAccountBudgetStatus);
+router.get('/budgets', requireFinanceAccess('ledger.view'), getGLBudgets);
+router.post('/budgets', requireFinanceAccess('accounts.create'), createGLBudget);
+router.put('/budgets/:id', requireFinanceAccess('accounts.edit'), updateGLBudget);
+router.delete('/budgets/:id', requireFinanceAccess('accounts.delete'), deleteGLBudget);
+router.get('/budgets/variance-report', requireFinanceAccess('ledger.view'), getBudgetVarianceReport);
+router.get('/accounts/:accountId/budget-status', requireFinanceAccess('ledger.view'), getAccountBudgetStatus);
 
 // Audit Trail
-router.get('/audit-logs', optionalPermission('finance.view'), getAuditLogs);
+router.get('/audit-logs', requireFinanceAccess('ledger.view'), getAuditLogs);
 
 // Advanced Reports
-router.get('/reports/cash-flow', optionalPermission('finance.view'), getCashFlowReport);
-router.get('/reports/funds-flow', optionalPermission('finance.view'), getFundsFlowReport);
-router.get('/reports/ratio-analysis', optionalPermission('finance.view'), getRatioAnalysis);
+router.get('/reports/cash-flow', requireFinanceAccess('ledger.view'), getCashFlowReport);
+router.get('/reports/funds-flow', requireFinanceAccess('ledger.view'), getFundsFlowReport);
+router.get('/reports/ratio-analysis', requireFinanceAccess('ledger.view'), getRatioAnalysis);
 
 // Import/Export
-router.get('/export', optionalPermission('finance.view'), exportData);
-router.post('/import', optionalPermission('finance.manage'), importData);
+router.get('/export', requireFinanceAccess('ledger.export'), exportData);
+router.post('/import', requireFinanceAccess('accounts.create'), importData);
 
 // Scenario Management
-router.get('/scenarios', optionalPermission('finance.view'), getScenarios);
-router.post('/scenarios', optionalPermission('finance.manage'), createScenario);
-router.put('/scenarios/:id', optionalPermission('finance.manage'), updateScenario);
-router.delete('/scenarios/:id', optionalPermission('finance.manage'), deleteScenario);
-router.post('/scenarios/:id/apply', optionalPermission('finance.manage'), applyScenario);
+router.get('/scenarios', requireFinanceAccess('ledger.view'), getScenarios);
+router.post('/scenarios', requireFinanceAccess('accounts.create'), createScenario);
+router.put('/scenarios/:id', requireFinanceAccess('accounts.edit'), updateScenario);
+router.delete('/scenarios/:id', requireFinanceAccess('accounts.delete'), deleteScenario);
+router.post('/scenarios/:id/apply', requireFinanceAccess('journal.create'), applyScenario);
 
 // Batch Operations
-router.post('/batch/post', optionalPermission('finance.manage'), batchPostEntries);
-router.post('/batch/delete', optionalPermission('finance.manage'), batchDeleteEntries);
+router.post('/batch/post', requireFinanceAccess('journal.post'), batchPostEntries);
+router.post('/batch/delete', requireFinanceAccess('journal.delete'), batchDeleteEntries);
 
 // Utility - Recalculate balances
-router.post('/recalculate-balances', optionalPermission('finance.manage'), recalculateBalances);
+router.post('/recalculate-balances', requireFinanceAccess('accounts.edit'), recalculateBalances);
 
 // Export invoice
-router.post('/export-invoice', optionalPermission('finance.view'), exportInvoice);
+router.post('/export-invoice', requireFinanceAccess('ledger.export'), exportInvoice);
 
 export default router;

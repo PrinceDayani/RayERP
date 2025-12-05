@@ -64,8 +64,14 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
       });
     }
 
-    // Attach user to request object
+    // Attach user to request object with permissions flattened
     req.user = user;
+    
+    // Flatten permissions from role to user object for easier access
+    if (user.role && typeof user.role === 'object' && 'permissions' in user.role) {
+      (req.user as any).permissions = (user.role as any).permissions;
+    }
+    
     next();
   } catch (error: any) {
     console.error('Auth middleware error:', error.message);

@@ -15,6 +15,7 @@ import { Calendar, FileText, TrendingUp, Coins, Building, Users, Plus, Filter, D
 import ChartOfAccounts from './ChartOfAccounts';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { toast } from '@/hooks/use-toast';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
 interface Account {
   _id: string;
@@ -125,6 +126,26 @@ const GeneralLedger = () => {
     ]
   });
   const [aiInsights, setAiInsights] = useState<any>(null);
+  const [selectedAccountIndex, setSelectedAccountIndex] = useState(0);
+  const [selectedEntryIndex, setSelectedEntryIndex] = useState(0);
+
+  const { getRowProps: getAccountRowProps } = useKeyboardNavigation({
+    items: accounts,
+    onSelect: (account) => viewAccountDetails(account._id),
+    enabled: activeTab === 'accounts'
+  });
+
+  const { getRowProps: getEntryRowProps } = useKeyboardNavigation({
+    items: journalEntries,
+    onSelect: (entry) => viewJournalDetails(entry._id),
+    enabled: activeTab === 'journal'
+  });
+
+  const { getRowProps: getLedgerRowProps } = useKeyboardNavigation({
+    items: ledgerEntries,
+    onSelect: () => {},
+    enabled: activeTab === 'ledger'
+  });
 
   const fetchAIInsights = async () => {
     setLoading(true);
@@ -1254,8 +1275,8 @@ const GeneralLedger = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {journalEntries.map(entry => (
-                      <TableRow key={entry._id}>
+                    {journalEntries.map((entry, index) => (
+                      <TableRow key={entry._id} {...getEntryRowProps(index)}>
                         <TableCell>{entry.entryNumber}</TableCell>
                         <TableCell>{entry.date}</TableCell>
                         <TableCell>{entry.reference}</TableCell>
@@ -1323,7 +1344,7 @@ const GeneralLedger = () => {
                       </TableRow>
                     ) : (
                       ledgerEntries.map((entry, index) => (
-                        <TableRow key={`ledger-entry-${entry._id}-${index}`}>
+                        <TableRow key={`ledger-entry-${entry._id}-${index}`} {...getLedgerRowProps(index)}>
                           <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
                           <TableCell>{entry.time || '-'}</TableCell>
                           <TableCell>{entry.reference}</TableCell>
@@ -1876,7 +1897,7 @@ const GeneralLedger = () => {
                             </div>
                             <div>
                               <p className="font-medium">{account.name}</p>
-                              <p className="text-sm text-muted-foreground">{account.code} • {account.type}</p>
+                              <p className="text-sm text-muted-foreground">{account.code} ï¿½ {account.type}</p>
                             </div>
                           </div>
                           <div className="text-right">

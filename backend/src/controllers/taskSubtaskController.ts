@@ -41,7 +41,7 @@ export const updateChecklistItem = async (req: Request, res: Response) => {
     
     if (!task) return res.status(404).json({ message: 'Task not found' });
     
-    const item = task.checklist.find(c => c._id?.toString() === itemId);
+    const item = task.checklist.find((c: any) => c._id?.toString() === itemId);
     if (!item) return res.status(404).json({ message: 'Checklist item not found' });
     
     item.completed = completed;
@@ -107,7 +107,7 @@ export const deleteChecklistItem = async (req: Request, res: Response) => {
     const { itemId } = req.params;
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: 'Task not found' });
-    task.checklist = task.checklist.filter(c => c._id?.toString() !== itemId);
+    task.checklist = task.checklist.filter((c: any) => c._id?.toString() !== itemId);
     await task.save();
     const { io } = await import('../server');
     io.emit('task:checklist:deleted', { taskId: task._id, itemId });

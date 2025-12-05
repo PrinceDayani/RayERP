@@ -19,6 +19,7 @@
     "seed": "npm run validate-env && ts-node --transpile-only scripts/seed.ts",
     "seed:accounts": "npm run validate-env && node scripts/seedChartOfAccounts.js",
     "seed:roles": "npm run validate-env && ts-node --transpile-only scripts/migrateToRoles.ts",
+    "seed:vouchers": "npm run validate-env && ts-node --transpile-only src/scripts/populateVouchers.ts",
     "migrate:roles": "npm run validate-env && ts-node --transpile-only scripts/migrateToRoles.ts",
     "preinstall": "npx only-allow npm"
   },

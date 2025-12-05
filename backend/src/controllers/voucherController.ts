@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Voucher, VoucherType } from '../models/Voucher';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import JournalEntry from '../models/JournalEntry';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
@@ -60,7 +60,7 @@ export const createVoucher = async (req: Request, res: Response) => {
     }
 
     for (const line of lines) {
-      const account = await Account.findById(line.accountId).session(session);
+      const account = await ChartOfAccount.findById(line.accountId).session(session);
       if (!account) {
         await session.abortTransaction();
         return res.status(400).json({ message: `Invalid account: ${line.accountId}` });
@@ -284,7 +284,7 @@ export const postVoucher = async (req: Request, res: Response) => {
     }
 
     for (const line of voucher.lines) {
-      const account = await Account.findById(line.accountId).session(session);
+      const account = await ChartOfAccount.findById(line.accountId).session(session);
       if (!account) {
         await session.abortTransaction();
         return res.status(400).json({ message: `Account not found: ${line.accountId}` });
@@ -366,7 +366,7 @@ export const cancelVoucher = async (req: Request, res: Response) => {
 
     if (voucher.status === 'posted') {
       for (const line of voucher.lines) {
-        const account = await Account.findById(line.accountId).session(session);
+        const account = await ChartOfAccount.findById(line.accountId).session(session);
         if (account) {
           let balanceChange = 0;
           if (['asset', 'expense'].includes(account.type)) {

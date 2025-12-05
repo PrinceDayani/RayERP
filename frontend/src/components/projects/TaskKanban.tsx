@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, Clock, User, Plus, MoreHorizontal } from "lucide-react";
-import React from "react";
 import { toast } from "@/components/ui/use-toast";
 
 interface Task {
@@ -177,7 +176,7 @@ const TaskKanban: React.FC<TaskKanbanProps> = ({
                   )}
                   
                   <div className="flex items-center justify-between">
-                    <Badge size="sm" className={getPriorityColor(task.priority)}>
+                    <Badge className={getPriorityColor(task.priority)}>
                       {task.priority}
                     </Badge>
                     

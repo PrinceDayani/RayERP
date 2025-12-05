@@ -3,10 +3,13 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 export interface IUser extends Document {
+  _id: mongoose.Types.ObjectId;
+  userId?: mongoose.Types.ObjectId;
   name: string;
   email: string;
   password: string;
   role: mongoose.Types.ObjectId; // Reference to Role model
+  permissions?: string[];
   status?: string;
   lastLogin?: Date;
   createdAt: Date;

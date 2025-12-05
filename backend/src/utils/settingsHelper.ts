@@ -6,16 +6,16 @@ export class SettingsHelper {
   // Get a single setting value with fallback
   static async getSetting(key: string, scope: SettingScope, userId?: string, defaultValue?: any): Promise<any> {
     const query: any = { key, scope };
-    if (scope === SettingScope.USER && userId) query.userId = userId;
+    if (scope === 'user' && userId) query.userId = userId;
     
     const setting = await Setting.findOne(query);
-    return setting ? setting.value : defaultValue;
+    return setting ? (setting as any).value : defaultValue;
   }
 
   // Check if a setting exists
   static async settingExists(key: string, scope: SettingScope, userId?: string): Promise<boolean> {
     const query: any = { key, scope };
-    if (scope === SettingScope.USER && userId) query.userId = userId;
+    if (scope === 'user' && userId) query.userId = userId;
     
     const count = await Setting.countDocuments(query);
     return count > 0;
@@ -24,11 +24,11 @@ export class SettingsHelper {
   // Get multiple settings by keys
   static async getSettingsByKeys(keys: string[], scope: SettingScope, userId?: string): Promise<Record<string, any>> {
     const query: any = { key: { $in: keys }, scope };
-    if (scope === SettingScope.USER && userId) query.userId = userId;
+    if (scope === 'user' && userId) query.userId = userId;
     
     const settings = await Setting.find(query);
     return settings.reduce((acc, setting) => {
-      acc[setting.key] = setting.value;
+      acc[(setting as any).key] = (setting as any).value;
       return acc;
     }, {} as Record<string, any>);
   }
@@ -44,10 +44,10 @@ export class SettingsHelper {
 
   // Merge user settings with defaults
   static async getUserSettingsWithDefaults(userId: string, defaults: Record<string, any>): Promise<Record<string, any>> {
-    const userSettings = await Setting.find({ scope: SettingScope.USER, userId }).lean();
+    const userSettings = await Setting.find({ scope: 'user', userId }).lean();
     
     const settingsMap = userSettings.reduce((acc, setting) => {
-      acc[setting.key] = setting.value;
+      acc[(setting as any).key] = (setting as any).value;
       return acc;
     }, {} as Record<string, any>);
     
@@ -58,7 +58,7 @@ export class SettingsHelper {
   static async exportSettings(scope?: SettingScope, userId?: string): Promise<any[]> {
     const query: any = {};
     if (scope) query.scope = scope;
-    if (scope === SettingScope.USER && userId) query.userId = userId;
+    if (scope === 'user' && userId) query.userId = userId;
     
     return await Setting.find(query).lean();
   }
@@ -91,7 +91,7 @@ export class SettingsHelper {
     
     // Delete settings for non-existent users
     const result = await Setting.deleteMany({
-      scope: SettingScope.USER,
+      scope: 'user',
       userId: { $nin: userIds }
     });
     
@@ -101,9 +101,9 @@ export class SettingsHelper {
   // Get settings statistics
   static async getSettingsStats(): Promise<any> {
     const totalSettings = await Setting.countDocuments();
-    const userSettings = await Setting.countDocuments({ scope: SettingScope.USER });
-    const globalSettings = await Setting.countDocuments({ scope: SettingScope.GLOBAL });
-    const orgSettings = await Setting.countDocuments({ scope: SettingScope.ORGANIZATION });
+    const userSettings = await Setting.countDocuments({ scope: 'user' });
+    const globalSettings = await Setting.countDocuments({ scope: 'global' });
+    const orgSettings = await Setting.countDocuments({ scope: 'organization' });
     
     return {
       total: totalSettings,

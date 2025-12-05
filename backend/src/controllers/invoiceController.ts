@@ -108,7 +108,7 @@ export const updateInvoice = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
-    if (invoice.status === 'paid') {
+    if (invoice.status === 'PAID') {
       return res.status(400).json({
         success: false,
         message: 'Cannot modify paid invoice'
@@ -170,7 +170,7 @@ export const markInvoicePaid = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
-    if (invoice.status === 'paid') {
+    if (invoice.status === 'PAID') {
       return res.status(400).json({
         success: false,
         message: 'Invoice is already paid'
@@ -178,7 +178,7 @@ export const markInvoicePaid = async (req: Request, res: Response) => {
     }
 
     invoice.paidAmount = invoice.totalAmount;
-    invoice.status = 'paid';
+    invoice.status = 'PAID';
     await invoice.save();
 
     res.json({
@@ -216,7 +216,7 @@ export const recordPayment = async (req: Request, res: Response) => {
     invoice.paidAmount += amount;
 
     if (invoice.paidAmount >= invoice.totalAmount) {
-      invoice.status = 'paid';
+      invoice.status = 'PAID';
     }
 
     await invoice.save();
@@ -243,14 +243,14 @@ export const sendInvoice = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Invoice not found' });
     }
 
-    if (invoice.status !== 'draft') {
+    if (invoice.status !== 'DRAFT') {
       return res.status(400).json({
         success: false,
         message: 'Only draft invoices can be sent'
       });
     }
 
-    invoice.status = 'sent';
+    invoice.status = 'SENT';
     await invoice.save();
 
     // Here you would integrate with email service

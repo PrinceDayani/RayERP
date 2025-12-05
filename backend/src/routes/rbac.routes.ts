@@ -9,29 +9,45 @@ import {
   createPermission,
   assignRolesToUser,
   getUserPermissions,
-  toggleRoleStatus
+  toggleRoleStatus,
+  initializePermissions
 } from '../controllers/rbacController';
-import { authenticateToken } from '../middleware/auth.middleware';
+import { reduceRolePermissions, getUsersByRoleLevel } from '../controllers/rolePermissionController';
+import { authenticateToken, protect } from '../middleware/auth.middleware';
+import { requirePermission } from '../middleware/rbac.middleware';
+import { authorizeAboveLevel } from '../middleware/role.middleware';
 
 const router = express.Router();
 
 // Apply authentication to all routes
-router.use(authenticateToken);
+router.use(protect);
 
-// Roles management - Only Root can manage roles
-router.get('/roles', getRoles);
-router.post('/roles', createRole);
-router.post('/roles/bulk-delete', bulkDeleteRoles);
-router.put('/roles/:roleId', updateRole);
-router.delete('/roles/:roleId', deleteRole);
-router.patch('/roles/:roleId/toggle-status', toggleRoleStatus);
+// Roles management with granular permissions
+router.get('/roles', requirePermission('roles.view'), getRoles);
+router.post('/roles', requirePermission('roles.create'), createRole);
+router.post('/roles/bulk-delete', requirePermission('roles.delete'), bulkDeleteRoles);
+router.put('/roles/:roleId', requirePermission('roles.edit'), updateRole);
+router.delete('/roles/:roleId', requirePermission('roles.delete'), deleteRole);
+router.patch('/roles/:roleId/toggle-status', requirePermission('roles.edit'), toggleRoleStatus);
 
 // Permissions management - Only Root can manage permissions
 router.get('/permissions', getPermissions);
 router.post('/permissions', createPermission);
+router.post('/permissions/initialize', async (req, res) => {
+  try {
+    const result = await initializePermissions();
+    res.json({ success: true, message: 'Permissions initialized', data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to initialize permissions', error });
+  }
+});
 
 // User role assignment - Only Root can assign roles
 router.put('/users/:userId/role', assignRolesToUser);
 router.get('/users/:userId/permissions', getUserPermissions);
+
+// High-level role management (level > 80)
+router.post('/roles/:roleId/reduce-permissions', authorizeAboveLevel(80), reduceRolePermissions);
+router.get('/users/by-level', authorizeAboveLevel(80), getUsersByRoleLevel);
 
 export default router;

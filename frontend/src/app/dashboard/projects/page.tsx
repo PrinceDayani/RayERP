@@ -15,6 +15,7 @@ import {
   MessageSquare, Clock, Coins, Edit, FileText, Download, Filter, ArrowRight,
   Briefcase, Target, Activity, Zap, GanttChartSquare, Trash2
 } from "lucide-react";
+import { TieredAccessWrapper } from "@/components/common/TieredAccessWrapper";
 import { getProjectStats, getAllProjects, updateProject, deleteProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { useSocket } from "@/hooks/useSocket";
@@ -188,14 +189,21 @@ const ProjectManagementDashboard: React.FC = () => {
     );
   }
 
+  const hasBasicViewItems = false;
+  const fullAccessCount = projects.length;
+  const basicViewCount = 0;
+
   return (
-    <div className="space-y-6">
+    <TieredAccessWrapper 
+      title="Project Management" 
+      hasBasicViewItems={hasBasicViewItems}
+      showLegend={hasBasicViewItems}
+      fullAccessCount={fullAccessCount}
+      basicViewCount={basicViewCount}
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Project Management
-          </h1>
           <p className="text-muted-foreground mt-1">Manage projects, tasks, and team collaboration</p>
         </div>
         <div className="flex items-center gap-3">
@@ -489,7 +497,7 @@ const ProjectManagementDashboard: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </TieredAccessWrapper>
   );
 };
 

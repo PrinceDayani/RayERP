@@ -17,6 +17,7 @@ import leaveRoutes from './leave.routes';
 import employeeReportRoutes from './employeeReport.routes';
 import activityRoutes from './activity.routes';
 import rbacRoutes from './rbac.routes';
+import permissionRoutes from './permission.routes';
 import projectTemplateRoutes from './projectTemplate.routes';
 import resourceRoutes from './resourceRoutes';
 import departmentRoutes from './department.routes';
@@ -66,6 +67,12 @@ import analyticsDataRoutes from './analytics';
 
 import backupRoutes from './backupRoutes';
 import notificationRoutes from './notification.routes';
+import auditTrailRoutes from './auditTrail.routes';
+import systemLogsRoutes from './systemLogs.routes';
+import notificationSettingsRoutes from './notificationSettings.routes';
+import dataExportRoutes from './dataExport.routes';
+import permissionManagementRoutes from './permissionManagement.routes';
+import salesReportRoutes from './salesReport.routes';
 
 const router = express.Router();
 
@@ -88,6 +95,7 @@ router.use('/employee-reports', employeeReportRoutes);
 router.use('/activities', activityRoutes);
 router.use('/activity', activityRoutes); // Alias for singular form
 router.use('/rbac', rbacRoutes);
+router.use('/permissions', permissionRoutes);
 router.use('/project-templates', projectTemplateRoutes);
 router.use('/resources', resourceRoutes);
 router.use('/departments', departmentRoutes);
@@ -102,6 +110,12 @@ router.use('/chat', chatRoutes);
 router.use('/broadcast', broadcastRoutes);
 router.use('/backup', backupRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/audit-trail', auditTrailRoutes);
+router.use('/system-logs', systemLogsRoutes);
+router.use('/notification-settings', notificationSettingsRoutes);
+router.use('/data-export', dataExportRoutes);
+router.use('/permission-management', permissionManagementRoutes);
+router.use('/sales-reports', salesReportRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);

@@ -270,7 +270,7 @@ export const createFromTemplate = async (req: Request, res: Response) => {
     if (!template) return res.status(404).json({ success: false, message: 'Template not found' });
 
     const budgets = [];
-    for (const acc of template.accounts) {
+    for (const acc of (template as any).accounts) {
       const budgetAmount = acc.fixedAmount || (totalBudget * acc.percentage / 100);
       const budget = await GLBudget.create({
         accountId: acc.accountId,

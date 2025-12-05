@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-  getTemplates,
+  getAllTemplates,
   getTemplateById,
   createTemplate,
   updateTemplate,
@@ -11,7 +11,7 @@ import { canManageBudgets, canViewBudgets } from '../middleware/budgetAuth';
 
 const router = express.Router();
 
-router.get('/', authenticateToken, canViewBudgets, getTemplates);
+router.get('/', authenticateToken, canViewBudgets, getAllTemplates);
 router.get('/:id', authenticateToken, canViewBudgets, getTemplateById);
 router.post('/', authenticateToken, canManageBudgets, createTemplate);
 router.put('/:id', authenticateToken, canManageBudgets, updateTemplate);

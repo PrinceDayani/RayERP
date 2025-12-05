@@ -87,13 +87,7 @@ const AccountSchema = new Schema<IAccount>({
     required: true,
     enum: ['asset', 'liability', 'equity', 'revenue', 'expense']
   },
-  accountNature: {
-    type: String,
-    enum: ['debit', 'credit'],
-    default: function() {
-      return ['asset', 'expense'].includes(this.type) ? 'debit' : 'credit';
-    }
-  },
+
   subType: {
     type: String,
     trim: true,

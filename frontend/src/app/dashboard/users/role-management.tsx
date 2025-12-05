@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button";
+import HighLevelRoleManager from '@/components/HighLevelRoleManager';
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,8 +24,8 @@ const PERMISSIONS = {
   Finance: ['finance.view', 'finance.manage'],
   Budgets: ['budgets.view', 'budgets.create', 'budgets.update', 'budgets.delete'],
   Expenses: ['expenses.view', 'expenses.approve', 'expenses.manage'],
-  Reports: ['reports.view', 'reports.export'],
-  Analytics: ['analytics.view'],
+  'Reports & Analytics': ['reports.view', 'reports.create', 'reports.export', 'reports.schedule'],
+  Analytics: ['analytics.view', 'analytics.financial', 'analytics.sales', 'analytics.inventory'],
   Contacts: ['contacts.view', 'contacts.create', 'contacts.update', 'contacts.delete'],
   Settings: ['settings.view', 'settings.manage'],
 };
@@ -54,7 +55,7 @@ export default function RoleManagement() {
 
   const calculateStats = () => {
     const total = roles.length;
-    const active = roles.filter(r => !r.disabled).length;
+    const active = roles.filter(r => !(r as any).disabled).length;
     const system = roles.filter(r => r.isDefault).length;
     const custom = roles.filter(r => !r.isDefault).length;
     setRoleStats({ total, active, system, custom });
@@ -65,7 +66,7 @@ export default function RoleManagement() {
       role.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'active' && !role.disabled) ||
+      (statusFilter === 'active' && !(role as any).disabled) ||
       (statusFilter === 'system' && role.isDefault) ||
       (statusFilter === 'custom' && !role.isDefault);
     
@@ -241,8 +242,15 @@ export default function RoleManagement() {
     );
   }
 
+  const currentUserLevel = (roles.find(r => r.name === 'Root') ? 100 : 50);
+
   return (
     <div className="space-y-6">
+      {/* High-Level Role Manager */}
+      {currentUserLevel > 80 && (
+        <HighLevelRoleManager userLevel={currentUserLevel} />
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg border border-border/50 p-4">
@@ -369,7 +377,7 @@ export default function RoleManagement() {
                     <Badge className="bg-purple-100 text-purple-800 border-purple-200">
                       System
                     </Badge>
-                  ) : role.disabled ? (
+                  ) : (role as any).disabled ? (
                     <Badge className="bg-red-100 text-red-800 border-red-200">
                       Inactive
                     </Badge>
@@ -380,7 +388,7 @@ export default function RoleManagement() {
                   )}
                 </TableCell>
                 <TableCell className="py-4 px-6 text-gray-600">
-                  {new Date(role.createdAt || Date.now()).toLocaleDateString('en-US', {
+                  {new Date((role as any).createdAt || Date.now()).toLocaleDateString('en-US', {
                     month: 'numeric',
                     day: 'numeric',
                     year: 'numeric'

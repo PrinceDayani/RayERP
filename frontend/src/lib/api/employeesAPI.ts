@@ -31,6 +31,11 @@ export const employeesAPI = {
     return response.data;
   },
 
+  edit: async (id: string, employeeData: any) => {
+    const response = await api.put(`/employees/${id}`, employeeData);
+    return response.data;
+  },
+
   update: async (id: string, employeeData: any) => {
     const response = await api.put(`/employees/${id}`, employeeData);
     return response.data;
@@ -51,6 +56,7 @@ export const employeesAPI = {
 export const getAllEmployees = employeesAPI.getAll;
 export const getEmployeeById = employeesAPI.getById;
 export const createEmployee = employeesAPI.create;
+export const editEmployee = employeesAPI.edit;
 export const updateEmployee = employeesAPI.update;
 export const deleteEmployee = employeesAPI.delete;
 export const getSalesReps = employeesAPI.getSalesReps;

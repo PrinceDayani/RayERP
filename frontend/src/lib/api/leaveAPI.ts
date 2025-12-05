@@ -42,13 +42,23 @@ export const leaveAPI = {
     return response.data;
   },
 
+  apply: async (leaveData: { employee: string; leaveType: string; startDate: string; endDate: string; reason: string }) => {
+    const response = await api.post('/leaves', leaveData);
+    return response.data;
+  },
+
   create: async (leaveData: { employee: string; leaveType: string; startDate: string; endDate: string; reason: string }) => {
     const response = await api.post('/leaves', leaveData);
     return response.data;
   },
 
-  updateStatus: async (id: string, statINRata: { status: string; approvedBy?: string; rejectionReason?: string }) => {
-    const response = await api.put(`/leaves/${id}/status`, statINRata);
+  cancel: async (id: string) => {
+    const response = await api.put(`/leaves/${id}/status`, { status: 'cancelled' });
+    return response.data;
+  },
+
+  updateStatus: async (id: string, statusData: { status: string; approvedBy?: string; rejectionReason?: string }) => {
+    const response = await api.put(`/leaves/${id}/status`, statusData);
     return response.data;
   },
 

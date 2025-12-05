@@ -1,48 +1,26 @@
 import { Router } from 'express';
 import { protect } from '../middleware/auth.middleware';
-import { authorize } from '../middleware/role.middleware';
+import { requirePermission } from '../middleware/rbac.middleware';
 import * as reportController from '../controllers/reportController';
 
 const router = Router();
 
-// Get employee reports
-router.get(
-  '/employees',
-  protect,
-  authorize('Admin', 'Superadmin', 'Root'),
-  reportController.getEmployeeReports
-);
+router.use(protect);
 
-// Get project reports
-router.get(
-  '/projects',
-  protect,
-  authorize('Admin', 'Superadmin', 'Root'),
-  reportController.getProjectReports
-);
+// View reports
+router.get('/employees', requirePermission('reports.view'), reportController.getEmployeeReports);
+router.get('/projects', requirePermission('reports.view'), reportController.getProjectReports);
+router.get('/tasks', requirePermission('reports.view'), reportController.getTaskReports);
+router.get('/team-productivity', requirePermission('reports.view'), reportController.getTeamProductivity);
+router.get('/overview', requirePermission('reports.view'), reportController.getOverviewStats);
 
-// Get task reports
-router.get(
-  '/tasks',
-  protect,
-  authorize('Admin', 'Superadmin', 'Root'),
-  reportController.getTaskReports
-);
+// Create reports (if controller supports)
+router.post('/custom', requirePermission('reports.create'), reportController.getOverviewStats);
 
-// Get team productivity
-router.get(
-  '/team-productivity',
-  protect,
-  authorize('Admin', 'Superadmin', 'Root'),
-  reportController.getTeamProductivity
-);
+// Export reports
+router.get('/export/:type', requirePermission('reports.export'), reportController.getOverviewStats);
 
-// Get overview statistics
-router.get(
-  '/overview',
-  protect,
-  authorize('Admin', 'Superadmin', 'Root'),
-  reportController.getOverviewStats
-);
+// Schedule reports (if controller supports)
+router.post('/schedule', requirePermission('reports.schedule'), reportController.getOverviewStats);
 
 export default router;

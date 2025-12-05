@@ -3,6 +3,7 @@ import Invoice from '../models/Invoice';
 import JournalEntry from '../models/JournalEntry';
 import InvoiceTemplate from '../models/InvoiceTemplate';
 import { protect } from '../middleware/auth.middleware';
+import { requireFinanceAccess } from '../middleware/financePermission.middleware';
 import multer from 'multer';
 import path from 'path';
 
@@ -64,7 +65,7 @@ const createJournalEntry = async (invoice: any, userId: string) => {
 };
 
 // CREATE Invoice
-router.post('/', async (req, res) => {
+router.post('/', requireFinanceAccess('invoices.create'), async (req, res) => {
   try {
     const fiscalYear = new Date(req.body.invoiceDate).getMonth() >= 3 ? new Date(req.body.invoiceDate).getFullYear() : new Date(req.body.invoiceDate).getFullYear() - 1;
     const invoiceNumber = await generateInvoiceNumber(req.body.invoiceType, fiscalYear);
@@ -85,7 +86,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET All Invoices with filters
-router.get('/', async (req, res) => {
+router.get('/', requireFinanceAccess('invoices.view'), async (req, res) => {
   try {
     const { status, type, customerId, fromDate, toDate, overdue } = req.query;
     const filter: any = {};
@@ -105,7 +106,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET Invoice Stats
-router.get('/stats', async (req, res) => {
+router.get('/stats', requireFinanceAccess('invoices.view'), async (req, res) => {
   try {
     const stats = {
       total: await Invoice.countDocuments(),
@@ -124,7 +125,7 @@ router.get('/stats', async (req, res) => {
 });
 
 // GET Aging Report
-router.get('/aging-report', async (req, res) => {
+router.get('/aging-report', requireFinanceAccess('invoices.view'), async (req, res) => {
   try {
     const now = new Date();
     const invoices = await Invoice.find({ status: { $in: ['SENT', 'VIEWED', 'PARTIALLY_PAID'] } }).populate('customerId');
@@ -152,7 +153,7 @@ router.get('/aging-report', async (req, res) => {
 });
 
 // POST Invoice - Approve
-router.post('/:id/approve', async (req, res) => {
+router.post('/:id/approve', requireFinanceAccess('invoices.approve'), async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
@@ -177,7 +178,7 @@ router.post('/:id/approve', async (req, res) => {
 });
 
 // POST Invoice - Send
-router.post('/:id/send', async (req, res) => {
+router.post('/:id/send', requireFinanceAccess('invoices.send'), async (req, res) => {
   try {
     const invoice = await Invoice.findByIdAndUpdate(req.params.id, { status: 'SENT', sentDate: new Date() }, { new: true });
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
@@ -189,7 +190,7 @@ router.post('/:id/send', async (req, res) => {
 });
 
 // POST Invoice - Record Payment
-router.post('/:id/payment', async (req, res) => {
+router.post('/:id/payment', requireFinanceAccess('invoices.edit'), async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
@@ -362,7 +363,7 @@ router.post('/:id/attachment', upload.single('file'), async (req, res) => {
 });
 
 // GET Invoice by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireFinanceAccess('invoices.view'), async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id).populate('customerId vendorId journalEntryId');
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
@@ -373,7 +374,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // PUT Update Invoice
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireFinanceAccess('invoices.edit'), async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
@@ -390,7 +391,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE Invoice
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireFinanceAccess('invoices.delete'), async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });

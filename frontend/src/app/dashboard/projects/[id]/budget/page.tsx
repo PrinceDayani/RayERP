@@ -72,9 +72,9 @@ export default function ProjectBudgetPage() {
     }
   };
 
-  const totalSpent = budget?.categories.reduce((sum, cat) => sum + cat.spentAmount, 0) || 0;
-  const spentPercentage = budget ? (totalSpent / budget.totalBudget) * 100 : 0;
-  const remainingBudget = budget ? budget.totalBudget - totalSpent : 0;
+  const totalSpent = budget?.categories?.reduce((sum, cat) => sum + cat.spentAmount, 0) || 0;
+  const spentPercentage = budget && budget.totalBudget ? (totalSpent / budget.totalBudget) * 100 : 0;
+  const remainingBudget = budget && budget.totalBudget ? budget.totalBudget - totalSpent : 0;
 
   const createFromTemplate = () => {
     // Pre-populate with template selection
@@ -254,7 +254,7 @@ export default function ProjectBudgetPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold">Project Budget</h1>
-            {budget && (
+            {budget && budget.status && (
               <Badge className={
                 budget.status === 'approved' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
                 budget.status === 'pending' ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' :
@@ -337,7 +337,7 @@ export default function ProjectBudgetPage() {
                 <Coins className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{budget.currency} {budget.totalBudget.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{budget.currency} {budget.totalBudget?.toLocaleString()}</div>
               </CardContent>
             </Card>
 
@@ -347,8 +347,8 @@ export default function ProjectBudgetPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{budget.currency} {totalSpent.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">{spentPercentage.toFixed(1)}% of budget</p>
+                <div className="text-2xl font-bold">{budget.currency} {totalSpent?.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">{(spentPercentage || 0).toFixed(1)}% of budget</p>
               </CardContent>
             </Card>
 
@@ -358,7 +358,7 @@ export default function ProjectBudgetPage() {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{budget.currency} {remainingBudget.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{budget.currency} {remainingBudget?.toLocaleString()}</div>
               </CardContent>
             </Card>
 
@@ -378,7 +378,7 @@ export default function ProjectBudgetPage() {
                   budget.status === 'draft' ? 'bg-muted text-muted-foreground' :
                   'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                 }>
-                  {budget.status.charAt(0).toUpperCase() + budget.status.slice(1)}
+                  {budget.status?.charAt(0).toUpperCase() + budget.status?.slice(1)}
                 </Badge>
               </CardContent>
             </Card>
@@ -392,7 +392,7 @@ export default function ProjectBudgetPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Overall Progress</span>
-                  <span>{spentPercentage.toFixed(1)}%</span>
+                  <span>{(spentPercentage || 0).toFixed(1)}%</span>
                 </div>
                 <Progress value={spentPercentage} className="h-3" />
               </div>
@@ -435,7 +435,7 @@ export default function ProjectBudgetPage() {
                             approval.status === 'rejected' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' :
                             'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20'
                           }>
-                            {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
+                            {approval.status?.charAt(0).toUpperCase() + approval.status?.slice(1)}
                           </Badge>
                         </div>
                         {approval.comments && (
@@ -455,8 +455,8 @@ export default function ProjectBudgetPage() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {budget.categories.map((category) => {
-              const categorySpentPercentage = category.allocatedAmount > 0 
+            {budget.categories?.map((category) => {
+              const categorySpentPercentage = (category.allocatedAmount && category.allocatedAmount > 0) 
                 ? (category.spentAmount / category.allocatedAmount) * 100 
                 : 0;
 
@@ -471,23 +471,23 @@ export default function ProjectBudgetPage() {
                   <CardContent className="space-y-4">
                     <div className="flex justify-between text-sm">
                       <span>Allocated</span>
-                      <span className="font-semibold">{budget.currency} {category.allocatedAmount.toLocaleString()}</span>
+                      <span className="font-semibold">{budget.currency} {category.allocatedAmount?.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Spent</span>
-                      <span className="font-semibold">{budget.currency} {category.spentAmount.toLocaleString()}</span>
+                      <span className="font-semibold">{budget.currency} {category.spentAmount?.toLocaleString()}</span>
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Progress</span>
-                        <span>{categorySpentPercentage.toFixed(1)}%</span>
+                        <span>{(categorySpentPercentage || 0).toFixed(1)}%</span>
                       </div>
                       <Progress value={categorySpentPercentage} className="h-2" />
                     </div>
                     
                     <div className="space-y-2">
                       <h4 className="text-sm font-medium">Budget Items</h4>
-                      {category.items.map((item) => (
+                      {category.items?.map((item) => (
                         <div key={item._id} className="flex justify-between text-xs p-2 bg-muted/50 rounded">
                           <div>
                             <p className="font-medium">{item.name}</p>
@@ -495,7 +495,7 @@ export default function ProjectBudgetPage() {
                             <p className="text-muted-foreground/70">{item.quantity} × {budget.currency}{item.unitCost}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-medium">{budget.currency} {item.totalCost.toLocaleString()}</p>
+                            <p className="font-medium">{budget.currency} {item.totalCost?.toLocaleString()}</p>
                           </div>
                         </div>
                       ))}
@@ -544,7 +544,7 @@ export default function ProjectBudgetPage() {
                               approval.status === 'rejected' ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' :
                               'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20'
                             }>
-                              {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
+                              {approval.status?.charAt(0).toUpperCase() + approval.status?.slice(1)}
                             </Badge>
                           </div>
                           {approval.comments && (
@@ -567,8 +567,8 @@ export default function ProjectBudgetPage() {
 
           <TabsContent value="categories" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {budget.categories.map((category) => {
-                const categorySpentPercentage = category.allocatedAmount > 0 
+              {budget.categories?.map((category) => {
+                const categorySpentPercentage = (category.allocatedAmount && category.allocatedAmount > 0) 
                   ? (category.spentAmount / category.allocatedAmount) * 100 
                   : 0;
 
@@ -583,11 +583,11 @@ export default function ProjectBudgetPage() {
                     <CardContent className="space-y-4">
                       <div className="flex justify-between text-sm">
                         <span>Allocated</span>
-                        <span className="font-semibold">{budget.currency} {category.allocatedAmount.toLocaleString()}</span>
+                        <span className="font-semibold">{budget.currency} {category.allocatedAmount?.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Spent</span>
-                        <span className="font-semibold">{budget.currency} {category.spentAmount.toLocaleString()}</span>
+                        <span className="font-semibold">{budget.currency} {category.spentAmount?.toLocaleString()}</span>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
@@ -599,7 +599,7 @@ export default function ProjectBudgetPage() {
                       
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium">Budget Items</h4>
-                        {category.items.map((item) => (
+                        {category.items?.map((item) => (
                           <div key={item._id} className="flex justify-between text-xs p-2 bg-muted/50 rounded">
                             <div>
                               <p className="font-medium">{item.name}</p>
@@ -607,7 +607,7 @@ export default function ProjectBudgetPage() {
                               <p className="text-muted-foreground/70">{item.quantity} × {budget.currency}{item.unitCost}</p>
                             </div>
                             <div className="text-right">
-                              <p className="font-medium">{budget.currency} {item.totalCost.toLocaleString()}</p>
+                              <p className="font-medium">{budget.currency} {item.totalCost?.toLocaleString()}</p>
                             </div>
                           </div>
                         ))}

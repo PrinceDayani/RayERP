@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
+import { useCreateAccountShortcut } from '@/hooks/useKeyboardShortcuts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +53,7 @@ interface Account {
   bankDetails?: {
     bankName?: string;
     accountNumber?: string;
+    ifscCode?: string;
   };
   createdAt: string;
   updatedAt: string;
@@ -71,6 +74,13 @@ export default function AccountsPage() {
     total: 0,
     pages: 0
   });
+
+  const { getRowProps } = useKeyboardNavigation({
+    items: accounts,
+    onSelect: (account) => router.push(`/dashboard/finance/account-ledger/${account._id}`)
+  });
+
+  useCreateAccountShortcut(() => setShowCreateDialog(true));
 
   useEffect(() => {
     fetchAccounts();
@@ -337,8 +347,12 @@ export default function AccountsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {accounts.map((account) => (
-                    <TableRow key={account._id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/dashboard/finance/account-ledger/${account._id}`)}>
+                  {accounts.map((account, index) => (
+                    <TableRow 
+                      key={account._id} 
+                      {...getRowProps(index)}
+                      onClick={() => router.push(`/dashboard/finance/account-ledger/${account._id}`)}
+                    >
                       <TableCell className="font-mono text-sm">
                         {account.code}
                       </TableCell>

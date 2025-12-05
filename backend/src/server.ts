@@ -151,6 +151,14 @@ app.use(express.urlencoded({
 }));
 app.use(cookieParser());
 
+// Request logging middleware (temporary for debugging)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') && !req.path.includes('/health')) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  }
+  next();
+});
+
 // Serve static files from uploads directory with CORS
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -178,6 +186,31 @@ app.use("/api/fast", require('./routes/quickfix.routes'));
 app.use("/api", routes);
 app.use("/api", assignmentRoutes);
 app.use("/api/backup", backupRoutes);
+
+// Salary Management Routes
+import salaryRoutes from "./routes/salary.routes";
+app.use("/api/salary", salaryRoutes);
+
+// Budget Module Routes (Modules 1-10) - Complete!
+import budgetApprovalWorkflowRoutes from "./routes/budgetApprovalWorkflow.routes";
+import budgetRevisionRoutes from "./routes/budgetRevision.routes";
+import budgetTransferRoutes from "./routes/budgetTransfer.routes";
+import budgetForecastRoutes from "./routes/budgetForecast.routes";
+import budgetVarianceRoutes from "./routes/budgetVariance.routes";
+import budgetCommentRoutes from "./routes/budgetComment.routes";
+import budgetTemplateRoutes from "./routes/budgetTemplate.routes";
+import budgetReportRoutes from "./routes/budgetReport.routes";
+import budgetDashboardRoutes from "./routes/budgetDashboard.routes";
+
+app.use("/api/budget-approvals", budgetApprovalWorkflowRoutes);
+app.use("/api/budget-revisions", budgetRevisionRoutes);
+app.use("/api/budget-transfers", budgetTransferRoutes);
+app.use("/api/budget-forecasts", budgetForecastRoutes);
+app.use("/api/budget-variances", budgetVarianceRoutes);
+app.use("/api/budget-comments", budgetCommentRoutes);
+app.use("/api/budget-templates", budgetTemplateRoutes);
+app.use("/api/budget-reports", budgetReportRoutes);
+app.use("/api/budget-dashboard", budgetDashboardRoutes);
 
 // Catch-all for undefined routes
 app.all('*', (req, res) => {
@@ -251,7 +284,18 @@ async function initializeRealTimeSystems() {
     const { initializeRecurringTasks } = await import('./controllers/taskRecurringController');
     initializeRecurringTasks();
 
+    // Initialize budget cron jobs
+    try {
+      const budgetCronModule = await import('./utils/budgetCronJobs');
+      if ((budgetCronModule as any).startBudgetCronJobs) {
+        (budgetCronModule as any).startBudgetCronJobs();
+      }
+    } catch (err) {
+      logger.warn('⚠️ Budget cron jobs not available');
+    }
+
     logger.info('✅ Real-time systems initialized');
+    logger.info('✅ Budget cron jobs started');
   } catch (error) {
     logger.warn('⚠️ Some real-time systems could not be initialized:', error.message);
   }
@@ -264,6 +308,7 @@ const MONGODB_URI = process.env.MONGO_URI;
 // Optimize MongoDB connection
 mongoose.set('strictQuery', false);
 mongoose.set('bufferCommands', false);
+mongoose.set('debug', false); // Disable query logging
 
 connectDB()
   .then(async () => {
@@ -286,106 +331,47 @@ connectDB()
     try {
       const { initializeOnboardingSystem } = await import('./utils/initializeOnboarding');
       await initializeOnboardingSystem();
-      
-      // Create default roles if they don't exist
-      const { Role } = await import('./models/Role');
-      
-      const defaultRoles = [
-        {
-          name: 'super_admin',
-          description: 'Super Administrator with complete system access',
-          permissions: [
-            'manage_roles', 'view_users', 'create_user', 'update_user', 'delete_user',
-            'view_employees', 'create_employee', 'update_employee', 'delete_employee',
-            'view_products', 'create_product', 'update_product', 'delete_product',
-            'view_customers', 'create_customer',
-            'update_customer', 'delete_customer', 'view_reports', 'export_data',
-            'system_settings', 'view_logs'
-          ]
-        },
-        {
-          name: 'admin',
-          description: 'Administrator with management access',
-          permissions: [
-            'view_users', 'create_user', 'update_user',
-            'view_employees', 'create_employee', 'update_employee',
-            'view_products', 'create_product', 'update_product',
-            'view_customers',
-            'create_customer', 'update_customer', 'view_reports'
-          ]
-        },
-        {
-          name: 'manager',
-          description: 'Manager with operational access',
-          permissions: [
-            'view_users', 'view_employees',
-            'view_products', 'create_product', 'update_product',
-            'view_customers', 'create_customer', 'update_customer'
-          ]
-        },
-        {
-          name: 'employee',
-          description: 'Employee with basic access',
-          permissions: [
-            'view_employees', 'view_products', 'view_customers'
-          ]
-        }
-      ];
-      
-      for (const roleData of defaultRoles) {
-        const existingRole = await Role.findOne({ name: roleData.name });
-        if (!existingRole) {
-          await Role.create(roleData);
-          logger.info(`✅ Default ${roleData.name} role created`);
-        }
-      }
-      
       logger.info('✅ Onboarding system initialized');
     } catch (error) {
-      logger.error('❌ Error initializing onboarding system:', error);
+      logger.warn('⚠️ Onboarding system could not be initialized:', error.message);
     }
     
-    // Initialize Account Types
-    try {
-      const { initializeAccountTypes } = await import('./utils/initializeAccountTypes');
-      await initializeAccountTypes();
-    } catch (error) {
-      logger.error('❌ Error initializing account types:', error);
-    }
-    
-    // Initialize Finance & Accounting System
-    try {
-      const { initializeFinanceSystem, setupFinanceSocketEvents } = await import('./utils/initializeFinance');
-      await initializeFinanceSystem();
-      setupFinanceSocketEvents(io);
-      
-      // Initialize Complete Finance System
-      try {
-        const { initializeCompleteFinanceSystem } = await import('./utils/initializeFinanceComplete');
-        await initializeCompleteFinanceSystem();
-      } catch (error) {
-        logger.warn('⚠️ Complete Finance System initialization skipped:', error.message);
-      }
-    } catch (error) {
-      logger.error('❌ Error initializing Finance System:', error);
-    }
-    
-    // Initialize real-time systems
-    await initializeRealTimeSystems();
-    
+    // Start server
     server.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
-      logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
-      logger.info(`🔗 Socket.IO server initialized`);
-      if (allowedOrigins.length > 0) {
-        logger.info(`🔒 CORS origins: ${allowedOrigins.join(', ')}`);
-      }
+      logger.info(`📊 Environment: ${process.env.NODE_ENV}`);
+      logger.info(`🔗 CORS Origins: ${allowedOrigins.join(', ')}`);
     });
+    
+    // Initialize real-time systems after server starts
+    await initializeRealTimeSystems();
+    
   })
   .catch((error) => {
-    logger.error("❌ MongoDB connection error:", error);
+    logger.error('❌ Failed to connect to MongoDB:', error);
     process.exit(1);
   });
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    mongoose.connection.close().then(() => {
+      logger.info('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+});
+
+process.on('SIGINT', async () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  server.close(() => {
+    mongoose.connection.close().then(() => {
+      logger.info('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+});
 
 // Enhanced error handling
 process.on("unhandledRejection", (err) => {
@@ -398,18 +384,4 @@ process.on("unhandledRejection", (err) => {
 process.on("uncaughtException", (err) => {
   logger.error("Uncaught Exception:", err);
   process.exit(1);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    mongoose.connection.close().then(() => {
-      logger.info('Process terminated');
-      process.exit(0);
-    }).catch((err) => {
-      logger.error('Error closing MongoDB connection:', err);
-      process.exit(1);
-    });
-  });
 });

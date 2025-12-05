@@ -42,7 +42,8 @@ export const useCurrency = () => {
   const formatAmount = (amount: number, currency?: string) => {
     const curr = currency || displayCurrency;
     const symbol = CURRENCY_SYMBOLS[curr] || curr;
-    return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    const locale = curr === 'INR' ? 'en-IN' : 'en-US';
+    return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 20 })}`;
   };
 
   return {

@@ -1,7 +1,7 @@
 import express from 'express';
 import { protect } from '../middleware/auth.middleware';
 import { validateRequiredFields } from '../middleware/validation.middleware';
-import { query } from 'express-validator';
+const { query } = require('express-validator');
 
 const router = express.Router();
 

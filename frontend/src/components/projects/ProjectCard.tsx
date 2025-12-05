@@ -1,20 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, Users, Edit, Eye } from "lucide-react";
+import { AccessLevelIndicator } from "@/components/ui/access-level-indicator";
+import { AccessRequestDialog } from "@/components/ui/access-request-dialog";
+import { Calendar, Users, Edit, Eye, UserPlus, Lock } from "lucide-react";
 
 interface Project {
   _id: string;
   name: string;
-  description: string;
+  description?: string;
   status: string;
   startDate: string;
   endDate: string;
-  progress: number;
+  progress?: number;
   teamMembers?: any[];
+  priority?: string;
+  departments?: any[];
+  isBasicView?: boolean;
 }
 
 interface ProjectCardProps {
@@ -34,34 +40,56 @@ const getStatusColor = (status: string) => {
 };
 
 export default function ProjectCard({ project, onView, onEdit }: ProjectCardProps) {
+  const isBasicView = project.isBasicView;
+  const [showAccessRequest, setShowAccessRequest] = useState(false);
+  
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <>
+      <Card className={`group hover:shadow-lg transition-all duration-300 ${isBasicView ? 'border-dashed border-amber-200 bg-gradient-to-br from-amber-50/30 to-white' : 'hover:border-primary/20 hover:shadow-xl'}`}>
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
-            <h3 className="text-lg font-semibold mb-1">{project.name}</h3>
-            <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className={`text-lg font-semibold ${isBasicView ? 'text-amber-900' : ''}`}>{project.name}</h3>
+              <AccessLevelIndicator 
+                isBasicView={isBasicView} 
+                showRequestAccess={isBasicView}
+                onRequestAccess={() => setShowAccessRequest(true)}
+              />
+            </div>
+            {!isBasicView && project.description && (
+              <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+            )}
           </div>
-          <Badge className={getStatusColor(project.status)}>
-            {project.status}
-          </Badge>
+          <div className="flex flex-col gap-1">
+            <Badge className={getStatusColor(project.status)}>
+              {project.status}
+            </Badge>
+            {project.priority && (
+              <Badge variant="outline" className="text-xs">
+                {project.priority}
+              </Badge>
+            )}
+          </div>
         </div>
 
         <div className="space-y-3 mb-4">
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium">{project.progress}%</span>
+          {!isBasicView && project.progress !== undefined && (
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="font-medium">{project.progress}%</span>
+              </div>
+              <Progress value={project.progress} className="h-2" />
             </div>
-            <Progress value={project.progress} className="h-2" />
-          </div>
+          )}
 
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <span>{new Date(project.startDate).toLocaleDateString()}</span>
             </div>
-            {project.teamMembers && (
+            {!isBasicView && project.teamMembers && (
               <div className="flex items-center gap-1">
                 <Users className="w-4 h-4 text-muted-foreground" />
                 <span>{project.teamMembers.length} members</span>
@@ -70,20 +98,29 @@ export default function ProjectCard({ project, onView, onEdit }: ProjectCardProp
           </div>
         </div>
 
-        {(onView || onEdit) && (
-          <div className="flex gap-2">
-            {onView && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1"
-                onClick={() => onView(project._id)}
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                View
-              </Button>
-            )}
-            {onEdit && (
+        <div className="flex gap-2">
+          {onView && (
+            <Button 
+              variant={isBasicView ? "outline" : "default"}
+              size="sm" 
+              className={`flex-1 ${isBasicView ? 'border-amber-200 text-amber-700 hover:bg-amber-50' : ''}`}
+              onClick={() => onView(project._id)}
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              {isBasicView ? 'View Basic Info' : 'View Details'}
+            </Button>
+          )}
+          {isBasicView ? (
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="border-amber-200 text-amber-700 hover:bg-amber-50"
+              onClick={() => setShowAccessRequest(true)}
+            >
+              <UserPlus className="w-4 h-4" />
+            </Button>
+          ) : (
+            onEdit && (
               <Button 
                 variant="outline" 
                 size="sm"
@@ -91,10 +128,19 @@ export default function ProjectCard({ project, onView, onEdit }: ProjectCardProp
               >
                 <Edit className="w-4 h-4" />
               </Button>
-            )}
-          </div>
-        )}
+            )
+          )}
+        </div>
       </CardContent>
     </Card>
+    
+    <AccessRequestDialog
+      open={showAccessRequest}
+      onOpenChange={setShowAccessRequest}
+      itemType="project"
+      itemName={project.name}
+      itemId={project._id}
+    />
+  </>
   );
 }

@@ -274,13 +274,19 @@ export default function UniversalAccountCreator({ onAccountCreated, duplicateFro
   };
 
   const updateFormData = (section: string, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: {
-        ...prev[section as keyof AccountFormData],
-        [field]: value
+    setFormData(prev => {
+      const sectionData = prev[section as keyof AccountFormData];
+      if (typeof sectionData === 'object' && sectionData !== null) {
+        return {
+          ...prev,
+          [section]: {
+            ...sectionData,
+            [field]: value
+          }
+        };
       }
-    }));
+      return prev;
+    });
   };
 
   const tdsCategories = [

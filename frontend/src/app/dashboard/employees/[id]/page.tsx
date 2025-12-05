@@ -21,6 +21,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import SkillMatrix from '@/components/employee/SkillMatrix';
 import ProjectHistory from '@/components/employee/ProjectHistory';
 import AttendanceInsights from '@/components/employee/AttendanceInsights';
+import SalaryManagement from '@/components/employee/SalaryManagement';
 
 interface Employee {
   _id: string;
@@ -275,19 +276,14 @@ export default function EmployeeDetailPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Annual Salary</p>
-                <p className="text-2xl font-bold">{formatAmount(employee.salary)}</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                <Coins className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <SalaryManagement
+          employeeId={employee._id}
+          employeeName={`${employee.firstName} ${employee.lastName}`}
+          currentSalary={employee.salary}
+          onSalaryUpdate={(newSalary) => {
+            setEmployee({ ...employee, salary: newSalary });
+          }}
+        />
 
         <Card className="border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
           <CardContent className="p-6">

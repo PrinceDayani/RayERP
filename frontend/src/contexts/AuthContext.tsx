@@ -44,6 +44,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   hasMinimumLevel: (requiredLevel: number) => boolean;
   hasRole: (roleName: string) => boolean;
+  hasPermission: (permission: string) => boolean;
   updateUserRole: (newRole: Role) => void;
   checkAuth: () => Promise<boolean>;
   backendAvailable: boolean;
@@ -335,6 +336,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user.role.name === roleName;
   };
 
+  const hasPermission = (permission: string): boolean => {
+    if (!user || !user.role) return false;
+    
+    // Root and Super Admin have all permissions
+    if (user.role.level >= 80) return true;
+    
+    // Check if user has the specific permission
+    return user.role.permissions?.includes(permission) || false;
+  };
+
   const updateUserRole = (newRole: Role) => {
     if (user) {
       setUser({ ...user, role: newRole });
@@ -405,6 +416,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated,
       hasMinimumLevel,
       hasRole,
+      hasPermission,
       updateUserRole,
       checkAuth,
       backendAvailable,

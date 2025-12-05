@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { BookOpen, Search, Download, FileText, TrendingUp, TrendingDown, Coins, Filter } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useToast } from '@/hooks/use-toast';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
 interface Account {
   _id: string;
@@ -30,6 +31,12 @@ export default function LedgerPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [balanceFilter, setBalanceFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+
+  const { getRowProps } = useKeyboardNavigation({
+    items: filteredAccounts,
+    onSelect: (account) => handleRowClick(account._id),
+    enabled: !loading
+  });
 
   useEffect(() => {
     fetchAccounts();
@@ -286,9 +293,10 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAccounts.map((account) => (
+                {filteredAccounts.map((account, index) => (
                   <TableRow 
                     key={account._id} 
+                    {...getRowProps(index)}
                     className="cursor-pointer hover:bg-muted/50" 
                     onClick={() => handleRowClick(account._id)}
                   >

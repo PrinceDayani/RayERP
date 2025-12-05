@@ -39,58 +39,100 @@ export const getAllTasks = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const userRole = user.role as any;
     
-    let tasks;
-    if (roleName === 'Root' || roleName === 'Super Admin') {
-      // Root and Super Admin can see all tasks
-      tasks = await Task.find({ isTemplate: { $ne: true } })
+    // Root/Director get full access to all tasks
+    if (userRole?.level >= 80) {
+      const tasks = await Task.find({ isTemplate: { $ne: true } })
         .populate('project', 'name')
         .populate('assignedTo', 'firstName lastName')
         .populate('assignedBy', 'firstName lastName')
         .populate('dependencies.taskId', 'title')
         .populate('subtasks', 'title status')
         .populate('parentTask', 'title');
-    } else {
-      // Get user's employee record to find assigned tasks
-      const Employee = (await import('../models/Employee')).default;
-      const employee = await Employee.findOne({ user: user._id });
+      return res.json(tasks);
+    }
+
+    const Employee = (await import('../models/Employee')).default;
+    const employee = await Employee.findOne({ user: user._id });
+    
+    if (!employee) {
+      return res.json([]);
+    }
+
+    // Find projects user is assigned to (full task access)
+    const Project = (await import('../models/Project')).default;
+    const assignedProjects = await Project.find({
+      $or: [
+        { members: user._id },
+        { owner: user._id },
+        { team: employee._id },
+        { manager: employee._id }
+      ]
+    }).select('_id');
+    
+    const assignedProjectIds = assignedProjects.map(p => p._id);
+
+    // Get tasks from assigned projects OR directly assigned tasks (full details)
+    const assignedTasks = await Task.find({ 
+      isTemplate: { $ne: true },
+      $or: [
+        { project: { $in: assignedProjectIds } },
+        { assignedTo: employee._id },
+        { assignedBy: employee._id }
+      ]
+    })
+      .populate('project', 'name')
+      .populate('assignedTo', 'firstName lastName')
+      .populate('assignedBy', 'firstName lastName')
+      .populate('dependencies.taskId', 'title')
+      .populate('subtasks', 'title status')
+      .populate('parentTask', 'title');
+
+    // Check department permissions for basic task view
+    const Department = (await import('../models/Department')).default;
+    const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
+    
+    if (departmentNames.length > 0) {
+      const departments = await Department.find({ name: { $in: departmentNames }, status: 'active' });
+      const hasTaskViewPermission = departments.some(dept => 
+        dept.permissions && dept.permissions.includes('tasks.view')
+      );
       
-      if (!employee) {
-        return res.json([]);
+      if (hasTaskViewPermission) {
+        // Find department projects (excluding already assigned ones)
+        const departmentProjects = await Project.find({ 
+          departments: { $in: departmentNames },
+          _id: { $nin: assignedProjectIds }
+        }).select('_id');
+        
+        const departmentProjectIds = departmentProjects.map(p => p._id);
+        
+        // Get basic task info from department projects
+        const departmentTasks = await Task.find({
+          isTemplate: { $ne: true },
+          project: { $in: departmentProjectIds }
+        }).select('title status priority dueDate project')
+          .populate('project', 'name');
+        
+        // Return assigned tasks with full details + department tasks with basic info
+        return res.json([
+          ...assignedTasks,
+          ...departmentTasks.map(t => ({
+            _id: t._id,
+            title: t.title,
+            status: t.status,
+            priority: t.priority,
+            dueDate: t.dueDate,
+            project: t.project,
+            isBasicView: true // Flag to indicate limited access
+          }))
+        ]);
       }
-
-      // Find projects user is assigned to
-      const Project = (await import('../models/Project')).default;
-      const userProjects = await Project.find({
-        $or: [
-          { members: user._id },
-          { owner: user._id },
-          { team: user._id },
-          { manager: user._id }
-        ]
-      }).select('_id');
-      
-      const projectIds = userProjects.map(p => p._id);
-
-      // Only show tasks from assigned projects OR tasks directly assigned to the employee
-      tasks = await Task.find({ 
-        isTemplate: { $ne: true },
-        $or: [
-          { project: { $in: projectIds } },
-          { assignedTo: employee._id },
-          { assignedBy: employee._id }
-        ]
-      })
-        .populate('project', 'name')
-        .populate('assignedTo', 'firstName lastName')
-        .populate('assignedBy', 'firstName lastName')
-        .populate('dependencies.taskId', 'title')
-        .populate('subtasks', 'title status')
-        .populate('parentTask', 'title');
     }
     
-    res.json(tasks);
+    // Return only assigned tasks
+    res.json(assignedTasks);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching tasks', error });
   }
@@ -103,6 +145,22 @@ export const getTaskById = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
+    const userRole = user.role as any;
+    
+    // Root/Director get full access
+    if (userRole?.level >= 80) {
+      const task = await Task.findById(req.params.id)
+        .populate('project', 'name')
+        .populate('assignedTo', 'firstName lastName')
+        .populate('assignedBy', 'firstName lastName')
+        .populate('comments.user', 'firstName lastName');
+      
+      if (!task) {
+        return res.status(404).json({ message: 'Task not found' });
+      }
+      return res.json(task);
+    }
+
     const task = await Task.findById(req.params.id)
       .populate('project', 'name')
       .populate('assignedTo', 'firstName lastName')
@@ -113,38 +171,67 @@ export const getTaskById = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const Employee = (await import('../models/Employee')).default;
+    const employee = await Employee.findOne({ user: user._id });
     
-    // Root and Super Admin can see all tasks
-    if (roleName !== 'Root' && roleName !== 'Super Admin') {
-      // Get user's employee record
-      const Employee = (await import('../models/Employee')).default;
-      const employee = await Employee.findOne({ user: user._id });
-      
-      // Check if user is assigned to this task
-      const isAssigned = employee && task.assignedTo && 
-        (task.assignedTo as any)._id.toString() === employee._id.toString();
-      
-      // Check if user has access to the project
-      const Project = (await import('../models/Project')).default;
-      const project = await Project.findById(task.project);
-      const hasProjectAccess = project && (
-        project.members.some(m => m.toString() === user._id.toString()) ||
-        project.owner.toString() === user._id.toString() ||
-        (project.team && project.team.some((t: any) => t.toString() === user._id.toString())) ||
-        (project.manager && project.manager.toString() === user._id.toString())
+    if (!employee) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    // Check if user is assigned to this task
+    const isAssigned = task.assignedTo && 
+      (task.assignedTo as any)._id.toString() === employee._id.toString();
+    
+    // Check if user has access to the project
+    const Project = (await import('../models/Project')).default;
+    const project = await Project.findById(task.project);
+    const hasProjectAccess = project && (
+      project.members.some(m => m.toString() === user._id.toString()) ||
+      project.owner.toString() === user._id.toString() ||
+      (project.team && project.team.some((t: any) => t.toString() === employee._id.toString())) ||
+      (project.manager && project.manager.toString() === employee._id.toString())
+    );
+    
+    // Check if user created the task
+    const isCreator = task.assignedBy && 
+      (task.assignedBy as any)._id.toString() === employee._id.toString();
+    
+    // If assigned to task or project, return full details
+    if (isAssigned || hasProjectAccess || isCreator) {
+      return res.json(task);
+    }
+    
+    // Check department permission for basic view
+    const Department = (await import('../models/Department')).default;
+    const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
+    
+    if (departmentNames.length > 0) {
+      const departments = await Department.find({ name: { $in: departmentNames }, status: 'active' });
+      const hasTaskViewPermission = departments.some(dept => 
+        dept.permissions && dept.permissions.includes('tasks.view')
       );
       
-      // Check if user created the task
-      const isCreator = employee && task.assignedBy && 
-        (task.assignedBy as any)._id.toString() === employee._id.toString();
-      
-      if (!isAssigned && !hasProjectAccess && !isCreator) {
-        return res.status(403).json({ message: 'Access denied: You are not assigned to this task or project' });
+      if (hasTaskViewPermission && project) {
+        // Check if task's project belongs to user's department
+        const projectDepartments = project.departments.map((d: any) => (d && typeof d === 'object' && d.name) ? d.name : d.toString());
+        const hasAccessToDepartment = departmentNames.some(dept => projectDepartments.includes(dept));
+        
+        if (hasAccessToDepartment) {
+          // Return basic task info only
+          return res.json({
+            _id: task._id,
+            title: task.title,
+            status: task.status,
+            priority: task.priority,
+            dueDate: task.dueDate,
+            project: task.project,
+            isBasicView: true
+          });
+        }
       }
     }
-
-    res.json(task);
+    
+    return res.status(403).json({ message: 'Access denied: You are not assigned to this task or project' });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching task', error });
   }

@@ -32,7 +32,7 @@ export default function BudgetDetailPage() {
       const budgetData = response;
       
       // Calculate derived properties
-      const actualSpent = budgetData.categories.reduce((sum: number, cat: any) => sum + cat.spentAmount, 0);
+      const actualSpent = budgetData.categories?.reduce((sum: number, cat: any) => sum + cat.spentAmount, 0) || 0;
       budgetData.remainingBudget = budgetData.totalBudget - actualSpent;
       budgetData.utilizationPercentage = budgetData.totalBudget > 0 ? (actualSpent / budgetData.totalBudget) * 100 : 0;
       
@@ -82,7 +82,7 @@ export default function BudgetDetailPage() {
   }
 
   // Calculate derived values for display
-  const actualSpent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
+  const actualSpent = budget.categories?.reduce((sum, cat) => sum + cat.spentAmount, 0) || 0;
   const remainingBudget = budget.totalBudget - actualSpent;
 
   return (

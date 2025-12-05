@@ -89,16 +89,20 @@ export const updateRole = async (req: Request, res: Response) => {
 
     const currentUser = await User.findById(req.user?.id).populate('role');
     const currentUserRole = currentUser?.role as any;
+    const currentUserLevel = currentUserRole?.level || 0;
     
-    if (currentUserRole?.name?.toLowerCase() !== 'root') {
-      return res.status(403).json({ 
-        message: 'Only Root user can update roles' 
-      });
-    }
-
     const role = await Role.findById(roleId);
     if (!role) {
       return res.status(404).json({ message: 'Role not found' });
+    }
+    
+    const canModifyHighLevel = currentUserLevel > 80 && role.level > 80;
+    const isRoot = currentUserRole?.name?.toLowerCase() === 'root';
+    
+    if (!isRoot && !canModifyHighLevel) {
+      return res.status(403).json({ 
+        message: 'Only Root or users with level > 80 can update high-level roles' 
+      });
     }
 
     if (role.name?.toLowerCase() === 'root') {
@@ -107,10 +111,29 @@ export const updateRole = async (req: Request, res: Response) => {
       });
     }
 
-    if (role.isDefault && (name || level !== undefined)) {
-      return res.status(403).json({ 
-        message: 'Cannot modify name or level of default system roles. You can update permissions only.' 
-      });
+    if (role.isDefault && (name !== undefined || level !== undefined)) {
+      if (name !== undefined && name !== role.name) {
+        return res.status(403).json({ 
+          message: 'Cannot modify name of default system roles. You can update permissions, description, and status only.' 
+        });
+      }
+      if (level !== undefined && level !== role.level) {
+        return res.status(403).json({ 
+          message: 'Cannot modify level of default system roles. You can update permissions, description, and status only.' 
+        });
+      }
+    }
+    
+    if (!isRoot && canModifyHighLevel && permissions !== undefined) {
+      const currentPermissions = role.permissions || [];
+      const newPermissions = permissions || [];
+      const removedPerms = currentPermissions.filter((p: string) => !newPermissions.includes(p));
+      
+      if (removedPerms.length === 0 && newPermissions.length > currentPermissions.length) {
+        return res.status(403).json({ 
+          message: 'You can only reduce permissions for high-level roles, not add new ones' 
+        });
+      }
     }
     
     if (permissions !== undefined) {
@@ -327,10 +350,12 @@ export const assignRolesToUser = async (req: Request, res: Response) => {
 
     const currentUser = await User.findById(req.user?.id).populate('role');
     const currentUserRole = currentUser?.role as any;
+    const currentUserLevel = currentUserRole?.level || 0;
+    const isRoot = currentUserRole?.name?.toLowerCase() === 'root';
     
-    if (currentUserRole?.name?.toLowerCase() !== 'root') {
+    if (!isRoot && currentUserLevel <= 80) {
       return res.status(403).json({ 
-        message: 'Only Root user can assign roles to users' 
+        message: 'Only Root or users with level > 80 can assign roles' 
       });
     }
 
@@ -387,49 +412,157 @@ export const getUserPermissions = async (req: Request, res: Response) => {
 export const initializePermissions = async () => {
   const defaultPermissions = [
     // User Management
-    { name: 'view_users', description: 'View users list', category: 'User Management' },
-    { name: 'create_user', description: 'Create new users', category: 'User Management' },
-    { name: 'update_user', description: 'Update user details', category: 'User Management' },
-    { name: 'delete_user', description: 'Delete users', category: 'User Management' },
+    { name: 'users.view', description: 'View users list and profiles', category: 'User Management' },
+    { name: 'users.create', description: 'Create new user accounts', category: 'User Management' },
+    { name: 'users.edit', description: 'Edit user information', category: 'User Management' },
+    { name: 'users.delete', description: 'Delete user accounts', category: 'User Management' },
+    { name: 'users.manage', description: 'Manage users', category: 'User Management' },
+    { name: 'users.assign_roles', description: 'Assign roles to users', category: 'User Management' },
+    { name: 'users.reset_password', description: 'Reset user passwords', category: 'User Management' },
+    { name: 'users.activate_deactivate', description: 'Activate/deactivate users', category: 'User Management' },
+    
+    // Employee Management
+    { name: 'employees.view', description: 'View employee directory', category: 'Employee Management' },
+    { name: 'employees.create', description: 'Add new employees', category: 'Employee Management' },
+    { name: 'employees.edit', description: 'Edit employee details', category: 'Employee Management' },
+    { name: 'employees.delete', description: 'Remove employees', category: 'Employee Management' },
+    { name: 'employees.view_salary', description: 'View salary information', category: 'Employee Management' },
+    { name: 'employees.edit_salary', description: 'Edit salary details', category: 'Employee Management' },
+    { name: 'attendance.view', description: 'View attendance records', category: 'Employee Management' },
+    { name: 'attendance.mark', description: 'Mark attendance', category: 'Employee Management' },
+    { name: 'attendance.edit', description: 'Edit attendance records', category: 'Employee Management' },
+    { name: 'leaves.view', description: 'View leave requests', category: 'Employee Management' },
+    { name: 'leaves.apply', description: 'Apply for leaves', category: 'Employee Management' },
+    { name: 'leaves.approve', description: 'Approve/reject leaves', category: 'Employee Management' },
+    { name: 'leaves.cancel', description: 'Cancel leave requests', category: 'Employee Management' },
     
 
     
-    // Inventory Management
-    { name: 'view_inventory', description: 'View inventory', category: 'Inventory Management' },
-    { name: 'manage_inventory', description: 'Manage inventory levels', category: 'Inventory Management' },
+    // Customer & Vendor Management
+    { name: 'customers.view', description: 'View customer list', category: 'Customer & Vendor' },
+    { name: 'customers.create', description: 'Add new customers', category: 'Customer & Vendor' },
+    { name: 'customers.edit', description: 'Edit customer details', category: 'Customer & Vendor' },
+    { name: 'customers.delete', description: 'Delete customers', category: 'Customer & Vendor' },
+    { name: 'vendors.view', description: 'View vendor list', category: 'Customer & Vendor' },
+    { name: 'vendors.create', description: 'Add new vendors', category: 'Customer & Vendor' },
+    { name: 'vendors.edit', description: 'Edit vendor details', category: 'Customer & Vendor' },
+    { name: 'vendors.delete', description: 'Delete vendors', category: 'Customer & Vendor' },
     
-    // Customer Management
-    { name: 'view_customers', description: 'View customers', category: 'Customer Management' },
-    { name: 'create_customer', description: 'Create customers', category: 'Customer Management' },
-    { name: 'update_customer', description: 'Update customers', category: 'Customer Management' },
-    { name: 'delete_customer', description: 'Delete customers', category: 'Customer Management' },
+    // Finance & Accounting
+    { name: 'accounts.view', description: 'View chart of accounts', category: 'Finance & Accounting' },
+    { name: 'accounts.create', description: 'Create accounts', category: 'Finance & Accounting' },
+    { name: 'accounts.edit', description: 'Edit accounts', category: 'Finance & Accounting' },
+    { name: 'accounts.delete', description: 'Delete accounts', category: 'Finance & Accounting' },
+    { name: 'ledger.view', description: 'View general ledger', category: 'Finance & Accounting' },
+    { name: 'ledger.export', description: 'Export ledger data', category: 'Finance & Accounting' },
+    { name: 'journal.view', description: 'View journal entries', category: 'Finance & Accounting' },
+    { name: 'journal.create', description: 'Create journal entries', category: 'Finance & Accounting' },
+    { name: 'journal.edit', description: 'Edit journal entries', category: 'Finance & Accounting' },
+    { name: 'journal.delete', description: 'Delete journal entries', category: 'Finance & Accounting' },
+    { name: 'journal.approve', description: 'Approve journal entries', category: 'Finance & Accounting' },
+    { name: 'journal.post', description: 'Post journal entries', category: 'Finance & Accounting' },
     
-    // Reports & Analytics
-    { name: 'view_reports', description: 'View reports', category: 'Reports & Analytics' },
-    { name: 'export_data', description: 'Export data', category: 'Reports & Analytics' },
+    // Invoicing & Billing
+    { name: 'invoices.view', description: 'View invoices', category: 'Invoicing & Billing' },
+    { name: 'invoices.create', description: 'Create invoices', category: 'Invoicing & Billing' },
+    { name: 'invoices.edit', description: 'Edit invoices', category: 'Invoicing & Billing' },
+    { name: 'invoices.delete', description: 'Delete invoices', category: 'Invoicing & Billing' },
+    { name: 'invoices.send', description: 'Send invoices to customers', category: 'Invoicing & Billing' },
+    { name: 'invoices.approve', description: 'Approve invoices', category: 'Invoicing & Billing' },
+    { name: 'invoices.cancel', description: 'Cancel invoices', category: 'Invoicing & Billing' },
+    { name: 'invoices.download', description: 'Download invoice PDFs', category: 'Invoicing & Billing' },
+    { name: 'bills.view', description: 'View bills', category: 'Invoicing & Billing' },
+    { name: 'bills.create', description: 'Create bills', category: 'Invoicing & Billing' },
+    { name: 'bills.edit', description: 'Edit bills', category: 'Invoicing & Billing' },
+    { name: 'bills.delete', description: 'Delete bills', category: 'Invoicing & Billing' },
+    
+    // Payments & Expenses
+    { name: 'payments.view', description: 'View payments', category: 'Payments & Expenses' },
+    { name: 'payments.create', description: 'Record payments', category: 'Payments & Expenses' },
+    { name: 'payments.edit', description: 'Edit payments', category: 'Payments & Expenses' },
+    { name: 'payments.delete', description: 'Delete payments', category: 'Payments & Expenses' },
+    { name: 'payments.approve', description: 'Approve payments', category: 'Payments & Expenses' },
+    { name: 'expenses.view', description: 'View expenses', category: 'Payments & Expenses' },
+    { name: 'expenses.create', description: 'Create expenses', category: 'Payments & Expenses' },
+    { name: 'expenses.edit', description: 'Edit expenses', category: 'Payments & Expenses' },
+    { name: 'expenses.delete', description: 'Delete expenses', category: 'Payments & Expenses' },
+    { name: 'expenses.approve', description: 'Approve expenses', category: 'Payments & Expenses' },
     
     // Project Management
-    { name: 'view_projects', description: 'View projects', category: 'Project Management' },
-    { name: 'create_project', description: 'Create projects', category: 'Project Management' },
-    { name: 'update_project', description: 'Update projects', category: 'Project Management' },
-    { name: 'delete_project', description: 'Delete projects', category: 'Project Management' },
-    { name: 'manage_projects', description: 'Manage project assignments', category: 'Project Management' },
+    { name: 'projects.view', description: 'View projects', category: 'Project Management' },
+    { name: 'projects.create', description: 'Create projects', category: 'Project Management' },
+    { name: 'projects.edit', description: 'Edit projects', category: 'Project Management' },
+    { name: 'projects.delete', description: 'Delete projects', category: 'Project Management' },
+    { name: 'projects.archive', description: 'Archive projects', category: 'Project Management' },
+    { name: 'projects.manage_team', description: 'Manage project team', category: 'Project Management' },
+    { name: 'tasks.view', description: 'View tasks', category: 'Project Management' },
+    { name: 'tasks.create', description: 'Create tasks', category: 'Project Management' },
+    { name: 'tasks.edit', description: 'Edit tasks', category: 'Project Management' },
+    { name: 'tasks.delete', description: 'Delete tasks', category: 'Project Management' },
+    { name: 'tasks.assign', description: 'Assign tasks', category: 'Project Management' },
+    { name: 'tasks.change_status', description: 'Change task status', category: 'Project Management' },
+    { name: 'tasks.view_all', description: 'View all tasks', category: 'Project Management' },
+    
+    // Budget & Planning
+    { name: 'budgets.view', description: 'View budgets', category: 'Budget & Planning' },
+    { name: 'budgets.create', description: 'Create budgets', category: 'Budget & Planning' },
+    { name: 'budgets.edit', description: 'Edit budgets', category: 'Budget & Planning' },
+    { name: 'budgets.delete', description: 'Delete budgets', category: 'Budget & Planning' },
+    { name: 'budgets.approve', description: 'Approve budgets', category: 'Budget & Planning' },
+    { name: 'budgets.allocate', description: 'Allocate budget funds', category: 'Budget & Planning' },
+    { name: 'budgets.track', description: 'Track budget utilization', category: 'Budget & Planning' },
+    
+    // Reports & Analytics
+    { name: 'reports.view', description: 'View reports', category: 'Reports & Analytics' },
+    { name: 'reports.create', description: 'Create custom reports', category: 'Reports & Analytics' },
+    { name: 'reports.export', description: 'Export reports', category: 'Reports & Analytics' },
+    { name: 'reports.schedule', description: 'Schedule reports', category: 'Reports & Analytics' },
+    { name: 'analytics.view', description: 'View analytics dashboard', category: 'Analytics' },
+    { name: 'analytics.financial', description: 'View financial analytics', category: 'Analytics' },
+    { name: 'analytics.sales', description: 'View sales analytics', category: 'Analytics' },
+    { name: 'analytics.inventory', description: 'View inventory analytics', category: 'Analytics' },
+    
     
     // System Administration
-    { name: 'manage_roles', description: 'Manage roles and permissions', category: 'System Administration' },
-    { name: 'system_settings', description: 'Access system settings', category: 'System Administration' },
-    { name: 'view_logs', description: 'View system logs', category: 'System Administration' }
+    { name: 'admin.view', description: 'View admin panel', category: 'System Administration' },
+    { name: 'system.view', description: 'View system settings', category: 'System Administration' },
+    { name: 'system.manage', description: 'Manage system settings', category: 'System Administration' },
+    { name: 'roles.view', description: 'View roles', category: 'System Administration' },
+    { name: 'roles.create', description: 'Create roles', category: 'System Administration' },
+    { name: 'roles.edit', description: 'Edit roles', category: 'System Administration' },
+    { name: 'roles.delete', description: 'Delete roles', category: 'System Administration' },
+    { name: 'roles.manage', description: 'Manage roles and permissions', category: 'System Administration' },
+    { name: 'permissions.manage', description: 'Manage permissions', category: 'System Administration' },
+    { name: 'settings.view', description: 'View system settings', category: 'System Administration' },
+    { name: 'settings.edit', description: 'Edit system settings', category: 'System Administration' },
+    { name: 'logs.view', description: 'View system logs', category: 'System Administration' },
+    { name: 'logs.export', description: 'Export logs', category: 'System Administration' },
+    { name: 'audit.view', description: 'View audit trail', category: 'System Administration' },
+    { name: 'backups.view', description: 'View backups', category: 'System Administration' },
+    { name: 'backups.create', description: 'Create backups', category: 'System Administration' },
+    { name: 'backups.restore', description: 'Restore from backup', category: 'System Administration' },
+    { name: 'backups.manage', description: 'Manage system backups', category: 'System Administration' },
+    { name: 'notifications.manage', description: 'Manage notifications', category: 'System Administration' },
+    { name: 'dashboard.view', description: 'View dashboard', category: 'System Administration' },
+    { name: 'data.export', description: 'Export data', category: 'System Administration' }
   ];
 
   try {
+    let created = 0;
+    let existing = 0;
     for (const permData of defaultPermissions) {
-      const existing = await Permission.findOne({ name: permData.name });
-      if (!existing) {
+      const existingPerm = await Permission.findOne({ name: permData.name });
+      if (!existingPerm) {
         await Permission.create(permData);
+        created++;
+      } else {
+        existing++;
       }
     }
-    console.log('Default permissions initialized');
+    console.log(`✓ Permissions initialized: ${created} created, ${existing} already exist, ${defaultPermissions.length} total`);
+    return { created, existing, total: defaultPermissions.length };
   } catch (error) {
     console.error('Error initializing permissions:', error);
+    throw error;
   }
 };

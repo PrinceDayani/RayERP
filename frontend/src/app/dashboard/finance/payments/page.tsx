@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, CheckCircle, Coins, TrendingUp, AlertCircle, FileText, Download, RefreshCw, XCircle, Check } from 'lucide-react';
+import { AccountSelector } from '@/components/finance/AccountSelector';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,15 +41,19 @@ export default function PaymentsPage() {
 
   const fetchPayments = async () => {
     try {
-      const params = new URLSearchParams();
-      if (filter.status !== 'all') params.append('status', filter.status);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments?${params}`, {
+      setLoading(true);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
-      setPayments(data.data || []);
+      console.log('Payments API response:', data);
+      console.log('Payments array:', data.data || data);
+      const paymentsArray = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
+      console.log('Setting payments:', paymentsArray);
+      setPayments(paymentsArray);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching payments:', error);
+      setPayments([]);
     } finally {
       setLoading(false);
     }
@@ -88,6 +93,26 @@ export default function PaymentsPage() {
       fetchPayments();
     } catch (error) {
       console.error('Error:', error);
+    }
+  };
+
+  const deletePayment = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this payment?')) return;
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Payment deleted successfully');
+        fetchPayments();
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to delete payment');
     }
   };
 
@@ -149,7 +174,7 @@ export default function PaymentsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Pending Approval</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{payments.filter(p => p.approvalStatus === 'PENDING').length}</div>
+              <div className="text-2xl font-bold text-yellow-600">{Array.isArray(payments) ? payments.filter(p => p.approvalStatus === 'PENDING').length : 0}</div>
             </CardContent>
           </Card>
           <Card>
@@ -157,7 +182,7 @@ export default function PaymentsPage() {
               <CardTitle className="text-sm font-medium text-muted-foreground">Unreconciled</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{payments.filter(p => p.reconciliation?.status === 'UNRECONCILED').length}</div>
+              <div className="text-2xl font-bold text-red-600">{Array.isArray(payments) ? payments.filter(p => p.reconciliation?.status === 'UNRECONCILED').length : 0}</div>
             </CardContent>
           </Card>
         </div>
@@ -189,7 +214,14 @@ export default function PaymentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {payments.map((payment) => (
+              {!loading && payments.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">
+                    No payments found. Click "Record Payment" to create one.
+                  </td>
+                </tr>
+              )}
+              {Array.isArray(payments) && payments.map((payment) => (
                 <tr key={payment._id}>
                   <td className="px-6 py-4 text-sm font-medium">{payment.paymentNumber}</td>
                   <td className="px-6 py-4 text-sm">{payment.customerName}</td>
@@ -203,6 +235,12 @@ export default function PaymentsPage() {
                     </Badge>
                   </td>
                   <td className="px-6 py-4 text-sm space-x-2">
+                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); /* Edit logic */ }}>
+                      <Plus className="h-3 w-3 mr-1" />Edit
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); deletePayment(payment._id); }} className="text-red-600">
+                      <XCircle className="h-3 w-3 mr-1" />Delete
+                    </Button>
                     {payment.approvalStatus === 'PENDING' && (
                       <Button size="sm" variant="outline" onClick={() => approvePayment(payment._id)}>
                         <Check className="h-3 w-3 mr-1" />Approve
@@ -232,8 +270,10 @@ export default function PaymentsPage() {
 }
 
 function PaymentForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     customerName: '',
+    accountId: '',
     totalAmount: '',
     currency: 'INR',
     exchangeRate: '1',
@@ -243,25 +283,51 @@ function PaymentForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     allocations: [{ invoiceId: '', amount: '' }]
   });
 
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/accounts`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
+      });
+      const data = await res.json();
+      setAccounts(data.data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload = {
         ...formData,
+        paymentNumber: 'PAY-' + Date.now(),
         totalAmount: parseFloat(formData.totalAmount),
         exchangeRate: parseFloat(formData.exchangeRate),
         baseAmount: parseFloat(formData.totalAmount) * parseFloat(formData.exchangeRate),
         allocations: formData.allocations.filter(a => a.invoiceId && a.amount).map(a => ({ ...a, amount: parseFloat(a.amount) }))
       };
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments`, {
+      console.log('Creating payment with payload:', payload);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
         body: JSON.stringify(payload)
       });
-      onSuccess();
+      const data = await res.json();
+      console.log('Payment creation response:', data);
+      if (!res.ok) {
+        alert('Error: ' + (data.message || 'Failed to create payment'));
+        return;
+      }
+      alert('Payment created successfully!');
+      await onSuccess();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
+      alert('Error: ' + error.message);
     }
   };
 
@@ -272,6 +338,15 @@ function PaymentForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <input type="text" placeholder="Customer Name" className="border rounded px-3 py-2" value={formData.customerName} onChange={(e) => setFormData({ ...formData, customerName: e.target.value })} required />
+            <div>
+              <AccountSelector
+                value={formData.accountId}
+                onValueChange={(value) => setFormData({ ...formData, accountId: value })}
+                accounts={accounts}
+                onAccountCreated={fetchAccounts}
+                placeholder="Select account"
+              />
+            </div>
             <input type="number" step="0.01" placeholder="Amount" className="border rounded px-3 py-2" value={formData.totalAmount} onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })} required />
             <select className="border rounded px-3 py-2" value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })}>
               <option value="INR">INR</option>
@@ -279,7 +354,7 @@ function PaymentForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
               <option value="EUR">EUR</option>
               <option value="GBP">GBP</option>
             </select>
-            <input type="number" step="0.01" placeholder="Exchange Rate" className="border rounded px-3 py-2" value={formData.exchangeRate} onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })} />
+            <input type="number" step="0.01" placeholder="Exchange Rate" className="border rounded px-3 py-2" value={formData.exchangeRate} onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })} disabled />
             <input type="date" className="border rounded px-3 py-2" value={formData.paymentDate} onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })} required />
             <select className="border rounded px-3 py-2" value={formData.paymentMethod} onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}>
               <option value="CASH">Cash</option>

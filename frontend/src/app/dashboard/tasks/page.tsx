@@ -10,6 +10,7 @@ import TaskStats from '@/components/tasks/TaskStats';
 import TaskFilters from '@/components/tasks/TaskFilters';
 import TaskBoard from '@/components/tasks/TaskBoard';
 import TaskDialogs from '@/components/tasks/TaskDialogs';
+import { TieredAccessWrapper } from '@/components/common/TieredAccessWrapper';
 
 export default function TaskManagementPage() {
   const { computed } = useTaskContext();
@@ -63,13 +64,24 @@ export default function TaskManagementPage() {
 
 
 
+  const hasBasicViewItems = computed.filteredTasks.some((task: any) => task.isBasicView);
+  const fullAccessCount = computed.filteredTasks.filter((task: any) => !task.isBasicView).length;
+  const basicViewCount = computed.filteredTasks.filter((task: any) => task.isBasicView).length;
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Task Management</h1>
-          <p className="text-gray-600">Manage and track project tasks across all projects</p>
-        </div>
+    <div className="p-6">
+      <TieredAccessWrapper 
+        title="Task Management" 
+        hasBasicViewItems={hasBasicViewItems}
+        showLegend={hasBasicViewItems}
+        fullAccessCount={fullAccessCount}
+        basicViewCount={basicViewCount}
+      >
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-gray-600">Manage and track project tasks across all projects</p>
+            </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportTasks}>
             <Download className="w-4 h-4 mr-2" />
@@ -86,31 +98,33 @@ export default function TaskManagementPage() {
         </div>
       </div>
 
-      <TaskStats />
+          <TaskStats />
 
-      <TaskFilters />
+          <TaskFilters />
 
-      <TaskBoard 
-        onEditTask={openEditDialog}
-        onCommentTask={openCommentDialog}
-      />
+          <TaskBoard 
+            onEditTask={openEditDialog}
+            onCommentTask={openCommentDialog}
+          />
 
-      <TaskDialogs
-        createDialog={{
-          open: isCreateDialogOpen,
-          onOpenChange: setIsCreateDialogOpen
-        }}
-        editDialog={{
-          open: isEditDialogOpen,
-          onOpenChange: setIsEditDialogOpen,
-          task: editingTask
-        }}
-        commentDialog={{
-          open: isCommentDialogOpen,
-          onOpenChange: setIsCommentDialogOpen,
-          task: commentingTask
-        }}
-      />
+          <TaskDialogs
+            createDialog={{
+              open: isCreateDialogOpen,
+              onOpenChange: setIsCreateDialogOpen
+            }}
+            editDialog={{
+              open: isEditDialogOpen,
+              onOpenChange: setIsEditDialogOpen,
+              task: editingTask
+            }}
+            commentDialog={{
+              open: isCommentDialogOpen,
+              onOpenChange: setIsCommentDialogOpen,
+              task: commentingTask
+            }}
+          />
+        </div>
+      </TieredAccessWrapper>
     </div>
   );
 }

@@ -1,57 +1,61 @@
 import { Request, Response, NextFunction } from 'express';
-import Budget from '../models/Budget';
+import { Types } from 'mongoose';
 
-export const canManageBudgets = (req: Request, res: Response, next: NextFunction) => {
-  const user = (req as any).user;
-  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
-  const userRole = roleName.toLowerCase();
-  const allowedRoles = ['root', 'super_admin', 'admin', 'manager', 'superadmin'];
-  
-  console.log('Budget manage check - User:', user?.email, 'Role:', userRole);
-  
-  if (!userRole || !allowedRoles.includes(userRole)) {
-    return res.status(403).json({ message: 'Insufficient permissions to manage budgets', role: userRole, originalRole: user?.role });
-  }
-  
-  next();
+interface UserPayload {
+  id?: string;
+  email?: string;
+  permissions?: string[];
+  role?: string | { name: string } | Types.ObjectId;
+  [key: string]: any; // Allow additional properties
+}
+
+type AuthRequest = Request & {
+  user?: UserPayload;
+}
+
+const hasPermission = (user: any, permission: string): boolean => {
+  if (!user) return false;
+  const permissions = user.permissions || [];
+  return permissions.includes('*') || permissions.includes(permission);
 };
 
-export const canApproveBudgets = (req: Request, res: Response, next: NextFunction) => {
-  const user = (req as any).user;
-  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
-  const userRole = roleName.toLowerCase();
-  const allowedRoles = ['root', 'super_admin', 'admin', 'manager', 'superadmin'];
-  
-  console.log('Budget approval check - User:', user?.email, 'Role:', userRole, 'Original:', user?.role);
-  
-  if (!userRole || !allowedRoles.includes(userRole)) {
-    return res.status(403).json({ 
-      message: 'Insufficient permissions to approve budgets', 
-      role: userRole,
-      originalRole: user?.role,
-      allowedRoles 
-    });
-  }
-  
-  next();
+export const requirePermission = (permission: string) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    if (!hasPermission(req.user, permission)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: `Permission denied: ${permission} required` 
+      });
+    }
+
+    next();
+  };
 };
 
-export const canViewBudgets = (req: Request, res: Response, next: NextFunction) => {
-  const user = (req as any).user;
-  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
-  const userRole = roleName.toLowerCase();
-  const allowedRoles = ['root', 'super_admin', 'admin', 'manager', 'employee', 'superadmin', 'normal'];
-  
-  console.log('Budget view check - User:', user?.email, 'Role:', userRole, 'Original:', user?.role);
-  
-  if (!userRole || !allowedRoles.includes(userRole)) {
-    return res.status(403).json({ 
-      message: 'Insufficient permissions to view budgets', 
-      role: userRole,
-      originalRole: user?.role,
-      allowedRoles 
-    });
+export const canViewBudgets = requirePermission('budgets.view');
+export const canCreateBudgets = requirePermission('budgets.create');
+export const canEditBudgets = requirePermission('budgets.edit');
+export const canDeleteBudgets = requirePermission('budgets.delete');
+export const canApproveBudgets = requirePermission('budgets.approve');
+export const canAllocateBudgets = requirePermission('budgets.allocate');
+export const canTrackBudgets = requirePermission('budgets.track');
+
+// Legacy compatibility
+export const canManageBudgets = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
   }
-  
-  next();
+
+  if (hasPermission(req.user, 'budgets.create') || hasPermission(req.user, 'budgets.edit')) {
+    return next();
+  }
+
+  return res.status(403).json({ 
+    success: false, 
+    message: 'Permission denied: budgets.create or budgets.edit required' 
+  });
 };

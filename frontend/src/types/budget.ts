@@ -1,13 +1,20 @@
 export interface Budget {
   _id: string;
   projectId?: string;
-  projectName: string;
+  departmentId?: string;
+  projectName?: string;
+  departmentName?: string;
+  budgetType: 'project' | 'department' | 'special';
   totalBudget: number;
   currency: string;
-  status: 'draft' | 'pending' | 'approved' | 'rejected';
+  status: 'draft' | 'in-review' | 'pending' | 'approved' | 'rejected';
   categories: BudgetCategory[];
   approvals: BudgetApproval[];
+  deleteApprovalStatus?: 'pending' | 'approved' | 'rejected';
+  deleteRequestedBy?: string;
+  deleteRequestedAt?: string;
   createdBy: string;
+  createdByDepartment: string;
   createdAt: string;
   updatedAt: string;
   remainingBudget?: number;
@@ -17,7 +24,7 @@ export interface Budget {
 export interface BudgetCategory {
   _id: string;
   name: string;
-  type: 'labor' | 'materials' | 'equipment' | 'overhead';
+  type: 'labor' | 'materials' | 'equipment' | 'overhead' | 'special';
   allocatedAmount: number;
   spentAmount: number;
   items: BudgetItem[];
@@ -36,7 +43,7 @@ export interface BudgetApproval {
   _id: string;
   userId: string;
   userName: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'in-review';
   comments: string;
   approvedAt?: string;
 }

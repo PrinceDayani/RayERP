@@ -54,11 +54,8 @@ export default function VouchersPage() {
   useEffect(() => {
     fetchVouchers();
     fetchAccounts();
-  }, [filterType, filterStatus, searchTerm, dateFrom, dateTo, page]);
-
-  useEffect(() => {
     fetchStats();
-  }, [vouchers]);
+  }, [filterType, filterStatus, searchTerm, dateFrom, dateTo, page]);
 
   const fetchVouchers = async () => {
     try {
@@ -69,37 +66,20 @@ export default function VouchersPage() {
       if (searchTerm) params.append('search', searchTerm);
       if (dateFrom) params.append('startDate', dateFrom);
       if (dateTo) params.append('endDate', dateTo);
+      if (filterType !== 'all') params.append('voucherType', filterType);
+      if (filterStatus !== 'all') params.append('status', filterStatus);
       
-      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries?${params}`, {
+      const res = await fetch(`${API_URL}/api/vouchers?${params}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
-      const entries = data.journalEntries || data.data || [];
       
-      // Map journal entries to voucher format
-      let mappedVouchers = entries.map((entry: any) => ({
-        _id: entry._id,
-        voucherNumber: entry.entryNumber,
-        voucherType: 'journal',
-        date: entry.entryDate || entry.date,
-        partyName: entry.reference || '',
-        narration: entry.description,
-        totalAmount: entry.totalDebit || 0,
-        status: entry.isPosted ? 'posted' : 'draft',
-        createdAt: entry.createdAt,
-        lines: entry.lines
-      }));
-      
-      // Client-side filtering
-      if (filterType !== 'all') {
-        mappedVouchers = mappedVouchers.filter((v: any) => v.voucherType === filterType);
+      if (data.success) {
+        setVouchers(data.data || []);
+        setTotalPages(data.pagination?.pages || 1);
+      } else {
+        throw new Error(data.message || 'Failed to fetch vouchers');
       }
-      if (filterStatus !== 'all') {
-        mappedVouchers = mappedVouchers.filter((v: any) => v.status === filterStatus);
-      }
-      
-      setVouchers(mappedVouchers);
-      setTotalPages(data.pagination?.pages || Math.ceil(mappedVouchers.length / 20));
     } catch (error) {
       console.error('Error fetching vouchers:', error);
       toast({ title: 'Error', description: 'Failed to load vouchers', variant: 'destructive' });
@@ -122,19 +102,20 @@ export default function VouchersPage() {
 
   const fetchStats = async () => {
     try {
-      // Calculate stats from vouchers data
-      const statsData: any = {};
-      voucherTypes.forEach(type => {
-        const filtered = vouchers.filter(v => v.voucherType === type.value);
-        statsData[type.value] = {
-          count: filtered.length,
-          totalAmount: filtered.reduce((sum, v) => sum + (v.totalAmount || 0), 0),
-          posted: filtered.filter(v => v.status === 'posted').length
-        };
+      const params = new URLSearchParams();
+      if (dateFrom) params.append('startDate', dateFrom);
+      if (dateTo) params.append('endDate', dateTo);
+      
+      const res = await fetch(`${API_URL}/api/vouchers/stats?${params}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
-      setStats(statsData);
+      const data = await res.json();
+      
+      if (data.success) {
+        setStats(data.data || {});
+      }
     } catch (error) {
-      console.error('Error calculating stats:', error);
+      console.error('Error fetching stats:', error);
     }
   };
 
@@ -200,22 +181,14 @@ export default function VouchersPage() {
         payload.invoiceDate = formData.invoiceDate;
       }
 
-      // Convert to journal entry format
-      const journalPayload = {
-        date: payload.date,
-        reference: payload.reference || `${selectedType.toUpperCase()}-${Date.now()}`,
-        description: payload.narration,
-        lines: payload.lines
-      };
-
-      console.log('Sending journal entry payload:', journalPayload);
-      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries`, {
+      console.log('Sending voucher payload:', payload);
+      const res = await fetch(`${API_URL}/api/vouchers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('auth-token')}`
         },
-        body: JSON.stringify(journalPayload)
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -279,17 +252,17 @@ export default function VouchersPage() {
     if (!confirm('Are you sure you want to post this voucher? This action cannot be undone.')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries/${id}/post`, {
+      const res = await fetch(`${API_URL}/api/vouchers/${id}/post`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
+      const data = await res.json();
 
-      if (res.ok) {
+      if (data.success) {
         toast({ title: 'Success', description: 'Voucher posted successfully' });
         fetchVouchers();
         fetchStats();
       } else {
-        const data = await res.json();
         toast({ title: 'Error', description: data.message, variant: 'destructive' });
       }
     } catch (error) {
@@ -298,20 +271,25 @@ export default function VouchersPage() {
   };
 
   const handleCancelVoucher = async (id: string) => {
-    if (!confirm('Cancel this voucher? This will reverse the entry.')) return;
+    const reason = prompt('Enter cancellation reason:');
+    if (!reason) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
+      const res = await fetch(`${API_URL}/api/vouchers/${id}/cancel`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}` 
+        },
+        body: JSON.stringify({ reason })
       });
+      const data = await res.json();
 
-      if (res.ok) {
+      if (data.success) {
         toast({ title: 'Success', description: 'Voucher cancelled successfully' });
         fetchVouchers();
         fetchStats();
       } else {
-        const data = await res.json();
         toast({ title: 'Error', description: data.message, variant: 'destructive' });
       }
     } catch (error) {
@@ -323,15 +301,18 @@ export default function VouchersPage() {
     if (!confirm('Are you sure you want to delete this voucher?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries/${id}`, {
+      const res = await fetch(`${API_URL}/api/vouchers/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
+      const data = await res.json();
 
-      if (res.ok) {
+      if (data.success) {
         toast({ title: 'Success', description: 'Voucher deleted successfully' });
         fetchVouchers();
         fetchStats();
+      } else {
+        toast({ title: 'Error', description: data.message, variant: 'destructive' });
       }
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to delete voucher', variant: 'destructive' });
@@ -345,7 +326,7 @@ export default function VouchersPage() {
     try {
       setLoading(true);
       await Promise.all(selectedVouchers.map(id => 
-        fetch(`${API_URL}/api/general-ledger/journal-entries/${id}/post`, {
+        fetch(`${API_URL}/api/vouchers/${id}/post`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
         })
@@ -353,6 +334,7 @@ export default function VouchersPage() {
       toast({ title: 'Success', description: `${selectedVouchers.length} vouchers posted` });
       setSelectedVouchers([]);
       fetchVouchers();
+      fetchStats();
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to post vouchers', variant: 'destructive' });
     } finally {
@@ -367,7 +349,7 @@ export default function VouchersPage() {
     try {
       setLoading(true);
       await Promise.all(selectedVouchers.map(id => 
-        fetch(`${API_URL}/api/general-ledger/journal-entries/${id}`, {
+        fetch(`${API_URL}/api/vouchers/${id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
         })
@@ -375,6 +357,7 @@ export default function VouchersPage() {
       toast({ title: 'Success', description: `${selectedVouchers.length} vouchers deleted` });
       setSelectedVouchers([]);
       fetchVouchers();
+      fetchStats();
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to delete vouchers', variant: 'destructive' });
     } finally {
@@ -514,26 +497,21 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
 
   const viewVoucher = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries/${id}`, {
+      const res = await fetch(`${API_URL}/api/vouchers/${id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
-      const voucher = {
-        _id: data._id,
-        voucherNumber: data.entryNumber,
-        voucherType: 'journal',
-        date: data.entryDate || data.date,
-        reference: data.reference,
-        narration: data.description,
-        status: data.isPosted ? 'posted' : 'draft',
-        lines: data.lines,
-        createdAt: data.createdAt,
-        createdBy: data.createdBy,
-        updatedAt: data.updatedAt
-      };
-      setSelectedVoucher(voucher);
-      setShowViewDialog(true);
+      
+      if (data.success) {
+        console.log('Voucher details:', data.data);
+        console.log('Lines:', data.data.lines);
+        setSelectedVoucher(data.data);
+        setShowViewDialog(true);
+      } else {
+        throw new Error(data.message);
+      }
     } catch (error) {
+      console.error('View voucher error:', error);
       toast({ title: 'Error', description: 'Failed to fetch voucher details', variant: 'destructive' });
     }
   };
@@ -541,51 +519,47 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
   const viewAuditTrail = async (id: string) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/api/general-ledger/journal-entries/${id}`, {
+      const res = await fetch(`${API_URL}/api/vouchers/${id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
       
-      // Build audit log from journal entry data
+      if (!data.success) throw new Error(data.message);
+      
+      const voucher = data.data;
       const logs = [];
       
-      // Created event
       logs.push({
         action: 'Created',
-        user: data.createdBy?.firstName || data.createdBy?.name || 'System',
-        timestamp: data.createdAt,
-        details: `Voucher ${data.entryNumber} created`
+        user: voucher.createdBy?.name || voucher.createdBy?.email || 'System',
+        timestamp: voucher.createdAt,
+        details: `Voucher ${voucher.voucherNumber} created`
       });
       
-      // Updated event
-      if (data.updatedAt && data.updatedAt !== data.createdAt) {
+      if (voucher.updatedAt && voucher.updatedAt !== voucher.createdAt) {
         logs.push({
           action: 'Updated',
-          user: data.updatedBy?.firstName || data.updatedBy?.name || 'System',
-          timestamp: data.updatedAt,
+          user: 'System',
+          timestamp: voucher.updatedAt,
           details: 'Voucher details modified'
         });
       }
       
-      // Posted event
-      if (data.isPosted) {
+      if (voucher.status === 'posted' && voucher.approvedBy) {
         logs.push({
           action: 'Posted',
-          user: data.postedBy?.firstName || data.postedBy?.name || 'System',
-          timestamp: data.postingDate || data.updatedAt,
+          user: voucher.approvedBy?.name || voucher.approvedBy?.email || 'System',
+          timestamp: voucher.approvedAt,
           details: 'Voucher posted to ledger'
         });
       }
       
-      // Change history from model
-      if (data.changeHistory && data.changeHistory.length > 0) {
-        data.changeHistory.forEach((change: any) => {
-          logs.push({
-            action: 'Modified',
-            user: change.changedBy?.firstName || change.changedBy?.name || 'System',
-            timestamp: change.changedAt,
-            details: `${change.field}: ${change.oldValue} → ${change.newValue}`
-          });
+      if (voucher.status === 'cancelled' && voucher.cancelledBy) {
+        logs.push({
+          action: 'Cancelled',
+          user: voucher.cancelledBy?.name || voucher.cancelledBy?.email || 'System',
+          timestamp: voucher.cancelledAt,
+          details: `Reason: ${voucher.cancellationReason || 'Not specified'}`
         });
       }
       
@@ -705,6 +679,9 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
               </Button>
               {selectedVouchers.length > 0 && (
                 <>
+                  <Button variant="outline" size="sm" onClick={() => setSelectedVouchers([])}>
+                    Clear ({selectedVouchers.length})
+                  </Button>
                   <Button variant="outline" size="sm" onClick={handleBulkPost}>
                     <CheckCircle className="w-4 h-4 mr-1" /> Post ({selectedVouchers.length})
                   </Button>
@@ -712,6 +689,11 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
                     <Trash2 className="w-4 h-4 mr-1" /> Delete ({selectedVouchers.length})
                   </Button>
                 </>
+              )}
+              {selectedVouchers.length === 0 && vouchers.length > 0 && (
+                <Button variant="outline" size="sm" onClick={toggleSelectAll}>
+                  Select All
+                </Button>
               )}
             </div>
           </div>
@@ -767,11 +749,13 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
                     </TableCell>
                     <TableCell className="font-medium">{v.voucherNumber}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="capitalize">{v.voucherType.replace('_', ' ')}</Badge>
+                      <Badge variant="outline" className="capitalize">
+                        {voucherTypes.find(t => t.value === v.voucherType)?.label || v.voucherType}
+                      </Badge>
                     </TableCell>
                     <TableCell>{new Date(v.date).toLocaleDateString('en-IN')}</TableCell>
                     <TableCell>{v.partyName || '-'}</TableCell>
-                    <TableCell className="max-w-xs truncate">{v.narration}</TableCell>
+                    <TableCell className="max-w-xs truncate" title={v.narration}>{v.narration}</TableCell>
                     <TableCell className="text-right font-semibold">₹{v.totalAmount.toLocaleString('en-IN')}</TableCell>
                     <TableCell>{getStatusBadge(v.status)}</TableCell>
                     <TableCell>
@@ -1077,7 +1061,9 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Type</p>
-                  <p className="font-semibold capitalize">{selectedVoucher.voucherType.replace('_', ' ')}</p>
+                  <p className="font-semibold capitalize">
+                    {voucherTypes.find(t => t.value === selectedVoucher.voucherType)?.label || selectedVoucher.voucherType}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Date</p>
@@ -1118,20 +1104,24 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedVoucher.lines.map((line: any, idx: number) => (
-                      <TableRow key={idx}>
-                        <TableCell>
-                          {line.accountId?.code} - {line.accountId?.name}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {line.debit > 0 ? `₹${line.debit.toLocaleString('en-IN')}` : '-'}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {line.credit > 0 ? `₹${line.credit.toLocaleString('en-IN')}` : '-'}
-                        </TableCell>
-                        <TableCell>{line.description || '-'}</TableCell>
-                      </TableRow>
-                    ))}
+                    {selectedVoucher.lines.map((line: any, idx: number) => {
+                      const account = line.accountId;
+                      const accountDisplay = account ? 
+                        (typeof account === 'object' ? `${account.code || ''} - ${account.name || ''}` : account) : 
+                        'Unknown Account';
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell>{accountDisplay}</TableCell>
+                          <TableCell className="text-right">
+                            {line.debit > 0 ? `₹${line.debit.toLocaleString('en-IN')}` : '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {line.credit > 0 ? `₹${line.credit.toLocaleString('en-IN')}` : '-'}
+                          </TableCell>
+                          <TableCell>{line.description || '-'}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                     <TableRow className="font-semibold bg-muted/30">
                       <TableCell>Total</TableCell>
                       <TableCell className="text-right">
@@ -1148,7 +1138,7 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
 
               <div className="flex justify-between items-center pt-4 border-t">
                 <div className="text-sm text-muted-foreground">
-                  Created by {selectedVoucher.createdBy?.name} on {new Date(selectedVoucher.createdAt).toLocaleString('en-IN')}
+                  Created by {selectedVoucher.createdBy?.name || selectedVoucher.createdBy?.email || 'System'} on {new Date(selectedVoucher.createdAt).toLocaleString('en-IN')}
                 </div>
                 <div className="flex gap-2">
                   {selectedVoucher.status === 'draft' && (

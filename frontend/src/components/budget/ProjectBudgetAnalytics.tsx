@@ -13,21 +13,21 @@ interface ProjectBudgetAnalyticsProps {
 }
 
 export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudgetAnalyticsProps) {
-  const totalSpent = budget.categories.reduce((sum, cat) => sum + cat.spentAmount, 0);
-  const totalAllocated = budget.categories.reduce((sum, cat) => sum + cat.allocatedAmount, 0);
-  const utilization = budget.totalBudget > 0 ? (totalSpent / budget.totalBudget) * 100 : 0;
-  const remaining = budget.totalBudget - totalSpent;
-  const daysElapsed = Math.max(1, Math.ceil((new Date().getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24)));
+  const totalSpent = budget.categories?.reduce((sum, cat) => sum + (cat.spentAmount || 0), 0) || 0;
+  const totalAllocated = budget.categories?.reduce((sum, cat) => sum + (cat.allocatedAmount || 0), 0) || 0;
+  const utilization = (budget.totalBudget && budget.totalBudget > 0) ? (totalSpent / budget.totalBudget) * 100 : 0;
+  const remaining = (budget.totalBudget || 0) - totalSpent;
+  const daysElapsed = Math.max(1, Math.ceil((new Date().getTime() - new Date(project?.startDate || new Date()).getTime()) / (1000 * 60 * 60 * 24)));
   const burnRate = totalSpent / daysElapsed;
-  const daysRemaining = Math.ceil((new Date(project.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+  const daysRemaining = Math.max(0, Math.ceil((new Date(project?.endDate || new Date()).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
   const projectedSpend = totalSpent + (burnRate * daysRemaining);
-  const variance = budget.totalBudget - projectedSpend;
+  const variance = (budget.totalBudget || 0) - projectedSpend;
   const costPerDay = totalSpent / daysElapsed;
-  const totalDays = Math.ceil((new Date(project.endDate).getTime() - new Date(project.startDate).getTime()) / (1000 * 60 * 60 * 24));
+  const totalDays = Math.max(1, Math.ceil((new Date(project?.endDate || new Date()).getTime() - new Date(project?.startDate || new Date()).getTime()) / (1000 * 60 * 60 * 24)));
   const timeProgress = (daysElapsed / totalDays) * 100;
-  const costEfficiency = timeProgress > 0 ? ((utilization / timeProgress) * 100).toFixed(0) : 100;
-  const roi = budget.totalBudget > 0 ? (((budget.totalBudget - totalSpent) / budget.totalBudget) * 100).toFixed(1) : 0;
-  const savingsRate = remaining / Math.max(1, daysRemaining);
+  const costEfficiency = timeProgress > 0 ? ((utilization / timeProgress) * 100).toFixed(0) : '100';
+  const roi = (budget.totalBudget && budget.totalBudget > 0) ? (((budget.totalBudget - totalSpent) / budget.totalBudget) * 100).toFixed(1) : '0';
+  const savingsRate = daysRemaining > 0 ? remaining / daysRemaining : 0;
   
   const performanceScore = Math.max(0, Math.min(100, 
     (variance >= 0 ? 30 : 0) + 
@@ -35,30 +35,30 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
     (Number(costEfficiency) >= 90 ? 40 : Number(costEfficiency) >= 70 ? 20 : 0)
   ));
 
-  const trendData = budget.categories.map((cat, idx) => ({
+  const trendData = budget.categories?.map((cat, idx) => ({
     week: `W${idx + 1}`,
-    spent: cat.spentAmount,
-    projected: (cat.spentAmount / daysElapsed) * totalDays
-  }));
+    spent: cat.spentAmount || 0,
+    projected: ((cat.spentAmount || 0) / daysElapsed) * totalDays
+  })) || [];
 
-  const radarData = budget.categories.map(cat => ({
-    category: cat.name,
-    utilization: cat.allocatedAmount > 0 ? (cat.spentAmount / cat.allocatedAmount) * 100 : 0,
+  const radarData = budget.categories?.map(cat => ({
+    category: cat.name || 'Unknown',
+    utilization: (cat.allocatedAmount && cat.allocatedAmount > 0) ? ((cat.spentAmount || 0) / cat.allocatedAmount) * 100 : 0,
     fullMark: 100
-  }));
+  })) || [];
 
-  const categoryData = budget.categories.map(cat => ({
-    name: cat.name,
-    allocated: cat.allocatedAmount,
-    spent: cat.spentAmount,
-    remaining: cat.allocatedAmount - cat.spentAmount,
-    utilization: cat.allocatedAmount > 0 ? ((cat.spentAmount / cat.allocatedAmount) * 100).toFixed(1) : 0
-  }));
+  const categoryData = budget.categories?.map(cat => ({
+    name: cat.name || 'Unknown',
+    allocated: cat.allocatedAmount || 0,
+    spent: cat.spentAmount || 0,
+    remaining: (cat.allocatedAmount || 0) - (cat.spentAmount || 0),
+    utilization: (cat.allocatedAmount && cat.allocatedAmount > 0) ? (((cat.spentAmount || 0) / cat.allocatedAmount) * 100).toFixed(1) : '0'
+  })) || [];
 
-  const spendingTrend = budget.categories.map(cat => ({
-    category: cat.name,
-    value: cat.spentAmount
-  }));
+  const spendingTrend = budget.categories?.map(cat => ({
+    category: cat.name || 'Unknown',
+    value: cat.spentAmount || 0
+  })) || [];
 
   const statusColors = {
     healthy: '#10B981',
@@ -347,12 +347,12 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
                   <span className="font-medium capitalize">{category.name}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">
-                      ₹{category.spent.toLocaleString()} / ₹{category.allocated.toLocaleString()}
+                      ₹{category.spent?.toLocaleString()} / ₹{category.allocated?.toLocaleString()}
                     </span>
                     <Badge 
-                      variant={Number(category.utilization) > 100 ? "destructive" : Number(category.utilization) > 80 ? "default" : "secondary"}
+                      variant={Number(category.utilization || 0) > 100 ? "destructive" : Number(category.utilization || 0) > 80 ? "default" : "secondary"}
                     >
-                      {category.utilization}%
+                      {String(category.utilization || '0')}%
                     </Badge>
                   </div>
                 </div>
@@ -361,7 +361,7 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
                   className={`h-2 ${Number(category.utilization) > 100 ? 'bg-red-100' : ''}`}
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Remaining: ₹{category.remaining.toLocaleString()}</span>
+                  <span>Remaining: ₹{category.remaining?.toLocaleString()}</span>
                   <span>{category.remaining >= 0 ? 'Within budget' : 'Over budget'}</span>
                 </div>
               </div>
@@ -466,21 +466,21 @@ export default function ProjectBudgetAnalytics({ budget, project }: ProjectBudge
                   <Coins className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   <span className="text-sm font-medium">Total Budget</span>
                 </div>
-                <span className="text-lg font-bold">₹{budget.totalBudget.toLocaleString()}</span>
+                <span className="text-lg font-bold">₹{budget.totalBudget?.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-red-500/10 rounded-lg">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-red-600 dark:text-red-400" />
                   <span className="text-sm font-medium">Total Spent</span>
                 </div>
-                <span className="text-lg font-bold">₹{totalSpent.toLocaleString()}</span>
+                <span className="text-lg font-bold">₹{totalSpent?.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-green-500/10 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Target className="h-5 w-5 text-green-600 dark:text-green-400" />
                   <span className="text-sm font-medium">Remaining</span>
                 </div>
-                <span className="text-lg font-bold">₹{remaining.toLocaleString()}</span>
+                <span className="text-lg font-bold">₹{remaining?.toLocaleString()}</span>
               </div>
             </div>
           </CardContent>

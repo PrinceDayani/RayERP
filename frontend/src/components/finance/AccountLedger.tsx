@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useCreateEntryShortcut } from '@/hooks/useKeyboardShortcuts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Download, Filter, Plus, TrendingUp, TrendingDown, ArrowLeft, RefreshCw, Edit, FileText, Image } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
 interface LedgerEntry {
   _id: string;
@@ -57,8 +59,30 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
   });
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
   const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  const { getRowProps, selectedIndex } = useKeyboardNavigation({
+    items: entries,
+    onSelect: (entry) => {
+      setSelectedEntry(entry);
+      setSelectedEntries(new Set([entry._id]));
+      setShowViewDialog(true);
+    },
+    enabled: !loading && entries.length > 0
+  });
+
+  useEffect(() => {
+    if (entries.length > 0 && selectedIndex >= 0) {
+      setSelectedEntry(entries[selectedIndex]);
+      setSelectedEntries(new Set([entries[selectedIndex]._id]));
+    }
+  }, [selectedIndex, entries]);
+
+  useCreateEntryShortcut(() => {
+    router.push(`/dashboard/finance/journal-entry?accountId=${accountId}`);
+  }, true);
 
   const fetchAccountLedger = async () => {
     try {
@@ -92,26 +116,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
     }
   }, [accountId, filters]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!entries.length) return;
-      
-      const currentIndex = selectedEntry ? entries.findIndex(entry => entry._id === selectedEntry._id) : -1;
-      
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        const nextIndex = currentIndex < entries.length - 1 ? currentIndex + 1 : 0;
-        setSelectedEntry(entries[nextIndex]);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        const prevIndex = currentIndex > 0 ? currentIndex - 1 : entries.length - 1;
-        setSelectedEntry(entries[prevIndex]);
-      }
-    };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [entries, selectedEntry]);
 
   const handleFilterChange = (field: string, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value, page: 1 }));
@@ -183,10 +188,28 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
         return newSet;
       });
     } else {
-      setSelectedEntry(entries.find(entry => entry._id === entryId) || null);
+      const entry = entries.find(entry => entry._id === entryId);
+      setSelectedEntry(entry || null);
       setSelectedEntries(new Set([entryId]));
+      if (entry) setShowViewDialog(true);
     }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowViewDialog(false);
+        setShowEditDialog(false);
+        setShowExportMenu(false);
+      } else if (e.key === 'Enter' && showViewDialog) {
+        e.preventDefault();
+        setShowViewDialog(false);
+        setShowEditDialog(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showViewDialog, showEditDialog, showExportMenu]);
 
   if (loading && !account) {
     return (
@@ -240,12 +263,6 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                   <Button onClick={fetchAccountLedger} variant="outline" size="sm">
                     <RefreshCw className="w-4 h-4" />
                   </Button>
-                  {selectedEntry && (
-                    <Button onClick={() => setShowEditDialog(true)} size="sm">
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
-                  )}
                   {selectedEntries.size > 0 && (
                     <div className="relative">
                       <Button onClick={() => setShowExportMenu(!showExportMenu)} size="sm" variant="default">
@@ -395,32 +412,32 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                 <TableBody>
                   {entries.map((entry, idx) => (
                     <TableRow 
-                      key={entry._id} 
-                      className={`cursor-pointer ${selectedEntries.has(entry._id) ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-gray-100'}`}
+                      key={entry._id}
+                      {...getRowProps(idx)}
                       onClick={(e) => toggleEntrySelection(entry._id, e)}
                     >
-                      <TableCell className={`font-medium ${selectedEntries.has(entry._id) ? 'text-white' : ''}`}>
+                      <TableCell className="font-medium">
                         {format(new Date(entry.date), 'MMM dd, yyyy')}
                       </TableCell>
-                      <TableCell className={`max-w-xs truncate ${selectedEntries.has(entry._id) ? 'text-white' : ''}`}>{entry.description}</TableCell>
-                      <TableCell className={`font-mono text-sm ${selectedEntries.has(entry._id) ? 'text-white' : 'text-gray-600'}`}>
+                      <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
+                      <TableCell className="font-mono text-sm text-gray-600">
                         {entry.reference}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        <Badge variant={selectedEntries.has(entry._id) ? 'secondary' : 'outline'}>{entry.journalEntryId?.entryNumber}</Badge>
+                        <Badge variant="outline">{entry.journalEntryId?.entryNumber}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {entry.debit > 0 ? (
-                          <span className={`font-semibold ${selectedEntries.has(entry._id) ? 'text-red-200' : 'text-red-600'}`}>{formatAmount(entry.debit)}</span>
+                          <span className="font-semibold text-red-600">{formatAmount(entry.debit)}</span>
                         ) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {entry.credit > 0 ? (
-                          <span className={`font-semibold ${selectedEntries.has(entry._id) ? 'text-green-200' : 'text-green-600'}`}>{formatAmount(entry.credit)}</span>
+                          <span className="font-semibold text-green-600">{formatAmount(entry.credit)}</span>
                         ) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-mono font-bold">
-                        <span className={selectedEntries.has(entry._id) ? 'text-white' : (entry.balance >= 0 ? 'text-green-600' : 'text-red-600')}>
+                        <span className={entry.balance >= 0 ? 'text-green-600' : 'text-red-600'}>
                           {formatAmount(entry.balance)}
                         </span>
                       </TableCell>
@@ -443,6 +460,52 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
           )}
         </CardContent>
       </Card>
+
+      {selectedEntry && showViewDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowViewDialog(false)}>
+          <Card className="w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle>Ledger Entry Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Date</Label>
+                  <p className="text-sm font-medium mt-1">{format(new Date(selectedEntry.date), 'MMM dd, yyyy')}</p>
+                </div>
+                <div>
+                  <Label>Reference</Label>
+                  <p className="text-sm font-medium mt-1">{selectedEntry.reference}</p>
+                </div>
+              </div>
+              <div>
+                <Label>Description</Label>
+                <p className="text-sm font-medium mt-1">{selectedEntry.description}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>Debit</Label>
+                  <p className="text-sm font-semibold text-red-600 mt-1">{selectedEntry.debit > 0 ? formatAmount(selectedEntry.debit) : '-'}</p>
+                </div>
+                <div>
+                  <Label>Credit</Label>
+                  <p className="text-sm font-semibold text-green-600 mt-1">{selectedEntry.credit > 0 ? formatAmount(selectedEntry.credit) : '-'}</p>
+                </div>
+                <div>
+                  <Label>Balance</Label>
+                  <p className={`text-sm font-bold mt-1 ${selectedEntry.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatAmount(selectedEntry.balance)}</p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setShowViewDialog(false)}>Close (Esc)</Button>
+                <Button onClick={() => { setShowViewDialog(false); setShowEditDialog(true); }}>
+                  <Edit className="w-4 h-4 mr-2" />Edit (Enter)
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {selectedEntry && showEditDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEditDialog(false)}>

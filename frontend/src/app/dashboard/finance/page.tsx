@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Briefcase, Calculator, FileText, TrendingUp, BarChart3, Coins, Receipt, Building2, Users, BookOpen, FolderOpen, Banknote, Repeat, PieChart, Wallet, FileSpreadsheet, ChevronRight, Plus, Globe, Scale, Clock, Lock, Shield, Zap, CheckCircle, FileCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useFinanceShortcuts } from '@/hooks/useFinanceShortcuts';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
@@ -14,6 +15,8 @@ export default function FinancePage() {
   const router = useRouter();
   const { currency, symbol, formatAmount, formatCompact } = useCurrency();
   const [stats, setStats] = useState({ accounts: 0, entries: 0, vouchers: 0 });
+  
+  useFinanceShortcuts();
 
   useEffect(() => {
     fetchStats();
@@ -61,6 +64,7 @@ export default function FinancePage() {
   ];
 
   const managementModules = [
+    { title: 'Sales Reports', description: 'Track & analyze all sales', icon: TrendingUp, path: '/dashboard/finance/sales-reports', color: 'from-blue-500 to-cyan-600', badge: 'New' },
     { title: 'Cost Centers', description: 'Department/project allocation', icon: Building2, path: '/dashboard/finance/cost-centers', color: 'from-amber-500 to-amber-600', badge: 'Available' },
     { title: 'GL Budgets', description: 'Budget tracking & variance analysis', icon: TrendingUp, path: '/dashboard/finance/gl-budgets', color: 'from-teal-500 to-teal-600', badge: 'Available' },
     { title: 'Interest Calculations', description: 'Calculate & post interest entries', icon: Coins, path: '/dashboard/finance/interest', color: 'from-rose-500 to-rose-600', badge: 'Available' },

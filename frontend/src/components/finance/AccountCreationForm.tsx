@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useCreateAccountTypeShortcut } from '@/hooks/useKeyboardShortcuts';
 import { toast } from '@/hooks/use-toast';
 import AccountCreationForm from '@/components/common/AccountCreationForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -29,6 +30,8 @@ export default function FinanceAccountCreationForm({ onAccountCreated, duplicate
   const [showTypeDialog, setShowTypeDialog] = useState(false);
   const [newTypeData, setNewTypeData] = useState({ name: '', description: '', nature: 'debit' as 'debit' | 'credit' });
 
+  useCreateAccountTypeShortcut(() => setShowTypeDialog(true));
+
   useEffect(() => {
     fetchAccountTypes();
   }, []);
@@ -47,7 +50,7 @@ export default function FinanceAccountCreationForm({ onAccountCreated, duplicate
         if (data.success && data.data) {
           const uniqueTypes = Array.from(
             new Map(data.data.map((t: any) => [t.value, { value: t.value, label: t.label }])).values()
-          );
+          ) as { value: string; label: string; }[];
           setAccountTypes(uniqueTypes);
         }
       }

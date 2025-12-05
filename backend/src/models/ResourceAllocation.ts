@@ -111,7 +111,7 @@ resourceAllocationSchema.virtual('durationDays').get(function() {
 
 // Virtual for weekly hours breakdown
 resourceAllocationSchema.virtual('weeklyHours').get(function() {
-  const totalDays = this.durationDays;
+  const totalDays = Math.ceil((this.endDate.getTime() - this.startDate.getTime()) / (1000 * 60 * 60 * 24));
   const weeks = Math.ceil(totalDays / 7);
   return {
     totalWeeks: weeks,

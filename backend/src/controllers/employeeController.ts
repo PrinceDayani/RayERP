@@ -3,12 +3,72 @@ import Employee from '../models/Employee';
 import Task from '../models/Task';
 import User from '../models/User';
 import { Role } from '../models/Role';
+import Department from '../models/Department';
 // Socket will be imported dynamically to avoid circular dependency
+
+// Helper function to check user permissions
+const checkUserPermission = async (user: any, permission: string): Promise<boolean> => {
+  if (!user) return false;
+  
+  try {
+    const userDoc = await User.findById(user.id).populate('role');
+    if (!userDoc) return false;
+    
+    const userRole = userDoc.role as any;
+    
+    const userPermissions = new Set<string>();
+    
+    // Check for wildcard permission (*)
+    if (userRole?.permissions && userRole.permissions.includes('*')) {
+      return true;
+    }
+    
+    // Add role permissions
+    if (userRole?.permissions) {
+      userRole.permissions.forEach((perm: string) => userPermissions.add(perm));
+    }
+    
+    // Add department permissions
+    const employee = await Employee.findOne({ email: userDoc.email });
+    if (employee) {
+      const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
+      if (departmentNames.length > 0) {
+        const departments = await Department.find({ 
+          name: { $in: departmentNames },
+          status: 'active'
+        });
+        departments.forEach(dept => {
+          if (dept.permissions && dept.permissions.length > 0) {
+            dept.permissions.forEach((perm: string) => userPermissions.add(perm));
+          }
+        });
+      }
+    }
+    
+    return userPermissions.has(permission);
+  } catch (error) {
+    console.error('Error checking permission:', error);
+    return false;
+  }
+};
 
 export const getAllEmployees = async (req: Request, res: Response) => {
   try {
+    const user = req.user;
+    const hasViewSalary = await checkUserPermission(user, 'employees.view_salary');
+    
     const employees = await Employee.find().populate('manager', 'firstName lastName');
-    res.json(employees);
+    
+    // Hide salary if user doesn't have permission
+    const sanitizedEmployees = employees.map(emp => {
+      const empObj = emp.toObject();
+      if (!hasViewSalary) {
+        delete empObj.salary;
+      }
+      return empObj;
+    });
+    
+    res.json(sanitizedEmployees);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching employees', error });
   }
@@ -16,11 +76,20 @@ export const getAllEmployees = async (req: Request, res: Response) => {
 
 export const getEmployeeById = async (req: Request, res: Response) => {
   try {
+    const user = req.user;
+    const hasViewSalary = await checkUserPermission(user, 'employees.view_salary');
+    
     const employee = await Employee.findById(req.params.id).populate('manager', 'firstName lastName');
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
     }
-    res.json(employee);
+    
+    const empObj = employee.toObject();
+    if (!hasViewSalary) {
+      delete empObj.salary;
+    }
+    
+    res.json(empObj);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching employee', error });
   }
@@ -125,7 +194,19 @@ export const createEmployee = async (req: Request, res: Response) => {
 
 export const updateEmployee = async (req: Request, res: Response) => {
   try {
+    const user = req.user;
     const updateData = req.body;
+    
+    // Check if salary is being updated
+    if (updateData.salary !== undefined) {
+      const hasEditSalary = await checkUserPermission(user, 'employees.edit_salary');
+      if (!hasEditSalary) {
+        return res.status(403).json({ 
+          message: 'Insufficient permissions to edit salary',
+          required: 'employees.edit_salary'
+        });
+      }
+    }
     
     if (updateData.user === null || updateData.user === undefined || updateData.user === '') {
       return res.status(400).json({ message: 'Employee must have an associated user' });

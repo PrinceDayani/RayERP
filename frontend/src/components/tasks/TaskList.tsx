@@ -8,11 +8,13 @@ import TaskCard from "./TaskCard";
 interface Task {
   _id: string;
   title: string;
-  description: string;
+  description?: string;
   status: string;
   priority: string;
   dueDate: string;
   assignedTo?: { firstName: string; lastName: string };
+  project?: { name: string };
+  isBasicView?: boolean;
 }
 
 interface TaskListProps {
@@ -27,7 +29,7 @@ export default function TaskList({ tasks, onView, onEdit, onDelete }: TaskListPr
 
   const filteredTasks = tasks.filter(task =>
     task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    task.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (task.description && task.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
     task.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
     task.priority.toLowerCase().includes(searchTerm.toLowerCase())
   );

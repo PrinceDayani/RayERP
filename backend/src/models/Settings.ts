@@ -84,3 +84,24 @@ const SettingsSchema = new Schema<ISettings>({
 }, { timestamps: true });
 
 export const Settings = mongoose.model<ISettings>('Settings', SettingsSchema);
+export default Settings;
+
+export enum SettingScope {
+  GLOBAL = 'global',
+  USER = 'user',
+  ORGANIZATION = 'organization',
+  DEPARTMENT = 'department',
+  PROJECT = 'project'
+}
+
+export interface ISetting {
+  key: string;
+  value: any;
+  scope: SettingScope;
+  userId?: mongoose.Types.ObjectId;
+  organizationId?: mongoose.Types.ObjectId;
+  departmentId?: mongoose.Types.ObjectId;
+  projectId?: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}

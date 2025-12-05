@@ -48,7 +48,7 @@ export const validateSettingScope = (req: Request, res: Response, next: NextFunc
     return res.status(400).json({ message: 'Setting scope is required' });
   }
   
-  const validScopes = Object.values(SettingScope);
+  const validScopes = ['global', 'user', 'organization', 'department', 'project'];
   if (!validScopes.includes(scope)) {
     return res.status(400).json({ 
       message: `Invalid scope. Must be one of: ${validScopes.join(', ')}` 

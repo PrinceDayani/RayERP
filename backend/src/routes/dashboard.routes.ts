@@ -1,5 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/auth.middleware';
+import { requirePermission } from '../middleware/rbac.middleware';
 import Employee from '../models/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
@@ -12,7 +13,7 @@ let statsCache: { data: any; timestamp: number } | null = null;
 const CACHE_TTL = 30000;
 
 // Get real-time dashboard stats - OPTIMIZED
-router.get('/stats', protect, async (req, res) => {
+router.get('/stats', protect, requirePermission('dashboard.view'), async (req, res) => {
   try {
     // Return cached data if fresh
     if (statsCache && Date.now() - statsCache.timestamp < CACHE_TTL) {
@@ -71,7 +72,7 @@ router.get('/stats', protect, async (req, res) => {
 });
 
 // Get real-time analytics - OPTIMIZED
-router.get('/analytics', protect, async (req, res) => {
+router.get('/analytics', protect, requirePermission('analytics.view'), async (req, res) => {
   try {
     const currentYear = new Date().getFullYear();
     const [projects, taskDistribution, employees] = await Promise.all([
@@ -170,7 +171,7 @@ router.get('/analytics', protect, async (req, res) => {
 });
 
 // Clear cache endpoint (for admin)
-router.post('/clear-cache', protect, (req, res) => {
+router.post('/clear-cache', protect, requirePermission('system.manage'), (req, res) => {
   statsCache = null;
   res.json({ success: true, message: 'Cache cleared' });
 });

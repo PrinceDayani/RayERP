@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import { useGeneralLedger } from '@/hooks/finance/useGeneralLedger';
+import { useCreateEntryShortcut } from '@/hooks/useKeyboardShortcuts';
+import { useDateShortcuts } from '@/hooks/useDateShortcuts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -39,6 +41,74 @@ const JournalEntry = () => {
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [showBatchDialog, setShowBatchDialog] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
+
+  useCreateEntryShortcut(() => {
+    resetForm();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  useDateShortcuts();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl + S to save
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (isBalanced) {
+          document.querySelector('button[type="submit"]')?.dispatchEvent(new Event('click', { bubbles: true }));
+        }
+        return;
+      }
+
+      // Ctrl + Enter to add line
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        addLine();
+        return;
+      }
+
+      if (!e.ctrlKey) return;
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      
+      // Don't navigate if dropdown is open
+      if (document.querySelector('[data-state="open"]')) return;
+      
+      const target = e.target as HTMLElement;
+      const parent = target.closest('[data-field]');
+      if (!parent) return;
+      
+      const currentField = parent.getAttribute('data-field');
+      const currentIndex = parseInt(parent.getAttribute('data-index') || '0');
+      
+      e.preventDefault();
+      
+      let newIndex = currentIndex;
+      let newField = currentField;
+      
+      if (e.key === 'ArrowDown') {
+        newIndex = Math.min(currentIndex + 1, formData.lines.length - 1);
+      } else if (e.key === 'ArrowUp') {
+        newIndex = Math.max(currentIndex - 1, 0);
+      } else if (e.key === 'ArrowRight') {
+        const fields = ['account', 'debit', 'credit', 'description'];
+        const idx = fields.indexOf(currentField || '');
+        newField = fields[Math.min(idx + 1, fields.length - 1)];
+      } else if (e.key === 'ArrowLeft') {
+        const fields = ['account', 'debit', 'credit', 'description'];
+        const idx = fields.indexOf(currentField || '');
+        newField = fields[Math.max(idx - 1, 0)];
+      }
+      
+      setTimeout(() => {
+        const selector = `[data-index="${newIndex}"][data-field="${newField}"] input, [data-index="${newIndex}"][data-field="${newField}"] button`;
+        const element = document.querySelector(selector) as HTMLElement;
+        element?.focus();
+      }, 10);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [formData.lines.length]);
 
   useEffect(() => {
     fetchAccounts();
@@ -88,10 +158,9 @@ const JournalEntry = () => {
   };
 
   const addLine = () => {
-    setFormData({
-      ...formData,
-      lines: [...formData.lines, { accountId: '', debit: 0, credit: 0, description: '' }]
-    });
+    const newLine = { accountId: '', debit: 0, credit: 0, description: '' };
+    const newLines = [...formData.lines, newLine];
+    setFormData({ ...formData, lines: newLines });
   };
 
   const updateLine = (index: number, field: string, value: any) => {
@@ -101,15 +170,33 @@ const JournalEntry = () => {
   };
 
   const removeLine = (index: number) => {
-    if (formData.lines.length > 2) {
-      const newLines = formData.lines.filter((_, i) => i !== index);
-      setFormData({ ...formData, lines: newLines });
+    const newLines = formData.lines.filter((_, i) => i !== index);
+    if (newLines.length < 2) {
+      newLines.push({ accountId: '', debit: 0, credit: 0, description: '' });
     }
+    setFormData({ ...formData, lines: newLines });
   };
 
   const totalDebits = formData.lines.reduce((sum, line) => sum + (Number(line.debit) || 0), 0);
   const totalCredits = formData.lines.reduce((sum, line) => sum + (Number(line.credit) || 0), 0);
   const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
+
+  useEffect(() => {
+    if (!isBalanced && formData.lines.length > 0) {
+      const lastLine = formData.lines[formData.lines.length - 1];
+      const hasData = lastLine.accountId || lastLine.debit > 0 || lastLine.credit > 0 || lastLine.description;
+      
+      if (hasData) {
+        const timer = setTimeout(() => {
+          setFormData(prev => ({
+            ...prev,
+            lines: [...prev.lines, { accountId: '', debit: 0, credit: 0, description: '' }]
+          }));
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isBalanced, formData.lines]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) setAttachments([...attachments, ...Array.from(e.target.files)]);
@@ -432,7 +519,7 @@ const JournalEntry = () => {
                 
                 {formData.lines.map((line, index) => (
                   <div key={index} className="grid grid-cols-12 gap-4 p-4 border-b last:border-b-0 border-border bg-card">
-                    <div className="col-span-4">
+                    <div className="col-span-4" data-field="account" data-index={index}>
                       <AccountSelector
                         value={line.accountId}
                         onValueChange={(value) => updateLine(index, 'accountId', value)}
@@ -440,7 +527,7 @@ const JournalEntry = () => {
                         onAccountCreated={fetchAccounts}
                       />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-2" data-field="debit" data-index={index}>
                       <Input
                         type="number"
                         step="0.01"
@@ -450,7 +537,7 @@ const JournalEntry = () => {
                         className="text-right"
                       />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-2" data-field="credit" data-index={index}>
                       <Input
                         type="number"
                         step="0.01"
@@ -460,7 +547,7 @@ const JournalEntry = () => {
                         className="text-right"
                       />
                     </div>
-                    <div className="col-span-3">
+                    <div className="col-span-3" data-field="description" data-index={index}>
                       <Input
                         placeholder="Line description"
                         value={line.description}
@@ -473,7 +560,6 @@ const JournalEntry = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => removeLine(index)}
-                        disabled={formData.lines.length <= 2}
                         className="text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="w-4 h-4" />

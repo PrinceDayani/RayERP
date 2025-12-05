@@ -10,24 +10,24 @@ import {
   restoreFromBackup 
 } from '../controllers/backupController';
 import { authenticateToken } from '../middleware/auth.middleware';
-import { requireRole } from '../middleware/role.middleware';
+import { requirePermission } from '../middleware/permission.middleware';
 
 const router = express.Router();
 
-// Create system backup (ROOT/SUPER_ADMIN/ADMIN only)
-router.get('/download', authenticateToken, requireRole(['ROOT', 'SUPER_ADMIN', 'ADMIN']), createSystemBackup);
+// Create system backup
+router.get('/download', authenticateToken, requirePermission('backups.create'), createSystemBackup);
 
 // Backup logs
-router.get('/logs', authenticateToken, requireRole(['ROOT', 'SUPER_ADMIN', 'ADMIN']), getBackupLogs);
-router.get('/verify/:backupId', authenticateToken, requireRole(['ROOT', 'SUPER_ADMIN', 'ADMIN']), verifyBackup);
+router.get('/logs', authenticateToken, requirePermission('backups.view'), getBackupLogs);
+router.get('/verify/:backupId', authenticateToken, requirePermission('backups.view'), verifyBackup);
 
 // Backup schedules
-router.post('/schedules', authenticateToken, requireRole(['ROOT', 'SUPER_ADMIN', 'ADMIN']), createBackupSchedule);
-router.get('/schedules', authenticateToken, requireRole(['ROOT', 'SUPER_ADMIN', 'ADMIN']), getBackupSchedules);
-router.put('/schedules/:id', authenticateToken, requireRole(['ROOT', 'SUPER_ADMIN', 'ADMIN']), updateBackupSchedule);
-router.delete('/schedules/:id', authenticateToken, requireRole(['ROOT', 'SUPER_ADMIN', 'ADMIN']), deleteBackupSchedule);
+router.post('/schedules', authenticateToken, requirePermission('backups.manage'), createBackupSchedule);
+router.get('/schedules', authenticateToken, requirePermission('backups.view'), getBackupSchedules);
+router.put('/schedules/:id', authenticateToken, requirePermission('backups.manage'), updateBackupSchedule);
+router.delete('/schedules/:id', authenticateToken, requirePermission('backups.manage'), deleteBackupSchedule);
 
 // Restore functionality
-router.post('/restore', authenticateToken, requireRole(['ROOT', 'SUPER_ADMIN']), restoreFromBackup);
+router.post('/restore', authenticateToken, requirePermission('backups.restore'), restoreFromBackup);
 
 export default router;

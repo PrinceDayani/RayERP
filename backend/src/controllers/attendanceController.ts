@@ -113,14 +113,12 @@ export const checkIn = async (req: Request, res: Response) => {
     
     const checkInTime = new Date();
     const workStartTime = new Date(today);
-    workStartTime.setHours(9, 0, 0, 0); // 9 AM
+    workStartTime.setHours(9, 0, 0, 0);
     
     let status = 'present';
     if (checkInTime > workStartTime) {
       const lateMinutes = (checkInTime.getTime() - workStartTime.getTime()) / (1000 * 60);
-      if (lateMinutes > 15) { // Changed from 30 to 15 minutes for better tracking
-        status = 'late';
-      }
+      if (lateMinutes > 15) status = 'late';
     }
     
     const attendance = new Attendance({
@@ -128,19 +126,24 @@ export const checkIn = async (req: Request, res: Response) => {
       date: today,
       checkIn: checkInTime,
       status,
-      totalHours: 0, // Will be calculated on checkout
-      breakTime: 0
+      totalHours: 0,
+      breakTime: 0,
+      isManualEntry: true,
+      approvalStatus: 'pending',
+      requestedBy: employee,
+      entrySource: 'manual'
     });
     
     await attendance.save();
     await attendance.populate('employee', 'firstName lastName employeeId');
     
-    // Emit socket event for real-time updates
     const { io } = await import('../server');
-    io.emit('attendance:checkin', attendance);
-    io.emit('attendance:updated', attendance);
+    io.emit('attendance:checkin-requested', attendance);
     
-    res.status(201).json(attendance);
+    res.status(201).json({
+      message: 'Check-in request submitted for approval',
+      attendance
+    });
   } catch (error) {
     console.error('Check-in error:', error);
     res.status(400).json({ message: 'Error checking in', error: error.message });
@@ -174,22 +177,27 @@ export const checkOut = async (req: Request, res: Response) => {
     attendance.checkOut = checkOutTime;
     attendance.totalHours = Math.max(0, totalHours - breakTimeHours);
     
-    // Update status based on total hours worked
     if (attendance.totalHours < 4) {
       attendance.status = 'half-day';
     } else if (attendance.status !== 'late') {
       attendance.status = 'present';
     }
     
+    // If it's a manual entry, it needs approval
+    if (attendance.isManualEntry) {
+      attendance.approvalStatus = 'pending';
+    }
+    
     await attendance.save();
     await attendance.populate('employee', 'firstName lastName employeeId');
     
-    // Emit socket events for real-time updates
     const { io } = await import('../server');
-    io.emit('attendance:checkout', attendance);
-    io.emit('attendance:updated', attendance);
+    io.emit('attendance:checkout-requested', attendance);
     
-    res.json(attendance);
+    res.json({
+      message: attendance.isManualEntry ? 'Check-out request submitted for approval' : 'Checked out successfully',
+      attendance
+    });
   } catch (error) {
     console.error('Check-out error:', error);
     res.status(400).json({ message: 'Error checking out', error: error.message });
@@ -240,72 +248,171 @@ export const getAttendanceStats = async (req: Request, res: Response) => {
   }
 };
 
-export const markAttendance = async (req: Request, res: Response) => {
+export const requestAttendance = async (req: Request, res: Response) => {
   try {
     const { employee, date, status, checkIn, checkOut, notes } = req.body;
     
     const attendanceDate = new Date(date);
     attendanceDate.setHours(0, 0, 0, 0);
     
-    let attendance = await Attendance.findOne({
+    // Check if attendance already exists
+    const existingAttendance = await Attendance.findOne({
       employee,
       date: attendanceDate
     });
     
+    if (existingAttendance) {
+      return res.status(400).json({ message: 'Attendance already exists for this date' });
+    }
+    
     const checkInTime = new Date(checkIn);
     const checkOutTime = checkOut ? new Date(checkOut) : undefined;
     
+    let calculatedTotalHours = 0;
+    if (checkOutTime && checkInTime) {
+      const totalMilliseconds = checkOutTime.getTime() - checkInTime.getTime();
+      calculatedTotalHours = Math.max(0, totalMilliseconds / (1000 * 60 * 60));
+    }
+    
+    const attendance = new Attendance({
+      employee,
+      date: attendanceDate,
+      checkIn: checkInTime,
+      checkOut: checkOutTime,
+      status,
+      notes: notes || '',
+      totalHours: calculatedTotalHours,
+      breakTime: 0,
+      isManualEntry: true,
+      approvalStatus: 'pending',
+      requestedBy: employee,
+      entrySource: 'manual'
+    });
+    
+    await attendance.save();
+    await attendance.populate('employee', 'firstName lastName employeeId');
+    
+    const { io } = await import('../server');
+    io.emit('attendance:requested', attendance);
+    
+    res.status(201).json({
+      message: 'Attendance request submitted for approval',
+      attendance
+    });
+  } catch (error) {
+    console.error('Error requesting attendance:', error);
+    res.status(400).json({ message: 'Error requesting attendance', error: error.message });
+  }
+};
+
+export const approveAttendance = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { approvedBy, rejectionReason } = req.body;
+    const { action } = req.body; // 'approve' or 'reject'
+    
+    const attendance = await Attendance.findById(id);
+    if (!attendance) {
+      return res.status(404).json({ message: 'Attendance request not found' });
+    }
+    
+    if (attendance.approvalStatus !== 'pending') {
+      return res.status(400).json({ message: 'Attendance request already processed' });
+    }
+    
+    attendance.approvalStatus = action === 'approve' ? 'approved' : 'rejected';
+    attendance.approvedBy = approvedBy;
+    attendance.approvedDate = new Date();
+    
+    if (action === 'reject') {
+      attendance.rejectionReason = rejectionReason;
+    }
+    
+    await attendance.save();
+    await attendance.populate('employee', 'firstName lastName employeeId');
+    await attendance.populate('approvedBy', 'firstName lastName employeeId');
+    
+    const { io } = await import('../server');
+    io.emit('attendance:approved', attendance);
+    
+    res.json({
+      message: `Attendance request ${action}d successfully`,
+      attendance
+    });
+  } catch (error) {
+    console.error('Error approving attendance:', error);
+    res.status(400).json({ message: 'Error processing attendance request', error: error.message });
+  }
+};
+
+export const syncCardData = async (req: Request, res: Response) => {
+  try {
+    const { cardId, entryTime, exitTime, employeeId } = req.body;
+    
+    const entryDate = new Date(entryTime);
+    const attendanceDate = new Date(entryDate);
+    attendanceDate.setHours(0, 0, 0, 0);
+    
+    let attendance = await Attendance.findOne({
+      employee: employeeId,
+      date: attendanceDate
+    });
+    
+    const workStartTime = new Date(attendanceDate);
+    workStartTime.setHours(9, 0, 0, 0);
+    
+    let status = 'present';
+    if (entryDate > workStartTime) {
+      const lateMinutes = (entryDate.getTime() - workStartTime.getTime()) / (1000 * 60);
+      if (lateMinutes > 15) status = 'late';
+    }
+    
     if (attendance) {
-      // Update existing attendance
-      attendance.status = status;
-      attendance.checkIn = checkInTime;
-      attendance.checkOut = checkOutTime;
-      if (notes !== undefined) attendance.notes = notes;
-      
-      // Calculate total hours if both check-in and check-out are present
-      if (attendance.checkOut && attendance.checkIn) {
-        const totalMilliseconds = attendance.checkOut.getTime() - attendance.checkIn.getTime();
-        const totalHours = totalMilliseconds / (1000 * 60 * 60);
-        const breakTimeHours = (attendance.breakTime || 0) / 60;
-        attendance.totalHours = Math.max(0, totalHours - breakTimeHours);
-      } else {
-        attendance.totalHours = 0;
-      }
+      // Update existing with card data
+      attendance.cardEntryTime = entryDate;
+      attendance.cardExitTime = exitTime ? new Date(exitTime) : undefined;
+      attendance.cardId = cardId;
+      attendance.entrySource = 'card';
+      attendance.approvalStatus = 'auto-approved';
     } else {
-      // Create new attendance record
-      let calculatedTotalHours = 0;
-      if (checkOutTime && checkInTime) {
-        const totalMilliseconds = checkOutTime.getTime() - checkInTime.getTime();
-        const totalHours = totalMilliseconds / (1000 * 60 * 60);
-        calculatedTotalHours = Math.max(0, totalHours);
+      // Create new from card data
+      let totalHours = 0;
+      if (exitTime) {
+        const exitDate = new Date(exitTime);
+        totalHours = (exitDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60);
       }
       
       attendance = new Attendance({
-        employee,
+        employee: employeeId,
         date: attendanceDate,
-        checkIn: checkInTime,
-        checkOut: checkOutTime,
+        checkIn: entryDate,
+        checkOut: exitTime ? new Date(exitTime) : undefined,
         status,
-        notes: notes || '',
-        totalHours: calculatedTotalHours,
-        breakTime: 0
+        totalHours: Math.max(0, totalHours),
+        breakTime: 0,
+        cardEntryTime: entryDate,
+        cardExitTime: exitTime ? new Date(exitTime) : undefined,
+        cardId,
+        entrySource: 'card',
+        isManualEntry: false,
+        approvalStatus: 'auto-approved'
       });
     }
     
     await attendance.save();
     await attendance.populate('employee', 'firstName lastName employeeId');
     
-    // Emit socket events for real-time updates
     const { io } = await import('../server');
-    io.emit('attendance:marked', attendance);
-    io.emit('attendance:updated', attendance);
+    io.emit('attendance:card-sync', attendance);
     
     res.json(attendance);
   } catch (error) {
-    console.error('Error marking attendance:', error);
-    res.status(400).json({ message: 'Error marking attendance', error: error.message });
+    console.error('Error syncing card data:', error);
+    res.status(400).json({ message: 'Error syncing card data', error: error.message });
   }
 };
+
+export const markAttendance = requestAttendance; // Alias for backward compatibility
 
 export const updateAttendance = async (req: Request, res: Response) => {
   try {

@@ -24,11 +24,12 @@ export const requirePermission = (permission: string) => {
 
       const userRole = user.role as any;
       
-      if (userRole?.level >= 80) {
+      const userPermissions = new Set<string>();
+      
+      // Check for wildcard permission (*)
+      if (userRole?.permissions && userRole.permissions.includes('*')) {
         return next();
       }
-
-      const userPermissions = new Set<string>();
       
       if (userRole?.permissions) {
         userRole.permissions.forEach((perm: string) => userPermissions.add(perm));
@@ -83,11 +84,12 @@ export const requireAnyPermission = (permissions: string[]) => {
 
       const userRole = user.role as any;
       
-      if (userRole?.level >= 80) {
+      const userPermissions = new Set<string>();
+      
+      // Check for wildcard permission (*)
+      if (userRole?.permissions && userRole.permissions.includes('*')) {
         return next();
       }
-
-      const userPermissions = new Set<string>();
       
       if (userRole?.permissions) {
         userRole.permissions.forEach((perm: string) => userPermissions.add(perm));

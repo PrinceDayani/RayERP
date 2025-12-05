@@ -8,12 +8,15 @@ import ProjectCard from "./ProjectCard";
 interface Project {
   _id: string;
   name: string;
-  description: string;
+  description?: string;
   status: string;
   startDate: string;
   endDate: string;
-  progress: number;
+  progress?: number;
   teamMembers?: any[];
+  priority?: string;
+  departments?: any[];
+  isBasicView?: boolean;
 }
 
 interface ProjectListProps {
