@@ -44,7 +44,7 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
 
 export function useSequenceShortcut({ sequence, altKey, callback }: SequenceShortcut) {
   const keysPressed = useRef<string[]>([]);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -93,7 +93,7 @@ export function useCreateAccountTypeShortcut(onOpen: () => void) {
 
 export function useCreateEntryShortcut(onOpen: () => void, accountSpecific?: boolean) {
   const keysPressed = useRef<string[]>([]);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -160,7 +160,7 @@ export function useEscapeNavigation() {
 
 export function useGlobalSearch(onSearchAccount: () => void, onSearchEntry: () => void) {
   const keysPressed = useRef<string[]>([]);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
