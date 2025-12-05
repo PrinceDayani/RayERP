@@ -44,7 +44,7 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
 
 export function useSequenceShortcut({ sequence, altKey, callback }: SequenceShortcut) {
   const keysPressed = useRef<string[]>([]);
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -93,7 +93,7 @@ export function useCreateAccountTypeShortcut(onOpen: () => void) {
 
 export function useCreateEntryShortcut(onOpen: () => void, accountSpecific?: boolean) {
   const keysPressed = useRef<string[]>([]);
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -136,112 +136,31 @@ export function useCreateEntryShortcut(onOpen: () => void, accountSpecific?: boo
 }
 
 export function useEscapeNavigation() {
-  const escapeCount = useRef(0);
-  const escapeTimer = useRef<NodeJS.Timeout | undefined>(undefined);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        // Check for open dropdowns/popovers
-        const openDropdown = document.querySelector('[data-state="open"]');
-        if (openDropdown) {
-          escapeCount.current = 0;
-          return; // Let the component handle it
-        }
-        
-        // Check for dialogs
-        if (document.querySelector('[role="dialog"]')) {
-          escapeCount.current = 0;
-          return; // Let dialog handle it
-        }
-        
-        // Check if focused on input/textarea - just blur, don't navigate
         const activeElement = document.activeElement as HTMLElement;
         if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA' || activeElement.isContentEditable) {
           activeElement.blur();
-          escapeCount.current = 0;
           return;
         }
         
-        // Check if there are forms - require double escape
-        const hasForm = document.querySelector('form');
-        if (hasForm) {
-          escapeCount.current++;
-          
-          clearTimeout(escapeTimer.current);
-          escapeTimer.current = setTimeout(() => {
-            escapeCount.current = 0;
-          }, 500);
-          
-          if (escapeCount.current === 2) {
-            escapeCount.current = 0;
-            window.history.back();
-          }
+        if (document.querySelector('[role="dialog"]')) {
           return;
         }
         
-        // Single escape for list/view pages
         window.history.back();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      clearTimeout(escapeTimer.current);
-    };
-  }, []);
-}
-
-export function useQuickNavigation() {
-  const keysPressed = useRef<string[]>([]);
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isTyping(e)) return;
-      if (!e.altKey) {
-        keysPressed.current = [];
-        return;
-      }
-      
-      const key = e.key.toLowerCase();
-      if (key === 'n') {
-        e.preventDefault();
-        keysPressed.current = ['n'];
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => {
-          keysPressed.current = [];
-        }, 1000);
-        return;
-      }
-      
-      if (keysPressed.current[0] === 'n') {
-        e.preventDefault();
-        const routes: Record<string, string> = {
-          'j': '/dashboard/finance/journal-entry',
-          'i': '/dashboard/finance/invoices',
-          'b': '/dashboard/finance/bills',
-          'p': '/dashboard/finance/payments',
-        };
-        if (routes[key]) {
-          window.location.href = routes[key];
-        }
-        keysPressed.current = [];
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      clearTimeout(timeoutRef.current);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 }
 
 export function useGlobalSearch(onSearchAccount: () => void, onSearchEntry: () => void) {
   const keysPressed = useRef<string[]>([]);
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -253,7 +172,7 @@ export function useGlobalSearch(onSearchAccount: () => void, onSearchEntry: () =
       }
       
       const key = e.key.toLowerCase();
-      if (key === 's') {
+       if (key === 's') {
         e.preventDefault();
         keysPressed.current = ['s'];
         clearTimeout(timeoutRef.current);
@@ -268,7 +187,7 @@ export function useGlobalSearch(onSearchAccount: () => void, onSearchEntry: () =
           e.preventDefault();
           onSearchAccount();
           keysPressed.current = [];
-        } else if (key === 'd') {
+        } else if (key === 'e') {
           e.preventDefault();
           onSearchEntry();
           keysPressed.current = [];
