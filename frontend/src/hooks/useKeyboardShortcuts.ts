@@ -202,3 +202,21 @@ export function useGlobalSearch(onSearchAccount: () => void, onSearchEntry: () =
     };
   }, [onSearchAccount, onSearchEntry]);
 }
+
+export function useQuickNavigation() {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTyping(e)) return;
+      if (!e.altKey) return;
+      
+      const key = e.key.toLowerCase();
+      if (key === 'h') {
+        e.preventDefault();
+        window.location.href = '/dashboard';
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+}
