@@ -1,4 +1,4 @@
-import { apiRequest } from '../api';
+import { apiClient } from '../api';
 import axios from "axios";
 
 const ADMIN_API_URL =
@@ -82,7 +82,7 @@ const adminAPI = {
   // Admin Stats
   getStats: async (): Promise<AdminStats> => {
     try {
-      return await apiRequest('/api/admin/stats');
+      return await apiClient.get('/api/admin/stats');
     } catch (error) {
       console.error('Error fetching admin stats:', error);
       throw error;
@@ -92,7 +92,7 @@ const adminAPI = {
   // User Management
   getUsers: async (): Promise<AdminUser[]> => {
     try {
-      return await apiRequest('/api/users');
+      return await apiClient.get('/api/users');
     } catch (error) {
       console.error('Error fetching users:', error);
       throw error;
@@ -101,10 +101,7 @@ const adminAPI = {
 
   createUser: async (userData: any): Promise<AdminUser> => {
     try {
-      return await apiRequest('/api/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(userData)
-      });
+      return await apiClient.post('/api/auth/register', userData);
     } catch (error) {
       console.error('Error creating user:', error);
       throw error;
@@ -113,10 +110,7 @@ const adminAPI = {
 
   updateUser: async (userId: string, userData: any): Promise<AdminUser> => {
     try {
-      return await apiRequest(`/api/users/${userId}`, {
-        method: 'PUT',
-        body: JSON.stringify(userData)
-      });
+      return await apiClient.post(`/api/users/${userId}`, userData);
     } catch (error) {
       console.error('Error updating user:', error);
       throw error;
@@ -125,9 +119,7 @@ const adminAPI = {
 
   deleteUser: async (userId: string): Promise<void> => {
     try {
-      await apiRequest(`/api/users/${userId}`, {
-        method: 'DELETE'
-      });
+      await apiClient.post(`/api/users/${userId}`, {});
     } catch (error) {
       console.error('Error deleting user:', error);
       throw error;
@@ -138,7 +130,7 @@ const adminAPI = {
   getLogs: async (params?: any): Promise<ActivityLog[]> => {
     try {
       const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-      const response = await apiRequest(`/api/activities${queryString}`);
+      const response = await apiClient.get(`/api/activities${queryString}`);
       return response.data || response;
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -149,7 +141,7 @@ const adminAPI = {
   // Settings
   getSettings: async (): Promise<AdminSettings> => {
     try {
-      return await apiRequest('/api/admin/settings');
+      return await apiClient.get('/api/admin/settings');
     } catch (error) {
       console.error('Error fetching settings:', error);
       throw error;
@@ -158,10 +150,7 @@ const adminAPI = {
 
   updateGeneralSettings: async (settings: AdminGeneralSettings): Promise<AdminGeneralSettings> => {
     try {
-      return await apiRequest('/api/admin/settings/general', {
-        method: 'PUT',
-        body: JSON.stringify(settings)
-      });
+      return await apiClient.post('/api/admin/settings/general', settings);
     } catch (error) {
       console.error('Error updating general settings:', error);
       throw error;
@@ -170,10 +159,7 @@ const adminAPI = {
 
   updateSecuritySettings: async (settings: AdminSecuritySettings): Promise<AdminSecuritySettings> => {
     try {
-      return await apiRequest('/api/admin/settings/security', {
-        method: 'PUT',
-        body: JSON.stringify(settings)
-      });
+      return await apiClient.post('/api/admin/settings/security', settings);
     } catch (error) {
       console.error('Error updating security settings:', error);
       throw error;
@@ -182,10 +168,7 @@ const adminAPI = {
 
   updateNotificationSettings: async (settings: AdminNotificationSettings): Promise<AdminNotificationSettings> => {
     try {
-      return await apiRequest('/api/admin/settings/notifications', {
-        method: 'PUT',
-        body: JSON.stringify(settings)
-      });
+      return await apiClient.post('/api/admin/settings/notifications', settings);
     } catch (error) {
       console.error('Error updating notification settings:', error);
       throw error;
@@ -194,10 +177,7 @@ const adminAPI = {
 
   updateBackupSettings: async (settings: AdminBackupSettings): Promise<AdminBackupSettings> => {
     try {
-      return await apiRequest('/api/admin/settings/backup', {
-        method: 'PUT',
-        body: JSON.stringify(settings)
-      });
+      return await apiClient.post('/api/admin/settings/backup', settings);
     } catch (error) {
       console.error('Error updating backup settings:', error);
       throw error;
@@ -206,9 +186,7 @@ const adminAPI = {
 
   triggerManualBackup: async (): Promise<{ success: boolean; timestamp: string }> => {
     try {
-      return await apiRequest('/api/admin/backup/manual', {
-        method: 'POST'
-      });
+      return await apiClient.post('/api/admin/backup/manual', {});
     } catch (error) {
       console.error('Error triggering manual backup:', error);
       throw error;
@@ -218,7 +196,7 @@ const adminAPI = {
   // Role Management
   getRoles: async (): Promise<any[]> => {
     try {
-      const response = await apiRequest('/api/rbac/roles');
+      const response = await apiClient.get('/api/rbac/roles');
       console.log('getRoles response:', response);
       // Handle different response formats
       if (Array.isArray(response)) {
@@ -238,10 +216,7 @@ const adminAPI = {
 
   assignRolesToUser: async (userId: string, roleIds: string[]): Promise<AdminUser> => {
     try {
-      const response = await apiRequest(`/api/rbac/users/${userId}/roles`, {
-        method: 'PUT',
-        body: JSON.stringify({ roleIds })
-      });
+      const response = await apiClient.post(`/api/rbac/users/${userId}/roles`, { roleIds });
       return response;
     } catch (error) {
       console.error('Error assigning roles to user:', error);
@@ -251,10 +226,7 @@ const adminAPI = {
 
   updateUserRole: async (userId: string, roleId: string): Promise<AdminUser> => {
     try {
-      const response = await apiRequest(`/api/users/${userId}/role`, {
-        method: 'PUT',
-        body: JSON.stringify({ roleId })
-      });
+      const response = await apiClient.post(`/api/users/${userId}/role`, { roleId });
       return response;
     } catch (error) {
       console.error('Error updating user role:', error);
@@ -264,10 +236,7 @@ const adminAPI = {
 
   bulkUpdateUserRoles: async (userIds: string[], roleId: string): Promise<{ success: boolean; updated: number }> => {
     try {
-      const response = await apiRequest('/api/users/bulk/role', {
-        method: 'PUT',
-        body: JSON.stringify({ userIds, roleId })
-      });
+      const response = await apiClient.post('/api/users/bulk/role', { userIds, roleId });
       return response;
     } catch (error) {
       console.error('Error bulk updating user roles:', error);
@@ -278,7 +247,7 @@ const adminAPI = {
   // RBAC Management
   getPermissions: async (): Promise<any[]> => {
     try {
-      return await apiRequest('/api/rbac/permissions');
+      return await apiClient.get('/api/rbac/permissions');
     } catch (error) {
       console.error('Error fetching permissions:', error);
       return [];
@@ -287,10 +256,7 @@ const adminAPI = {
 
   createRole: async (roleData: any): Promise<any> => {
     try {
-      return await apiRequest('/api/rbac/roles', {
-        method: 'POST',
-        body: JSON.stringify(roleData)
-      });
+      return await apiClient.post('/api/rbac/roles', roleData);
     } catch (error) {
       console.error('Error creating role:', error);
       throw error;
@@ -299,10 +265,7 @@ const adminAPI = {
 
   updateRole: async (roleId: string, roleData: any): Promise<any> => {
     try {
-      return await apiRequest(`/api/rbac/roles/${roleId}`, {
-        method: 'PUT',
-        body: JSON.stringify(roleData)
-      });
+      return await apiClient.post(`/api/rbac/roles/${roleId}`, roleData);
     } catch (error) {
       console.error('Error updating role:', error);
       throw error;
@@ -311,9 +274,7 @@ const adminAPI = {
 
   deleteRole: async (roleId: string): Promise<void> => {
     try {
-      await apiRequest(`/api/rbac/roles/${roleId}`, {
-        method: 'DELETE'
-      });
+      await apiClient.post(`/api/rbac/roles/${roleId}`, {});
     } catch (error) {
       console.error('Error deleting role:', error);
       throw error;
@@ -322,10 +283,7 @@ const adminAPI = {
 
   resetPassword: async (userId: string, newPassword: string): Promise<void> => {
     try {
-      const response = await apiRequest(`/api/users/${userId}/reset-password`, {
-        method: 'PUT',
-        body: JSON.stringify({ newPassword })
-      });
+      const response = await apiClient.post(`/api/users/${userId}/reset-password`, { newPassword });
       return response;
     } catch (error) {
       console.error('Error resetting password:', error);
@@ -389,7 +347,7 @@ const adminAPI = {
   // Alternative export method using text response
   exportLogsAsText: async (format: 'text' | 'pdf' | 'excel' | 'csv'): Promise<string> => {
     try {
-      const response = await apiRequest(`/api/admin/export-logs?format=${format}`);
+      const response = await apiClient.get(`/api/admin/export-logs?format=${format}`);
       return response;
     } catch (error) {
       console.error('Export logs as text error:', error);
@@ -401,7 +359,7 @@ const adminAPI = {
   getAuditTrail: async (params?: any) => {
     try {
       const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-      return await apiRequest(`/api/audit-trail${queryString}`);
+      return await apiClient.get(`/api/audit-trail${queryString}`);
     } catch (error) {
       console.error('Error fetching audit trail:', error);
       throw error;
@@ -410,10 +368,7 @@ const adminAPI = {
 
   exportAuditTrail: async (filters: any) => {
     try {
-      return await apiRequest('/api/audit-trail/export', {
-        method: 'POST',
-        body: JSON.stringify(filters)
-      });
+      return await apiClient.post('/api/audit-trail/export', filters);
     } catch (error) {
       console.error('Error exporting audit trail:', error);
       throw error;
@@ -423,7 +378,7 @@ const adminAPI = {
   getSystemLogs: async (params?: any) => {
     try {
       const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-      return await apiRequest(`/api/system-logs${queryString}`);
+      return await apiClient.get(`/api/system-logs${queryString}`);
     } catch (error) {
       console.error('Error fetching system logs:', error);
       throw error;
@@ -432,10 +387,7 @@ const adminAPI = {
 
   exportSystemLogs: async (filters: any) => {
     try {
-      return await apiRequest('/api/system-logs/export', {
-        method: 'POST',
-        body: JSON.stringify(filters)
-      });
+      return await apiClient.post('/api/system-logs/export', filters);
     } catch (error) {
       console.error('Error exporting system logs:', error);
       throw error;
@@ -444,7 +396,7 @@ const adminAPI = {
 
   getNotificationSettings: async () => {
     try {
-      return await apiRequest('/api/notification-settings');
+      return await apiClient.get('/api/notification-settings');
     } catch (error) {
       console.error('Error fetching notification settings:', error);
       throw error;
@@ -453,10 +405,7 @@ const adminAPI = {
 
   updateNotificationSettingsNew: async (settings: any) => {
     try {
-      return await apiRequest('/api/notification-settings', {
-        method: 'PUT',
-        body: JSON.stringify(settings)
-      });
+      return await apiClient.post('/api/notification-settings', settings);
     } catch (error) {
       console.error('Error updating notification settings:', error);
       throw error;
@@ -465,10 +414,7 @@ const adminAPI = {
 
   exportData: async (module: string, format: string, filters: any) => {
     try {
-      return await apiRequest('/api/data-export', {
-        method: 'POST',
-        body: JSON.stringify({ module, format, filters })
-      });
+      return await apiClient.post('/api/data-export', { module, format, filters });
     } catch (error) {
       console.error('Error exporting data:', error);
       throw error;
@@ -477,7 +423,7 @@ const adminAPI = {
 
   getExportJobs: async () => {
     try {
-      return await apiRequest('/api/data-export/jobs');
+      return await apiClient.get('/api/data-export/jobs');
     } catch (error) {
       console.error('Error fetching export jobs:', error);
       throw error;
@@ -486,7 +432,7 @@ const adminAPI = {
 
   getBackups: async () => {
     try {
-      return await apiRequest('/api/backup/logs');
+      return await apiClient.get('/api/backup/logs');
     } catch (error) {
       console.error('Error fetching backups:', error);
       throw error;
@@ -495,7 +441,7 @@ const adminAPI = {
 
   createBackup: async () => {
     try {
-      return await apiRequest('/api/backup/download');
+      return await apiClient.get('/api/backup/download');
     } catch (error) {
       console.error('Error creating backup:', error);
       throw error;
@@ -504,10 +450,7 @@ const adminAPI = {
 
   restoreBackup: async (backupId: string) => {
     try {
-      return await apiRequest('/api/backup/restore', {
-        method: 'POST',
-        body: JSON.stringify({ backupId })
-      });
+      return await apiClient.post('/api/backup/restore', { backupId });
     } catch (error) {
       console.error('Error restoring backup:', error);
       throw error;

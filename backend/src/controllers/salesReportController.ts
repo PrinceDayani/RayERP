@@ -1,39 +1,111 @@
 import { Request, Response } from 'express';
 import Invoice from '../models/Invoice';
+import { validationResult } from 'express-validator';
+
+interface InvoiceFilter {
+  invoiceType: string;
+  status?: string;
+  customerId?: string;
+  invoiceDate?: {
+    $gte?: Date;
+    $lte?: Date;
+  };
+}
+
+const validateDate = (dateStr: string, fieldName: string): Date | null => {
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+};
 
 export const getSalesReport = async (req: Request, res: Response) => {
   try {
-    const { status, startDate, endDate, customerId } = req.query;
-
-    const filter: any = { invoiceType: 'SALES' };
-    if (status && status !== 'all') filter.status = status.toString().toUpperCase();
-    if (customerId) filter.customerId = customerId;
-    if (startDate || endDate) {
-      filter.invoiceDate = {};
-      if (startDate) filter.invoiceDate.$gte = new Date(startDate as string);
-      if (endDate) filter.invoiceDate.$lte = new Date(endDate as string);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array(), code: 'VALIDATION_ERROR' });
     }
 
-    const sales = await Invoice.find(filter)
-      .populate('customerId', 'name email')
-      .sort({ invoiceDate: -1 })
-      .lean();
+    const { status, startDate, endDate, customerId, page = 1, limit = 100 } = req.query;
 
-    res.json({ success: true, data: sales });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    const filter: InvoiceFilter = { invoiceType: 'SALES' };
+    if (status && status !== 'all') filter.status = status.toString().toUpperCase();
+    if (customerId) filter.customerId = customerId as string;
+    
+    if (startDate || endDate) {
+      filter.invoiceDate = {};
+      if (startDate) {
+        const start = validateDate(startDate as string, 'startDate');
+        if (!start) {
+          return res.status(400).json({ success: false, message: 'Invalid start date', code: 'INVALID_DATE' });
+        }
+        filter.invoiceDate.$gte = start;
+      }
+      if (endDate) {
+        const end = validateDate(endDate as string, 'endDate');
+        if (!end) {
+          return res.status(400).json({ success: false, message: 'Invalid end date', code: 'INVALID_DATE' });
+        }
+        filter.invoiceDate.$lte = end;
+      }
+    }
+
+    const pageNum = Math.max(1, Number(page));
+    const limitNum = Math.min(500, Math.max(1, Number(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [sales, total] = await Promise.all([
+      Invoice.find(filter)
+        .select('invoiceNumber partyName totalAmount paidAmount status invoiceDate')
+        .populate('customerId', 'name email')
+        .sort({ invoiceDate: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .maxTimeMS(10000)
+        .lean(),
+      Invoice.countDocuments(filter)
+    ]);
+
+    res.json({ 
+      success: true, 
+      data: sales,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error fetching sales report:', error.message);
+    }
+    res.status(500).json({ success: false, message: 'Failed to fetch sales report', code: 'SERVER_ERROR' });
   }
 };
 
 export const getSalesSummary = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
-    const filter: any = { invoiceType: 'SALES' };
+    const filter: InvoiceFilter = { invoiceType: 'SALES' };
     
     if (startDate || endDate) {
       filter.invoiceDate = {};
-      if (startDate) filter.invoiceDate.$gte = new Date(startDate as string);
-      if (endDate) filter.invoiceDate.$lte = new Date(endDate as string);
+      if (startDate) {
+        const start = validateDate(startDate as string, 'startDate');
+        if (!start) {
+          return res.status(400).json({ success: false, message: 'Invalid start date', code: 'INVALID_DATE' });
+        }
+        filter.invoiceDate.$gte = start;
+      }
+      if (endDate) {
+        const end = validateDate(endDate as string, 'endDate');
+        if (!end) {
+          return res.status(400).json({ success: false, message: 'Invalid end date', code: 'INVALID_DATE' });
+        }
+        filter.invoiceDate.$lte = end;
+      }
     }
 
     const [summary] = await Invoice.aggregate([
@@ -48,12 +120,13 @@ export const getSalesSummary = async (req: Request, res: Response) => {
           avgSaleValue: { $avg: '$totalAmount' }
         }
       }
-    ]);
+    ]).maxTimeMS(5000);
 
     const statusBreakdown = await Invoice.aggregate([
       { $match: filter },
-      { $group: { _id: '$status', count: { $sum: 1 }, amount: { $sum: '$totalAmount' } } }
-    ]);
+      { $group: { _id: '$status', count: { $sum: 1 }, amount: { $sum: '$totalAmount' } } },
+      { $limit: 20 }
+    ]).maxTimeMS(5000);
 
     res.json({
       success: true,
@@ -62,14 +135,18 @@ export const getSalesSummary = async (req: Request, res: Response) => {
         statusBreakdown
       }
     });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error fetching sales summary:', error.message);
+    }
+    res.status(500).json({ success: false, message: 'Failed to fetch sales summary', code: 'SERVER_ERROR' });
   }
 };
 
 export const getTopCustomers = async (req: Request, res: Response) => {
   try {
     const { limit = 10 } = req.query;
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 10));
 
     const topCustomers = await Invoice.aggregate([
       { $match: { invoiceType: 'SALES' } },
@@ -81,7 +158,7 @@ export const getTopCustomers = async (req: Request, res: Response) => {
         }
       },
       { $sort: { totalPurchases: -1 } },
-      { $limit: Number(limit) },
+      { $limit: limitNum },
       {
         $lookup: {
           from: 'contacts',
@@ -91,11 +168,14 @@ export const getTopCustomers = async (req: Request, res: Response) => {
         }
       },
       { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } }
-    ]);
+    ]).maxTimeMS(5000);
 
     res.json({ success: true, data: topCustomers });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error fetching top customers:', error.message);
+    }
+    res.status(500).json({ success: false, message: 'Failed to fetch top customers', code: 'SERVER_ERROR' });
   }
 };
 
@@ -103,6 +183,10 @@ export const getSalesTrends = async (req: Request, res: Response) => {
   try {
     const { period = 'monthly' } = req.query;
     
+    if (period !== 'daily' && period !== 'monthly') {
+      return res.status(400).json({ success: false, message: 'Invalid period. Use daily or monthly', code: 'INVALID_PERIOD' });
+    }
+
     const groupBy = period === 'daily' 
       ? { year: { $year: '$invoiceDate' }, month: { $month: '$invoiceDate' }, day: { $dayOfMonth: '$invoiceDate' } }
       : { year: { $year: '$invoiceDate' }, month: { $month: '$invoiceDate' } };
@@ -118,11 +202,14 @@ export const getSalesTrends = async (req: Request, res: Response) => {
       },
       { $sort: { '_id.year': -1, '_id.month': -1, '_id.day': -1 } },
       { $limit: 12 }
-    ]);
+    ]).maxTimeMS(5000);
 
     res.json({ success: true, data: trends });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error fetching sales trends:', error.message);
+    }
+    res.status(500).json({ success: false, message: 'Failed to fetch sales trends', code: 'SERVER_ERROR' });
   }
 };
 

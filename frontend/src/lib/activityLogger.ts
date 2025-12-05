@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { apiClient } from './api';
 
 interface ActivityLog {
   action: string;
@@ -9,12 +9,9 @@ interface ActivityLog {
 
 export const logActivity = async (activity: ActivityLog): Promise<void> => {
   try {
-    await apiRequest('/api/activities', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...activity,
-        status: activity.status || 'success'
-      })
+    await apiClient.post('/api/activities', {
+      ...activity,
+      status: activity.status || 'success'
     });
   } catch (error) {
     console.error('Failed to log activity:', error);

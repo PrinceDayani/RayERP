@@ -24,8 +24,19 @@ interface LedgerEntry {
   balance: number;
   reference: string;
   journalEntryId: {
+    _id: string;
     entryNumber: string;
     reference: string;
+    description: string;
+    date: string;
+    entries: Array<{
+      account: { code: string; name: string };
+      debit: number;
+      credit: number;
+      description: string;
+    }>;
+    createdBy: { name: string };
+    status: string;
   };
 }
 
@@ -35,6 +46,10 @@ interface Account {
   name: string;
   type: string;
   currentBalance: number;
+  description?: string;
+  category?: string;
+  subCategory?: string;
+  isActive?: boolean;
 }
 
 interface AccountLedgerProps {
@@ -244,19 +259,29 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
         <>
           <Card className="border-l-4 border-l-blue-500">
             <CardContent className="p-6">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
+              <div className="flex justify-between items-start">
+                <div className="flex items-start gap-4">
                   <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="w-5 h-5" />
                   </Button>
-                  <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                      Account Ledger
-                      <Badge variant="outline" className="capitalize text-sm">{account.type}</Badge>
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      <span className="font-mono font-semibold text-blue-600">{account.code}</span> • {account.name}
-                    </p>
+                  <div className="space-y-2">
+                    <div>
+                      <h1 className="text-2xl font-bold flex items-center gap-2">
+                        Account Ledger
+                        <Badge variant="outline" className="capitalize text-sm">{account.type}</Badge>
+                        {account.isActive === false && <Badge variant="destructive" className="text-xs">Inactive</Badge>}
+                      </h1>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        <span className="font-mono font-semibold text-blue-600">{account.code}</span> • {account.name}
+                      </p>
+                    </div>
+                    {(account.description || account.category || account.subCategory) && (
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        {account.description && <p>📝 {account.description}</p>}
+                        {account.category && <p>📂 Category: {account.category}</p>}
+                        {account.subCategory && <p>📁 Sub-category: {account.subCategory}</p>}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -462,45 +487,144 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
       </Card>
 
       {selectedEntry && showViewDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowViewDialog(false)}>
-          <Card className="w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
-            <CardHeader>
-              <CardTitle>Ledger Entry Details</CardTitle>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowViewDialog(false)}>
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <CardHeader className="border-b">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-xl">Complete Entry Details</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">Journal Entry: {selectedEntry.journalEntryId?.entryNumber}</p>
+                </div>
+                <Badge variant={selectedEntry.journalEntryId?.status === 'posted' ? 'default' : 'secondary'}>
+                  {selectedEntry.journalEntryId?.status || 'N/A'}
+                </Badge>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Date</Label>
-                  <p className="text-sm font-medium mt-1">{format(new Date(selectedEntry.date), 'MMM dd, yyyy')}</p>
-                </div>
-                <div>
-                  <Label>Reference</Label>
-                  <p className="text-sm font-medium mt-1">{selectedEntry.reference}</p>
+            <CardContent className="space-y-6 pt-6">
+              {/* Account Information */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-sm text-blue-900 mb-3">Account Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs text-blue-700">Account Code</Label>
+                    <p className="text-sm font-mono font-semibold mt-1">{account?.code}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-blue-700">Account Name</Label>
+                    <p className="text-sm font-medium mt-1">{account?.name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-blue-700">Account Type</Label>
+                    <p className="text-sm font-medium mt-1 capitalize">{account?.type}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-blue-700">Current Balance</Label>
+                    <p className="text-sm font-bold mt-1">{formatAmount(account?.currentBalance || 0)}</p>
+                  </div>
                 </div>
               </div>
+
+              {/* Entry Details */}
               <div>
-                <Label>Description</Label>
-                <p className="text-sm font-medium mt-1">{selectedEntry.description}</p>
+                <h3 className="font-semibold text-sm mb-3">Entry Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">Date</Label>
+                    <p className="text-sm font-medium mt-1">{format(new Date(selectedEntry.date), 'MMMM dd, yyyy')}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Reference</Label>
+                    <p className="text-sm font-mono font-medium mt-1">{selectedEntry.reference || 'N/A'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-xs">Description</Label>
+                    <p className="text-sm font-medium mt-1">{selectedEntry.description}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Debit Amount</Label>
+                    <p className="text-lg font-bold text-red-600 mt-1">{selectedEntry.debit > 0 ? formatAmount(selectedEntry.debit) : '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Credit Amount</Label>
+                    <p className="text-lg font-bold text-green-600 mt-1">{selectedEntry.credit > 0 ? formatAmount(selectedEntry.credit) : '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Running Balance</Label>
+                    <p className={`text-lg font-bold mt-1 ${selectedEntry.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatAmount(selectedEntry.balance)}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Created By</Label>
+                    <p className="text-sm font-medium mt-1">{selectedEntry.journalEntryId?.createdBy?.name || 'N/A'}</p>
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+
+              {/* Full Double Entry */}
+              {selectedEntry.journalEntryId?.entries && selectedEntry.journalEntryId.entries.length > 0 && (
                 <div>
-                  <Label>Debit</Label>
-                  <p className="text-sm font-semibold text-red-600 mt-1">{selectedEntry.debit > 0 ? formatAmount(selectedEntry.debit) : '-'}</p>
+                  <h3 className="font-semibold text-sm mb-3">Complete Double Entry (All Accounts)</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="font-semibold">Account Code</TableHead>
+                          <TableHead className="font-semibold">Account Name</TableHead>
+                          <TableHead className="font-semibold">Description</TableHead>
+                          <TableHead className="text-right font-semibold">Debit</TableHead>
+                          <TableHead className="text-right font-semibold">Credit</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedEntry.journalEntryId.entries.map((entry, idx) => (
+                          <TableRow key={idx} className={entry.account.code === account?.code ? 'bg-blue-50' : ''}>
+                            <TableCell className="font-mono font-semibold">{entry.account.code}</TableCell>
+                            <TableCell className="font-medium">{entry.account.name}</TableCell>
+                            <TableCell className="text-sm text-gray-600">{entry.description || '-'}</TableCell>
+                            <TableCell className="text-right font-mono font-semibold text-red-600">
+                              {entry.debit > 0 ? formatAmount(entry.debit) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold text-green-600">
+                              {entry.credit > 0 ? formatAmount(entry.credit) : '-'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-gray-100 font-bold">
+                          <TableCell colSpan={3} className="text-right">Total:</TableCell>
+                          <TableCell className="text-right font-mono text-red-600">
+                            {formatAmount(selectedEntry.journalEntryId.entries.reduce((sum, e) => sum + e.debit, 0))}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-green-600">
+                            {formatAmount(selectedEntry.journalEntryId.entries.reduce((sum, e) => sum + e.credit, 0))}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">* Highlighted row indicates the current account</p>
                 </div>
-                <div>
-                  <Label>Credit</Label>
-                  <p className="text-sm font-semibold text-green-600 mt-1">{selectedEntry.credit > 0 ? formatAmount(selectedEntry.credit) : '-'}</p>
+              )}
+
+              {/* Journal Entry Info */}
+              {selectedEntry.journalEntryId?.description && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <Label className="text-xs">Journal Entry Description</Label>
+                  <p className="text-sm font-medium mt-1">{selectedEntry.journalEntryId.description}</p>
                 </div>
-                <div>
-                  <Label>Balance</Label>
-                  <p className={`text-sm font-bold mt-1 ${selectedEntry.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatAmount(selectedEntry.balance)}</p>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setShowViewDialog(false)}>Close (Esc)</Button>
-                <Button onClick={() => { setShowViewDialog(false); setShowEditDialog(true); }}>
-                  <Edit className="w-4 h-4 mr-2" />Edit (Enter)
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-between gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => exportInvoice('pdf')}>
+                  <Download className="w-4 h-4 mr-2" />Export PDF
                 </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowViewDialog(false)}>Close (Esc)</Button>
+                  <Button onClick={() => router.push(`/dashboard/finance/journal-entry/${selectedEntry.journalEntryId._id}`)}>
+                    <Edit className="w-4 h-4 mr-2" />View Full Entry
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

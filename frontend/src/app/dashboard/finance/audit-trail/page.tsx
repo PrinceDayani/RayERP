@@ -1,23 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Eye, Download, Search, Filter, Calendar, User, FileText } from 'lucide-react';
+import { Shield, User, FileText, AlertCircle, Download, Filter, Eye, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import PageHeader from '@/components/PageHeader';
 import DataTable, { Column } from '@/components/DataTable';
+import { apiClient } from '@/lib/api';
+import { useDebounce } from '@/hooks/useDebounce';
+import AuditLogDetailsModal from '@/components/AuditLogDetailsModal';
+import AdvancedFilterModal from '@/components/AdvancedFilterModal';
 
 interface AuditLog {
-  id: string;
+  _id: string;
   timestamp: string;
-  user: string;
+  userEmail: string;
   action: string;
   module: string;
-  recordId: string;
+  recordId?: string;
   oldValue?: string;
   newValue?: string;
   ipAddress: string;
@@ -25,52 +30,176 @@ interface AuditLog {
   status: 'Success' | 'Failed' | 'Warning';
 }
 
-export default function AuditTrailPage() {
-  const [auditLogs] = useState<AuditLog[]>([
-    {
-      id: '1',
-      timestamp: '2024-01-15T10:30:00Z',
-      user: 'john.doe@company.com',
-      action: 'CREATE',
-      module: 'Journal Entry',
-      recordId: 'JE-2024-001',
-      oldValue: '',
-      newValue: 'Amount: ₹50,000',
-      ipAddress: '192.168.1.100',
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-      status: 'Success'
-    },
-    {
-      id: '2',
-      timestamp: '2024-01-15T09:15:00Z',
-      user: 'jane.smith@company.com',
-      action: 'UPDATE',
-      module: 'Invoice',
-      recordId: 'INV-2024-001',
-      oldValue: 'Status: Draft',
-      newValue: 'Status: Approved',
-      ipAddress: '192.168.1.101',
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-      status: 'Success'
-    },
-    {
-      id: '3',
-      timestamp: '2024-01-15T08:45:00Z',
-      user: 'mike.johnson@company.com',
-      action: 'DELETE',
-      module: 'Payment',
-      recordId: 'PAY-2024-001',
-      oldValue: 'Amount: ₹25,000',
-      newValue: '',
-      ipAddress: '192.168.1.102',
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-      status: 'Failed'
-    }
-  ]);
+interface Stats {
+  totalLogs: number;
+  successfulActions: number;
+  failedActions: number;
+  uniqueUsers: number;
+  topModules: Array<{ module: string; count: number }>;
+  topUsers: Array<{ user: string; count: number }>;
+}
 
+export default function AuditTrailPage() {
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState('today');
   const [selectedModule, setSelectedModule] = useState('all');
   const [selectedAction, setSelectedAction] = useState('all');
+  const [userSearch, setUserSearch] = useState('');
+  const [ipAddress, setIpAddress] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
+  const [complianceMetrics, setComplianceMetrics] = useState<any>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const debouncedUserSearch = useDebounce(userSearch, 500);
+  const debouncedIpAddress = useDebounce(ipAddress, 500);
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, [dateRange, selectedModule, selectedAction, debouncedUserSearch, debouncedIpAddress, statusFilter, page]);
+
+  useEffect(() => {
+    fetchStats();
+    fetchComplianceMetrics();
+  }, []);
+
+  const fetchAuditLogs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params = new URLSearchParams();
+      if (selectedModule !== 'all') params.append('module', selectedModule);
+      if (selectedAction !== 'all') params.append('action', selectedAction);
+      if (debouncedUserSearch) params.append('user', debouncedUserSearch);
+      if (debouncedIpAddress) params.append('ipAddress', debouncedIpAddress);
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+      params.append('page', page.toString());
+      params.append('limit', '50');
+      
+      if (dateRange !== 'all') {
+        const now = new Date();
+        let startDate: Date;
+        
+        if (dateRange === 'today') {
+          startDate = new Date(now.setHours(0, 0, 0, 0));
+        } else if (dateRange === 'week') {
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        } else if (dateRange === 'month') {
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        } else {
+          startDate = now;
+        }
+        
+        params.append('startDate', startDate.toISOString());
+      }
+
+      const data = await apiClient.get(`/api/audit-trail?${params}`);
+      setAuditLogs(data.data || []);
+      setTotalPages(data.pagination?.pages || 1);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load audit logs';
+      setError(message);
+      setAuditLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const data = await apiClient.get('/api/audit-trail/stats');
+      setStats(data.data);
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
+    }
+  };
+
+  const fetchComplianceMetrics = async () => {
+    try {
+      const data = await apiClient.get('/api/audit-trail/compliance/metrics');
+      setComplianceMetrics(data.data);
+    } catch (err) {
+      console.error('Failed to fetch compliance metrics:', err);
+    }
+  };
+
+  const handleExport = async (format: 'csv' | 'json' = 'csv') => {
+    try {
+      setExporting(true);
+      const params = new URLSearchParams();
+      if (selectedModule !== 'all') params.append('module', selectedModule);
+      if (selectedAction !== 'all') params.append('action', selectedAction);
+      if (debouncedUserSearch) params.append('user', debouncedUserSearch);
+      if (debouncedIpAddress) params.append('ipAddress', debouncedIpAddress);
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+      params.append('format', format);
+      
+      if (dateRange !== 'all') {
+        const now = new Date();
+        let startDate: Date;
+        if (dateRange === 'today') {
+          startDate = new Date(now.setHours(0, 0, 0, 0));
+        } else if (dateRange === 'week') {
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        } else if (dateRange === 'month') {
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        } else {
+          startDate = now;
+        }
+        params.append('startDate', startDate.toISOString());
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/audit-trail/export?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Export failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-logs-${Date.now()}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      setError('Failed to export audit logs');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleViewDetails = async (logId: string) => {
+    try {
+      const data = await apiClient.get(`/api/audit-trail/${logId}`);
+      setSelectedLog(data.data);
+      setShowDetailsModal(true);
+    } catch (err) {
+      setError('Failed to load log details');
+    }
+  };
+
+  const handleAdvancedFilter = (filters: any) => {
+    setSelectedModule(filters.module);
+    setSelectedAction(filters.action);
+    setStatusFilter(filters.status);
+    setUserSearch(filters.userSearch);
+    setIpAddress(filters.ipAddress);
+    setDateRange('all');
+    setPage(1);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -99,7 +228,7 @@ export default function AuditTrailPage() {
       sortable: true
     },
     {
-      key: 'user',
+      key: 'userEmail',
       header: 'User',
       sortable: true,
       render: (value) => (
@@ -126,7 +255,8 @@ export default function AuditTrailPage() {
     {
       key: 'recordId',
       header: 'Record ID',
-      sortable: true
+      sortable: true,
+      render: (value) => value || '-'
     },
     {
       key: 'status',
@@ -145,22 +275,35 @@ export default function AuditTrailPage() {
       )
     },
     {
-      key: 'id',
+      key: '_id',
       header: 'Actions',
       render: (value) => (
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" onClick={() => handleViewDetails(value)} aria-label="View details">
           <Eye className="w-4 h-4" />
         </Button>
       )
     }
   ];
 
-  const stats = {
+  const displayStats = stats || {
     totalLogs: auditLogs.length,
     successfulActions: auditLogs.filter(log => log.status === 'Success').length,
     failedActions: auditLogs.filter(log => log.status === 'Failed').length,
-    uniqueUsers: new Set(auditLogs.map(log => log.user)).size
+    uniqueUsers: new Set(auditLogs.map(log => log.userEmail)).size,
+    topModules: [],
+    topUsers: []
   };
+
+  if (loading && auditLogs.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading audit logs...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -174,11 +317,15 @@ export default function AuditTrailPage() {
         ]}
         actions={
           <div className="flex gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => handleExport('csv')} disabled={exporting}>
               <Download className="w-4 h-4 mr-2" />
-              Export Logs
+              {exporting ? 'Exporting...' : 'Export CSV'}
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => handleExport('json')} disabled={exporting}>
+              <Download className="w-4 h-4 mr-2" />
+              Export JSON
+            </Button>
+            <Button variant="outline" onClick={() => setShowAdvancedFilter(true)}>
               <Filter className="w-4 h-4 mr-2" />
               Advanced Filter
             </Button>
@@ -186,14 +333,20 @@ export default function AuditTrailPage() {
         }
       />
 
-      {/* Stats Cards */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Logs</p>
-                <p className="text-2xl font-bold">{stats.totalLogs}</p>
+                <p className="text-2xl font-bold">{displayStats.totalLogs}</p>
               </div>
               <FileText className="h-8 w-8 text-blue-500" />
             </div>
@@ -205,7 +358,7 @@ export default function AuditTrailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Successful Actions</p>
-                <p className="text-2xl font-bold">{stats.successfulActions}</p>
+                <p className="text-2xl font-bold">{displayStats.successfulActions}</p>
               </div>
               <Shield className="h-8 w-8 text-green-500" />
             </div>
@@ -217,7 +370,7 @@ export default function AuditTrailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Failed Actions</p>
-                <p className="text-2xl font-bold">{stats.failedActions}</p>
+                <p className="text-2xl font-bold">{displayStats.failedActions}</p>
               </div>
               <Shield className="h-8 w-8 text-red-500" />
             </div>
@@ -229,7 +382,7 @@ export default function AuditTrailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold">{stats.uniqueUsers}</p>
+                <p className="text-2xl font-bold">{displayStats.uniqueUsers}</p>
               </div>
               <User className="h-8 w-8 text-purple-500" />
             </div>
@@ -237,7 +390,6 @@ export default function AuditTrailPage() {
         </Card>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle>Filters</CardTitle>
@@ -245,43 +397,41 @@ export default function AuditTrailPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Date Range</label>
+              <label className="text-sm font-medium mb-2 block" htmlFor="date-range">Date Range</label>
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger>
+                <SelectTrigger id="date-range" aria-label="Select date range">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="week">This Week</SelectItem>
                   <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="quarter">This Quarter</SelectItem>
-                  <SelectItem value="year">This Year</SelectItem>
-                  <SelectItem value="custom">Custom Range</SelectItem>
+                  <SelectItem value="all">All Time</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Module</label>
+              <label className="text-sm font-medium mb-2 block" htmlFor="module-filter">Module</label>
               <Select value={selectedModule} onValueChange={setSelectedModule}>
-                <SelectTrigger>
+                <SelectTrigger id="module-filter" aria-label="Select module">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Modules</SelectItem>
-                  <SelectItem value="journal-entry">Journal Entry</SelectItem>
-                  <SelectItem value="invoice">Invoice</SelectItem>
-                  <SelectItem value="payment">Payment</SelectItem>
-                  <SelectItem value="voucher">Voucher</SelectItem>
-                  <SelectItem value="budget">Budget</SelectItem>
+                  <SelectItem value="Journal Entry">Journal Entry</SelectItem>
+                  <SelectItem value="Invoice">Invoice</SelectItem>
+                  <SelectItem value="Payment">Payment</SelectItem>
+                  <SelectItem value="Voucher">Voucher</SelectItem>
+                  <SelectItem value="Budget">Budget</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Action</label>
+              <label className="text-sm font-medium mb-2 block" htmlFor="action-filter">Action</label>
               <Select value={selectedAction} onValueChange={setSelectedAction}>
-                <SelectTrigger>
+                <SelectTrigger id="action-filter" aria-label="Select action">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -295,14 +445,45 @@ export default function AuditTrailPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">User</label>
-              <Input placeholder="Search by user..." />
+              <label className="text-sm font-medium mb-2 block" htmlFor="user-search">User</label>
+              <Input 
+                id="user-search"
+                placeholder="Search by user..." 
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                aria-label="Search by user email"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="status-filter">Status</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger id="status-filter" aria-label="Select status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="Success">Success</SelectItem>
+                  <SelectItem value="Failed">Failed</SelectItem>
+                  <SelectItem value="Warning">Warning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block" htmlFor="ip-search">IP Address</label>
+              <Input 
+                id="ip-search"
+                placeholder="Search by IP..." 
+                value={ipAddress}
+                onChange={(e) => setIpAddress(e.target.value)}
+                aria-label="Search by IP address"
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Audit Logs */}
       <Tabs defaultValue="logs" className="space-y-6">
         <TabsList>
           <TabsTrigger value="logs">Audit Logs</TabsTrigger>
@@ -317,57 +498,71 @@ export default function AuditTrailPage() {
             columns={columns}
             title="Audit Logs"
             searchable
-            exportable
-            onExport={() => console.log('Export audit logs')}
+            exportable={false}
           />
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1 || loading}
+              >
+                Previous
+              </Button>
+              <span className="py-2 px-4 text-sm">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages || loading}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="summary">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Activity Summary</CardTitle>
+                <CardTitle>Activity by Module</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span>Journal Entries</span>
-                    <span className="font-bold">45</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Invoice Operations</span>
-                    <span className="font-bold">32</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Payment Processing</span>
-                    <span className="font-bold">28</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Budget Changes</span>
-                    <span className="font-bold">12</span>
-                  </div>
+                  {displayStats.topModules.length > 0 ? (
+                    displayStats.topModules.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center">
+                        <span>{item.module}</span>
+                        <span className="font-bold">{item.count}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No data available</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>User Activity</CardTitle>
+                <CardTitle>Top Users</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span>john.doe@company.com</span>
-                    <span className="font-bold">25 actions</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>jane.smith@company.com</span>
-                    <span className="font-bold">18 actions</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>mike.johnson@company.com</span>
-                    <span className="font-bold">12 actions</span>
-                  </div>
+                  {displayStats.topUsers.length > 0 ? (
+                    displayStats.topUsers.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center">
+                        <span className="text-sm">{item.user}</span>
+                        <span className="font-bold">{item.count} actions</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No data available</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -384,20 +579,26 @@ export default function AuditTrailPage() {
                 <div className="text-center p-6 bg-green-50 rounded-lg">
                   <Shield className="w-12 h-12 text-green-600 mx-auto mb-4" />
                   <h3 className="font-semibold text-green-700">SOX Compliance</h3>
-                  <p className="text-2xl font-bold text-green-600">98%</p>
-                  <p className="text-sm text-muted-foreground">All controls active</p>
+                  <p className="text-2xl font-bold text-green-600">{complianceMetrics?.soxCompliance || 0}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {complianceMetrics?.metrics?.failedLogins || 0} failed logins (30d)
+                  </p>
                 </div>
                 <div className="text-center p-6 bg-blue-50 rounded-lg">
                   <Shield className="w-12 h-12 text-blue-600 mx-auto mb-4" />
                   <h3 className="font-semibold text-blue-700">Data Retention</h3>
-                  <p className="text-2xl font-bold text-blue-600">100%</p>
-                  <p className="text-sm text-muted-foreground">7 years retention</p>
+                  <p className="text-2xl font-bold text-blue-600">{complianceMetrics?.dataRetention || 0}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {complianceMetrics?.metrics?.totalLogs || 0} total logs
+                  </p>
                 </div>
                 <div className="text-center p-6 bg-purple-50 rounded-lg">
                   <Shield className="w-12 h-12 text-purple-600 mx-auto mb-4" />
                   <h3 className="font-semibold text-purple-700">Access Control</h3>
-                  <p className="text-2xl font-bold text-purple-600">95%</p>
-                  <p className="text-sm text-muted-foreground">Role-based access</p>
+                  <p className="text-2xl font-bold text-purple-600">{complianceMetrics?.accessControl || 0}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {complianceMetrics?.metrics?.activeUsers || 0} active users (30d)
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -411,27 +612,48 @@ export default function AuditTrailPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg border-red-200 bg-red-50">
-                  <div>
-                    <h3 className="font-semibold text-red-700">Failed Login Attempt</h3>
-                    <p className="text-sm text-red-600">Multiple failed login attempts detected</p>
-                    <p className="text-xs text-muted-foreground">IP: 192.168.1.999 - 2 hours ago</p>
+                {auditLogs.filter(log => log.status === 'Failed').slice(0, 10).map((log) => (
+                  <div key={log._id} className="flex items-center justify-between p-4 border rounded-lg border-red-200 bg-red-50">
+                    <div>
+                      <h3 className="font-semibold text-red-700">{log.action} Failed</h3>
+                      <p className="text-sm text-red-600">{log.module} - {log.userEmail}</p>
+                      <p className="text-xs text-muted-foreground">IP: {log.ipAddress} - {new Date(log.timestamp).toLocaleString()}</p>
+                    </div>
+                    <Badge className="bg-red-100 text-red-700">High Risk</Badge>
                   </div>
-                  <Badge className="bg-red-100 text-red-700">High Risk</Badge>
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg border-yellow-200 bg-yellow-50">
-                  <div>
-                    <h3 className="font-semibold text-yellow-700">Unusual Access Pattern</h3>
-                    <p className="text-sm text-yellow-600">Access from new location detected</p>
-                    <p className="text-xs text-muted-foreground">User: john.doe@company.com - 4 hours ago</p>
-                  </div>
-                  <Badge className="bg-yellow-100 text-yellow-700">Medium Risk</Badge>
-                </div>
+                ))}
+                {auditLogs.filter(log => log.status === 'Failed').length === 0 && (
+                  <p className="text-center py-8 text-muted-foreground">No security events detected</p>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      <AuditLogDetailsModal
+        log={selectedLog}
+        open={showDetailsModal}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setSelectedLog(null);
+        }}
+      />
+
+      <AdvancedFilterModal
+        open={showAdvancedFilter}
+        onClose={() => setShowAdvancedFilter(false)}
+        onApply={handleAdvancedFilter}
+        currentFilters={{
+          module: selectedModule,
+          action: selectedAction,
+          status: statusFilter,
+          userSearch,
+          ipAddress,
+          startDate: '',
+          endDate: ''
+        }}
+      />
     </div>
   );
 }

@@ -54,9 +54,7 @@ export const requirePermission = (permission: string) => {
 
       if (!userPermissions.has(permission)) {
         return res.status(403).json({ 
-          message: 'Insufficient permissions',
-          required: permission,
-          userPermissions: Array.from(userPermissions)
+          message: 'Insufficient permissions'
         });
       }
 
@@ -116,9 +114,7 @@ export const requireAnyPermission = (permissions: string[]) => {
       
       if (!hasPermission) {
         return res.status(403).json({ 
-          message: 'Insufficient permissions',
-          required: permissions,
-          userPermissions: Array.from(userPermissions)
+          message: 'Insufficient permissions'
         });
       }
 

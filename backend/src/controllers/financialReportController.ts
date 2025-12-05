@@ -143,9 +143,25 @@ export const getBalanceSheet = async (req: Request, res: Response) => {
 export const getCashFlow = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'Start date and end date are required' });
+    }
+
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid date format' });
+    }
+
+    if (start > end) {
+      return res.status(400).json({ success: false, message: 'Start date must be before end date' });
+    }
+
     const query: any = {};
     if (startDate && endDate) {
-      query.date = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
+      query.date = { $gte: start, $lte: end };
     }
 
     // Get opening balance
@@ -179,33 +195,34 @@ export const getCashFlow = async (req: Request, res: Response) => {
     const netCashFlow = operatingNet + investingNet + financingNet;
     const closingBalance = openingBalance + netCashFlow;
 
+    res.setHeader('Cache-Control', 'private, max-age=300');
     res.json({
       success: true,
       data: {
-        openingBalance,
+        openingBalance: Math.round(openingBalance * 100) / 100,
         operatingActivities: { 
-          inflows: operatingInflows, 
-          outflows: operatingOutflows, 
-          net: operatingNet 
+          inflows: Math.round(operatingInflows * 100) / 100, 
+          outflows: Math.round(operatingOutflows * 100) / 100, 
+          net: Math.round(operatingNet * 100) / 100
         },
         investingActivities: { 
           inflows: 0, 
-          outflows: Math.abs(investingNet), 
-          net: investingNet 
+          outflows: Math.round(Math.abs(investingNet) * 100) / 100, 
+          net: Math.round(investingNet * 100) / 100
         },
         financingActivities: { 
-          inflows: financingNet > 0 ? financingNet : 0, 
-          outflows: financingNet < 0 ? Math.abs(financingNet) : 0, 
-          net: financingNet 
+          inflows: financingNet > 0 ? Math.round(financingNet * 100) / 100 : 0, 
+          outflows: financingNet < 0 ? Math.round(Math.abs(financingNet) * 100) / 100 : 0, 
+          net: Math.round(financingNet * 100) / 100
         },
-        netCashFlow,
-        closingBalance,
+        netCashFlow: Math.round(netCashFlow * 100) / 100,
+        closingBalance: Math.round(closingBalance * 100) / 100,
         period: { startDate, endDate }
       }
     });
   } catch (error: any) {
     logger.error('Cash Flow error:', error);
-    res.status(500).json({ success: false, message: 'Error generating Cash Flow', error: error.message });
+    res.status(500).json({ success: false, message: 'Error generating Cash Flow' });
   }
 };
 

@@ -36,6 +36,7 @@ import routes from "./routes/index";
 import assignmentRoutes from "./routes/assignment.routes";
 import backupRoutes from "./routes/backupRoutes";
 import errorMiddleware from "./middleware/error.middleware";
+import { auditLogMiddleware } from "./middleware/auditLog.middleware";
 
 const app = express();
 const server = http.createServer(app);
@@ -158,6 +159,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Audit log middleware (logs all mutations)
+app.use(auditLogMiddleware);
 
 // Serve static files from uploads directory with CORS
 app.use('/uploads', (req, res, next) => {
@@ -284,6 +288,10 @@ async function initializeRealTimeSystems() {
     const { initializeRecurringTasks } = await import('./controllers/taskRecurringController');
     initializeRecurringTasks();
 
+    // Initialize audit log cleanup
+    const { initializeAuditLogCleanup } = await import('./utils/auditLogCleanup');
+    initializeAuditLogCleanup();
+
     // Initialize budget cron jobs
     try {
       const budgetCronModule = await import('./utils/budgetCronJobs');
@@ -296,6 +304,7 @@ async function initializeRealTimeSystems() {
 
     logger.info('✅ Real-time systems initialized');
     logger.info('✅ Budget cron jobs started');
+    logger.info('✅ Audit log cleanup initialized');
   } catch (error) {
     logger.warn('⚠️ Some real-time systems could not be initialized:', error.message);
   }

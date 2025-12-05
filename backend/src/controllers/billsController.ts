@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { Bill } from '../models/Bill';
 import { BillPayment } from '../models/BillPayment';
 import { Account } from '../models/Account';
+import { Ledger } from '../models/Ledger';
 
 export const createBill = async (req: Request, res: Response) => {
   try {
@@ -281,4 +282,86 @@ export const getBillsSummary = async (req: Request, res: Response) => {
   }
 };
 
+export const getActivityTransactions = async (req: Request, res: Response) => {
+  try {
+    const { activity, startDate, endDate } = req.query;
+
+    if (!activity || !startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'Missing required parameters' });
+    }
+
+    const query: any = {
+      date: { $gte: new Date(startDate as string), $lte: new Date(endDate as string) }
+    };
+
+    let accounts: any[] = [];
+    
+    if (activity === 'operating') {
+      const revenueAccounts = await Account.find({ type: 'revenue', isActive: true });
+      const expenseAccounts = await Account.find({ type: 'expense', isActive: true });
+      accounts = [...revenueAccounts, ...expenseAccounts];
+    } else if (activity === 'investing') {
+      accounts = await Account.find({ type: 'asset', subType: 'fixed', isActive: true });
+    } else if (activity === 'financing') {
+      const liabilityAccounts = await Account.find({ type: 'liability', isActive: true });
+      const equityAccounts = await Account.find({ type: 'equity', isActive: true });
+      accounts = [...liabilityAccounts, ...equityAccounts];
+    }
+
+    query.accountId = { $in: accounts.map(a => a._id) };
+
+    const transactions = await Ledger.find(query)
+      .populate('accountId', 'name code')
+      .sort({ date: -1 })
+      .limit(100);
+
+    res.json({ success: true, data: transactions });
+  } catch (error: any) {
+    logger.error('Activity transactions error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch transactions' });
+  }
+};
+
+export const getHistoricalCashFlow = async (req: Request, res: Response) => {
+  try {
+    const { periods = 6 } = req.query;
+    const historicalData = [];
+    const now = new Date();
+
+    for (let i = Number(periods) - 1; i >= 0; i--) {
+      const endDate = new Date(now.getFullYear(), now.getMonth() - i, 0);
+      const startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+
+      const revenueAccounts = await Account.find({ type: 'revenue', isActive: true });
+      const expenseAccounts = await Account.find({ type: 'expense', isActive: true });
+      const fixedAssetAccounts = await Account.find({ type: 'asset', subType: 'fixed', isActive: true });
+      const liabilityAccounts = await Account.find({ type: 'liability', isActive: true });
+      const equityAccounts = await Account.find({ type: 'equity', isActive: true });
+
+      const dateQuery = { date: { $gte: startDate, $lte: endDate } };
+
+      const revenueEntries = await Ledger.find({ ...dateQuery, accountId: { $in: revenueAccounts.map(a => a._id) } });
+      const expenseEntries = await Ledger.find({ ...dateQuery, accountId: { $in: expenseAccounts.map(a => a._id) } });
+      const investingEntries = await Ledger.find({ ...dateQuery, accountId: { $in: fixedAssetAccounts.map(a => a._id) } });
+      const financingEntries = await Ledger.find({ ...dateQuery, accountId: { $in: [...liabilityAccounts.map(a => a._id), ...equityAccounts.map(a => a._id)] } });
+
+      const operating = revenueEntries.reduce((sum, e) => sum + e.credit - e.debit, 0) - expenseEntries.reduce((sum, e) => sum + e.debit - e.credit, 0);
+      const investing = investingEntries.reduce((sum, e) => sum + e.credit - e.debit, 0);
+      const financing = financingEntries.reduce((sum, e) => sum + e.credit - e.debit, 0);
+
+      historicalData.push({
+        month: startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        operating,
+        investing,
+        financing,
+        net: operating + investing + financing
+      });
+    }
+
+    res.json({ success: true, data: historicalData });
+  } catch (error: any) {
+    logger.error('Historical cash flow error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch historical data' });
+  }
+};
 

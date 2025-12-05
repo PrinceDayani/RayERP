@@ -1,5 +1,5 @@
 import express from 'express';
-import { createBill, getBills, getBillById, updateBill, deleteBill, makePayment, getBillPayments, getBillsSummary } from '../controllers/billsController';
+import { createBill, getBills, getBillById, updateBill, deleteBill, makePayment, getBillPayments, getBillsSummary, getActivityTransactions, getHistoricalCashFlow } from '../controllers/billsController';
 import { protect } from '../middleware/auth.middleware';
 import { requireFinanceAccess } from '../middleware/financePermission.middleware';
 
@@ -10,6 +10,8 @@ router.use(protect);
 router.post('/', requireFinanceAccess('bills.create'), createBill);
 router.get('/', requireFinanceAccess('bills.view'), getBills);
 router.get('/summary', requireFinanceAccess('bills.view'), getBillsSummary);
+router.get('/activity-transactions', requireFinanceAccess('bills.view'), getActivityTransactions);
+router.get('/historical-cashflow', requireFinanceAccess('bills.view'), getHistoricalCashFlow);
 router.get('/:id', requireFinanceAccess('bills.view'), getBillById);
 router.put('/:id', requireFinanceAccess('bills.edit'), updateBill);
 router.delete('/:id', requireFinanceAccess('bills.delete'), deleteBill);

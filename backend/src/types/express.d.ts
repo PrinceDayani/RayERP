@@ -1,11 +1,14 @@
-import { IUser } from '../models/User';
+import { Types } from 'mongoose';
 
 declare global {
   namespace Express {
     interface Request {
-      user?: IUser;
+      user?: {
+        _id: Types.ObjectId;
+        id: string;
+        email: string;
+        role: string;
+      };
     }
   }
 }
-
-export {};

@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, DollarSign, ShoppingCart, Calendar, Download, Search } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingCart, Calendar, Download, Search, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { apiClient } from '@/lib/api';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface Sale {
   _id: string;
@@ -18,60 +19,74 @@ interface Sale {
   paidAmount: number;
   status: string;
   invoiceDate: string;
-  lineItems?: { description: string; quantity: number; unitPrice: number }[];
 }
 
 export default function SalesReportsPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState('all');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const debouncedSearch = useDebounce(searchTerm, 500);
 
   useEffect(() => {
     fetchSales();
-  }, [statusFilter, dateRange]);
+  }, [statusFilter, dateRange, page]);
 
   const fetchSales = async () => {
     try {
-      const token = localStorage.getItem('auth-token');
+      setLoading(true);
+      setError(null);
+
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
+      params.append('page', page.toString());
+      params.append('limit', '50');
+      
       if (dateRange !== 'all') {
         const now = new Date();
+        let startDate: Date;
+        
         if (dateRange === 'today') {
-          params.append('startDate', now.toISOString().split('T')[0]);
+          startDate = new Date(now.setHours(0, 0, 0, 0));
         } else if (dateRange === 'week') {
-          const weekAgo = new Date(now.setDate(now.getDate() - 7));
-          params.append('startDate', weekAgo.toISOString().split('T')[0]);
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         } else if (dateRange === 'month') {
-          const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
-          params.append('startDate', monthAgo.toISOString().split('T')[0]);
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        } else {
+          startDate = now;
         }
+        
+        params.append('startDate', startDate.toISOString().split('T')[0]);
       }
-      const res = await fetch(`${API_URL}/api/sales-reports/report?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      console.log('Sales data received:', data);
+
+      const data = await apiClient.get(`/api/sales-reports/report?${params}`);
       setSales(data.data || []);
-    } catch (error) {
-      console.error('Error fetching sales:', error);
+      setTotalPages(data.pagination?.pages || 1);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load sales data';
+      setError(message);
+      setSales([]);
     } finally {
       setLoading(false);
     }
   };
 
   const filteredSales = sales.filter(sale => {
-    const matchesSearch = sale.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         sale.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || sale.status.toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
+    if (!debouncedSearch) return true;
+    const search = debouncedSearch.toLowerCase();
+    return sale.partyName?.toLowerCase().includes(search) ||
+           sale.invoiceNumber?.toLowerCase().includes(search);
   });
 
-  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-  const totalPaid = filteredSales.reduce((sum, sale) => sum + sale.paidAmount, 0);
+  const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
+  const totalPaid = filteredSales.reduce((sum, sale) => sum + (sale.paidAmount || 0), 0);
   const totalPending = totalRevenue - totalPaid;
+  const avgSale = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0;
 
   const getStatusColor = (status: string) => {
     const s = status.toLowerCase();
@@ -86,7 +101,16 @@ export default function SalesReportsPage() {
     return colors[s] || 'bg-gray-100 text-gray-800';
   };
 
-  if (loading) return <div className="p-6">Loading sales data...</div>;
+  if (loading && sales.length === 0) {
+    return (
+      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading sales data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-6 space-y-6">
@@ -95,11 +119,18 @@ export default function SalesReportsPage() {
           <h1 className="text-3xl font-bold text-foreground">Sales Reports</h1>
           <p className="text-muted-foreground mt-1">Track and analyze all sales transactions</p>
         </div>
-        <Button className="bg-primary">
+        <Button className="bg-primary" aria-label="Export sales report">
           <Download className="w-4 h-4 mr-2" />
           Export Report
         </Button>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -120,7 +151,9 @@ export default function SalesReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">₹{totalPaid.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">{((totalPaid/totalRevenue)*100).toFixed(1)}% collected</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {totalRevenue > 0 ? ((totalPaid/totalRevenue)*100).toFixed(1) : '0.0'}% collected
+            </p>
           </CardContent>
         </Card>
 
@@ -131,7 +164,9 @@ export default function SalesReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">₹{totalPending.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">{((totalPending/totalRevenue)*100).toFixed(1)}% pending</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {totalRevenue > 0 ? ((totalPending/totalRevenue)*100).toFixed(1) : '0.0'}% pending
+            </p>
           </CardContent>
         </Card>
 
@@ -141,7 +176,7 @@ export default function SalesReportsPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{(totalRevenue/filteredSales.length || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
+            <div className="text-2xl font-bold">₹{avgSale.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
             <p className="text-xs text-muted-foreground mt-1">Per transaction</p>
           </CardContent>
         </Card>
@@ -159,10 +194,11 @@ export default function SalesReportsPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
+                  aria-label="Search sales"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-32" aria-label="Filter by status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -175,12 +211,23 @@ export default function SalesReportsPage() {
                   <SelectItem value="OVERDUE">Overdue</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger className="w-32" aria-label="Filter by date range">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full" role="table">
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 font-medium text-sm">Invoice #</th>
@@ -196,7 +243,7 @@ export default function SalesReportsPage() {
                 {filteredSales.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No sales data available
+                      {error ? 'Failed to load data' : 'No sales data available'}
                     </td>
                   </tr>
                 ) : (
@@ -208,13 +255,13 @@ export default function SalesReportsPage() {
                         {new Date(sale.invoiceDate).toLocaleDateString()}
                       </td>
                       <td className="py-3 px-4 text-right font-medium">
-                        ₹{sale.totalAmount.toLocaleString()}
+                        ₹{(sale.totalAmount || 0).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right text-green-600">
-                        ₹{sale.paidAmount.toLocaleString()}
+                        ₹{(sale.paidAmount || 0).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right text-orange-600">
-                        ₹{(sale.totalAmount - sale.paidAmount).toLocaleString()}
+                        ₹{((sale.totalAmount || 0) - (sale.paidAmount || 0)).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <Badge className={getStatusColor(sale.status)}>
@@ -227,6 +274,29 @@ export default function SalesReportsPage() {
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1 || loading}
+              >
+                Previous
+              </Button>
+              <span className="py-2 px-4 text-sm">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages || loading}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

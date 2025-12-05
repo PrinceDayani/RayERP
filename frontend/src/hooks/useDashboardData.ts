@@ -69,22 +69,31 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
         return;
       }
 
+      console.log('[Dashboard] Fetching stats from:', `${API_URL}/api/dashboard/stats`);
       const response = await axios.get(`${API_URL}/api/dashboard/stats`, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 10000
       });
       
+      console.log('[Dashboard] Stats response:', response.data);
       if (response.data.success) {
         setStats(response.data.data);
         setError(null);
+      } else {
+        console.error('[Dashboard] Stats fetch failed:', response.data);
+        setError(response.data.message || 'Failed to fetch statistics');
       }
     } catch (err: any) {
       console.error('Error fetching dashboard stats:', err);
       if (err.response?.status === 401) {
         setError('Authentication failed');
-        localStorage.removeItem('token');
+        localStorage.removeItem('auth-token');
+      } else if (err.response?.status === 403) {
+        setError('Permission denied: dashboard.view required');
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        setError('Request timeout - server may be slow');
       } else {
-        setError('Failed to fetch data');
+        setError(err.response?.data?.message || err.message || 'Failed to fetch statistics');
       }
     } finally {
       setLoading(false);
