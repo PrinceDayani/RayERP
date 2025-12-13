@@ -110,7 +110,6 @@ export default function Layout({ children }: LayoutProps) {
         { path: "/dashboard/budgets/approvals", name: "Approvals", icon: Target, description: "Budget approval workflow", access: isManager } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/budgets/analytics", name: "Budget Analytics", icon: PieChart, description: "Budget performance analysis", access: isManager } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/finance", name: "Finance", icon: Wallet, description: "Financial accounting" } as MenuItem & { icon: any; description: string },
-        { path: "/bills", name: "Bills & Payments", icon: Receipt, description: "Bill management & payments" } as MenuItem & { icon: any; description: string },
       ]
     },
     {

@@ -12,7 +12,11 @@ export const checkProjectAccess = async (req: Request, res: Response, next: Next
     }
 
     const userRole = (user.role as any);
-    if (userRole?.name === 'Root' || userRole?.name === 'Super Admin') {
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
+    
+    // Root or users with projects.view_all permission get full access
+    if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
       return next();
     }
 

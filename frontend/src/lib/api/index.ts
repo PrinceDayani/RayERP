@@ -1,90 +1,50 @@
-// path: frontend/src/lib/api/index.ts
-// This file exports all API functions for easy importing
+// Direct exports from api modules
+import apiInstance, { apiRequest as apiRequestFn } from './api';
+import authAPIModule from './authAPI';
+import employeesAPIModule from './employeesAPI';
+import contactsAPIModule from './contactsAPI';
+import analyticsAPIModule from './analyticsAPI';
+import trendsAPIModule from './trendsAPI';
+import reportsAPIModule from './reportsAPI';
+import settingsAPIModule from './settingsAPI';
+import projectsAPIModule from './projectsAPI';
+import budgetAPIModule from './budgetAPI';
+import activityAPIModule from './activityAPI';
+import usersAPIModule from './usersAPI';
+import adminAPIModule from './adminAPI';
 
-// Import base API
-import api from './api';
+// Default export
+export default apiInstance;
 
+// Named exports
+export const api = apiInstance;
+export const apiClient = apiInstance;
+export const apiRequest = apiRequestFn;
+export const authAPI = authAPIModule;
+export const employeesAPI = employeesAPIModule;
+export const contactsAPI = contactsAPIModule;
+export const analyticsAPI = analyticsAPIModule;
+export const analyticsApi = analyticsAPIModule;
+export const trendsAPI = trendsAPIModule;
+export const reportsAPI = reportsAPIModule;
+export const settingsAPI = settingsAPIModule;
+export const projectsAPI = projectsAPIModule;
+export const budgetAPI = budgetAPIModule;
+export const activityAPI = activityAPIModule;
+export const usersAPI = usersAPIModule;
+export const adminAPI = adminAPIModule;
 
-// Import default exports from API modules
-import authAPIDefault from './authAPI';
-import employeesAPIDefault from './employeesAPI';
-import contactsAPIDefault from './contactsAPI';
-import analyticsAPIDefault from './analyticsAPI';
-import trendsAPIDefault from './trendsAPI';
-import reportsAPIDefault from './reportsAPI';
-import settingsAPIDefault from './settingsAPI';
-import adminAPIDefault from './adminAPI'; // Added admin API import
-import projectsAPIDefault from './projectsAPI';
-import budgetAPIDefault from './budgetAPI';
-import activityAPIDefault from './activityAPI';
+// Re-export types
+export type { User, CreateUserData, UpdateUserData, StatusChangeRequest } from './usersAPI';
+export type { Employee } from './employeesAPI';
+export type { AnalyticsResponse } from './analyticsAPI';
+export type { Contact, ContactFilterOptions, ContactStats, ContactFilterParams } from './contactsAPI';
 
-// Re-export the base API instance
-export { api };
+// Re-export functions from contactsAPI
+export { getContacts, getContact, createContact, updateContact, deleteContact, searchContacts, filterContacts, getContactStats } from './contactsAPI';
 
-// Re-export the default exports with consistent naming
-export {
-  authAPIDefault as authAPI,
-  employeesAPIDefault as employeesAPI,
-  contactsAPIDefault as contactsAPI,
-  analyticsAPIDefault as analyticsAPI,
-  trendsAPIDefault as trendsAPI,
-  reportsAPIDefault as reportsAPI,
-  settingsAPIDefault as settingsAPI,
-  projectsAPIDefault as projectsAPI,
-  budgetAPIDefault as budgetAPI,
-  activityAPIDefault as activityAPI
-};
+// Re-export functions from employeesAPI
+export { getAllEmployees } from './employeesAPI';
 
-export { default as adminAPI } from './adminAPI';
-
-// Re-export individual functions and types
-// Auth API exports
-export * from './authAPI';
-
-// Employees API exports
-export * from './employeesAPI';
-
-// Contacts API exports
-export * from './contactsAPI';
-
-// Analytics API exports
-export * from './analyticsAPI';
-
-// Trends API exports
-export * from './trendsAPI';
-
-// Reports API exports
-export * from './reportsAPI';
-
-// Settings API exports
-export * from './settingsAPI';
-
-// Admin API exports
-export * from './adminAPI';
-
-// Projects API exports
-export * from './projectsAPI';
-
-// Budget API exports
-export * from './budgetAPI';
-
-// Activity API exports (excluding ActivityLog to avoid conflict)
-export { default as activityAPIDefault } from './activityAPI';
-
-// Export a combined API object as default
-const combinedAPI = {
-  api,
-  auth: authAPIDefault,
-  employees: employeesAPIDefault,
-  contacts: contactsAPIDefault,
-  analytics: analyticsAPIDefault,
-  trends: trendsAPIDefault,
-  reports: reportsAPIDefault,
-  settings: settingsAPIDefault,
-  admin: adminAPIDefault, // Added admin to combined API
-  projects: projectsAPIDefault,
-  budgets: budgetAPIDefault,
-  activity: activityAPIDefault
-};
-
-export default combinedAPI;
+// Re-export functions from settingsAPI
+export { getSettings } from './settingsAPI';

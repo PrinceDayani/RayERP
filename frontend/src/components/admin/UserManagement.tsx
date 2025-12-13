@@ -32,6 +32,7 @@ export function UserManagement({ isLoading }: UserManagementProps) {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
   const [isAddRoleOpen, setIsAddRoleOpen] = useState(false);
   const [isEditRoleOpen, setIsEditRoleOpen] = useState(false);
@@ -40,6 +41,7 @@ export function UserManagement({ isLoading }: UserManagementProps) {
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [currentRole, setCurrentRole] = useState<any>(null);
   const [resetPassword, setResetPassword] = useState({ newPassword: "", confirmPassword: "" });
+  const [changePassword, setChangePassword] = useState({ newPassword: "", confirmPassword: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hasFetchedRef = useRef(false);
   const [newUser, setNewUser] = useState({
@@ -256,6 +258,47 @@ export function UserManagement({ isLoading }: UserManagementProps) {
     } catch (error: any) {
       console.error("Failed to reset password:", error);
       toast.error(error.message || "Failed to reset password");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChangeUserPassword = async () => {
+    if (!currentUser) return;
+
+    if (changePassword.newPassword !== changePassword.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (changePassword.newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await adminAPI.changeUserPassword(currentUser.id, changePassword.newPassword);
+      
+      // Log activity
+      try {
+        const { logActivity } = await import('@/lib/activityLogger');
+        await logActivity({
+          action: 'change_password',
+          resource: 'user',
+          details: `Changed password for user ${currentUser.name} (${currentUser.email})`,
+          status: 'success'
+        });
+      } catch (error) {
+        console.error('Failed to log activity:', error);
+      }
+      
+      toast.success(`Password changed successfully for ${currentUser.name}`);
+      setChangePassword({ newPassword: "", confirmPassword: "" });
+      setIsChangePasswordOpen(false);
+    } catch (error: any) {
+      console.error("Failed to change password:", error);
+      toast.error(error.message || "Failed to change password");
     } finally {
       setIsSubmitting(false);
     }
@@ -717,8 +760,9 @@ export function UserManagement({ isLoading }: UserManagementProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => { setCurrentUser(user); setIsResetPasswordOpen(true); }}
+                        onClick={() => { setCurrentUser(user); setIsChangePasswordOpen(true); }}
                         className="h-9 w-9 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-600 dark:hover:text-amber-400 transition-all duration-200 rounded-lg hover:scale-110"
+                        title="Change Password"
                       >
                         <KeyRoundIcon className="h-4 w-4" />
                       </Button>
@@ -759,47 +803,47 @@ export function UserManagement({ isLoading }: UserManagementProps) {
         </Table>
       </div>
 
-      {/* Reset Password Dialog */}
-      <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
+      {/* Change Password Dialog */}
+      <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset User Password</DialogTitle>
+            <DialogTitle>Change User Password</DialogTitle>
             <DialogDescription>
               Set a new password for {currentUser?.name}. The user will be able to login with this new password.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="new-password" className="text-right">
+              <Label htmlFor="change-new-password" className="text-right">
                 New Password
               </Label>
               <Input
-                id="new-password"
+                id="change-new-password"
                 type="password"
                 className="col-span-3"
-                value={resetPassword.newPassword}
-                onChange={(e) => setResetPassword({ ...resetPassword, newPassword: e.target.value })}
+                value={changePassword.newPassword}
+                onChange={(e) => setChangePassword({ ...changePassword, newPassword: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="confirm-new-password" className="text-right">
+              <Label htmlFor="change-confirm-password" className="text-right">
                 Confirm
               </Label>
               <Input
-                id="confirm-new-password"
+                id="change-confirm-password"
                 type="password"
                 className="col-span-3"
-                value={resetPassword.confirmPassword}
-                onChange={(e) => setResetPassword({ ...resetPassword, confirmPassword: e.target.value })}
+                value={changePassword.confirmPassword}
+                onChange={(e) => setChangePassword({ ...changePassword, confirmPassword: e.target.value })}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsResetPasswordOpen(false); setResetPassword({ newPassword: "", confirmPassword: "" }); }} disabled={isSubmitting}>
+            <Button variant="outline" onClick={() => { setIsChangePasswordOpen(false); setChangePassword({ newPassword: "", confirmPassword: "" }); }} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleResetPassword} className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600" disabled={isSubmitting}>
-              {isSubmitting ? 'Resetting...' : 'Reset Password'}
+            <Button onClick={handleChangeUserPassword} className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600" disabled={isSubmitting}>
+              {isSubmitting ? 'Changing...' : 'Change Password'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,4 +1,9 @@
-import { apiRequest } from '../api';
+import api from './api';
+
+const apiRequest = async (url: string, options?: any) => {
+  const response = await api(url, options);
+  return response.data;
+};
 
 export interface User {
   _id: string;
@@ -27,6 +32,20 @@ export interface UpdateUserData {
   email?: string;
   roleId?: string;
   status?: string;
+}
+
+export interface StatusChangeRequest {
+  _id: string;
+  name: string;
+  status: string;
+  statusChangeRequest: {
+    requestedStatus: string;
+    reason?: string;
+    requestedBy: {
+      name: string;
+    };
+    requestedAt: string;
+  };
 }
 
 const usersAPI = {
@@ -143,6 +162,41 @@ const usersAPI = {
       return response.user || response;
     } catch (error) {
       console.error('Error deactivating user:', error);
+      throw error;
+    }
+  },
+
+  requestStatusChange: async (userId: string, status: string, reason: string): Promise<StatusChangeRequest> => {
+    try {
+      const response = await apiRequest(`/api/users/${userId}/status-change-request`, {
+        method: 'POST',
+        body: JSON.stringify({ status, reason })
+      });
+      return response.request || response;
+    } catch (error) {
+      console.error('Error requesting status change:', error);
+      throw error;
+    }
+  },
+
+  getPendingStatusRequests: async (): Promise<StatusChangeRequest[]> => {
+    try {
+      const response = await apiRequest('/api/users/status-change-requests');
+      return response.requests || response || [];
+    } catch (error) {
+      console.error('Error fetching pending status requests:', error);
+      throw error;
+    }
+  },
+
+  approveStatusChange: async (requestId: string, approve: boolean): Promise<void> => {
+    try {
+      await apiRequest(`/api/users/status-change-requests/${requestId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ approve })
+      });
+    } catch (error) {
+      console.error('Error approving status change:', error);
       throw error;
     }
   }

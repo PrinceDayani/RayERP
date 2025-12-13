@@ -176,6 +176,37 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
+    // Check user status
+    const userStatus = user.status || 'active';
+    if (userStatus === 'disabled') {
+      logger.warn(`Login attempt for disabled user: ${email}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been disabled. Please contact administrator.',
+        code: 'ACCOUNT_DISABLED'
+      });
+    }
+    if (userStatus === 'inactive') {
+      logger.warn(`Login attempt for inactive user: ${email}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is inactive. Please contact administrator.',
+        code: 'ACCOUNT_INACTIVE'
+      });
+    }
+    if (userStatus === 'pending_approval') {
+      logger.warn(`Login attempt for pending approval user: ${email}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending approval. Please wait for administrator approval.',
+        code: 'ACCOUNT_PENDING_APPROVAL'
+      });
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
     // Generate JWT token
     const token = user.generateAuthToken();
 

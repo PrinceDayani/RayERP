@@ -533,10 +533,15 @@ router.post('/:id/attachment', upload.single('file'), async (req, res) => {
 // GET Entry by ID
 router.get('/:id', requireFinanceAccess('journal.view'), async (req, res) => {
   try {
-    const entry = await JournalEntry.findById(req.params.id).populate('lines.account lines.costCenter createdBy postedBy');
+    const entry = await JournalEntry.findById(req.params.id)
+      .populate('lines.account', 'code name type')
+      .populate('createdBy', 'firstName lastName name email')
+      .populate('postedBy', 'firstName lastName name email')
+      .lean();
     if (!entry) return res.status(404).json({ success: false, message: 'Entry not found' });
     res.json({ success: true, data: entry });
   } catch (error: any) {
+    console.error('Error fetching journal entry:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

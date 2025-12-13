@@ -66,7 +66,7 @@ export default function SalesReportsPage() {
 
       const data = await apiClient.get(`/api/sales-reports/report?${params}`);
       setSales(data.data || []);
-      setTotalPages(data.pagination?.pages || 1);
+      setTotalPages(data.data?.pagination?.pages || 1);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load sales data';
       setError(message);

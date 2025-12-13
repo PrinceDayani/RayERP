@@ -44,10 +44,12 @@ export const getAllProjects = async (req: Request, res: Response) => {
     console.log('User:', { id: user._id, name: user.name, email: user.email });
     const userRole = user.role as any;
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
-    console.log('Role info:', { level: userRole?.level, name: roleName, roleType: typeof user.role });
+    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
+    console.log('Role info:', { level: userRole?.level, name: roleName, roleType: typeof user.role, permissions: rolePermissions });
+    console.log('Has projects.view_all?', rolePermissions.includes('projects.view_all'));
     
-    // Root/Director/Super Admin get full access to all projects
-    if (userRole?.level >= 80 || roleName === 'Root' || roleName === 'Super Admin') {
+    // Root or users with projects.view_all permission get full access to all projects
+    if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
       console.log(`✅ ROOT ACCESS - User ${user.name} fetching all projects`);
       const count = await Project.countDocuments();
       console.log(`Total projects in DB: ${count}`);
@@ -140,9 +142,10 @@ export const getProjectById = async (req: Request, res: Response) => {
 
     const userRole = user.role as any;
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
     
-    // Root/Director/Super Admin get full access
-    if (userRole?.level >= 80 || roleName === 'Root' || roleName === 'Super Admin') {
+    // Root or users with projects.view_all permission get full access
+    if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
       const project = await Project.findById(req.params.id)
         .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
         .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
@@ -566,6 +569,7 @@ export const getProjectTasks = async (req: Request, res: Response) => {
     }
 
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
     const isMember = project.members.some(m => m.toString() === user._id.toString());
     const isOwner = project.owner.toString() === user._id.toString();
     
@@ -581,7 +585,7 @@ export const getProjectTasks = async (req: Request, res: Response) => {
       isManager = project.manager && project.manager.toString() === employee._id.toString();
     }
     
-    if (roleName !== 'Root' && roleName !== 'Super Admin' && !isMember && !isOwner && !isTeamMember && !isManager) {
+    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all') && !isMember && !isOwner && !isTeamMember && !isManager) {
       return res.status(403).json({ message: 'Access denied: You are not assigned to this project' });
     }
 
@@ -702,9 +706,10 @@ export const getProjectStats = async (req: Request, res: Response) => {
 
     let query: any = {};
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
     
-    // Root and Super Admin can see all project stats
-    if (roleName !== 'Root' && roleName !== 'Super Admin') {
+    // Root and users with projects.view_all can see all project stats
+    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all')) {
       const Employee = (await import('../models/Employee')).default;
       const employee = await Employee.findOne({ user: user._id });
       
@@ -923,8 +928,9 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
     
     // Get role name (handle both populated and unpopulated role)
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
     
-    if (roleName === 'Root' || roleName === 'Super Admin') {
+    if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
       query = {};
     } else {
       // Find employee record linked to this user
@@ -1356,8 +1362,9 @@ export const getProjectsByView = async (req: Request, res: Response) => {
     
     let query: any = {};
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
     
-    if (roleName !== 'Root' && roleName !== 'Super Admin') {
+    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all')) {
       const Employee = (await import('../models/Employee')).default;
       const employee = await Employee.findOne({ user: user._id });
       

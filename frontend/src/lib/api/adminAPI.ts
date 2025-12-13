@@ -1,4 +1,16 @@
-import { apiClient } from '../api';
+import api from './api';
+
+// Helper function to make API calls
+const apiClient = {
+  get: async (url: string) => {
+    const response = await api.get(url);
+    return response.data;
+  },
+  post: async (url: string, data: any) => {
+    const response = await api.post(url, data);
+    return response.data;
+  },
+};
 import axios from "axios";
 
 const ADMIN_API_URL =
@@ -287,6 +299,56 @@ const adminAPI = {
       return response;
     } catch (error) {
       console.error('Error resetting password:', error);
+      throw error;
+    }
+  },
+
+  changeUserPassword: async (userId: string, newPassword: string): Promise<void> => {
+    try {
+      const response = await apiClient.post(`/api/users/${userId}/change-password`, { newPassword });
+      return response;
+    } catch (error) {
+      console.error('Error changing user password:', error);
+      throw error;
+    }
+  },
+
+  updateUserStatus: async (userId: string, status: 'active' | 'inactive' | 'disabled' | 'pending_approval', reason?: string): Promise<any> => {
+    try {
+      const response = await apiClient.post(`/api/users/${userId}/status`, { status, reason });
+      return response;
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      throw error;
+    }
+  },
+
+  getPendingStatusRequests: async (): Promise<any[]> => {
+    try {
+      const response = await apiClient.get('/api/users/status-requests/pending');
+      return response.requests || [];
+    } catch (error) {
+      console.error('Error fetching pending status requests:', error);
+      throw error;
+    }
+  },
+
+  approveStatusRequest: async (requestId: string): Promise<any> => {
+    try {
+      const response = await apiClient.post(`/api/users/status-requests/${requestId}/approve`, {});
+      return response;
+    } catch (error) {
+      console.error('Error approving status request:', error);
+      throw error;
+    }
+  },
+
+  rejectStatusRequest: async (requestId: string, reason: string): Promise<any> => {
+    try {
+      const response = await apiClient.post(`/api/users/status-requests/${requestId}/reject`, { reason });
+      return response;
+    } catch (error) {
+      console.error('Error rejecting status request:', error);
       throw error;
     }
   },

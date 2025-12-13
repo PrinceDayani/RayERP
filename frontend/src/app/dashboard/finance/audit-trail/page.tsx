@@ -103,7 +103,7 @@ export default function AuditTrailPage() {
 
       const data = await apiClient.get(`/api/audit-trail?${params}`);
       setAuditLogs(data.data || []);
-      setTotalPages(data.pagination?.pages || 1);
+      setTotalPages(data.data?.pagination?.pages || 1);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load audit logs';
       setError(message);

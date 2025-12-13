@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, X, User, Mail, Phone, Building2, MapPin, FileText, Tag, AlertTriangle, Globe, Linkedin, Twitter, Calendar, Briefcase, Star, TrendingUp } from 'lucide-react';
+import { Plus, X, User, Mail, Phone, Building2, MapPin, FileText, Tag, AlertTriangle, Globe, Linkedin, Twitter, Calendar, Briefcase, Star, TrendingUp, RefreshCw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ContactFormProps {
@@ -32,8 +32,9 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
     tags: [],
     reference: '',
     alternativePhone: '',
-    contactType: 'personal',
+    visibilityLevel: 'personal',
     department: '',
+    contactType: 'personal',
     role: '',
     priority: 'medium',
     status: 'active',
@@ -46,6 +47,33 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
   });
   const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [departments, setDepartments] = useState<Array<{ _id: string; name: string }>>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
+  const [departmentError, setDepartmentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        setLoadingDepartments(true);
+        setDepartmentError(null);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/departments`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setDepartments(Array.isArray(data) ? data : []);
+        } else {
+          setDepartmentError('Failed to load departments');
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+        setDepartmentError('Failed to load departments');
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+    fetchDepartments();
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -109,6 +137,14 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
     
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
+    }
+    
+    if (!formData.visibilityLevel) {
+      newErrors.visibilityLevel = 'Visibility level is required';
+    }
+    
+    if (formData.visibilityLevel === 'departmental' && !formData.department) {
+      newErrors.department = 'Department is required for departmental contacts';
     }
     
     if (formData.email && !/^\S+@\S+\.\S+$/.test(formData.email)) {
@@ -221,6 +257,74 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
             )}
           </div>
 
+          {/* Visibility Level */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label>Visibility Level *</Label>
+              <Select 
+                value={formData.visibilityLevel} 
+                onValueChange={(value) => handleSelectChange('visibilityLevel', value)}
+                required
+              >
+                <SelectTrigger className={errors.visibilityLevel ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Select visibility level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="personal">Personal - Only visible to you</SelectItem>
+                  <SelectItem value="departmental">Departmental - Visible to your department</SelectItem>
+                  <SelectItem value="universal">Universal - Visible to everyone</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.visibilityLevel && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.visibilityLevel}
+                </p>
+              )}
+            </div>
+
+            {formData.visibilityLevel === 'departmental' && (
+              <div className="space-y-2">
+                <Label>Department *</Label>
+                {loadingDepartments ? (
+                  <div className="flex items-center gap-2 p-2 border rounded-md">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Loading departments...</span>
+                  </div>
+                ) : departmentError ? (
+                  <div className="p-2 border border-red-200 rounded-md bg-red-50 text-red-600 text-sm">
+                    {departmentError}
+                  </div>
+                ) : departments.length === 0 ? (
+                  <div className="p-2 border rounded-md bg-muted text-sm text-muted-foreground">
+                    No departments available
+                  </div>
+                ) : (
+                  <Select 
+                    value={typeof formData.department === 'string' ? formData.department : formData.department?._id} 
+                    onValueChange={(value) => handleSelectChange('department', value)}
+                    disabled={loadingDepartments}
+                  >
+                    <SelectTrigger className={errors.department ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept._id} value={dept._id}>{dept.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {errors.department && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {errors.department}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Contact Categorization */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
@@ -299,34 +403,18 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
             </div>
           </div>
 
-          {/* Department and Role */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="department" className="flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
-                Department
-              </Label>
-              <Input
-                id="department"
-                name="department"
-                value={formData.department || ''}
-                onChange={handleChange}
-                placeholder="Enter department"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="role">
-                Role
-              </Label>
-              <Input
-                id="role"
-                name="role"
-                value={formData.role || ''}
-                onChange={handleChange}
-                placeholder="Enter role or responsibility"
-              />
-            </div>
+          {/* Role */}
+          <div className="space-y-2">
+            <Label htmlFor="role">
+              Role
+            </Label>
+            <Input
+              id="role"
+              name="role"
+              value={formData.role || ''}
+              onChange={handleChange}
+              placeholder="Enter role or responsibility"
+            />
           </div>
 
           {/* Business Details */}

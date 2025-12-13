@@ -17,6 +17,27 @@ const analyticsAPI = {
       headers: { Authorization: `Bearer ${token}` }
     });
     return response.data.data;
+  },
+
+  getDashboardAnalytics: async (): Promise<AnalyticsResponse> => {
+    const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+    const response = await axios.get(`${API_URL}/api/dashboard/analytics`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data.data;
+  },
+
+  checkAuth: async () => {
+    const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+    if (!token) return false;
+    try {
+      const response = await axios.get(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.status === 200;
+    } catch {
+      return false;
+    }
   }
 };
 

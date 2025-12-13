@@ -82,7 +82,7 @@ import ContactsDiagnostic from '@/components/ContactsDiagnostic';
 type FilterOptions = {
   tags: string[];
   company: string[];
-  departments: string[];
+  departments: Array<string | { _id: string; name: string }>;
   roles: string[];
   contactTypes: string[];
   priorities: string[];
@@ -153,8 +153,23 @@ export default function ContactsPage() {
     };
 
     const handleContactUpdated = (updatedContact: Contact) => {
-      setContacts(prev => prev.map(c => c._id === updatedContact._id ? updatedContact : c));
-      setAllContacts(prev => prev.map(c => c._id === updatedContact._id ? updatedContact : c));
+      setContacts(prev => {
+        const exists = prev.some(c => c._id === updatedContact._id);
+        if (exists) {
+          return prev.map(c => c._id === updatedContact._id ? updatedContact : c);
+        } else {
+          // Contact became visible (e.g., changed to universal), add it
+          return [updatedContact, ...prev];
+        }
+      });
+      setAllContacts(prev => {
+        const exists = prev.some(c => c._id === updatedContact._id);
+        if (exists) {
+          return prev.map(c => c._id === updatedContact._id ? updatedContact : c);
+        } else {
+          return [updatedContact, ...prev];
+        }
+      });
     };
 
     const handleContactDeleted = (contactId: string) => {
@@ -287,7 +302,7 @@ export default function ContactsPage() {
         const email = c.email?.toLowerCase() || '';
         const phone = c.phone?.toLowerCase() || '';
         const company = c.company?.toLowerCase() || '';
-        const department = c.department?.toLowerCase() || '';
+        const department = typeof c.department === 'string' ? c.department?.toLowerCase() : (c.department?.name?.toLowerCase() || '');
         const role = c.role?.toLowerCase() || '';
         
         return name.includes(query) || 
@@ -304,7 +319,11 @@ export default function ContactsPage() {
       filtered = filtered.filter(c => c.company?.toLowerCase().includes(advancedFilters.company!.toLowerCase()));
     }
     if (advancedFilters.department) {
-      filtered = filtered.filter(c => c.department?.toLowerCase().includes(advancedFilters.department!.toLowerCase()));
+      const deptId = typeof advancedFilters.department === 'string' ? advancedFilters.department : '';
+      filtered = filtered.filter(c => {
+        const contactDept = typeof c.department === 'object' ? c.department?._id : c.department;
+        return contactDept === deptId;
+      });
     }
     if (advancedFilters.role) {
       filtered = filtered.filter(c => c.role?.toLowerCase().includes(advancedFilters.role!.toLowerCase()));
@@ -314,6 +333,9 @@ export default function ContactsPage() {
     }
     if (advancedFilters.status) {
       filtered = filtered.filter(c => (c.status || 'active') === advancedFilters.status);
+    }
+    if (advancedFilters.visibilityLevel) {
+      filtered = filtered.filter(c => (c.visibilityLevel || 'personal') === advancedFilters.visibilityLevel);
     }
     
     // Apply legacy active filters inline to avoid dependency issues
@@ -821,7 +843,9 @@ export default function ContactsPage() {
                   <SelectContent>
                     <SelectItem value="all">All Departments</SelectItem>
                     {filterOptions.departments.map(dept => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      <SelectItem key={typeof dept === 'string' ? dept : dept._id} value={typeof dept === 'string' ? dept : dept._id}>
+                        {typeof dept === 'string' ? dept : dept.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -866,6 +890,20 @@ export default function ContactsPage() {
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                     <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={advancedFilters.visibilityLevel || 'all'} onValueChange={(value) => 
+                  setAdvancedFilters(prev => ({ ...prev, visibilityLevel: value === 'all' ? undefined : value }))
+                }>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Visibility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Visibility</SelectItem>
+                    <SelectItem value="universal">🌐 Universal</SelectItem>
+                    <SelectItem value="departmental">🏢 Departmental</SelectItem>
+                    <SelectItem value="personal">👤 Personal</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1098,13 +1136,24 @@ export default function ContactsPage() {
                             <CardTitle className="text-lg truncate text-foreground">
                               {contact.name}
                             </CardTitle>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                               <Badge className={`text-xs ${CONTACT_TYPE_COLORS[contact.contactType || 'personal'] || 'bg-gray-100 text-gray-800'}`}>
                                 {contact.contactType || 'personal'}
                               </Badge>
                               <Badge className={`text-xs ${PRIORITY_COLORS[contact.priority || 'medium'] || 'bg-yellow-100 text-yellow-800'}`}>
                                 {contact.priority || 'medium'}
                               </Badge>
+                              {contact.visibilityLevel && (
+                                <Badge className={`text-xs ${
+                                  contact.visibilityLevel === 'universal' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                                  contact.visibilityLevel === 'departmental' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' :
+                                  'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                                }`}>
+                                  {contact.visibilityLevel === 'universal' ? '🌐 Universal' :
+                                   contact.visibilityLevel === 'departmental' ? '🏢 Departmental' :
+                                   '👤 Personal'}
+                                </Badge>
+                              )}
                             </div>
                             {contact.company && (
                               <CardDescription className="flex items-center mt-1">
@@ -1245,7 +1294,7 @@ export default function ContactsPage() {
                         <div className="flex flex-wrap gap-2">
                           {contact.department && (
                             <Badge variant="outline" className="text-xs">
-                              Dept: {contact.department}
+                              Dept: {typeof contact.department === 'string' ? contact.department : contact.department.name}
                             </Badge>
                           )}
                           {contact.role && (

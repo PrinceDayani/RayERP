@@ -49,7 +49,7 @@ const userSchema = new Schema<IUser>(
     },
     status: {
       type: String,
-      enum: ['active', 'inactive', 'pending'],
+      enum: ['active', 'inactive', 'disabled', 'pending_approval'],
       default: 'active',
     },
     lastLogin: {

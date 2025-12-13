@@ -127,6 +127,83 @@ export const resetUserPassword = async (req: Request, res: Response) => {
   }
 };
 
+// Change user password (Admin with permission)
+export const changeUserPassword = async (req: Request, res: Response) => {
+  try {
+    const { newPassword } = req.body;
+    const userId = req.params.id;
+    
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      });
+    }
+    
+    const targetUser = await User.findById(userId).populate('role');
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    const targetRole = targetUser.role as any;
+    if (targetRole?.name?.toLowerCase() === 'root') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot change Root user password'
+      });
+    }
+    
+    if (req.user) {
+      const currentUserRole = req.user.role as any;
+      if (targetRole.level >= currentUserRole.level) {
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot change password for user with equal or higher role level'
+        });
+      }
+    }
+    
+    targetUser.password = newPassword;
+    await targetUser.save();
+    
+    logger.info(`Password changed for user ${targetUser.email} by ${req.user?.name}`);
+    
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'Admin',
+      action: 'update',
+      resource: `User Password: ${targetUser.name}`,
+      resourceType: 'user',
+      resourceId: targetUser._id.toString(),
+      details: `Changed password for user ${targetUser.name} (${targetUser.email})`,
+      metadata: {
+        targetUserId: targetUser._id,
+        targetUserEmail: targetUser.email,
+        changedBy: req.user?.name || 'Admin'
+      },
+      category: 'security',
+      severity: 'high',
+      visibility: 'management',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error: any) {
+    logger.error(`Change user password error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error changing password'
+    });
+  }
+};
+
 // Bulk update user roles
 export const bulkUpdateUserRoles = async (req: Request, res: Response) => {
   try {
@@ -579,6 +656,296 @@ export const uploadAvatar = async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error(`Upload avatar error: ${error.message}`);
     res.status(500).json({ success: false, message: 'Error uploading avatar' });
+  }
+};
+
+// Update user status
+export const updateUserStatus = async (req: Request, res: Response) => {
+  try {
+    const { status, reason } = req.body;
+    const userId = req.params.id;
+    
+    const validStatuses = ['active', 'inactive', 'disabled', 'pending_approval'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: active, inactive, disabled, pending_approval'
+      });
+    }
+    
+    const targetUser = await User.findById(userId).populate('role');
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    const targetRole = targetUser.role as any;
+    if (targetRole?.name?.toLowerCase() === 'root') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot change Root user status'
+      });
+    }
+    
+    if (req.user?._id?.toString() === userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot change your own status'
+      });
+    }
+    
+    if (req.user) {
+      const currentUserRole = req.user.role as any;
+      if (targetRole.level >= currentUserRole.level) {
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot change status for user with equal or higher role level'
+        });
+      }
+    }
+    
+    const oldStatus = targetUser.status || 'active';
+    const requiresApproval = (oldStatus === 'active' && status === 'disabled') || 
+                             (oldStatus === 'disabled' && status === 'active');
+    
+    if (requiresApproval) {
+      const UserStatusRequest = (await import('../models/UserStatusRequest')).default;
+      const existingRequest = await UserStatusRequest.findOne({
+        user: userId,
+        status: 'pending'
+      });
+      
+      if (existingRequest) {
+        return res.status(400).json({
+          success: false,
+          message: 'A pending status change request already exists for this user',
+          requiresApproval: true
+        });
+      }
+      
+      const request = await UserStatusRequest.create({
+        user: userId,
+        requestedBy: req.user?._id,
+        currentStatus: oldStatus,
+        requestedStatus: status,
+        reason: reason || 'No reason provided'
+      });
+      
+      logger.info(`Status change request created for user ${targetUser.email} from ${oldStatus} to ${status}`);
+      
+      const { logActivity } = await import('../utils/activityLogger');
+      await logActivity({
+        userId: req.user?._id?.toString() || 'system',
+        userName: req.user?.name || 'Admin',
+        action: 'create',
+        resource: `User Status Request: ${targetUser.name}`,
+        resourceType: 'user',
+        resourceId: request._id.toString(),
+        details: `Requested status change for ${targetUser.name} from ${oldStatus} to ${status}`,
+        metadata: {
+          targetUserId: targetUser._id,
+          targetUserEmail: targetUser.email,
+          oldStatus,
+          requestedStatus: status,
+          reason,
+          requestId: request._id
+        },
+        category: 'user',
+        severity: 'medium',
+        visibility: 'management',
+        ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+      });
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Status change request submitted for approval',
+        requiresApproval: true,
+        request: {
+          _id: request._id,
+          status: request.status,
+          requestedStatus: status
+        }
+      });
+    }
+    
+    targetUser.status = status;
+    await targetUser.save();
+    
+    const updatedUser = await User.findById(userId).populate('role').select('-password');
+    
+    logger.info(`Status changed for user ${targetUser.email} from ${oldStatus} to ${status} by ${req.user?.name}`);
+    
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'Admin',
+      action: 'update',
+      resource: `User Status: ${targetUser.name}`,
+      resourceType: 'user',
+      resourceId: targetUser._id.toString(),
+      details: `Changed status for user ${targetUser.name} from ${oldStatus} to ${status}`,
+      metadata: {
+        targetUserId: targetUser._id,
+        targetUserEmail: targetUser.email,
+        oldStatus,
+        newStatus: status,
+        changedBy: req.user?.name || 'Admin'
+      },
+      category: 'user',
+      severity: status === 'disabled' ? 'high' : 'medium',
+      visibility: 'management',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+    
+    emitToUser(userId, 'statusUpdated', {
+      userId: userId,
+      newStatus: status,
+      message: `Your account status has been changed to ${status.replace('_', ' ')}`
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: `User status updated to ${status.replace('_', ' ')}`,
+      user: updatedUser
+    });
+  } catch (error: any) {
+    logger.error(`Update user status error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error updating user status'
+    });
+  }
+};
+
+// Get pending status requests
+export const getPendingStatusRequests = async (req: Request, res: Response) => {
+  try {
+    const UserStatusRequest = (await import('../models/UserStatusRequest')).default;
+    const requests = await UserStatusRequest.find({ status: 'pending' })
+      .populate('user', 'name email')
+      .populate('requestedBy', 'name email')
+      .sort({ createdAt: -1 });
+    
+    res.status(200).json({ success: true, requests });
+  } catch (error: any) {
+    logger.error(`Get pending status requests error: ${error.message}`);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Approve status request
+export const approveStatusRequest = async (req: Request, res: Response) => {
+  try {
+    const requestId = req.params.id;
+    const UserStatusRequest = (await import('../models/UserStatusRequest')).default;
+    
+    const request = await UserStatusRequest.findById(requestId).populate('user');
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+    
+    if (request.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Request already processed' });
+    }
+    
+    const targetUser = await User.findById(request.user);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    targetUser.status = request.requestedStatus;
+    await targetUser.save();
+    
+    request.status = 'approved';
+    request.approvedBy = req.user?._id;
+    request.approvedAt = new Date();
+    await request.save();
+    
+    logger.info(`Status request approved for user ${targetUser.email}`);
+    
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'Admin',
+      action: 'approve',
+      resource: `User Status Request: ${targetUser.name}`,
+      resourceType: 'user',
+      resourceId: requestId,
+      details: `Approved status change for ${targetUser.name} to ${request.requestedStatus}`,
+      metadata: {
+        targetUserId: targetUser._id,
+        requestId,
+        newStatus: request.requestedStatus
+      },
+      category: 'user',
+      severity: 'high',
+      visibility: 'management',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+    
+    emitToUser(targetUser._id.toString(), 'statusUpdated', {
+      userId: targetUser._id,
+      newStatus: request.requestedStatus,
+      message: `Your account status has been changed to ${request.requestedStatus.replace('_', ' ')}`
+    });
+    
+    res.status(200).json({ success: true, message: 'Request approved', request });
+  } catch (error: any) {
+    logger.error(`Approve status request error: ${error.message}`);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Reject status request
+export const rejectStatusRequest = async (req: Request, res: Response) => {
+  try {
+    const requestId = req.params.id;
+    const { reason } = req.body;
+    const UserStatusRequest = (await import('../models/UserStatusRequest')).default;
+    
+    const request = await UserStatusRequest.findById(requestId).populate('user');
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Request not found' });
+    }
+    
+    if (request.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Request already processed' });
+    }
+    
+    request.status = 'rejected';
+    request.approvedBy = req.user?._id;
+    request.approvedAt = new Date();
+    request.rejectionReason = reason || 'No reason provided';
+    await request.save();
+    
+    logger.info(`Status request rejected for user ${(request.user as any).email}`);
+    
+    const { logActivity } = await import('../utils/activityLogger');
+    await logActivity({
+      userId: req.user?._id?.toString() || 'system',
+      userName: req.user?.name || 'Admin',
+      action: 'reject',
+      resource: `User Status Request: ${(request.user as any).name}`,
+      resourceType: 'user',
+      resourceId: requestId,
+      details: `Rejected status change request for ${(request.user as any).name}`,
+      metadata: {
+        targetUserId: (request.user as any)._id,
+        requestId,
+        reason
+      },
+      category: 'user',
+      severity: 'medium',
+      visibility: 'management',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+    });
+    
+    res.status(200).json({ success: true, message: 'Request rejected', request });
+  } catch (error: any) {
+    logger.error(`Reject status request error: ${error.message}`);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

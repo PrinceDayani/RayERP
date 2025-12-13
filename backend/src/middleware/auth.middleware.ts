@@ -64,6 +64,30 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
       });
     }
 
+    // Check user status
+    const userStatus = user.status || 'active';
+    if (userStatus === 'disabled') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been disabled. Please contact administrator.',
+        code: 'ACCOUNT_DISABLED'
+      });
+    }
+    if (userStatus === 'inactive') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is inactive. Please contact administrator.',
+        code: 'ACCOUNT_INACTIVE'
+      });
+    }
+    if (userStatus === 'pending_approval') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending approval. Please wait for administrator approval.',
+        code: 'ACCOUNT_PENDING_APPROVAL'
+      });
+    }
+
     // Attach user to request object with permissions flattened
     req.user = user;
     

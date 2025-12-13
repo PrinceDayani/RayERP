@@ -26,9 +26,20 @@ router.use(protect);
 router.get('/roles', requirePermission('roles.view'), getRoles);
 router.post('/roles', requirePermission('roles.create'), createRole);
 router.post('/roles/bulk-delete', requirePermission('roles.delete'), bulkDeleteRoles);
+router.get('/roles/:roleId', requirePermission('roles.view'), async (req, res) => {
+  try {
+    const { Role } = await import('../models/Role');
+    const role = await Role.findById(req.params.roleId);
+    if (!role) return res.status(404).json({ success: false, message: 'Role not found' });
+    res.json({ success: true, data: role });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch role', error });
+  }
+});
+router.post('/roles/:roleId', requirePermission('roles.edit'), updateRole);
 router.put('/roles/:roleId', requirePermission('roles.edit'), updateRole);
-router.delete('/roles/:roleId', requirePermission('roles.delete'), deleteRole);
 router.patch('/roles/:roleId/toggle-status', requirePermission('roles.edit'), toggleRoleStatus);
+router.delete('/roles/:roleId', requirePermission('roles.delete'), deleteRole);
 
 // Permissions management - Only Root can manage permissions
 router.get('/permissions', getPermissions);

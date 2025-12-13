@@ -9,13 +9,19 @@ const getUserPermissions = async (userId: string): Promise<Set<string>> => {
   if (!user) return new Set();
   
   const userRole = user.role as any;
+  const roleName = userRole?.name;
   
-  // Root, Director get full access (Admin removed)
-  if (userRole?.level >= 80) return new Set(['*']);
+  // Root gets full access
+  if (roleName === 'Root') return new Set(['*']);
   
   const permissions = new Set<string>();
   
-  // Only get permissions from departments, not from role
+  // Add role permissions
+  if (userRole?.permissions) {
+    userRole.permissions.forEach((perm: string) => permissions.add(perm));
+  }
+  
+  // Add department permissions
   const employee = await Employee.findOne({ email: user.email });
   if (employee) {
     const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
@@ -53,38 +59,41 @@ export const requireProjectPermission = (permission: string, requiresAssignment 
       if (!user) return res.status(401).json({ message: 'User not found' });
       
       const userRole = user.role as any;
-      // Root, Director bypass department checks (Admin removed)
-      if (userRole?.level >= 80) return next();
+      const roleName = userRole?.name;
+      
+      // Root bypasses all checks
+      if (roleName === 'Root') return next();
 
-      // Check if assigned to project (full access)
+      // Get all permissions (role + department)
+      const permissions = await getUserPermissions(userId);
+      
+      // Check for wildcard or specific permission
+      if (permissions.has('*') || permissions.has(permission)) {
+        // If user has the permission, check if assignment is required
+        if (requiresAssignment && projectId) {
+          const isMember = await isProjectMember(userId, projectId);
+          const isLead = await isProjectLead(userId, projectId);
+          if (!isMember && !isLead) {
+            return res.status(403).json({ 
+              message: 'Assignment required for this operation',
+              required: 'Project assignment'
+            });
+          }
+        }
+        return next();
+      }
+
+      // Check if assigned to project (full access for assigned users)
       if (projectId) {
         const isMember = await isProjectMember(userId, projectId);
         const isLead = await isProjectLead(userId, projectId);
-        if (isMember || isLead) return next(); // Full access for assigned users
+        if (isMember || isLead) return next();
       }
 
-      // Check department permissions (basic access)
-      const permissions = await getUserPermissions(userId);
-      if (!permissions.has(permission)) {
-        return res.status(403).json({ 
-          message: 'Department permission required',
-          required: permission
-        });
-      }
-
-      // For operations requiring assignment, check assignment
-      if (requiresAssignment && projectId) {
-        const isMember = await isProjectMember(userId, projectId);
-        const isLead = await isProjectLead(userId, projectId);
-        if (!isMember && !isLead) {
-          return res.status(403).json({ 
-            message: 'Assignment required for this operation',
-            required: 'Project assignment'
-          });
-        }
-      }
-
-      next();
+      return res.status(403).json({ 
+        message: 'Permission denied',
+        required: permission
+      });
     } catch (error) {
       console.error('Project permission error:', error);
       res.status(500).json({ message: 'Internal server error' });

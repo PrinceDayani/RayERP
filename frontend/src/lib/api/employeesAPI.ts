@@ -26,6 +26,11 @@ export const employeesAPI = {
     return response.data;
   },
 
+  getEmployee: async (id: string) => {
+    const response = await api.get(`/employees/${id}`);
+    return response.data;
+  },
+
   create: async (employeeData: any) => {
     const response = await api.post('/employees', employeeData);
     return response.data;
@@ -37,6 +42,11 @@ export const employeesAPI = {
   },
 
   update: async (id: string, employeeData: any) => {
+    const response = await api.put(`/employees/${id}`, employeeData);
+    return response.data;
+  },
+
+  updateEmployee: async (id: string, employeeData: any) => {
     const response = await api.put(`/employees/${id}`, employeeData);
     return response.data;
   },

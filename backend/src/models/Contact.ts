@@ -13,9 +13,12 @@ export interface IContact extends Document {
   reference?: string;
   alternativePhone?: string;
   
+  // Visibility level
+  visibilityLevel: 'universal' | 'departmental' | 'personal';
+  department?: mongoose.Types.ObjectId;
+  
   // Advanced categorization fields
   contactType: 'company' | 'personal' | 'vendor' | 'client' | 'partner';
-  department?: string;
   role?: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'active' | 'inactive' | 'archived';
@@ -50,13 +53,21 @@ const ContactSchema: Schema = new Schema(
     reference: { type: String, required: false },
     alternativePhone: { type: String, required: false },
     
+    // Visibility level
+    visibilityLevel: {
+      type: String,
+      enum: ['universal', 'departmental', 'personal'],
+      default: 'personal',
+      required: true
+    },
+    department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: false },
+    
     // Advanced categorization fields
     contactType: { 
       type: String, 
       enum: ['company', 'personal', 'vendor', 'client', 'partner'], 
       default: 'personal' 
     },
-    department: { type: String, required: false },
     role: { type: String, required: false },
     priority: { 
       type: String, 
@@ -89,9 +100,10 @@ const ContactSchema: Schema = new Schema(
 );
 
 // Add indexes for better search and filter performance
-ContactSchema.index({ name: 'text', email: 'text', phone: 'text', company: 'text', department: 'text', role: 'text' });
+ContactSchema.index({ name: 'text', email: 'text', phone: 'text', company: 'text', role: 'text' });
+ContactSchema.index({ visibilityLevel: 1, status: 1 });
+ContactSchema.index({ visibilityLevel: 1, department: 1 });
 ContactSchema.index({ contactType: 1, status: 1 });
-ContactSchema.index({ company: 1, department: 1 });
 ContactSchema.index({ priority: 1, status: 1 });
 ContactSchema.index({ createdBy: 1, status: 1 });
 

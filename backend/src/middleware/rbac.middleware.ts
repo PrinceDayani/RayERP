@@ -23,6 +23,12 @@ export const requirePermission = (permission: string) => {
       }
 
       const userRole = user.role as any;
+      const roleName = userRole?.name;
+      
+      // Root bypasses all permission checks
+      if (roleName === 'Root') {
+        return next();
+      }
       
       const userPermissions = new Set<string>();
       
@@ -81,6 +87,12 @@ export const requireAnyPermission = (permissions: string[]) => {
       }
 
       const userRole = user.role as any;
+      const roleName = userRole?.name;
+      
+      // Root bypasses all permission checks
+      if (roleName === 'Root') {
+        return next();
+      }
       
       const userPermissions = new Set<string>();
       

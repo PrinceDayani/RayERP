@@ -392,11 +392,12 @@ export const getJournalEntry = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const entry = await JournalEntry.findById(id)
-      .populate('lines.account', 'code name')
+      .populate('lines.account', 'code name type')
       .populate('createdBy', 'firstName lastName name email')
       .populate('updatedBy', 'firstName lastName name email')
       .populate('postedBy', 'firstName lastName name email')
-      .populate('changeHistory.changedBy', 'firstName lastName name email');
+      .populate('changeHistory.changedBy', 'firstName lastName name email')
+      .lean();
     
     if (!entry) {
       return res.status(404).json({ message: 'Journal entry not found' });
@@ -471,7 +472,7 @@ export const createJournalEntry = async (req: Request, res: Response) => {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
-      const accountId = line.accountId || line.ledgerId;
+      const accountId = line.account || line.accountId;
       if (!accountId) {
         return res.status(400).json({ 
           message: `Line ${i + 1}: Account is required`
@@ -628,7 +629,7 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
     if (lines && Array.isArray(lines)) {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (!line.accountId && !line.ledgerId) {
+        if (!line.account && !line.accountId) {
           return res.status(400).json({ 
             message: `Line ${i + 1}: Account is required` 
           });
@@ -1127,7 +1128,7 @@ export const getVouchersByType = async (req: Request, res: Response) => {
     
     const skip = (Number(page) - 1) * Number(limit);
     const entries = await JournalEntry.find(query)
-      .populate('lines.accountId', 'code name')
+      .populate('lines.account', 'code name')
       .sort({ date: -1 })
       .limit(Number(limit))
       .skip(skip);
@@ -1260,7 +1261,7 @@ export const getCostCenterReport = async (req: Request, res: Response) => {
     }
     
     const entries = await JournalEntry.find(query)
-      .populate('lines.accountId', 'code name')
+      .populate('lines.account', 'code name')
       .sort({ date: -1 });
     
     let totalDebit = 0, totalCredit = 0;

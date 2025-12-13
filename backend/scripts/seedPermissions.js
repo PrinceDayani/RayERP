@@ -11,6 +11,12 @@ const PERMISSIONS = [
   { name: 'users.create', description: 'Create new users', category: 'Users' },
   { name: 'users.edit', description: 'Edit user information', category: 'Users' },
   { name: 'users.delete', description: 'Delete users', category: 'Users' },
+  { name: 'users.activate_deactivate', description: 'Activate/deactivate users', category: 'Users' },
+  { name: 'users.assign_roles', description: 'Assign roles to users', category: 'Users' },
+  { name: 'users.reset_password', description: 'Reset user passwords', category: 'Users' },
+  { name: 'users.change_password', description: 'Change user passwords', category: 'Users' },
+  { name: 'users.request_status_change', description: 'Request user status changes', category: 'Users' },
+  { name: 'users.approve_status_change', description: 'Approve user status changes', category: 'Users' },
   
   // Role Management
   { name: 'roles.view', description: 'View roles', category: 'Roles' },

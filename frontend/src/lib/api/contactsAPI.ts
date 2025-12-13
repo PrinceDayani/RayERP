@@ -14,9 +14,13 @@ export interface Contact {
   reference?: string;
   alternativePhone?: string;
   
+  // Visibility level
+  visibilityLevel?: 'universal' | 'departmental' | 'personal';
+  department?: { _id: string; name: string } | string;
+  createdBy?: { _id: string; name: string; email: string } | string;
+  
   // Advanced categorization fields
   contactType?: 'company' | 'personal' | 'vendor' | 'client' | 'partner';
-  department?: string;
   role?: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
   status?: 'active' | 'inactive' | 'archived';
@@ -39,10 +43,11 @@ export interface Contact {
 
 export interface ContactFilterOptions {
   companies: string[];
-  departments: string[];
+  departments: Array<{ _id: string; name: string }>;
   roles: string[];
   industries: string[];
   tags: string[];
+  visibilityLevels: string[];
   contactTypes: string[];
   priorities: string[];
   statuses: string[];
@@ -58,6 +63,7 @@ export interface ContactStats {
 }
 
 export interface ContactFilterParams {
+  visibilityLevel?: string;
   contactType?: string;
   company?: string;
   department?: string;

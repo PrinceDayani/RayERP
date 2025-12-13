@@ -62,7 +62,6 @@ export const getSalesReport = async (req: Request, res: Response) => {
         .sort({ invoiceDate: -1 })
         .skip(skip)
         .limit(limitNum)
-        .maxTimeMS(10000)
         .lean(),
       Invoice.countDocuments(filter)
     ]);
@@ -120,13 +119,13 @@ export const getSalesSummary = async (req: Request, res: Response) => {
           avgSaleValue: { $avg: '$totalAmount' }
         }
       }
-    ]).maxTimeMS(5000);
+    ]);
 
     const statusBreakdown = await Invoice.aggregate([
       { $match: filter },
       { $group: { _id: '$status', count: { $sum: 1 }, amount: { $sum: '$totalAmount' } } },
       { $limit: 20 }
-    ]).maxTimeMS(5000);
+    ]);
 
     res.json({
       success: true,
@@ -168,7 +167,7 @@ export const getTopCustomers = async (req: Request, res: Response) => {
         }
       },
       { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } }
-    ]).maxTimeMS(5000);
+    ]);
 
     res.json({ success: true, data: topCustomers });
   } catch (error) {
@@ -202,7 +201,7 @@ export const getSalesTrends = async (req: Request, res: Response) => {
       },
       { $sort: { '_id.year': -1, '_id.month': -1, '_id.day': -1 } },
       { $limit: 12 }
-    ]).maxTimeMS(5000);
+    ]);
 
     res.json({ success: true, data: trends });
   } catch (error) {

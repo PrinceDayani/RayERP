@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useContext } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useGeneralLedger } from '@/hooks/finance/useGeneralLedger';
 import { useCreateEntryShortcut } from '@/hooks/useKeyboardShortcuts';
 import { useDateShortcuts } from '@/hooks/useDateShortcuts';
@@ -20,6 +21,8 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 const JournalEntry = () => {
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
   const { accounts, loading, fetchAccounts, createJournalEntry } = useGeneralLedger();
   const { currency, symbol, formatAmount } = useCurrency();
   
@@ -32,6 +35,7 @@ const JournalEntry = () => {
       { accountId: '', debit: 0, credit: 0, description: '' }
     ]
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [templates, setTemplates] = useState<any[]>([]);
   const [recentEntries, setRecentEntries] = useState<any[]>([]);
@@ -114,7 +118,32 @@ const JournalEntry = () => {
     fetchAccounts();
     fetchTemplates();
     fetchRecentEntries();
-  }, [fetchAccounts]);
+    if (editId) loadEntryForEdit(editId);
+  }, [fetchAccounts, editId]);
+
+  const loadEntryForEdit = async (id: string) => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      const res = await axios.get(`${API_URL}/api/journal-entries/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const entry = res.data.data || res.data;
+      setFormData({
+        date: new Date(entry.entryDate || entry.date).toISOString().split('T')[0],
+        reference: entry.reference || '',
+        description: entry.description,
+        lines: entry.lines.map((line: any) => ({
+          accountId: line.account?._id || line.accountId || '',
+          debit: line.debit || 0,
+          credit: line.credit || 0,
+          description: line.description || ''
+        }))
+      });
+      setEditingId(id);
+    } catch (error) {
+      console.error('Failed to load entry:', error);
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => validateEntry(), 500);
@@ -297,7 +326,11 @@ const JournalEntry = () => {
     try {
       const token = localStorage.getItem('auth-token');
       if (!token) return alert('Authentication required. Please login.');
-      const res = await axios.post(`${API_URL}/api/journal-entries`, {
+      
+      const method = editingId ? 'put' : 'post';
+      const url = editingId ? `${API_URL}/api/journal-entries/${editingId}` : `${API_URL}/api/journal-entries`;
+      
+      const res = await axios[method](url, {
         ...formData,
         entryDate: formData.date,
         lines: validLines.map(line => ({
@@ -332,9 +365,11 @@ const JournalEntry = () => {
         }
       }
 
-      alert('Journal entry created and posted successfully!');
+      alert(editingId ? 'Journal entry updated successfully!' : 'Journal entry created and posted successfully!');
       await fetchRecentEntries();
       resetForm();
+      setEditingId(null);
+      window.history.replaceState({}, '', '/dashboard/finance/journal-entry');
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Failed to create journal entry');
     }

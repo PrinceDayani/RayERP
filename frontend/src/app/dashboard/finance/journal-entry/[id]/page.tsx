@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, FileText, Calendar, Hash, Edit } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, Hash, Edit, User, ArrowRightLeft, TrendingUp, TrendingDown } from 'lucide-react';
 import { format } from 'date-fns';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
@@ -46,9 +46,20 @@ export default function JournalEntryDetailPage() {
 
   const totalDebit = entry.lines?.reduce((sum: number, line: any) => sum + (line.debit || 0), 0) || 0;
   const totalCredit = entry.lines?.reduce((sum: number, line: any) => sum + (line.credit || 0), 0) || 0;
+  const debitAccounts = entry.lines?.filter((l: any) => l.debit > 0) || [];
+  const creditAccounts = entry.lines?.filter((l: any) => l.credit > 0) || [];
+  
+  const formatDate = (date: any) => {
+    if (!date) return 'N/A';
+    try {
+      return format(new Date(date), 'MMM dd, yyyy');
+    } catch {
+      return 'Invalid Date';
+    }
+  };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-h-screen overflow-y-auto">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -78,14 +89,74 @@ export default function JournalEntryDetailPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
+          {/* Double Entry Summary */}
+          <div className="grid grid-cols-2 gap-6">
+            <Card className="border-red-200 bg-red-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2 text-red-700">
+                  <TrendingDown className="w-4 h-4" />
+                  Debit (From)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {debitAccounts.map((line: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-center">
+                      <div>
+                        <div className="font-medium text-sm">{line.account?.name}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{line.account?.code}</div>
+                      </div>
+                      <div className="font-bold text-red-600">
+                        ₹{line.debit.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="pt-2 border-t flex justify-between font-bold text-red-700">
+                    <span>Total Debit</span>
+                    <span>₹{totalDebit.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-green-200 bg-green-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2 text-green-700">
+                  <TrendingUp className="w-4 h-4" />
+                  Credit (To)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {creditAccounts.map((line: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-center">
+                      <div>
+                        <div className="font-medium text-sm">{line.account?.name}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{line.account?.code}</div>
+                      </div>
+                      <div className="font-bold text-green-600">
+                        ₹{line.credit.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="pt-2 border-t flex justify-between font-bold text-green-700">
+                    <span>Total Credit</span>
+                    <span>₹{totalCredit.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Entry Info */}
+          <div className="grid grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
             <div>
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 Date
               </div>
               <div className="font-semibold mt-1">
-                {format(new Date(entry.entryDate || entry.date), 'MMM dd, yyyy')}
+                {formatDate(entry.entryDate || entry.date)}
               </div>
             </div>
             <div>
@@ -98,9 +169,29 @@ export default function JournalEntryDetailPage() {
               </div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Description</div>
-              <div className="font-semibold mt-1">{entry.description}</div>
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Created By
+              </div>
+              <div className="font-semibold mt-1">
+                {entry.createdBy?.firstName} {entry.createdBy?.lastName || entry.createdBy?.name || 'N/A'}
+              </div>
             </div>
+            <div>
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                <ArrowRightLeft className="w-4 h-4" />
+                Amount
+              </div>
+              <div className="font-bold mt-1 text-lg">
+                ₹{totalDebit.toLocaleString('en-IN')}
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="text-sm font-medium text-blue-900 mb-1">Transaction Description</div>
+            <div className="text-blue-800">{entry.description}</div>
           </div>
 
           <div>
@@ -169,10 +260,12 @@ export default function JournalEntryDetailPage() {
             </div>
           )}
 
-          <div className="text-xs text-muted-foreground pt-4 border-t">
-            Created: {format(new Date(entry.createdAt), 'MMM dd, yyyy HH:mm')}
-            {entry.updatedAt && ` • Updated: ${format(new Date(entry.updatedAt), 'MMM dd, yyyy HH:mm')}`}
-          </div>
+          {entry.createdAt && (
+            <div className="text-xs text-muted-foreground pt-4 border-t">
+              Created: {formatDate(entry.createdAt)}
+              {entry.updatedAt && ` • Updated: ${formatDate(entry.updatedAt)}`}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

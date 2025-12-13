@@ -30,6 +30,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/lib/api": [
+        "./src/lib/api/index.ts"
       ]
     }
   },

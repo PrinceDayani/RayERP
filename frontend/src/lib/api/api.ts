@@ -92,4 +92,10 @@ api.interceptors.response.use(
   }
 );
 
+// Helper function for API requests
+export const apiRequest = async (url: string, options?: any) => {
+  const response = await api(url, options);
+  return response.data;
+};
+
 export default api;

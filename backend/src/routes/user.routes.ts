@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAllUsers, getUserById, updateUserRole, resetUserPassword, bulkUpdateUserRoles, getProfile, updateProfile, changePassword, deleteUser, getCompleteProfile, uploadAvatar } from '../controllers/userController';
+import { getAllUsers, getUserById, updateUserRole, resetUserPassword, changeUserPassword, bulkUpdateUserRoles, getProfile, updateProfile, changePassword, deleteUser, getCompleteProfile, uploadAvatar, getPendingStatusRequests, approveStatusRequest, rejectStatusRequest } from '../controllers/userController';
 import { createUser, updateUser } from '../controllers/userManagementController';
 import { protect } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/rbac.middleware';
@@ -20,32 +20,14 @@ router.put("/:id", protect, requirePermission('users.edit'), updateUser);
 router.put("/bulk/role", protect, requirePermission('users.assign_roles'), bulkUpdateUserRoles);
 router.put("/:id/role", protect, requirePermission('users.assign_roles'), updateUserRole);
 router.put("/:id/reset-password", protect, requirePermission('users.reset_password'), resetUserPassword);
-router.put("/:id/activate", protect, requirePermission('users.activate_deactivate'), async (req, res) => {
-  try {
-    const user = await (await import('../models/User')).default.findByIdAndUpdate(
-      req.params.id,
-      { status: 'active' },
-      { new: true }
-    ).select('-password');
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    res.json({ success: true, message: 'User activated', user });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+router.put("/:id/change-password", protect, requirePermission('users.change_password'), changeUserPassword);
+router.put("/:id/status", protect, requirePermission('users.activate_deactivate'), async (req, res) => {
+  const { updateUserStatus } = await import('../controllers/userController');
+  return updateUserStatus(req, res);
 });
-router.put("/:id/deactivate", protect, requirePermission('users.activate_deactivate'), async (req, res) => {
-  try {
-    const user = await (await import('../models/User')).default.findByIdAndUpdate(
-      req.params.id,
-      { status: 'inactive' },
-      { new: true }
-    ).select('-password');
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    res.json({ success: true, message: 'User deactivated', user });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+router.get("/status-requests/pending", protect, requirePermission('users.approve_status'), getPendingStatusRequests);
+router.put("/status-requests/:id/approve", protect, requirePermission('users.approve_status'), approveStatusRequest);
+router.put("/status-requests/:id/reject", protect, requirePermission('users.approve_status'), rejectStatusRequest);
 router.delete("/:id", protect, requirePermission('users.delete'), deleteUser);
 
 export default router;
