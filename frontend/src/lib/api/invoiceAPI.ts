@@ -99,5 +99,11 @@ export const invoiceAPI = {
   calculateLateFees: async () => {
     const response = await api.post('/invoices-new/calculate-late-fees');
     return response.data;
+  },
+
+  // Get customers from contacts
+  getCustomers: async () => {
+    const response = await api.get('/invoices/customers/list');
+    return response.data.data || [];
   }
 };

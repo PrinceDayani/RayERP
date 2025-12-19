@@ -240,9 +240,34 @@ const InvoiceSchema = new Schema<IInvoice>({
   cancellationDate: Date
 }, { timestamps: true });
 
-InvoiceSchema.index({ invoiceNumber: 1 });
-InvoiceSchema.index({ status: 1, dueDate: 1 });
-InvoiceSchema.index({ customerId: 1, status: 1 });
-InvoiceSchema.index({ invoiceDate: 1 });
+// Production-ready indexes
+InvoiceSchema.index({ invoiceNumber: 1 }, { unique: true });
+InvoiceSchema.index({ status: 1, dueDate: 1, balanceAmount: 1 });
+InvoiceSchema.index({ customerId: 1, status: 1, invoiceDate: -1 });
+InvoiceSchema.index({ invoiceDate: -1, status: 1 });
+InvoiceSchema.index({ createdBy: 1, status: 1, invoiceDate: -1 });
+InvoiceSchema.index({ partyName: 'text', invoiceNumber: 'text' });
+
+// Pre-save validation
+InvoiceSchema.pre('save', function(next) {
+  if (this.totalAmount < 0 || this.paidAmount < 0) {
+    return next(new Error('Amounts cannot be negative'));
+  }
+  this.balanceAmount = this.totalAmount - this.paidAmount;
+  if (this.paidAmount >= this.totalAmount && this.status !== 'PAID') {
+    this.status = 'PAID';
+    this.paidDate = new Date();
+  }
+  next();
+});
+
+// Static methods
+InvoiceSchema.statics.findOverdue = function(limit = 50) {
+  return this.find({
+    status: { $in: ['SENT', 'VIEWED', 'PARTIALLY_PAID'] },
+    dueDate: { $lt: new Date() },
+    balanceAmount: { $gt: 0 }
+  }).sort({ dueDate: 1 }).limit(limit).lean();
+};
 
 export default mongoose.model<IInvoice>('Invoice', InvoiceSchema);

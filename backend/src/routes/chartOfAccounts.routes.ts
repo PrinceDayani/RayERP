@@ -2,10 +2,18 @@ import express from 'express';
 import * as coaController from '../controllers/chartOfAccountsController';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { requireFinanceAccess } from '../middleware/financePermission.middleware';
+import * as accountController from '../controllers/accountController';
 
 const router = express.Router();
 
 router.use(authenticateToken);
+
+// Basic CRUD operations
+router.get('/', requireFinanceAccess('accounts.view'), accountController.getAccounts);
+router.post('/', requireFinanceAccess('accounts.create'), accountController.createAccount);
+router.get('/:id', requireFinanceAccess('accounts.view'), accountController.getAccountById);
+router.put('/:id', requireFinanceAccess('accounts.edit'), accountController.updateAccount);
+router.delete('/:id', requireFinanceAccess('accounts.delete'), accountController.deleteAccount);
 
 // Templates
 router.get('/templates', requireFinanceAccess('accounts.view'), coaController.getTemplates);

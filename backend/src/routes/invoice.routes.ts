@@ -1,14 +1,70 @@
 import express from 'express';
 import Invoice from '../models/Invoice';
-import JournalEntry from '../models/JournalEntry';
-import InvoiceTemplate from '../models/InvoiceTemplate';
 import { protect } from '../middleware/auth.middleware';
 import { requireFinanceAccess } from '../middleware/financePermission.middleware';
+import {
+  createInvoice,
+  getInvoices,
+  recordPayment,
+  invoiceRateLimit,
+  validateInvoiceCreation,
+  validateInvoiceUpdate,
+  validateInvoiceId,
+  validatePayment
+} from '../controllers/invoiceControllerProd';
+import { invoiceHealthChecker } from '../utils/invoiceHealthCheck';
 import multer from 'multer';
 import path from 'path';
 
 const router = express.Router();
+
+// Health check endpoint (no auth required for monitoring)
+router.get('/health', async (req, res) => {
+  try {
+    const health = await invoiceHealthChecker.performHealthCheck();
+    const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 206 : 503;
+    res.status(statusCode).json({ success: true, data: health });
+  } catch (error) {
+    res.status(503).json({ 
+      success: false, 
+      message: 'Health check failed',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Detailed metrics endpoint (requires auth)
+router.get('/metrics', protect, async (req, res) => {
+  try {
+    const metrics = await invoiceHealthChecker.getDetailedMetrics();
+    res.json({ success: true, data: metrics });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to get metrics',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET Customers from Contacts (before rate limiter to avoid conflicts)
+router.get('/customers/list', protect, async (req, res) => {
+  try {
+    const Contact = require('../models/Contact').default;
+    const customers = await Contact.find({ isCustomer: true, status: 'active' })
+      .select('_id name email phone company')
+      .sort({ name: 1 })
+      .lean();
+    res.json({ success: true, data: customers });
+  } catch (error: any) {
+    console.error('Error fetching customers:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Apply authentication and rate limiting
 router.use(protect);
+router.use(invoiceRateLimit);
 
 const storage = multer.diskStorage({
   destination: './public/uploads/invoices/',
@@ -64,46 +120,11 @@ const createJournalEntry = async (invoice: any, userId: string) => {
   return je._id;
 };
 
-// CREATE Invoice
-router.post('/', requireFinanceAccess('invoices.create'), async (req, res) => {
-  try {
-    const fiscalYear = new Date(req.body.invoiceDate).getMonth() >= 3 ? new Date(req.body.invoiceDate).getFullYear() : new Date(req.body.invoiceDate).getFullYear() - 1;
-    const invoiceNumber = await generateInvoiceNumber(req.body.invoiceType, fiscalYear);
-    
-    const invoice = new Invoice({
-      ...req.body,
-      invoiceNumber,
-      balanceAmount: req.body.totalAmount,
-      amountInBaseCurrency: req.body.totalAmount * (req.body.exchangeRate || 1),
-      createdBy: req.user?.id
-    });
-    
-    await invoice.save();
-    res.status(201).json({ success: true, data: invoice });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
+// CREATE Invoice with validation
+router.post('/', validateInvoiceCreation, requireFinanceAccess('invoices.create'), createInvoice);
 
-// GET All Invoices with filters
-router.get('/', requireFinanceAccess('invoices.view'), async (req, res) => {
-  try {
-    const { status, type, customerId, fromDate, toDate, overdue } = req.query;
-    const filter: any = {};
-    if (status) filter.status = status;
-    if (type) filter.invoiceType = type;
-    if (customerId) filter.customerId = customerId;
-    if (fromDate || toDate) filter.invoiceDate = {};
-    if (fromDate) filter.invoiceDate.$gte = new Date(fromDate as string);
-    if (toDate) filter.invoiceDate.$lte = new Date(toDate as string);
-    if (overdue === 'true') filter.status = { $in: ['SENT', 'VIEWED', 'PARTIALLY_PAID'] }, filter.dueDate = { $lt: new Date() };
-    
-    const invoices = await Invoice.find(filter).populate('customerId vendorId').sort({ invoiceDate: -1 });
-    res.json({ success: true, data: invoices });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+// GET All Invoices with enhanced filtering
+router.get('/', requireFinanceAccess('invoices.view'), getInvoices);
 
 // GET Invoice Stats
 router.get('/stats', requireFinanceAccess('invoices.view'), async (req, res) => {
@@ -189,41 +210,8 @@ router.post('/:id/send', requireFinanceAccess('invoices.send'), async (req, res)
   }
 });
 
-// POST Invoice - Record Payment
-router.post('/:id/payment', requireFinanceAccess('invoices.edit'), async (req, res) => {
-  try {
-    const invoice = await Invoice.findById(req.params.id);
-    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    
-    const payment = {
-      date: req.body.date || new Date(),
-      amount: req.body.amount,
-      currency: req.body.currency || invoice.currency,
-      exchangeRate: req.body.exchangeRate || invoice.exchangeRate,
-      amountInBaseCurrency: req.body.amount * (req.body.exchangeRate || invoice.exchangeRate),
-      paymentMethod: req.body.paymentMethod,
-      reference: req.body.reference,
-      voucherId: req.body.voucherId,
-      notes: req.body.notes
-    };
-    
-    invoice.payments.push(payment);
-    invoice.paidAmount += payment.amountInBaseCurrency;
-    invoice.balanceAmount = invoice.amountInBaseCurrency - invoice.paidAmount;
-    
-    if (invoice.balanceAmount <= 0) {
-      invoice.status = 'PAID';
-      invoice.paidDate = new Date();
-    } else {
-      invoice.status = 'PARTIALLY_PAID';
-    }
-    
-    await invoice.save();
-    res.json({ success: true, data: invoice });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
+// POST Invoice - Record Payment with validation
+router.post('/:id/payment', validatePayment, requireFinanceAccess('invoices.edit'), recordPayment);
 
 // POST Invoice - Post (Create JE)
 router.post('/:id/post', async (req, res) => {
@@ -365,7 +353,9 @@ router.post('/:id/attachment', upload.single('file'), async (req, res) => {
 // GET Invoice by ID
 router.get('/:id', requireFinanceAccess('invoices.view'), async (req, res) => {
   try {
-    const invoice = await Invoice.findById(req.params.id).populate('customerId vendorId journalEntryId');
+    const invoice = await Invoice.findById(req.params.id)
+      .populate('customerId', 'name email')
+      .populate('createdBy', 'name email');
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
     res.json({ success: true, data: invoice });
   } catch (error: any) {
@@ -376,14 +366,8 @@ router.get('/:id', requireFinanceAccess('invoices.view'), async (req, res) => {
 // PUT Update Invoice
 router.put('/:id', requireFinanceAccess('invoices.edit'), async (req, res) => {
   try {
-    const invoice = await Invoice.findById(req.params.id);
+    const invoice = await Invoice.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    if (invoice.status !== 'DRAFT') return res.status(400).json({ success: false, message: 'Can only update draft invoices' });
-    
-    Object.assign(invoice, req.body);
-    invoice.updatedBy = req.user?.id;
-    await invoice.save();
-    
     res.json({ success: true, data: invoice });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
@@ -396,7 +380,6 @@ router.delete('/:id', requireFinanceAccess('invoices.delete'), async (req, res) 
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
     if (invoice.status !== 'DRAFT') return res.status(400).json({ success: false, message: 'Can only delete draft invoices' });
-    
     await invoice.deleteOne();
     res.json({ success: true, message: 'Invoice deleted' });
   } catch (error: any) {

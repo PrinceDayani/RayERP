@@ -17,6 +17,15 @@ interface DashboardStats {
   revenue: number;
   expenses: number;
   profit: number;
+  // Sales data
+  salesRevenue?: number;
+  salesPaid?: number;
+  salesPending?: number;
+  salesCount?: number;
+  // Project data
+  projectRevenue?: number;
+  projectExpenses?: number;
+  projectProfit?: number;
   timestamp?: string;
 }
 
@@ -42,6 +51,13 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
     revenue: 0,
     expenses: 0,
     profit: 0,
+    salesRevenue: 0,
+    salesPaid: 0,
+    salesPending: 0,
+    salesCount: 0,
+    projectRevenue: 0,
+    projectExpenses: 0,
+    projectProfit: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

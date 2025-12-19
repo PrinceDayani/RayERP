@@ -55,20 +55,42 @@ export const getSalesReport = async (req: Request, res: Response) => {
     const limitNum = Math.min(500, Math.max(1, Number(limit)));
     const skip = (pageNum - 1) * limitNum;
 
-    const [sales, total] = await Promise.all([
+    const [sales, total, summary] = await Promise.all([
       Invoice.find(filter)
-        .select('invoiceNumber partyName totalAmount paidAmount status invoiceDate')
+        .select('invoiceNumber partyName totalAmount paidAmount balanceAmount status invoiceDate dueDate')
         .populate('customerId', 'name email')
         .sort({ invoiceDate: -1 })
         .skip(skip)
         .limit(limitNum)
         .lean(),
-      Invoice.countDocuments(filter)
+      Invoice.countDocuments(filter),
+      Invoice.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$totalAmount' },
+            totalPaid: { $sum: '$paidAmount' },
+            totalPending: { $sum: '$balanceAmount' },
+            transactionCount: { $sum: 1 },
+            avgSaleValue: { $avg: '$totalAmount' }
+          }
+        }
+      ])
     ]);
+
+    const summaryData = summary[0] || {
+      totalRevenue: 0,
+      totalPaid: 0,
+      totalPending: 0,
+      transactionCount: 0,
+      avgSaleValue: 0
+    };
 
     res.json({ 
       success: true, 
       data: sales,
+      summary: summaryData,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -195,12 +217,25 @@ export const getSalesTrends = async (req: Request, res: Response) => {
       {
         $group: {
           _id: groupBy,
-          totalSales: { $sum: '$totalAmount' },
+          revenue: { $sum: '$totalAmount' },
           count: { $sum: 1 }
         }
       },
-      { $sort: { '_id.year': -1, '_id.month': -1, '_id.day': -1 } },
-      { $limit: 12 }
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
+      { $limit: 12 },
+      {
+        $project: {
+          month: {
+            $concat: [
+              { $arrayElemAt: [['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], '$_id.month'] },
+              ' ',
+              { $substr: [{ $toString: '$_id.year' }, 2, 2] }
+            ]
+          },
+          revenue: 1,
+          count: 1
+        }
+      }
     ]);
 
     res.json({ success: true, data: trends });
@@ -212,9 +247,77 @@ export const getSalesTrends = async (req: Request, res: Response) => {
   }
 };
 
+// New endpoint for monthly trend data specifically for frontend
+export const getMonthlyTrends = async (req: Request, res: Response) => {
+  try {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const trends = await Invoice.aggregate([
+      { 
+        $match: { 
+          invoiceType: 'SALES',
+          invoiceDate: { $gte: sixMonthsAgo }
+        } 
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$invoiceDate' },
+            month: { $month: '$invoiceDate' }
+          },
+          revenue: { $sum: '$totalAmount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+      {
+        $project: {
+          month: {
+            $arrayElemAt: [
+              ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], 
+              { $subtract: ['$_id.month', 1] }
+            ]
+          },
+          revenue: 1,
+          count: 1
+        }
+      }
+    ]);
+
+    // Fill missing months with zero values
+    const monthlyData = [];
+    const now = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+      
+      const existingData = trends.find(t => 
+        t.month === monthName && 
+        t._id?.year === date.getFullYear()
+      );
+      
+      monthlyData.push({
+        month: monthName,
+        revenue: existingData?.revenue || 0,
+        count: existingData?.count || 0
+      });
+    }
+
+    res.json({ success: true, data: monthlyData });
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error fetching monthly trends:', error.message);
+    }
+    res.status(500).json({ success: false, message: 'Failed to fetch monthly trends', code: 'SERVER_ERROR' });
+  }
+};
+
 export default {
   getSalesReport,
   getSalesSummary,
   getTopCustomers,
-  getSalesTrends
+  getSalesTrends,
+  getMonthlyTrends
 };

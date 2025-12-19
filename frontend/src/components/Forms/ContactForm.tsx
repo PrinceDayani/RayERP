@@ -373,6 +373,26 @@ const ContactForm: React.FC<ContactFormProps> = ({ initialData, onSubmit, isLoad
             </div>
           </div>
 
+          {/* Customer Status */}
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isCustomer"
+                checked={formData.isCustomer || false}
+                onChange={(e) => setFormData(prev => ({ ...prev, isCustomer: e.target.checked }))}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <Label htmlFor="isCustomer" className="flex items-center gap-2">
+                <Star className="h-4 w-4" />
+                Mark as Customer
+              </Label>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Customers can be selected when creating invoices
+            </p>
+          </div>
+
           {/* Professional Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">

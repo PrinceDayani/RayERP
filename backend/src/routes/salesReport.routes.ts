@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getSalesReport, getSalesSummary, getTopCustomers, getSalesTrends } from '../controllers/salesReportController';
+import { getSalesReport, getSalesSummary, getTopCustomers, getSalesTrends, getMonthlyTrends } from '../controllers/salesReportController';
 import { protect } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/permission.middleware';
 import { apiLimiter } from '../middleware/rateLimiter.middleware';
@@ -24,5 +24,6 @@ router.get('/report',
 router.get('/summary', protect, requirePermission('sales.view'), getSalesSummary);
 router.get('/top-customers', protect, requirePermission('sales.view'), getTopCustomers);
 router.get('/trends', protect, requirePermission('sales.view'), getSalesTrends);
+router.get('/monthly-trends', protect, requirePermission('sales.view'), getMonthlyTrends);
 
 export default router;

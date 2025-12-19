@@ -43,8 +43,8 @@ export default function SalesReportsPage() {
 
   const fetchAccounts = async () => {
     try {
-      const data = await apiClient.get('/general-ledger/accounts?type=revenue');
-      setAccounts(data.accounts || []);
+      const response = await apiClient.get('/general-ledger/accounts?type=revenue');
+      setAccounts(response.data.accounts || []);
     } catch (error) {
       console.error('Failed to load accounts:', error);
     }
@@ -83,12 +83,12 @@ export default function SalesReportsPage() {
         ? `/general-ledger/accounts/${selectedAccount}/ledger?${params}`
         : `/sales-reports/report?${params}`;
       
-      const data = await apiClient.get(endpoint);
-      console.log('API Response:', data);
+      const response = await apiClient.get(endpoint);
+      console.log('API Response:', response.data);
       
       if (selectedAccount !== 'all') {
         // Transform ledger entries to sales format
-        const ledgerEntries = data.entries || [];
+        const ledgerEntries = response.data.entries || [];
         const transformedSales = ledgerEntries.map((entry: any) => ({
           _id: entry._id,
           invoiceNumber: entry.reference || entry.journalEntryId?.entryNumber || 'N/A',
@@ -99,10 +99,10 @@ export default function SalesReportsPage() {
           invoiceDate: entry.date
         }));
         setSales(transformedSales);
-        setTotalPages(data.pagination?.pages || 1);
+        setTotalPages(response.data.pagination?.pages || 1);
       } else {
-        setSales(Array.isArray(data.data) ? data.data : []);
-        setTotalPages(data.pagination?.pages || 1);
+        setSales(Array.isArray(response.data.data) ? response.data.data : []);
+        setTotalPages(response.data.pagination?.pages || 1);
       }
     } catch (err) {
       console.error('Fetch error:', err);

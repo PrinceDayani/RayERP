@@ -23,6 +23,9 @@ export interface IContact extends Document {
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'active' | 'inactive' | 'archived';
   
+  // Customer flag
+  isCustomer: boolean;
+  
   // Additional contact info
   website?: string;
   linkedIn?: string;
@@ -92,6 +95,9 @@ const ContactSchema: Schema = new Schema(
     companySize: { type: String, required: false },
     annualRevenue: { type: String, required: false },
     
+    // Customer flag
+    isCustomer: { type: Boolean, default: false },
+    
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   },
   {
@@ -99,12 +105,54 @@ const ContactSchema: Schema = new Schema(
   }
 );
 
-// Add indexes for better search and filter performance
-ContactSchema.index({ name: 'text', email: 'text', phone: 'text', company: 'text', role: 'text' });
-ContactSchema.index({ visibilityLevel: 1, status: 1 });
-ContactSchema.index({ visibilityLevel: 1, department: 1 });
-ContactSchema.index({ contactType: 1, status: 1 });
-ContactSchema.index({ priority: 1, status: 1 });
-ContactSchema.index({ createdBy: 1, status: 1 });
+// Production-ready indexes for optimal performance
+// Text search index with weights
+ContactSchema.index({ 
+  name: 'text', 
+  email: 'text', 
+  phone: 'text', 
+  company: 'text', 
+  role: 'text' 
+}, {
+  weights: { name: 10, email: 5, phone: 8, company: 6, role: 3 },
+  name: 'contact_text_search'
+});
+
+// Compound indexes for common queries
+ContactSchema.index({ visibilityLevel: 1, status: 1, createdBy: 1 });
+ContactSchema.index({ visibilityLevel: 1, department: 1, status: 1 });
+ContactSchema.index({ contactType: 1, status: 1, priority: 1 });
+ContactSchema.index({ isCustomer: 1, status: 1, name: 1 });
+ContactSchema.index({ createdBy: 1, status: 1, updatedAt: -1 });
+
+// Single field indexes
+ContactSchema.index({ phone: 1 }, { sparse: true });
+ContactSchema.index({ email: 1 }, { sparse: true });
+ContactSchema.index({ createdAt: -1 });
+ContactSchema.index({ updatedAt: -1 });
+
+// Pre-save middleware for data sanitization
+ContactSchema.pre('save', function(next) {
+  if (this.phone) this.phone = this.phone.replace(/[^+\d]/g, '');
+  if (this.email) this.email = this.email.toLowerCase().trim();
+  if (this.name) this.name = this.name.trim();
+  if (this.visibilityLevel === 'departmental' && !this.department) {
+    return next(new Error('Department required for departmental visibility'));
+  }
+  if (this.visibilityLevel !== 'departmental') this.department = undefined;
+  next();
+});
+
+// Static methods for common queries
+ContactSchema.statics.findCustomers = function(userId?: string, limit = 50) {
+  const query: any = { isCustomer: true, status: 'active' };
+  if (userId) {
+    query.$or = [
+      { visibilityLevel: 'universal' },
+      { visibilityLevel: 'personal', createdBy: userId }
+    ];
+  }
+  return this.find(query).select('name email phone company').sort({ name: 1 }).limit(limit).lean();
+};
 
 export default mongoose.model<IContact>('Contact', ContactSchema);

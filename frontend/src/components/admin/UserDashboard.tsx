@@ -61,12 +61,24 @@ interface DashboardStats {
   totalEmployees: number;
   activeEmployees: number;
   totalProjects: number;
+  activeProjects: number;
   completedProjects: number;
   totalTasks: number;
   completedTasks: number;
+  inProgressTasks: number;
+  pendingTasks: number;
   revenue?: number;
   expenses?: number;
   profit?: number;
+  // Sales data
+  salesRevenue?: number;
+  salesPaid?: number;
+  salesPending?: number;
+  salesCount?: number;
+  // Project data
+  projectRevenue?: number;
+  projectExpenses?: number;
+  projectProfit?: number;
 }
 
 interface AnalyticsData {

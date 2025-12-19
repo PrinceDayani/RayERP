@@ -81,25 +81,25 @@ export interface ContactFilterParams {
 // Get all contacts
 export const getContacts = async (): Promise<Contact[]> => {
   const response = await api.get('/contacts');
-  return response.data;
+  return response.data.data || [];
 };
 
 // Get a single contact
 export const getContact = async (id: string): Promise<Contact> => {
   const response = await api.get(`/contacts/${id}`);
-  return response.data;
+  return response.data.data || response.data;
 };
 
 // Create a new contact
 export const createContact = async (contactData: Contact): Promise<Contact> => {
   const response = await api.post('/contacts', contactData);
-  return response.data;
+  return response.data.data || response.data;
 };
 
 // Update an existing contact
 export const updateContact = async (id: string, contactData: Partial<Contact>): Promise<Contact> => {
   const response = await api.put(`/contacts/${id}`, contactData);
-  return response.data;
+  return response.data.data || response.data;
 };
 
 // Delete a contact
@@ -111,7 +111,7 @@ export const deleteContact = async (id: string): Promise<{ message: string }> =>
 // Search contacts
 export const searchContacts = async (query: string): Promise<Contact[]> => {
   const response = await api.get(`/contacts/search?query=${encodeURIComponent(query)}`);
-  return response.data;
+  return response.data.data || [];
 };
 
 // Filter contacts with advanced options

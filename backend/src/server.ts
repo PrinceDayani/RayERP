@@ -366,6 +366,15 @@ connectDB()
       logger.warn('⚠️ Onboarding system could not be initialized:', error.message);
     }
 
+    // Seed default chart of accounts
+    try {
+      const { seedDefaultAccounts } = await import('./utils/seedDefaultAccounts');
+      await seedDefaultAccounts();
+      logger.info('✅ Default chart of accounts seeded');
+    } catch (error) {
+      logger.warn('⚠️ Default accounts could not be seeded:', error.message);
+    }
+
     // Start server
     server.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);

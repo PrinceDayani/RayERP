@@ -50,7 +50,35 @@ router.get('/stats', protect, requirePermission('dashboard.view'), async (req, r
           _id: null,
           totalRevenue: { $sum: '$totalAmount' },
           totalPaid: { $sum: '$paidAmount' },
-          count: { $sum: 1 }
+          count: { $sum: 1 },
+          overdueCount: { 
+            $sum: { 
+              $cond: [
+                { 
+                  $and: [
+                    { $lt: ['$dueDate', new Date()] },
+                    { $gt: ['$balanceAmount', 0] }
+                  ]
+                }, 
+                1, 
+                0
+              ] 
+            } 
+          },
+          overdueAmount: { 
+            $sum: { 
+              $cond: [
+                { 
+                  $and: [
+                    { $lt: ['$dueDate', new Date()] },
+                    { $gt: ['$balanceAmount', 0] }
+                  ]
+                }, 
+                '$balanceAmount', 
+                0
+              ] 
+            } 
+          }
         }}
       ])
     ]);
@@ -87,6 +115,10 @@ router.get('/stats', protect, requirePermission('dashboard.view'), async (req, r
       projectRevenue: projectRevenue,
       projectExpenses: projectExpenses,
       projectProfit: projectRevenue - projectExpenses,
+      
+      // Invoice specific metrics
+      overdueInvoices: salesStats[0]?.overdueCount || 0,
+      overdueAmount: salesStats[0]?.overdueAmount || 0,
       
       timestamp: new Date().toISOString()
     };

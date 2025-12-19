@@ -365,6 +365,7 @@ export default function ContactsPage() {
   };
 
   const getContactTypeStats = useMemo(() => {
+    if (!Array.isArray(allContacts)) return {};
     return allContacts.reduce((acc, contact) => {
       const type = contact.contactType || 'personal';
       acc[type] = (acc[type] || 0) + 1;
@@ -1302,6 +1303,23 @@ export default function ContactsPage() {
                         )}
                       </div>
                     )}
+
+                    {/* Customer Status */}
+                    <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                          <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <span className="text-foreground font-medium">
+                          Customer Status
+                        </span>
+                      </div>
+                      <Checkbox
+                        checked={contact.isCustomer || false}
+                        className="h-5 w-5"
+                        readOnly
+                      />
+                    </div>
 
                     {/* Tags */}
                     {contact.tags && contact.tags.length > 0 && (
