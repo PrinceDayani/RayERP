@@ -73,6 +73,37 @@ userSchema.pre('save', async function (next) {
   }
 });
 
+userSchema.pre('save', async function(next) {
+  if (!this.isNew && this.isModified('role')) {
+    const role = await mongoose.model('Role').findById(this.role);
+    if (role?.name?.toLowerCase() === 'root') {
+      const oldUser = await mongoose.model('User').findById(this._id).populate('role');
+      if ((oldUser?.role as any)?.name?.toLowerCase() !== 'root') {
+        return next(new Error('Cannot assign Root role to users'));
+      }
+    }
+  }
+  next();
+});
+
+userSchema.pre('findOneAndUpdate', async function(next) {
+  const query = this.getQuery();
+  const user = await this.model.findOne(query).populate('role');
+  if ((user?.role as any)?.name?.toLowerCase() === 'root') {
+    return next(new Error('Root user cannot be modified'));
+  }
+  next();
+});
+
+userSchema.pre('findOneAndDelete', async function(next) {
+  const query = this.getQuery();
+  const user = await this.model.findOne(query).populate('role');
+  if ((user?.role as any)?.name?.toLowerCase() === 'root') {
+    return next(new Error('Root user cannot be deleted'));
+  }
+  next();
+});
+
 // Compare password method
 userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);

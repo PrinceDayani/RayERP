@@ -10,6 +10,14 @@ const apiClient = {
     const response = await api.post(url, data);
     return response.data;
   },
+  put: async (url: string, data: any) => {
+    const response = await api.put(url, data);
+    return response.data;
+  },
+  delete: async (url: string) => {
+    const response = await api.delete(url);
+    return response.data;
+  },
 };
 import axios from "axios";
 
@@ -104,7 +112,7 @@ const adminAPI = {
   // User Management
   getUsers: async (): Promise<AdminUser[]> => {
     try {
-      return await apiClient.get('/api/users');
+      return await apiClient.get('/users');
     } catch (error) {
       console.error('Error fetching users:', error);
       throw error;
@@ -208,7 +216,7 @@ const adminAPI = {
   // Role Management
   getRoles: async (): Promise<any[]> => {
     try {
-      const response = await apiClient.get('/api/rbac/roles');
+      const response = await apiClient.get('/rbac/roles');
       console.log('getRoles response:', response);
       // Handle different response formats
       if (Array.isArray(response)) {
@@ -259,7 +267,7 @@ const adminAPI = {
   // RBAC Management
   getPermissions: async (): Promise<any[]> => {
     try {
-      return await apiClient.get('/api/rbac/permissions');
+      return await apiClient.get('/rbac/permissions');
     } catch (error) {
       console.error('Error fetching permissions:', error);
       return [];
@@ -325,7 +333,7 @@ const adminAPI = {
 
   getPendingStatusRequests: async (): Promise<any[]> => {
     try {
-      const response = await apiClient.get('/api/users/status-requests/pending');
+      const response = await apiClient.get('/users/status-requests/pending');
       return response.requests || [];
     } catch (error) {
       console.error('Error fetching pending status requests:', error);

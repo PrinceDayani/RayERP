@@ -1,6 +1,7 @@
 import express from 'express';
 import * as controller from '../controllers/financeAdvancedController';
 import { protect } from '../middleware/auth.middleware';
+import { upload } from '../middleware/documentUpload.middleware';
 
 const router = express.Router();
 
@@ -31,7 +32,10 @@ router.put('/approvals/:id', protect, controller.updateApprovalStatus);
 
 // Document Manager
 router.get('/documents', protect, controller.getDocuments);
-router.post('/documents', protect, controller.uploadDocument);
+router.get('/documents/stats', protect, controller.getDocumentStats);
+router.post('/documents', protect, upload.single('file'), controller.uploadDocument);
+router.get('/documents/:id', protect, controller.downloadDocument);
+router.delete('/documents/:id', protect, controller.deleteDocument);
 
 // Smart Alerts
 router.get('/alerts', protect, controller.getAlerts);

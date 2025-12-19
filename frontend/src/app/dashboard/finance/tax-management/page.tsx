@@ -78,14 +78,14 @@ export default function TaxManagementPage() {
   const fetchTaxData = async () => {
     setError(null);
     try {
-      const { taxManagementAPI } = await import('@/lib/api/financeAPI');
+      const { taxAPI } = await import('@/lib/api/taxAPI');
       const [liabilitiesResponse] = await Promise.all([
-        taxManagementAPI.getTaxLiabilities()
+        taxAPI.getTaxLiabilities()
       ]);
 
-      if (liabilitiesResponse.data?.success) {
-        setTaxRecords(liabilitiesResponse.data.data?.records || []);
-        const data = liabilitiesResponse.data.data;
+      if (liabilitiesResponse.success) {
+        setTaxRecords(liabilitiesResponse.data?.records || []);
+        const data = liabilitiesResponse.data;
         if (data?.summary) {
           setStats({
             totalTax: data.summary.totalTax || 0,
@@ -106,7 +106,7 @@ export default function TaxManagementPage() {
 
   const handleCreateOrUpdate = async () => {
     try {
-      const { taxManagementAPI } = await import('@/lib/api/financeAPI');
+      const { taxAPI } = await import('@/lib/api/taxAPI');
 
       const payload = {
         type: formData.type,
@@ -118,13 +118,13 @@ export default function TaxManagementPage() {
       };
 
       if (editingRecord) {
-        await taxManagementAPI.update(editingRecord.id, payload);
+        await taxAPI.updateTaxRecord(editingRecord.id, payload);
         toast({
           title: 'Success',
           description: 'Tax record updated successfully',
         });
       } else {
-        await taxManagementAPI.create(payload);
+        await taxAPI.createTaxRecord(payload);
         toast({
           title: 'Success',
           description: 'Tax record created successfully',
@@ -147,8 +147,8 @@ export default function TaxManagementPage() {
     if (!recordToDelete) return;
 
     try {
-      const { taxManagementAPI } = await import('@/lib/api/financeAPI');
-      await taxManagementAPI.delete(recordToDelete);
+      const { taxAPI } = await import('@/lib/api/taxAPI');
+      await taxAPI.deleteTaxRecord(recordToDelete);
 
       toast({
         title: 'Success',
@@ -204,17 +204,17 @@ export default function TaxManagementPage() {
 
   const calculateTDS = async () => {
     try {
-      const { taxManagementAPI } = await import('@/lib/api/financeAPI');
-      const response = await taxManagementAPI.calculateTDS(
+      const { taxAPI } = await import('@/lib/api/taxAPI');
+      const response = await taxAPI.calculateTDS(
         parseFloat(tdsAmount),
         parseFloat(tdsRate)
       );
 
-      if (response.data?.success) {
-        setTdsResult(response.data.data);
+      if (response.success) {
+        setTdsResult(response.data);
         toast({
           title: 'TDS Calculated',
-          description: `TDS Amount: ₹${response.data.data.tdsAmount.toLocaleString()}`,
+          description: `TDS Amount: ₹${response.data.tdsAmount.toLocaleString()}`,
         });
       }
     } catch (error: any) {
@@ -228,17 +228,17 @@ export default function TaxManagementPage() {
 
   const calculateIncomeTax = async () => {
     try {
-      const { taxManagementAPI } = await import('@/lib/api/financeAPI');
-      const response = await taxManagementAPI.calculateIncomeTax(
+      const { taxAPI } = await import('@/lib/api/taxAPI');
+      const response = await taxAPI.calculateIncomeTax(
         parseFloat(incomeTaxIncome),
         incomeTaxDeductions ? parseFloat(incomeTaxDeductions) : undefined
       );
 
-      if (response.data?.success) {
-        setIncomeTaxResult(response.data.data);
+      if (response.success) {
+        setIncomeTaxResult(response.data);
         toast({
           title: 'Income Tax Calculated',
-          description: `Tax Amount: ₹${response.data.data.calculatedTax.toLocaleString()}`,
+          description: `Tax Amount: ₹${response.data.calculatedTax.toLocaleString()}`,
         });
       }
     } catch (error: any) {

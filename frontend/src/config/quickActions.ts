@@ -64,5 +64,33 @@ export const QUICK_ACTIONS: QuickAction[] = [
     href: "/dashboard/reports",
     color: "orange",
     badgeText: "REPORT"
+  },
+  {
+    title: "Sales Reports",
+    description: "View sales analytics and revenue",
+    href: "/dashboard/finance/sales-reports",
+    color: "green",
+    badgeText: "SALES"
+  },
+  {
+    title: "Create Invoice",
+    description: "Generate new invoice",
+    href: "/dashboard/finance/invoices",
+    color: "blue",
+    badgeText: "INVOICE"
+  },
+  {
+    title: "General Ledger",
+    description: "View accounting entries",
+    href: "/dashboard/general-ledger",
+    color: "purple",
+    badgeText: "LEDGER"
+  },
+  {
+    title: "Chart of Accounts",
+    description: "Manage account structure",
+    href: "/dashboard/general-ledger/chart-of-accounts",
+    color: "indigo",
+    badgeText: "ACCOUNTS"
   }
 ];

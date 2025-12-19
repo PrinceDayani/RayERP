@@ -9,6 +9,12 @@ export interface ITaxRecord extends Document {
     period: string;
     description: string;
     createdBy: mongoose.Types.ObjectId;
+    isDeleted: boolean;
+    deletedAt?: Date;
+    deletedBy?: mongoose.Types.ObjectId;
+    approvedBy?: mongoose.Types.ObjectId;
+    approvedAt?: Date;
+    attachments?: string[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -66,7 +72,29 @@ const TaxRecordSchema: Schema = new Schema(
             ref: 'User',
             required: true,
             index: true
-        }
+        },
+        isDeleted: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+        deletedAt: {
+            type: Date
+        },
+        deletedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        approvedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        approvedAt: {
+            type: Date
+        },
+        attachments: [{
+            type: String
+        }]
     },
     {
         timestamps: true,
@@ -76,9 +104,15 @@ const TaxRecordSchema: Schema = new Schema(
 );
 
 // Compound indexes for common queries
-TaxRecordSchema.index({ type: 1, status: 1 });
-TaxRecordSchema.index({ createdBy: 1, dueDate: -1 });
-TaxRecordSchema.index({ status: 1, dueDate: 1 });
+TaxRecordSchema.index({ type: 1, status: 1, isDeleted: 1 });
+TaxRecordSchema.index({ createdBy: 1, dueDate: -1, isDeleted: 1 });
+TaxRecordSchema.index({ status: 1, dueDate: 1, isDeleted: 1 });
+TaxRecordSchema.index({ isDeleted: 1, createdAt: -1 });
+
+// Query helper to exclude deleted records
+TaxRecordSchema.query.active = function() {
+    return this.where({ isDeleted: false });
+};
 
 // Virtual for checking if overdue
 TaxRecordSchema.virtual('isOverdue').get(function () {

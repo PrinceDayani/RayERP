@@ -245,16 +245,20 @@ export const updateApprovalStatus = async (req: Request, res: Response) => {
 // Document Manager
 export const getDocuments = async (req: Request, res: Response) => {
   try {
-    const { entityType, entityId } = req.query;
+    const { entityType, entityId, page = 1, limit = 50 } = req.query;
     const query: any = {};
     if (entityType) query['linkedTo.entityType'] = entityType;
     if (entityId) query['linkedTo.entityId'] = entityId;
     
     const documents = await FinancialDocument.find(query)
       .populate('uploadedBy', 'name email')
-      .sort({ uploadedAt: -1 });
+      .sort({ uploadedAt: -1 })
+      .limit(Number(limit))
+      .skip((Number(page) - 1) * Number(limit));
     
-    res.json({ documents });
+    const total = await FinancialDocument.countDocuments(query);
+    
+    res.json({ documents, total, page: Number(page), limit: Number(limit) });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -262,10 +266,88 @@ export const getDocuments = async (req: Request, res: Response) => {
 
 export const uploadDocument = async (req: Request, res: Response) => {
   try {
-    const document = await FinancialDocument.create({ ...req.body, uploadedBy: (req as any).user.id });
-    res.status(201).json({ document });
+    const file = (req as any).file;
+    const { name, type, entityType, entityId } = req.body;
+    
+    if (!file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+    
+    const fs = require('fs');
+    const fileBuffer = fs.readFileSync(file.path);
+    const fileBase64 = fileBuffer.toString('base64');
+    
+    const document = await FinancialDocument.create({
+      name: name || file.originalname || 'Untitled',
+      type: type || 'OTHER',
+      fileUrl: file.filename,
+      fileData: fileBase64,
+      mimeType: file.mimetype,
+      fileSize: file.size,
+      linkedTo: { entityType: entityType || 'GENERAL', entityId: entityId || 'none' },
+      uploadedBy: (req as any).user.id,
+      status: 'ACTIVE'
+    });
+    
+    fs.unlinkSync(file.path);
+    
+    const populated = await FinancialDocument.findById(document._id).populate('uploadedBy', 'name email');
+    
+    res.status(201).json({ success: true, document: populated });
   } catch (error: any) {
-    res.status(400).json({ message: error.message });
+    console.error('Upload error:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const downloadDocument = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { download } = req.query;
+    const document = await FinancialDocument.findById(id).populate('uploadedBy', 'name email');
+    
+    if (!document) return res.status(404).json({ message: 'Document not found' });
+    
+    if (download === 'true' && document.fileData) {
+      const buffer = Buffer.from(document.fileData, 'base64');
+      res.setHeader('Content-Type', document.mimeType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${document.name}"`);
+      res.send(buffer);
+    } else {
+      res.json({ document });
+    }
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteDocument = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const document = await FinancialDocument.findByIdAndDelete(id);
+    
+    if (!document) return res.status(404).json({ message: 'Document not found' });
+    
+    res.json({ message: 'Document deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getDocumentStats = async (req: Request, res: Response) => {
+  try {
+    const total = await FinancialDocument.countDocuments();
+    const thisMonth = await FinancialDocument.countDocuments({
+      uploadedAt: { $gte: new Date(new Date().setDate(1)) }
+    });
+    
+    const byType = await FinancialDocument.aggregate([
+      { $group: { _id: '$type', count: { $sum: 1 } } }
+    ]);
+    
+    res.json({ total, thisMonth, byType });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
 };
 

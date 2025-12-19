@@ -22,7 +22,7 @@ const router = express.Router();
 // Apply authentication to all routes
 router.use(protect);
 
-// Roles management with granular permissions
+// Roles management - Root always has access, others need permission
 router.get('/roles', requirePermission('roles.view'), getRoles);
 router.post('/roles', requirePermission('roles.create'), createRole);
 router.post('/roles/bulk-delete', requirePermission('roles.delete'), bulkDeleteRoles);
@@ -41,9 +41,9 @@ router.put('/roles/:roleId', requirePermission('roles.edit'), updateRole);
 router.patch('/roles/:roleId/toggle-status', requirePermission('roles.edit'), toggleRoleStatus);
 router.delete('/roles/:roleId', requirePermission('roles.delete'), deleteRole);
 
-// Permissions management - Only Root can manage permissions
-router.get('/permissions', getPermissions);
-router.post('/permissions', createPermission);
+// Permissions management - Root always has access, others need permission
+router.get('/permissions', requirePermission('permissions.view'), getPermissions);
+router.post('/permissions', requirePermission('permissions.create'), createPermission);
 router.post('/permissions/initialize', async (req, res) => {
   try {
     const result = await initializePermissions();

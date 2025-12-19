@@ -3,6 +3,13 @@ import { Role } from '../models/Role';
 export const initializeDefaultRoles = async () => {
   const defaultRoles = [
     {
+      name: 'Root',
+      description: 'Root user with all permissions - cannot be modified',
+      permissions: ['*'],
+      isDefault: true,
+      level: 100
+    },
+    {
       name: 'Super Admin',
       description: 'Full system access with all permissions',
       permissions: [
@@ -12,8 +19,13 @@ export const initializeDefaultRoles = async () => {
         'view_inventory', 'manage_inventory',
         'view_customers', 'create_customer', 'update_customer', 'delete_customer',
         'view_reports', 'export_data',
-        'manage_roles', 'system_settings', 'view_logs'
-      ]
+        'manage_roles', 'system_settings', 'view_logs',
+        'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
+        'permissions.view', 'permissions.create', 'permissions.edit', 'permissions.delete',
+        'users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'
+      ],
+      isDefault: true,
+      level: 90
     },
     {
       name: 'Manager',
@@ -24,8 +36,11 @@ export const initializeDefaultRoles = async () => {
         'view_orders', 'create_order', 'update_order',
         'view_inventory', 'manage_inventory',
         'view_customers', 'create_customer', 'update_customer',
-        'view_reports', 'export_data'
-      ]
+        'view_reports', 'export_data',
+        'users.view', 'users.edit'
+      ],
+      isDefault: true,
+      level: 50
     },
     {
       name: 'Employee',
@@ -36,7 +51,9 @@ export const initializeDefaultRoles = async () => {
         'view_inventory',
         'view_customers', 'create_customer', 'update_customer',
         'view_reports'
-      ]
+      ],
+      isDefault: true,
+      level: 30
     },
     {
       name: 'Viewer',
@@ -47,7 +64,9 @@ export const initializeDefaultRoles = async () => {
         'view_inventory',
         'view_customers',
         'view_reports'
-      ]
+      ],
+      isDefault: true,
+      level: 10
     }
   ];
 
@@ -57,6 +76,13 @@ export const initializeDefaultRoles = async () => {
       if (!existing) {
         await Role.create(roleData);
         console.log(`✅ Created default role: ${roleData.name}`);
+      } else if (roleData.name === 'Root') {
+        // Ensure Root always has all permissions
+        existing.permissions = ['*'];
+        existing.level = 100;
+        existing.isDefault = true;
+        await existing.save();
+        console.log(`✅ Updated Root role with all permissions`);
       }
     }
     console.log('✅ Default roles initialized');

@@ -4,6 +4,7 @@ import { requirePermission } from '../middleware/rbac.middleware';
 import Employee from '../models/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
+import Invoice from '../models/Invoice';
 import { io } from '../server';
 
 const router = express.Router();
@@ -21,7 +22,7 @@ router.get('/stats', protect, requirePermission('dashboard.view'), async (req, r
     }
 
     // Use aggregation for ultra-fast counting
-    const [employeeStats, projectStats, taskStats] = await Promise.all([
+    const [employeeStats, projectStats, taskStats, salesStats] = await Promise.all([
       Employee.aggregate([
         { $facet: {
           total: [{ $count: 'count' }],
@@ -43,8 +44,23 @@ router.get('/stats', protect, requirePermission('dashboard.view'), async (req, r
           inProgress: [{ $match: { status: 'in-progress' } }, { $count: 'count' }],
           pending: [{ $match: { status: 'todo' } }, { $count: 'count' }]
         }}
+      ]),
+      Invoice.aggregate([
+        { $group: {
+          _id: null,
+          totalRevenue: { $sum: '$totalAmount' },
+          totalPaid: { $sum: '$paidAmount' },
+          count: { $sum: 1 }
+        }}
       ])
     ]);
+
+    // Separate sales and project data for executive view
+    const salesRevenue = salesStats[0]?.totalRevenue || 0;
+    const salesPaid = salesStats[0]?.totalPaid || 0;
+    const salesCount = salesStats[0]?.count || 0;
+    const projectRevenue = projectStats[0].financials[0]?.revenue || 0;
+    const projectExpenses = projectStats[0].financials[0]?.expenses || 0;
 
     const stats = {
       totalEmployees: employeeStats[0].total[0]?.count || 0,
@@ -56,9 +72,22 @@ router.get('/stats', protect, requirePermission('dashboard.view'), async (req, r
       completedTasks: taskStats[0].completed[0]?.count || 0,
       inProgressTasks: taskStats[0].inProgress[0]?.count || 0,
       pendingTasks: taskStats[0].pending[0]?.count || 0,
-      revenue: projectStats[0].financials[0]?.revenue || 0,
-      expenses: projectStats[0].financials[0]?.expenses || 0,
-      profit: (projectStats[0].financials[0]?.revenue || 0) - (projectStats[0].financials[0]?.expenses || 0),
+      
+      // Combined revenue (for backward compatibility)
+      revenue: salesRevenue > 0 ? salesRevenue : projectRevenue,
+      expenses: projectExpenses,
+      profit: (salesRevenue > 0 ? salesRevenue : projectRevenue) - projectExpenses,
+      
+      // Separated data for executive view
+      salesRevenue: salesRevenue,
+      salesPaid: salesPaid,
+      salesPending: salesRevenue - salesPaid,
+      salesCount: salesCount,
+      
+      projectRevenue: projectRevenue,
+      projectExpenses: projectExpenses,
+      projectProfit: projectRevenue - projectExpenses,
+      
       timestamp: new Date().toISOString()
     };
 

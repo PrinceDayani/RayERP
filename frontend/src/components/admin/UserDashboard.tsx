@@ -42,6 +42,8 @@ import { toast } from "@/components/ui/use-toast";
 import { initializeSocket, getSocket } from "@/lib/socket";
 import { hasPermission, hasMinimumLevel, PERMISSIONS, ROLE_LEVELS } from "@/lib/permissions";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useSalesData } from "@/hooks/useSalesData";
+import { formatINR } from "@/lib/currency";
 const AnalyticsCharts = lazy(() => import('@/components/Dashboard/AnalyticsCharts'));
 const EmployeeList = lazy(() => import('@/components/employee').then(m => ({ default: m.EmployeeList })));
 const ProjectList = lazy(() => import('@/components/projects').then(m => ({ default: m.ProjectList })));
@@ -79,9 +81,11 @@ const Dashboard = () => {
   const { currency, formatAmount } = useCurrency();
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
+  // const { salesData, loading: salesLoading } = useSalesData();
   
   // State management with proper typing
   const [activeTab, setActiveTab] = useState("overview");
+  const [revenueView, setRevenueView] = useState<'sales' | 'projects'>('sales');
   const { stats, loading: dataLoading, error: dataError, socketConnected, refresh } = useDashboardData(isAuthenticated);
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     projectProgress: [],
@@ -515,66 +519,124 @@ const Dashboard = () => {
             {/* Enhanced Analytics Section - Moved to Top */}
             {isAuthenticated && (
               <>
-                {/* Financial Overview - Compact */}
+                {/* Revenue View Toggle */}
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">Financial Overview</h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={revenueView === 'sales' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRevenueView('sales')}
+                    >
+                      Sales Revenue
+                    </Button>
+                    <Button
+                      variant={revenueView === 'projects' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRevenueView('projects')}
+                    >
+                      Project Budgets
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Financial Overview - Executive Separated View */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="border-l-4 border-l-green-500">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Revenue</p>
-                          <h3 className="text-xl font-bold">{formatAmount(stats.revenue || 0)}</h3>
-                          {trends?.revenue && (
-                            <span className={`text-xs flex items-center ${
-                              trends.revenue.direction === 'up' ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {trends.revenue.direction === 'up' ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                              {trends.revenue.value}%
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {revenueView === 'sales' ? (
+                    <>
+                      <Card className="border-l-4 border-l-green-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Sales Revenue</p>
+                              <h3 className="text-xl font-bold">{formatINR(stats.salesRevenue || 0)}</h3>
+                              <p className="text-xs text-muted-foreground">
+                                {stats.salesCount || 0} invoices
+                              </p>
+                            </div>
+                            <TrendingUp className="h-8 w-8 text-green-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                  <Card className="border-l-4 border-l-orange-500">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Expenses</p>
-                          <h3 className="text-xl font-bold">{formatAmount(stats.expenses || 0)}</h3>
-                          {trends?.expenses && (
-                            <span className={`text-xs flex items-center ${
-                              trends.expenses.direction === 'up' ? 'text-orange-600' : 'text-green-600'
-                            }`}>
-                              {trends.expenses.direction === 'up' ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                              {trends.expenses.value}%
-                            </span>
-                          )}
-                        </div>
-                        <TrendingDown className="h-8 w-8 text-orange-600" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                      <Card className="border-l-4 border-l-blue-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Amount Received</p>
+                              <h3 className="text-xl font-bold text-green-600">{formatINR(stats.salesPaid || 0)}</h3>
+                              <p className="text-xs text-muted-foreground">
+                                {stats.salesRevenue > 0 ? ((stats.salesPaid/stats.salesRevenue)*100).toFixed(1) : '0'}% collected
+                              </p>
+                            </div>
+                            <Calendar className="h-8 w-8 text-blue-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                  <Card className="border-l-4 border-l-red-500">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Profit</p>
-                          <h3 className="text-xl font-bold">{formatAmount(stats.profit || 0)}</h3>
-                          {trends?.profit && (
-                            <span className={`text-xs flex items-center ${
-                              trends.profit.direction === 'up' ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {trends.profit.direction === 'up' ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                              {trends.profit.value}%
-                            </span>
-                          )}
-                        </div>
-                        <Target className="h-8 w-8 text-red-600" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                      <Card className="border-l-4 border-l-orange-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Pending Amount</p>
+                              <h3 className="text-xl font-bold text-orange-600">{formatINR(stats.salesPending || 0)}</h3>
+                              <p className="text-xs text-muted-foreground">
+                                {stats.salesRevenue > 0 ? ((stats.salesPending/stats.salesRevenue)*100).toFixed(1) : '0'}% pending
+                              </p>
+                            </div>
+                            <Clock className="h-8 w-8 text-orange-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  ) : (
+                    <>
+                      <Card className="border-l-4 border-l-purple-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Project Revenue</p>
+                              <h3 className="text-xl font-bold">{formatINR(stats.projectRevenue || 0)}</h3>
+                              <p className="text-xs text-muted-foreground">
+                                {stats.totalProjects || 0} projects
+                              </p>
+                            </div>
+                            <Briefcase className="h-8 w-8 text-purple-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="border-l-4 border-l-red-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Project Expenses</p>
+                              <h3 className="text-xl font-bold text-red-600">{formatINR(stats.projectExpenses || 0)}</h3>
+                              <p className="text-xs text-muted-foreground">
+                                Spent budget
+                              </p>
+                            </div>
+                            <TrendingDown className="h-8 w-8 text-red-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="border-l-4 border-l-green-500">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Project Profit</p>
+                              <h3 className="text-xl font-bold text-green-600">{formatINR(stats.projectProfit || 0)}</h3>
+                              <p className="text-xs text-muted-foreground">
+                                Budget - Spent
+                              </p>
+                            </div>
+                            <Target className="h-8 w-8 text-green-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  )}
                 </div>
 
                 {/* Charts Section - Compact */}

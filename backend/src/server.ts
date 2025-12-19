@@ -169,7 +169,15 @@ app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET');
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
-}, express.static(path.join(__dirname, '../uploads')));
+}, express.static(path.join(__dirname, '../public/uploads')));
+
+// Serve static files from public directory
+app.use('/public', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, '../public')));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

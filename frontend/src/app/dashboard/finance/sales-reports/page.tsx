@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { apiClient } from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface Sale {
   _id: string;
@@ -30,12 +31,24 @@ export default function SalesReportsPage() {
   const [dateRange, setDateRange] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedAccount, setSelectedAccount] = useState<string>('all');
+  const [accounts, setAccounts] = useState<any[]>([]);
 
   const debouncedSearch = useDebounce(searchTerm, 500);
 
   useEffect(() => {
     fetchSales();
-  }, [statusFilter, dateRange, page]);
+    fetchAccounts();
+  }, [statusFilter, dateRange, page, selectedAccount]);
+
+  const fetchAccounts = async () => {
+    try {
+      const data = await apiClient.get('/general-ledger/accounts?type=revenue');
+      setAccounts(data.accounts || []);
+    } catch (error) {
+      console.error('Failed to load accounts:', error);
+    }
+  };
 
   const fetchSales = async () => {
     try {
@@ -44,6 +57,7 @@ export default function SalesReportsPage() {
 
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
+      if (selectedAccount !== 'all') params.append('accountId', selectedAccount);
       params.append('page', page.toString());
       params.append('limit', '50');
       
@@ -64,10 +78,34 @@ export default function SalesReportsPage() {
         params.append('startDate', startDate.toISOString().split('T')[0]);
       }
 
-      const data = await apiClient.get(`/api/sales-reports/report?${params}`);
-      setSales(data.data || []);
-      setTotalPages(data.data?.pagination?.pages || 1);
+      // If account is selected, get ledger transactions instead of invoices
+      const endpoint = selectedAccount !== 'all' 
+        ? `/general-ledger/accounts/${selectedAccount}/ledger?${params}`
+        : `/sales-reports/report?${params}`;
+      
+      const data = await apiClient.get(endpoint);
+      console.log('API Response:', data);
+      
+      if (selectedAccount !== 'all') {
+        // Transform ledger entries to sales format
+        const ledgerEntries = data.entries || [];
+        const transformedSales = ledgerEntries.map((entry: any) => ({
+          _id: entry._id,
+          invoiceNumber: entry.reference || entry.journalEntryId?.entryNumber || 'N/A',
+          partyName: entry.description || 'Direct Transaction',
+          totalAmount: entry.credit || 0, // Revenue accounts increase with credits
+          paidAmount: entry.credit || 0,
+          status: 'paid',
+          invoiceDate: entry.date
+        }));
+        setSales(transformedSales);
+        setTotalPages(data.pagination?.pages || 1);
+      } else {
+        setSales(Array.isArray(data.data) ? data.data : []);
+        setTotalPages(data.pagination?.pages || 1);
+      }
     } catch (err) {
+      console.error('Fetch error:', err);
       const message = err instanceof Error ? err.message : 'Failed to load sales data';
       setError(message);
       setSales([]);
@@ -76,12 +114,12 @@ export default function SalesReportsPage() {
     }
   };
 
-  const filteredSales = sales.filter(sale => {
+  const filteredSales = Array.isArray(sales) ? sales.filter(sale => {
     if (!debouncedSearch) return true;
     const search = debouncedSearch.toLowerCase();
     return sale.partyName?.toLowerCase().includes(search) ||
            sale.invoiceNumber?.toLowerCase().includes(search);
-  });
+  }) : [];
 
   const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
   const totalPaid = filteredSales.reduce((sum, sale) => sum + (sale.paidAmount || 0), 0);
@@ -101,16 +139,51 @@ export default function SalesReportsPage() {
     return colors[s] || 'bg-gray-100 text-gray-800';
   };
 
+  const chartData = useMemo(() => {
+    if (!Array.isArray(sales)) return [];
+    const grouped = sales.reduce((acc, sale) => {
+      const date = new Date(sale.invoiceDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const existing = acc.find(d => d.date === date);
+      if (existing) existing.amount += sale.totalAmount;
+      else acc.push({ date, amount: sale.totalAmount });
+      return acc;
+    }, [] as { date: string; amount: number }[]);
+    return grouped.slice(-10);
+  }, [sales]);
+
+  const statusData = useMemo(() => {
+    if (!Array.isArray(sales)) return [];
+    const counts = sales.reduce((acc, sale) => {
+      acc[sale.status] = (acc[sale.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [sales]);
+
+  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+
   if (loading && sales.length === 0) {
     return (
-      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading sales data...</p>
+      <div className="min-h-screen bg-background p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Sales Reports</h1>
+            <p className="text-muted-foreground mt-1">Loading...</p>
+          </div>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="h-80 bg-muted animate-pulse rounded-lg" />
+          <div className="h-80 bg-muted animate-pulse rounded-lg" />
+        </div>
+        <div className="h-96 bg-muted animate-pulse rounded-lg" />
       </div>
     );
   }
+
+  console.log('Sales state:', sales, 'Length:', sales.length);
 
   return (
     <div className="min-h-screen bg-background p-6 space-y-6">
@@ -119,10 +192,73 @@ export default function SalesReportsPage() {
           <h1 className="text-3xl font-bold text-foreground">Sales Reports</h1>
           <p className="text-muted-foreground mt-1">Track and analyze all sales transactions</p>
         </div>
-        <Button className="bg-primary" aria-label="Export sales report">
+        <Button onClick={() => {
+          const csv = [
+            ['Invoice #', 'Customer', 'Date', 'Total', 'Paid', 'Balance', 'Status'],
+            ...filteredSales.map(s => [
+              s.invoiceNumber, s.partyName, new Date(s.invoiceDate).toLocaleDateString(),
+              s.totalAmount, s.paidAmount, s.totalAmount - s.paidAmount, s.status
+            ])
+          ].map(r => r.join(',')).join('\n');
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `sales-${new Date().toISOString().split('T')[0]}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }} className="bg-primary" aria-label="Export sales report">
           <Download className="w-4 h-4 mr-2" />
           Export Report
         </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4 mb-6">
+        <div className="flex items-center gap-2">
+          <Search className="w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search transactions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-64"
+          />
+        </div>
+        <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Select Revenue Account" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sales (Invoice-based)</SelectItem>
+            {accounts.map((account) => (
+              <SelectItem key={account._id} value={account._id}>
+                {account.code} - {account.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={dateRange} onValueChange={setDateRange}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Date range" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="week">This Week</SelectItem>
+            <SelectItem value="month">This Month</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {error && (
@@ -132,7 +268,8 @@ export default function SalesReportsPage() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
@@ -182,48 +319,69 @@ export default function SalesReportsPage() {
         </Card>
       </div>
 
+      {sales.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sales Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} />
+                  <Bar dataKey="amount" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Status Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+
+
       <Card>
         <CardHeader>
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <CardTitle>Sales Transactions</CardTitle>
-            <div className="flex gap-2 w-full md:w-auto">
-              <div className="relative flex-1 md:w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search customer or invoice..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                  aria-label="Search sales"
-                />
+          <CardTitle className="flex items-center justify-between">
+            <span>
+              {selectedAccount !== 'all' ? 'Account Transactions' : 'Sales Transactions'}
+              <Badge variant="secondary" className="ml-2">{filteredSales.length}</Badge>
+            </span>
+            {selectedAccount !== 'all' && accounts.find(a => a._id === selectedAccount) && (
+              <div className="text-sm text-muted-foreground">
+                Account: {accounts.find(a => a._id === selectedAccount)?.code} - {accounts.find(a => a._id === selectedAccount)?.name}
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32" aria-label="Filter by status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="PAID">Paid</SelectItem>
-                  <SelectItem value="SENT">Sent</SelectItem>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="PARTIALLY_PAID">Partially Paid</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="OVERDUE">Overdue</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="w-32" aria-label="Filter by date range">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
