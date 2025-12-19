@@ -10,6 +10,8 @@ import { Clock, TrendingDown, AlertTriangle, Download, Filter, Calendar } from '
 import PageHeader from '@/components/PageHeader';
 import DataTable, { Column } from '@/components/DataTable';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import ErrorState from '@/components/ErrorState';
+import EmptyState from '@/components/EmptyState';
 
 interface AgingRecord {
   id: string;
@@ -26,6 +28,7 @@ interface AgingRecord {
 export default function AgingAnalysisPage() {
   const [agingData, setAgingData] = useState<AgingRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState('receivables');
   const [stats, setStats] = useState({
     totalOutstanding: 0,
@@ -42,68 +45,32 @@ export default function AgingAnalysisPage() {
 
   const fetchAgingData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const { agingAnalysisAPI } = await import('@/lib/api/financeApi');
+      const { agingAnalysisAPI } = await import('@/lib/api/financeAPI');
+      // Use getReceivables or getPayables based on selectedType
+      const dataMethod = selectedType === 'receivables'
+        ? agingAnalysisAPI.getReceivables
+        : agingAnalysisAPI.getPayables;
+
       const [dataResponse, summaryResponse] = await Promise.all([
-        agingAnalysisAPI.getAgingData(selectedType as 'receivables' | 'payables'),
-        agingAnalysisAPI.getAgingSummary(selectedType as 'receivables' | 'payables')
+        dataMethod(),
+        agingAnalysisAPI.getSummary()
       ]);
-      
-      if (dataResponse.success) {
-        setAgingData(dataResponse.data);
+
+      // Backend returns { success, data } wrapped in axios response.data
+      if (dataResponse.data?.success) {
+        setAgingData(dataResponse.data.data);
       }
-      
-      if (summaryResponse.success) {
-        setStats(summaryResponse.data);
+
+      if (summaryResponse.data?.success) {
+        setStats(summaryResponse.data.data);
       }
-      
+
       setLoading(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching aging data:', error);
-      // Fallback to mock data
-      setAgingData([
-        {
-          id: '1',
-          customerName: 'ABC Corp Ltd',
-          invoiceNumber: 'INV-2023-001',
-          amount: 50000,
-          dueDate: '2023-12-15',
-          daysOverdue: 45,
-          agingBucket: '31-60',
-          status: 'Overdue',
-          contactInfo: 'finance@abccorp.com'
-        },
-        {
-          id: '2',
-          customerName: 'XYZ Industries',
-          invoiceNumber: 'INV-2023-002',
-          amount: 75000,
-          dueDate: '2023-11-20',
-          daysOverdue: 70,
-          agingBucket: '61-90',
-          status: 'Critical',
-          contactInfo: 'accounts@xyzind.com'
-        },
-        {
-          id: '3',
-          customerName: 'Tech Solutions Inc',
-          invoiceNumber: 'INV-2024-001',
-          amount: 25000,
-          dueDate: '2024-01-30',
-          daysOverdue: 0,
-          agingBucket: '0-30',
-          status: 'Current',
-          contactInfo: 'billing@techsol.com'
-        }
-      ]);
-      setStats({
-        totalOutstanding: 150000,
-        current: 25000,
-        overdue30: 50000,
-        overdue60: 75000,
-        overdue90: 0,
-        criticalAccounts: 1
-      });
+      setError(error?.message || 'Failed to load aging data. Please try again.');
       setLoading(false);
     }
   };
@@ -335,6 +302,16 @@ export default function AgingAnalysisPage() {
         <TabsContent value="detailed">
           {loading ? (
             <LoadingSpinner size="lg" text="Loading aging data..." />
+          ) : error ? (
+            <ErrorState
+              message={error}
+              onRetry={fetchAgingData}
+            />
+          ) : agingData.length === 0 ? (
+            <EmptyState
+              title="No aging data found"
+              message={`No ${selectedType} aging data is available at this time. This could mean there are no outstanding ${selectedType === 'receivables' ? 'invoices' : 'bills'}.`}
+            />
           ) : (
             <DataTable
               data={agingData}

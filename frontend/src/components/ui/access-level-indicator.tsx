@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/tooltip";
 import { Eye, Lock, Users, Info, Shield, UserCheck } from "lucide-react";
 
 interface AccessLevelIndicatorProps {
@@ -12,19 +12,19 @@ interface AccessLevelIndicatorProps {
   onRequestAccess?: () => void;
 }
 
-export function AccessLevelIndicator({ 
-  isBasicView, 
-  className, 
+export function AccessLevelIndicator({
+  isBasicView,
+  className,
   showRequestAccess = false,
-  onRequestAccess 
+  onRequestAccess
 }: AccessLevelIndicatorProps) {
   if (!isBasicView) {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge 
-              variant="default" 
+            <Badge
+              variant="default"
               className={`text-xs flex items-center gap-1 bg-green-100 text-green-800 border-green-200 hover:bg-green-200 ${className}`}
             >
               <UserCheck className="w-3 h-3" />
@@ -46,8 +46,8 @@ export function AccessLevelIndicator({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge 
-            variant="outline" 
+          <Badge
+            variant="outline"
             className={`text-xs flex items-center gap-1 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 ${className}`}
           >
             <Eye className="w-3 h-3" />
@@ -68,9 +68,9 @@ export function AccessLevelIndicator({
               </ul>
             </div>
             {showRequestAccess && onRequestAccess && (
-              <Button 
-                size="sm" 
-                variant="outline" 
+              <Button
+                size="sm"
+                variant="outline"
                 className="w-full mt-2 text-xs h-7"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -93,10 +93,10 @@ interface AccessLevelLegendProps {
   basicViewCount?: number;
 }
 
-export function AccessLevelLegend({ 
-  className, 
-  fullAccessCount = 0, 
-  basicViewCount = 0 
+export function AccessLevelLegend({
+  className,
+  fullAccessCount = 0,
+  basicViewCount = 0
 }: AccessLevelLegendProps) {
   return (
     <div className={`flex items-center gap-6 text-sm bg-gray-50 dark:bg-gray-900 px-4 py-2 rounded-lg border ${className}`}>

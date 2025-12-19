@@ -77,6 +77,7 @@ import {
 } from '../controllers/glAdvancedController';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/rbac.middleware';
+import { journalEntryValidation, validate, accountValidation } from '../middleware/validation.middleware';
 
 const router = express.Router();
 
@@ -111,16 +112,16 @@ router.get('/hierarchy', requireFinanceAccess('accounts.view'), getAccountHierar
 
 // Legacy Account routes
 router.get('/accounts', requireFinanceAccess('accounts.view'), getAccounts);
-router.post('/accounts', requireFinanceAccess('accounts.create'), createAccount);
-router.put('/accounts/:id', requireFinanceAccess('accounts.edit'), updateAccount);
+router.post('/accounts', requireFinanceAccess('accounts.create'), accountValidation, validate, createAccount);
+router.put('/accounts/:id', requireFinanceAccess('accounts.edit'), accountValidation, validate, updateAccount);
 router.delete('/accounts/:id', requireFinanceAccess('accounts.delete'), deleteAccount);
 
 // Journal entry routes
 router.get('/journal-entries', requireFinanceAccess('journal.view'), getJournalEntries);
 router.get('/journal-entries/:id', requireFinanceAccess('journal.view'), getJournalEntry);
 router.get('/journal-entries/:id/audit-trail', requireFinanceAccess('journal.view'), getJournalEntry);
-router.post('/journal-entries', requireFinanceAccess('journal.create'), createJournalEntry);
-router.put('/journal-entries/:id', requireFinanceAccess('journal.edit'), updateJournalEntry);
+router.post('/journal-entries', requireFinanceAccess('journal.create'), journalEntryValidation, validate, createJournalEntry);
+router.put('/journal-entries/:id', requireFinanceAccess('journal.edit'), journalEntryValidation, validate, updateJournalEntry);
 router.post('/journal-entries/:id/post', requireFinanceAccess('journal.post'), postJournalEntry);
 router.delete('/journal-entries/:id', requireFinanceAccess('journal.delete'), deleteJournalEntry);
 

@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { accountValidation, validate } from '../middleware/validation.middleware';
 import {
   createAccount,
   getAccounts,
@@ -18,7 +19,7 @@ const router = express.Router();
 
 router.use(authenticateToken);
 
-router.post('/', createAccount);
+router.post('/', accountValidation, validate, createAccount);
 router.post('/bulk', bulkCreateAccounts);
 router.post('/:id/duplicate', duplicateAccount);
 router.get('/', getAccounts);
@@ -28,7 +29,7 @@ router.put('/types/:id', updateAccountType);
 router.delete('/types/:id', deleteAccountType);
 router.get('/project/:projectId', getAccounts);
 router.get('/:id', getAccountById);
-router.put('/:id', updateAccount);
+router.put('/:id', accountValidation, validate, updateAccount);
 router.delete('/:id', deleteAccount);
 
 export default router;

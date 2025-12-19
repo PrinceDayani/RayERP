@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, CheckCheck, Clock, AlertCircle, Send } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/tooltip';
 
 interface MessageStatusProps {
   status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
@@ -11,12 +11,12 @@ interface MessageStatusProps {
   className?: string;
 }
 
-export default function MessageStatus({ 
-  status, 
-  timestamp, 
-  readBy = [], 
+export default function MessageStatus({
+  status,
+  timestamp,
+  readBy = [],
   deliveredTo = [],
-  className = "" 
+  className = ""
 }: MessageStatusProps) {
   const getStatusIcon = () => {
     switch (status) {
@@ -42,11 +42,11 @@ export default function MessageStatus({
       case 'sent':
         return 'Sent';
       case 'delivered':
-        return deliveredTo.length > 0 
+        return deliveredTo.length > 0
           ? `Delivered to ${deliveredTo.map(u => u.name).join(', ')}`
           : 'Delivered';
       case 'read':
-        return readBy.length > 0 
+        return readBy.length > 0
           ? `Read by ${readBy.map(u => u.name).join(', ')}`
           : 'Read';
       case 'failed':
@@ -58,25 +58,25 @@ export default function MessageStatus({
 
   const getDetailedInfo = () => {
     const info = [];
-    
+
     if (timestamp) {
       info.push(`Sent: ${new Date(timestamp).toLocaleString()}`);
     }
-    
+
     if (deliveredTo.length > 0) {
       info.push('Delivered to:');
       deliveredTo.forEach(user => {
         info.push(`• ${user.name} at ${new Date(user.deliveredAt).toLocaleString()}`);
       });
     }
-    
+
     if (readBy.length > 0) {
       info.push('Read by:');
       readBy.forEach(user => {
         info.push(`• ${user.name} at ${new Date(user.readAt).toLocaleString()}`);
       });
     }
-    
+
     return info.join('\n');
   };
 

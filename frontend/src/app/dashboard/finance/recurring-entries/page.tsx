@@ -12,8 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Play, Pause, Trash2, RefreshCw, CheckCircle, XCircle, Clock, AlertTriangle, Minus, Edit, History, Download, Search, Copy, Save, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
+import { recurringEntriesAPI, accountsAPI } from '@/lib/api/financeAPI';
+import { validateRecurringEntry } from '@/utils/validation';
+import { exportRecurringEntries } from '@/utils/exportUtils';
 
 export default function RecurringEntriesPage() {
   const [entries, setEntries] = useState<any[]>([]);
@@ -49,10 +50,8 @@ export default function RecurringEntriesPage() {
 
   const fetchAccounts = async () => {
     try {
-      const token = localStorage.getItem('auth-token');
-      const res = await fetch(`${API_URL}/api/accounts`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setAccounts(data.success ? data.data : []);
+      const response = await accountsAPI.getAll();
+      setAccounts(response.data?.data || []);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to load accounts', variant: 'destructive' });
     }
@@ -61,22 +60,15 @@ export default function RecurringEntriesPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth-token');
-      const [allRes, failedRes, pendingRes] = await Promise.all([
-        fetch(`${API_URL}/api/recurring-entries`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/api/recurring-entries/failed`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/api/recurring-entries/pending-approvals`, { headers: { Authorization: `Bearer ${token}` } })
-      ]);
-      
       const [allData, failedData, pendingData] = await Promise.all([
-        allRes.json(),
-        failedRes.json(),
-        pendingRes.json()
+        recurringEntriesAPI.getAll(),
+        recurringEntriesAPI.getFailed(),
+        recurringEntriesAPI.getPendingApprovals()
       ]);
 
-      if (allData.success) setEntries(allData.data || []);
-      if (failedData.success) setFailed(failedData.data || []);
-      if (pendingData.success) setPending(pendingData.data || []);
+      setEntries(allData.data?.data || []);
+      setFailed(failedData.data?.data || []);
+      setPending(pendingData.data?.data || []);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to fetch data', variant: 'destructive' });
     } finally {
@@ -119,15 +111,8 @@ export default function RecurringEntriesPage() {
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
-      const res = await fetch(`${API_URL}/api/recurring-entries/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
-        },
-        body: JSON.stringify({ isActive: !currentStatus })
-      });
-      if (res.ok) {
+      const response = await recurringEntriesAPI.update(id, { isActive: !currentStatus });
+      if (response.data?.success) {
         toast({ title: 'Success', description: `Entry ${!currentStatus ? 'activated' : 'deactivated'}` });
         fetchData();
       }
@@ -138,11 +123,8 @@ export default function RecurringEntriesPage() {
 
   const handleViewHistory = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/recurring-entries/${id}/history`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const data = await res.json();
-      setHistoryData(data.success ? data.data : []);
+      const response = await recurringEntriesAPI.getHistory(id);
+      setHistoryData(response.data?.data || []);
       setShowHistory(true);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to fetch history', variant: 'destructive' });
@@ -170,12 +152,7 @@ export default function RecurringEntriesPage() {
     if (selectedEntries.size === 0) return;
     if (!confirm(`Delete ${selectedEntries.size} entries?`)) return;
     try {
-      await Promise.all([...selectedEntries].map(id => 
-        fetch(`${API_URL}/api/recurring-entries/${id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-        })
-      ));
+      await Promise.all([...selectedEntries].map(id => recurringEntriesAPI.delete(id)));
       toast({ title: 'Success', description: `${selectedEntries.size} entries deleted` });
       setSelectedEntries(new Set());
       fetchData();
@@ -187,15 +164,8 @@ export default function RecurringEntriesPage() {
   const handleBulkToggle = async (active: boolean) => {
     if (selectedEntries.size === 0) return;
     try {
-      await Promise.all([...selectedEntries].map(id => 
-        fetch(`${API_URL}/api/recurring-entries/${id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('auth-token')}`
-          },
-          body: JSON.stringify({ isActive: active })
-        })
+      await Promise.all([...selectedEntries].map(id =>
+        recurringEntriesAPI.update(id, { isActive: active })
       ));
       toast({ title: 'Success', description: `${selectedEntries.size} entries ${active ? 'activated' : 'deactivated'}` });
       setSelectedEntries(new Set());
@@ -227,7 +197,7 @@ export default function RecurringEntriesPage() {
 
   const filteredEntries = entries.filter(e => {
     const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         e.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      e.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFrequency = filterFrequency === 'all' || e.frequency === filterFrequency;
     return matchesSearch && matchesFrequency;
   }).sort((a, b) => {
@@ -241,7 +211,7 @@ export default function RecurringEntriesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const payload = {
       name: formData.name,
       description: formData.description,
@@ -255,36 +225,28 @@ export default function RecurringEntriesPage() {
         description: entry.description || ''
       }))
     };
-    
+
     const totalDebit = payload.entries.reduce((sum, e) => sum + e.debit, 0);
     const totalCredit = payload.entries.reduce((sum, e) => sum + e.credit, 0);
-    
+
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
       toast({ title: 'Error', description: 'Debits must equal credits', variant: 'destructive' });
       return;
     }
-    
+
     try {
-      const url = editingEntry ? `${API_URL}/api/recurring-entries/${editingEntry._id}` : `${API_URL}/api/recurring-entries`;
-      const res = await fetch(url, {
-        method: editingEntry ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      const data = await res.json();
-      
-      if (data.success) {
+      const response = editingEntry
+        ? await recurringEntriesAPI.update(editingEntry._id, payload)
+        : await recurringEntriesAPI.create(payload);
+
+      if (response.data?.success) {
         toast({ title: 'Success', description: editingEntry ? 'Entry updated' : 'Entry created' });
         setShowDialog(false);
         setEditingEntry(null);
         setFormData({ name: '', frequency: 'monthly', startDate: new Date().toISOString().split('T')[0], endDate: '', description: '', entries: [{ accountId: '', debit: 0, credit: 0, description: '' }] });
         fetchData();
       } else {
-        toast({ title: 'Error', description: data.message || 'Failed to create entry', variant: 'destructive' });
+        toast({ title: 'Error', description: response.data?.message || 'Failed to create entry', variant: 'destructive' });
       }
     } catch (error) {
       toast({ title: 'Error', description: 'Network error', variant: 'destructive' });
@@ -293,12 +255,8 @@ export default function RecurringEntriesPage() {
 
   const handleSkipNext = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/recurring-entries/${id}/skip-next`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const data = await res.json();
-      if (data.success) {
+      const response = await recurringEntriesAPI.skipNext(id);
+      if (response.data?.success) {
         toast({ title: 'Success', description: 'Next occurrence skipped' });
         fetchData();
       }
@@ -309,12 +267,8 @@ export default function RecurringEntriesPage() {
 
   const handleRetry = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/recurring-entries/${id}/retry`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const data = await res.json();
-      if (data.success) {
+      const response = await recurringEntriesAPI.retry(id);
+      if (response.data?.success) {
         toast({ title: 'Success', description: 'Retry initiated' });
         fetchData();
       }
@@ -325,12 +279,8 @@ export default function RecurringEntriesPage() {
 
   const handleApprove = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/recurring-entries/${id}/approve`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const data = await res.json();
-      if (data.success) {
+      const response = await recurringEntriesAPI.approve(id);
+      if (response.data?.success) {
         toast({ title: 'Success', description: 'Entry approved' });
         fetchData();
       }
@@ -342,16 +292,8 @@ export default function RecurringEntriesPage() {
   const handleBatchApprove = async () => {
     try {
       const ids = pending.map(e => e._id);
-      const res = await fetch(`${API_URL}/api/recurring-entries/batch-approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`
-        },
-        body: JSON.stringify({ entryIds: ids })
-      });
-      const data = await res.json();
-      if (data.success) {
+      const response = await recurringEntriesAPI.batchApprove(ids);
+      if (response.data?.success) {
         toast({ title: 'Success', description: `${ids.length} entries approved` });
         fetchData();
       }
@@ -363,11 +305,8 @@ export default function RecurringEntriesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this recurring entry?')) return;
     try {
-      const res = await fetch(`${API_URL}/api/recurring-entries/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      if (res.ok) {
+      const response = await recurringEntriesAPI.delete(id);
+      if (response.data?.success) {
         toast({ title: 'Success', description: 'Entry deleted' });
         fetchData();
       }
@@ -671,11 +610,11 @@ export default function RecurringEntriesPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
                   <Label>Entry Name *</Label>
-                  <Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required placeholder="Monthly Rent Payment" />
+                  <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required placeholder="Monthly Rent Payment" />
                 </div>
                 <div>
                   <Label>Frequency *</Label>
-                  <Select value={formData.frequency} onValueChange={(v) => setFormData({...formData, frequency: v})}>
+                  <Select value={formData.frequency} onValueChange={(v) => setFormData({ ...formData, frequency: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="daily">Daily</SelectItem>
@@ -692,15 +631,15 @@ export default function RecurringEntriesPage() {
               <div className="grid grid-cols-4 gap-3">
                 <div>
                   <Label>Start Date *</Label>
-                  <Input type="date" value={formData.startDate} onChange={(e) => setFormData({...formData, startDate: e.target.value})} required />
+                  <Input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} required />
                 </div>
                 <div>
                   <Label>End Date</Label>
-                  <Input type="date" value={formData.endDate} onChange={(e) => setFormData({...formData, endDate: e.target.value})} />
+                  <Input type="date" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} />
                 </div>
                 <div className="col-span-2">
                   <Label>Description</Label>
-                  <Input value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Optional notes" />
+                  <Input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Optional notes" />
                 </div>
               </div>
 
@@ -710,7 +649,7 @@ export default function RecurringEntriesPage() {
                   <Label className="text-base">Journal Entries</Label>
                   <Button type="button" size="sm" onClick={addEntry}><Plus className="w-4 h-4 mr-1" />Add</Button>
                 </div>
-                
+
                 {/* Entries Table */}
                 <div className="border rounded-lg overflow-hidden">
                   <Table>

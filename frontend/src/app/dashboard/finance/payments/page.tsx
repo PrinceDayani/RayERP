@@ -2,12 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, CheckCircle, Coins, TrendingUp, AlertCircle, FileText, Download, RefreshCw, XCircle, Check } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { paymentsAPI, accountsAPI } from '@/lib/api/financeAPI';
+import { validatePayment } from '@/utils/validation';
+import { exportPayments } from '@/utils/exportUtils';
 
 interface Payment {
   _id: string;
@@ -42,10 +46,7 @@ export default function PaymentsPage() {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const data = await res.json();
+      const data = await paymentsAPI.getAll();
       console.log('Payments API response:', data);
       console.log('Payments array:', data.data || data);
       const paymentsArray = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
@@ -61,10 +62,7 @@ export default function PaymentsPage() {
 
   const fetchAnalytics = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/analytics`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const data = await res.json();
+      const data = await paymentsAPI.getAnalytics();
       setAnalytics(data.data);
     } catch (error) {
       console.error('Error:', error);
@@ -73,10 +71,7 @@ export default function PaymentsPage() {
 
   const approvePayment = async (id: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/${id}/approve`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
+      await paymentsAPI.approve(id);
       fetchPayments();
     } catch (error) {
       console.error('Error:', error);
@@ -85,11 +80,7 @@ export default function PaymentsPage() {
 
   const reconcilePayment = async (id: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/${id}/reconcile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
-        body: JSON.stringify({})
-      });
+      await paymentsAPI.reconcile(id);
       fetchPayments();
     } catch (error) {
       console.error('Error:', error);
@@ -99,11 +90,7 @@ export default function PaymentsPage() {
   const deletePayment = async (id: string) => {
     if (!confirm('Are you sure you want to delete this payment?')) return;
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const data = await res.json();
+      const data = await paymentsAPI.delete(id);
       if (data.success) {
         alert('Payment deleted successfully');
         fetchPayments();
@@ -118,10 +105,7 @@ export default function PaymentsPage() {
 
   const createJournalEntry = async (id: string) => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/${id}/journal-entry`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
+      await paymentsAPI.createJournalEntry(id);
       alert('Journal entry created');
       fetchPayments();
     } catch (error) {
@@ -282,6 +266,7 @@ function PaymentForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     reference: '',
     allocations: [{ invoiceId: '', amount: '' }]
   });
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchAccounts();
@@ -289,10 +274,7 @@ function PaymentForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
 
   const fetchAccounts = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/accounts`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const data = await res.json();
+      const data = await accountsAPI.getAll();
       setAccounts(data.data || []);
     } catch (error) {
       console.error('Error:', error);
@@ -310,19 +292,22 @@ function PaymentForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
         baseAmount: parseFloat(formData.totalAmount) * parseFloat(formData.exchangeRate),
         allocations: formData.allocations.filter(a => a.invoiceId && a.amount).map(a => ({ ...a, amount: parseFloat(a.amount) }))
       };
-      console.log('Creating payment with payload:', payload);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('auth-token')}` },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      console.log('Payment creation response:', data);
-      if (!res.ok) {
-        alert('Error: ' + (data.message || 'Failed to create payment'));
+
+      // Validation
+      const validation = validatePayment(payload);
+      if (!validation.isValid) {
+        toast({ title: 'Validation Error', description: validation.errors.join(', '), variant: 'destructive' });
         return;
       }
-      alert('Payment created successfully!');
+
+      console.log('Creating payment with payload:', payload);
+      const data = await paymentsAPI.create(payload);
+      console.log('Payment creation response:', data);
+      if (!data.success) {
+        toast({ title: 'Error', description: data.message || 'Failed to create payment', variant: 'destructive' });
+        return;
+      }
+      toast({ title: 'Success', description: 'Payment created successfully!' });
       await onSuccess();
       onClose();
     } catch (error: any) {

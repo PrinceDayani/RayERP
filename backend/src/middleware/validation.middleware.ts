@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 
 const expressValidator = require('express-validator');
-const { validationResult } = expressValidator;
+const { validationResult, body } = expressValidator;
 
 export const validateRequest = (req: Request, res: Response, next: NextFunction) => {
   const errors = validationResult(req);
@@ -11,6 +11,21 @@ export const validateRequest = (req: Request, res: Response, next: NextFunction)
       success: false,
       message: 'Validation failed',
       errors: errors.array()
+    });
+  }
+  next();
+};
+
+export const validate = (req: Request, res: Response, next: NextFunction) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: errors.array().map((err: any) => ({
+        field: err.path,
+        message: err.msg
+      }))
     });
   }
   next();
@@ -36,6 +51,43 @@ export const validateRequiredFields = (fields: string[]) => {
   };
 };
 
+// Finance-specific validations
+export const accountValidation = [
+  body('name').trim().notEmpty().withMessage('Account name is required'),
+  body('code').optional().trim(),
+  body('type')
+    .isIn(['asset', 'liability', 'equity', 'revenue', 'expense'])
+    .withMessage('Invalid account type'),
+  body('taxInfo.gstNo')
+    .optional()
+    .matches(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/)
+    .withMessage('Invalid GST number format'),
+  body('taxInfo.panNo')
+    .optional()
+    .matches(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/)
+    .withMessage('Invalid PAN number format'),
+  body('bankDetails.ifscCode')
+    .optional()
+    .matches(/^[A-Z]{4}0[A-Z0-9]{6}$/)
+    .withMessage('Invalid IFSC code format'),
+];
+
+export const journalEntryValidation = [
+  body('date').isISO8601().withMessage('Valid date is required'),
+  body('description').trim().notEmpty().withMessage('Description is required'),
+  body('lines').isArray({ min: 1 }).withMessage('At least one entry line is required'),
+];
+
+export const voucherValidation = [
+  body('voucherType')
+    .isIn(['payment', 'receipt', 'contra', 'sales', 'purchase', 'journal', 'debit_note', 'credit_note'])
+    .withMessage('Invalid voucher type'),
+  body('date').isISO8601().withMessage('Valid date is required'),
+  body('narration').trim().notEmpty().withMessage('Narration is required'),
+  body('lines').isArray({ min: 1 }).withMessage('At least one transaction line is required'),
+];
+
+// Legacy validators
 export const validateProjectStatus = (req: Request, res: Response, next: NextFunction) => {
   const validStatuses = ['planning', 'active', 'on-hold', 'completed', 'cancelled'];
   if (req.body.status && !validStatuses.includes(req.body.status)) {

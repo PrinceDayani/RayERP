@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, DollarSign, AlertCircle, Receipt, TrendingUp, Clock, FileText, Search, Filter, X } from 'lucide-react';
+import { Plus, DollarSign, AlertCircle, Receipt, TrendingUp, Clock, FileText, Search, Filter, X, Download } from 'lucide-react';
+import { exportBills } from '@/utils/exportUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,16 +59,16 @@ export default function BillsPage() {
   };
 
   const filteredBills = bills.filter(bill => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       bill.billNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       bill.vendor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       bill.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesVendor = vendorFilter === '' || bill.vendor?.toLowerCase().includes(vendorFilter.toLowerCase());
-    
+
     const matchesDate = (!dateFilter.from || new Date(bill.billDate) >= new Date(dateFilter.from)) &&
-                        (!dateFilter.to || new Date(bill.billDate) <= new Date(dateFilter.to));
-    
+      (!dateFilter.to || new Date(bill.billDate) <= new Date(dateFilter.to));
+
     return matchesSearch && matchesVendor && matchesDate;
   });
 
@@ -92,10 +93,15 @@ export default function BillsPage() {
           <h1 className="text-3xl font-bold">Bills & Payments</h1>
           <p className="text-muted-foreground mt-1">Manage bills with custom payment allocation</p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} size="lg">
-          <Plus className="w-4 h-4 mr-2" />
-          New Bill
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => exportBills(filteredBills)} variant="outline" size="lg">
+            <Download className="w-4 h-4 mr-2" /> Export CSV
+          </Button>
+          <Button onClick={() => setShowCreateDialog(true)} size="lg">
+            <Plus className="w-4 h-4 mr-2" />
+            New Bill
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -157,9 +163,9 @@ export default function BillsPage() {
           <div className="flex items-center justify-between">
             <CardTitle>Search & Filter</CardTitle>
             {(searchTerm || dateFilter.from || dateFilter.to || vendorFilter) && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setSearchTerm('');
                   setDateFilter({ from: '', to: '' });

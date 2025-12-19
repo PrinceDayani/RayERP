@@ -3,16 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  Menu, 
-  Search, 
-  Settings, 
-  LogOut, 
-  HelpCircle, 
-  Bell, 
-  User, 
+import {
+  Menu,
+  Search,
+  Settings,
+  LogOut,
+  HelpCircle,
+  Bell,
+  User,
   Shield,
-  
+
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/tooltip";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationCenter } from "@/components/NotificationCenter";
@@ -77,7 +77,7 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
     <header className="h-16 border-b border-border/50 glass-morphism shadow-lg sticky top-0 z-40 relative overflow-hidden">
       {/* Header Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 pointer-events-none" />
-      
+
       <div className="flex h-full items-center justify-between px-4 sm:px-6 relative z-10">
         <div className="flex items-center space-x-4">
           {isMobile && (
@@ -100,7 +100,7 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
               </Tooltip>
             </TooltipProvider>
           )}
-          
+
           <form onSubmit={handleSearch} className="hidden md:block">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">

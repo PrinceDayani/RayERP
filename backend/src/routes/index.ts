@@ -46,6 +46,7 @@ import voucherRoutes from './voucher.routes';
 import advancedReportRoutes from './advancedReport.routes';
 import indianAccountRoutes from './indianAccount.routes';
 import financeAdvancedRoutes from './financeAdvanced.routes';
+import financeRoutes from './finance.routes';
 import billsRoutes from './bills.routes';
 import costCenterRoutes from './costCenter.routes';
 import chartOfAccountsRoutes from './chartOfAccounts.routes';
@@ -64,6 +65,7 @@ import projectFinanceEnhanced from './projectFinanceEnhanced';
 import financialReportsEnhanced from './financialReportsEnhanced';
 import trendsRoutes from './trends';
 import analyticsDataRoutes from './analytics';
+import taxManagementRoutes from './taxManagement.routes';
 
 import backupRoutes from './backupRoutes';
 import notificationRoutes from './notification.routes';
@@ -133,6 +135,7 @@ router.use('/bank-reconciliation', bankReconciliationRoutes);
 router.use('/recurring-entries', recurringEntryRoutes);
 router.use('/vouchers', voucherRoutes);
 router.use('/advanced-reports', advancedReportRoutes);
+router.use('/finance', financeRoutes);
 router.use('/finance-advanced', financeAdvancedRoutes);
 router.use('/bills', billsRoutes);
 router.use('/cost-centers', costCenterRoutes);
@@ -151,6 +154,7 @@ router.use('/journal-entry-templates', journalEntryTemplateRoutes);
 router.use('/project-finance', projectFinanceEnhanced);
 router.use('/financial-reports', financialReportRoutes);
 router.use('/financial-reports-enhanced', financialReportsEnhanced);
+router.use('/tax-management', taxManagementRoutes);
 // Indian accounts merged into general-ledger
 
 // --- Health Check Endpoints ---

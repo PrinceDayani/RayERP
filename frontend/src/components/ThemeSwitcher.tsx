@@ -3,17 +3,17 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { SunIcon, MoonIcon, Monitor, Palette } from "lucide-react";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuLabel,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/tooltip";
 
 export default function ThemeSwitcher() {
   const [mounted, setMounted] = useState(false);
@@ -27,10 +27,10 @@ export default function ThemeSwitcher() {
   useEffect(() => {
     if (mounted) {
       const root = document.documentElement;
-      
+
       // Remove existing theme classes
       root.classList.remove('light', 'dark');
-      
+
       // Apply theme based on resolved theme
       if (resolvedTheme === 'dark') {
         root.classList.add('dark');
@@ -39,7 +39,7 @@ export default function ThemeSwitcher() {
         root.classList.add('light');
         root.setAttribute('data-theme', 'light');
       }
-      
+
       // Force a repaint to ensure theme is applied
       root.style.display = 'none';
       root.offsetHeight; // Trigger reflow
@@ -60,8 +60,8 @@ export default function ThemeSwitcher() {
     if (theme === 'system') {
       return <Monitor className="h-4 w-4" />;
     }
-    return resolvedTheme === 'dark' ? 
-      <MoonIcon className="h-4 w-4" /> : 
+    return resolvedTheme === 'dark' ?
+      <MoonIcon className="h-4 w-4" /> :
       <SunIcon className="h-4 w-4" />;
   };
 
@@ -72,11 +72,11 @@ export default function ThemeSwitcher() {
 
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
-    
+
     // Immediate DOM update for better UX
     const root = document.documentElement;
     root.classList.remove('light', 'dark');
-    
+
     if (newTheme === 'dark') {
       root.classList.add('dark');
       root.setAttribute('data-theme', 'dark');
@@ -97,9 +97,9 @@ export default function ThemeSwitcher() {
         <DropdownMenu>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="w-9 h-9 hover:bg-accent/50 rounded-xl transition-all duration-300 hover:scale-110 focus-ring-modern relative"
               >
                 <div className="relative">
@@ -122,12 +122,11 @@ export default function ThemeSwitcher() {
               </Badge>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            
-            <DropdownMenuItem 
+
+            <DropdownMenuItem
               onClick={() => handleThemeChange("light")}
-              className={`cursor-pointer transition-all duration-200 hover:bg-accent/80 ${
-                theme === 'light' ? 'bg-accent/50 border-l-2 border-l-primary' : ''
-              }`}
+              className={`cursor-pointer transition-all duration-200 hover:bg-accent/80 ${theme === 'light' ? 'bg-accent/50 border-l-2 border-l-primary' : ''
+                }`}
             >
               <SunIcon className="mr-3 h-4 w-4 text-yellow-500" />
               <div className="flex-1">
@@ -138,12 +137,11 @@ export default function ThemeSwitcher() {
                 <div className="w-2 h-2 bg-primary rounded-full ml-2" />
               )}
             </DropdownMenuItem>
-            
-            <DropdownMenuItem 
+
+            <DropdownMenuItem
               onClick={() => handleThemeChange("dark")}
-              className={`cursor-pointer transition-all duration-200 hover:bg-accent/80 ${
-                theme === 'dark' ? 'bg-accent/50 border-l-2 border-l-primary' : ''
-              }`}
+              className={`cursor-pointer transition-all duration-200 hover:bg-accent/80 ${theme === 'dark' ? 'bg-accent/50 border-l-2 border-l-primary' : ''
+                }`}
             >
               <MoonIcon className="mr-3 h-4 w-4 text-blue-400" />
               <div className="flex-1">
@@ -154,12 +152,11 @@ export default function ThemeSwitcher() {
                 <div className="w-2 h-2 bg-primary rounded-full ml-2" />
               )}
             </DropdownMenuItem>
-            
-            <DropdownMenuItem 
+
+            <DropdownMenuItem
               onClick={() => handleThemeChange("system")}
-              className={`cursor-pointer transition-all duration-200 hover:bg-accent/80 ${
-                theme === 'system' ? 'bg-accent/50 border-l-2 border-l-primary' : ''
-              }`}
+              className={`cursor-pointer transition-all duration-200 hover:bg-accent/80 ${theme === 'system' ? 'bg-accent/50 border-l-2 border-l-primary' : ''
+                }`}
             >
               <Monitor className="mr-3 h-4 w-4 text-gray-500" />
               <div className="flex-1">

@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "./Navbar";
-import { 
-  ChevronLeft, 
+import {
+  ChevronLeft,
   ChevronRight,
-  ChevronDown, 
+  ChevronDown,
   ChevronUp,
   LayoutDashboard,
   Users,
@@ -35,7 +35,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/tooltip";
 import BackendStatus from "@/components/BackendStatus";
 import RealTimeNotifications from "@/components/RealTimeNotifications";
 
@@ -160,8 +160,8 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const toggleMenu = useCallback((path: string) => {
-    setExpandedMenus(prev => 
-      prev.includes(path) 
+    setExpandedMenus(prev =>
+      prev.includes(path)
         ? prev.filter(p => p !== path)
         : [...prev, path]
     );
@@ -218,13 +218,11 @@ export default function Layout({ children }: LayoutProps) {
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <div
-        className={`${
-          isMobile 
-            ? `fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-lg transform transition-transform duration-300 ${
-                sidebarOpen ? "translate-x-0" : "-translate-x-full"
-              }`
+        className={`${isMobile
+            ? `fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-lg transform transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`
             : `${collapsed ? "w-16" : "w-64"} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out`
-        } flex flex-col h-full`}
+          } flex flex-col h-full`}
       >
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-red-50 to-red-100 dark:from-gray-800 dark:to-gray-700">
@@ -277,7 +275,7 @@ export default function Layout({ children }: LayoutProps) {
                   <div className="space-y-1">
                     {section.items.map((item: any) => {
                       if (item.access === false) return null;
-                      
+
                       const isActive = pathname === item.path || isSubItemActive(item);
                       const hasSubItems = item.subItems && item.subItems.length > 0;
                       const isExpanded = isMenuExpanded(item.path);
@@ -288,11 +286,10 @@ export default function Layout({ children }: LayoutProps) {
                           {hasSubItems ? (
                             <button
                               onClick={() => toggleMenu(item.path)}
-                              className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl group ${
-                                isActive
+                              className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl group ${isActive
                                   ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg"
                                   : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
-                              }`}
+                                }`}
                             >
                               <div className="flex items-center">
                                 <Icon className={`w-5 h-5 ${collapsed ? 'mx-auto' : ''} transition-colors`} />
@@ -313,11 +310,10 @@ export default function Layout({ children }: LayoutProps) {
                           ) : (
                             <Link href={item.path} prefetch={false}>
                               <div
-                                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl group cursor-pointer ${
-                                  isActive
+                                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl group cursor-pointer ${isActive
                                     ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg"
                                     : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
-                                }`}
+                                  }`}
                               >
                                 <Icon className={`w-5 h-5 ${collapsed ? 'mx-auto' : ''}`} />
                                 {!collapsed && (
@@ -333,11 +329,10 @@ export default function Layout({ children }: LayoutProps) {
                               {item.subItems.map((subItem: SubMenuItem) => (
                                 <Link key={subItem.path} href={subItem.path} prefetch={false}>
                                   <div
-                                    className={`flex items-center px-3 py-2 text-sm rounded-lg ${
-                                      pathname === subItem.path
+                                    className={`flex items-center px-3 py-2 text-sm rounded-lg ${pathname === subItem.path
                                         ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 font-medium"
                                         : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
-                                    }`}
+                                      }`}
                                   >
                                     <div className="w-2 h-2 rounded-full bg-current opacity-50 mr-3" />
                                     {subItem.name}
@@ -418,7 +413,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Mobile overlay */}
       {isMobile && sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-20 bg-black/50 transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />

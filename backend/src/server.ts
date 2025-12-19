@@ -96,17 +96,17 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
+
     // In development, allow all origins
     if (process.env.NODE_ENV === 'development') {
       return callback(null, true);
     }
-    
+
     // In production, check allowed origins
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    
+
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -141,12 +141,12 @@ app.use(
 );
 
 // Optimized body parsing middleware
-app.use(express.json({ 
+app.use(express.json({
   limit: "10mb",
   type: ['application/json', 'text/plain']
 }));
-app.use(express.urlencoded({ 
-  extended: true, 
+app.use(express.urlencoded({
+  extended: true,
   limit: "10mb",
   parameterLimit: 1000
 }));
@@ -185,6 +185,10 @@ app.get('/api/health', (req, res) => {
 
 // Quick fix routes
 app.use("/api/fast", require('./routes/quickfix.routes'));
+
+// Validation Jobs Routes
+import validationJobsRoutes from "./routes/validationJobs.routes";
+app.use("/api/validation-jobs", validationJobsRoutes);
 
 // API Routes
 app.use("/api", routes);
@@ -302,6 +306,15 @@ async function initializeRealTimeSystems() {
       logger.warn('⚠️ Budget cron jobs not available');
     }
 
+    // Initialize validation jobs for data consistency
+    try {
+      const { startValidationJobs } = await import('./jobs/validationJobs');
+      startValidationJobs();
+      logger.info('✅ Data consistency validation jobs started');
+    } catch (err) {
+      logger.warn('⚠️ Validation jobs could not be started:', err.message);
+    }
+
     logger.info('✅ Real-time systems initialized');
     logger.info('✅ Budget cron jobs started');
     logger.info('✅ Audit log cleanup initialized');
@@ -323,19 +336,19 @@ connectDB()
   .then(async () => {
     // Create database indexes for performance
     await createIndexes();
-    
+
     // Create dashboard-specific indexes
     const { createDashboardIndexes } = await import('./utils/dashboardIndexes');
     await createDashboardIndexes();
-    
+
     // Create analytics indexes
     const { createAnalyticsIndexes } = await import('./utils/createAnalyticsIndexes');
     await createAnalyticsIndexes();
-    
+
     // Warm up connection pool
     await mongoose.connection.db.admin().ping();
     console.log('✅ Database connection warmed up');
-    
+
     // Initialize onboarding system
     try {
       const { initializeOnboardingSystem } = await import('./utils/initializeOnboarding');
@@ -344,17 +357,17 @@ connectDB()
     } catch (error) {
       logger.warn('⚠️ Onboarding system could not be initialized:', error.message);
     }
-    
+
     // Start server
     server.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
       logger.info(`📊 Environment: ${process.env.NODE_ENV}`);
       logger.info(`🔗 CORS Origins: ${allowedOrigins.join(', ')}`);
     });
-    
+
     // Initialize real-time systems after server starts
     await initializeRealTimeSystems();
-    
+
   })
   .catch((error) => {
     logger.error('❌ Failed to connect to MongoDB:', error);
