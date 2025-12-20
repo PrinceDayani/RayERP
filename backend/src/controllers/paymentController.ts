@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import Payment from '../models/Payment';
 import Invoice from '../models/Invoice';
 import JournalEntry from '../models/JournalEntry';
-import Account from '../models/Account';
+import Account from '../models/ChartOfAccount';
 
 export const createPayment = async (req: Request, res: Response) => {
   try {
@@ -179,8 +179,8 @@ export const createJournalEntry = async (req: Request, res: Response) => {
     const payment = await Payment.findById(req.params.id);
     if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
     
-    const cashAccount = await Account.findOne({ code: '1010' });
-    const receivableAccount = await Account.findOne({ code: '1200' });
+    const cashAccount = await ChartOfAccount.findOne({ code: '1010' });
+    const receivableAccount = await ChartOfAccount.findOne({ code: '1200' });
     
     const je = new JournalEntry({
       entryDate: payment.paymentDate,

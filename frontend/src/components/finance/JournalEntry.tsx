@@ -23,6 +23,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 const JournalEntry = () => {
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
+  const prefilledAccountId = searchParams.get('accountId');
   const { accounts, loading, fetchAccounts, createJournalEntry } = useGeneralLedger();
   const { currency, symbol, formatAmount } = useCurrency();
   
@@ -115,11 +116,36 @@ const JournalEntry = () => {
   }, [formData.lines.length]);
 
   useEffect(() => {
+    console.log('=== JOURNAL ENTRY INIT ===');
+    console.log('prefilledAccountId:', prefilledAccountId);
+    console.log('editId:', editId);
+    
     fetchAccounts();
     fetchTemplates();
     fetchRecentEntries();
     if (editId) loadEntryForEdit(editId);
   }, [fetchAccounts, editId]);
+  
+  // Separate effect for pre-filling account
+  useEffect(() => {
+    if (prefilledAccountId && !editId && accounts.length > 0) {
+      console.log('Pre-filling account:', prefilledAccountId);
+      const accountExists = accounts.find(a => a._id === prefilledAccountId);
+      console.log('Account exists:', accountExists);
+      
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          lines: [
+            { accountId: prefilledAccountId, debit: 0, credit: 0, description: '' },
+            { accountId: '', debit: 0, credit: 0, description: '' }
+          ]
+        };
+        console.log('New form data:', newData);
+        return newData;
+      });
+    }
+  }, [prefilledAccountId, editId, accounts]);
 
   const loadEntryForEdit = async (id: string) => {
     try {
@@ -561,6 +587,14 @@ const JournalEntry = () => {
                         accounts={accounts}
                         onAccountCreated={fetchAccounts}
                       />
+                      {line.accountId && (() => {
+                        const account = accounts.find(a => a._id === line.accountId);
+                        return account ? (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Balance: {formatAmount(account.balance || 0)}
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                     <div className="col-span-2" data-field="debit" data-index={index}>
                       <Input

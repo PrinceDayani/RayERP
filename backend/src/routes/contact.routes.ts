@@ -7,6 +7,7 @@ import {
   updateContact,
   deleteContact,
   searchContacts,
+  getCustomers,
   getContactStats,
   contactRateLimit,
   validateContactCreation,
@@ -52,6 +53,7 @@ router.use(contactRateLimit);
 
 // Routes with validation
 router.get('/', getContacts);
+router.get('/customers', getCustomers);
 router.get('/search', searchContacts);
 router.get('/stats', getContactStats);
 router.get('/:id', validateContactId, getContactById);

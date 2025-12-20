@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { Ledger } from '../models/Ledger';
 import { logger } from '../utils/logger';
 
@@ -83,8 +83,8 @@ export const uploadBankStatement = async (req: Request, res: Response) => {
     const { accountId, statementDate, openingBalance, closingBalance, transactions } = req.body;
     const userId = (req as any).user?.id;
 
-    const account = await Account.findById(accountId);
-    if (!account || account.type !== 'asset') {
+    const account = await ChartOfAccount.findById(accountId);
+    if (!account || ChartOfAccount.type !== 'asset') {
       return res.status(400).json({ message: 'Invalid bank account' });
     }
 
@@ -114,7 +114,7 @@ export const startReconciliation = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Bank statement not found' });
     }
 
-    const account = await Account.findById(statement.accountId);
+    const account = await ChartOfAccount.findById(statement.accountId);
     if (!account) {
       return res.status(404).json({ message: 'Account not found' });
     }
@@ -124,7 +124,7 @@ export const startReconciliation = async (req: Request, res: Response) => {
       date: { $lte: statement.statementDate }
     }).sort({ date: 1 });
 
-    const bookBalance = account.balance;
+    const bookBalance = ChartOfAccount.balance;
     const bankBalance = statement.closingBalance;
 
     const matchedTransactions: mongoose.Types.ObjectId[] = [];
@@ -277,3 +277,4 @@ export const getBankStatements = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error fetching bank statements' });
   }
 };
+

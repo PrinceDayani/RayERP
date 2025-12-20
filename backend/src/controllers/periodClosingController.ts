@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import JournalEntry from '../models/JournalEntry';
 import { Ledger } from '../models/Ledger';
 import mongoose from 'mongoose';
@@ -48,14 +48,14 @@ export const closePeriod = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Period already closed' });
     }
 
-    const revenueAccounts = await Account.find({ type: 'revenue', isActive: true });
-    const expenseAccounts = await Account.find({ type: 'expense', isActive: true });
+    const revenueAccounts = await ChartOfAccount.find({ type: 'REVENUE', isActive: true });
+    const expenseAccounts = await ChartOfAccount.find({ type: 'EXPENSE', isActive: true });
 
     const totalRevenue = revenueAccounts.reduce((sum, acc) => sum + acc.balance, 0);
     const totalExpenses = expenseAccounts.reduce((sum, acc) => sum + acc.balance, 0);
     const netIncome = totalRevenue - totalExpenses;
 
-    const retainedEarningsAccount = await Account.findOne({ code: '3200' });
+    const retainedEarningsAccount = await ChartOfAccount.findOne({ code: '3200' });
     if (!retainedEarningsAccount) {
       await session.abortTransaction();
       return res.status(400).json({ message: 'Retained Earnings account not found' });
@@ -97,14 +97,14 @@ export const closePeriod = async (req: Request, res: Response) => {
     }], { session });
 
     for (const line of closingLines) {
-      const account = await Account.findById(line.accountId).session(session);
+      const account = await ChartOfAccount.findById(line.accountId).session(session);
       if (account) {
-        if (['asset', 'expense'].includes(account.type)) {
-          account.balance += line.debit - line.credit;
+        if (['ASSET', 'EXPENSE'].includes(ChartOfAccount.type)) {
+          ChartOfAccount.balance += line.debit - line.credit;
         } else {
-          account.balance += line.credit - line.debit;
+          ChartOfAccount.balance += line.credit - line.debit;
         }
-        await account.save({ session });
+        await ChartOfAccount.save({ session });
 
         await Ledger.create([{
           accountId: line.accountId,
@@ -112,7 +112,7 @@ export const closePeriod = async (req: Request, res: Response) => {
           description: line.description,
           debit: line.debit,
           credit: line.credit,
-          balance: account.balance,
+          balance: ChartOfAccount.balance,
           journalEntryId: closingEntry[0]._id,
           reference: closingEntry[0].reference
         }], { session });
@@ -120,7 +120,7 @@ export const closePeriod = async (req: Request, res: Response) => {
     }
 
     for (const acc of [...revenueAccounts, ...expenseAccounts]) {
-      await Account.findByIdAndUpdate(acc._id, { balance: 0 }, { session });
+      await ChartOfAccount.findByIdAndUpdate(acc._id, { balance: 0 }, { session });
     }
 
     const periodClosing = await PeriodClosing.create([{
@@ -220,3 +220,6 @@ export const reopenPeriod = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error reopening period' });
   }
 };
+
+
+

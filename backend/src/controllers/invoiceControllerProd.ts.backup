@@ -126,13 +126,14 @@ const generateInvoiceNumber = async (retries = 3): Promise<string> => {
 // Enhanced journal entry creation with error handling
 const createInvoiceJournalEntry = async (invoice: any, userId: string): Promise<mongoose.Types.ObjectId | null> => {
   const session = await mongoose.startSession();
+  let journalEntryId: mongoose.Types.ObjectId | null = null;
   
   try {
     await session.withTransaction(async () => {
       const [accountsReceivable, salesRevenue, taxPayable] = await Promise.all([
-        ChartOfAccount.findOne({ accountType: 'ASSET' }).session(session),
-        ChartOfAccount.findOne({ accountType: 'REVENUE' }).session(session),
-        ChartOfAccount.findOne({ accountType: 'LIABILITY' }).session(session)
+        ChartOfAccount.findOne({ type: { $in: ['ASSET', 'asset'] }, isActive: true }).session(session).read('primary'),
+        ChartOfAccount.findOne({ type: { $in: ['REVENUE', 'revenue'] }, isActive: true }).session(session).read('primary'),
+        ChartOfAccount.findOne({ type: { $in: ['LIABILITY', 'liability'] }, isActive: true }).session(session).read('primary')
       ]);
 
       if (!accountsReceivable || !salesRevenue) {
@@ -180,18 +181,20 @@ const createInvoiceJournalEntry = async (invoice: any, userId: string): Promise<
         createdBy: userId
       });
 
-      await journalEntry.save({ session });
-      return journalEntry._id;
+      const savedEntry = await journalEntry.save({ session });
+      journalEntryId = savedEntry._id;
+      journalEntryId = journalEntry._id;
     });
 
-    return session.id;
+    return journalEntryId;
   } catch (error) {
     logger.error('Error creating invoice journal entry', {
       error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
       invoiceId: invoice._id,
       userId
     });
-    return null;
+    throw error;
   } finally {
     await session.endSession();
   }
@@ -246,9 +249,20 @@ export const createInvoice = async (req: Request, res: Response) => {
     invoiceId = invoice._id.toString();
 
     // Create journal entry - REQUIRED for accounting integrity
-    const journalEntryId = await createInvoiceJournalEntry(invoice, userId);
-    if (!journalEntryId) {
+    let journalEntryId;
+    try {
+      journalEntryId = await createInvoiceJournalEntry(invoice, userId);
+    } catch (journalError) {
       // Delete the invoice if journal entry creation failed
+      await Invoice.findByIdAndDelete(invoice._id);
+      logger.error('Journal entry creation failed', {
+        error: journalError instanceof Error ? journalError.message : 'Unknown error',
+        stack: journalError instanceof Error ? journalError.stack : undefined
+      });
+      throw new Error(`Failed to create journal entry: ${journalError instanceof Error ? journalError.message : 'Unknown error'}`);
+    }
+    
+    if (!journalEntryId) {
       await Invoice.findByIdAndDelete(invoice._id);
       throw new Error('Failed to create journal entry. Invoice creation cancelled.');
     }

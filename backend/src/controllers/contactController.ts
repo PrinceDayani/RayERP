@@ -4,6 +4,8 @@ import Contact, { IContact } from '../models/Contact';
 import { logger } from '../utils/logger';
 import rateLimit from 'express-rate-limit';
 import { body, param, query, validationResult } from 'express-validator';
+import { createCustomerLedgerAccount } from '../utils/customerLedger';
+import Notification from '../models/Notification';
 
 // Rate limiting for contact operations
 export const contactRateLimit = rateLimit({
@@ -64,7 +66,7 @@ const sanitizeContactData = (data: any) => {
     'name', 'email', 'phone', 'company', 'position', 'address', 'notes', 'tags', 'reference', 
     'alternativePhone', 'visibilityLevel', 'department', 'contactType', 'role', 'priority', 
     'status', 'website', 'linkedIn', 'twitter', 'birthday', 'anniversary', 'industry', 
-    'companySize', 'annualRevenue', 'isCustomer'
+    'companySize', 'annualRevenue', 'isCustomer', 'isVendor'
   ];
   
   allowedFields.forEach(field => {
@@ -256,7 +258,7 @@ export const createContact = async (req: Request, res: Response) => {
     const { 
       name, email, phone, company, position, address, notes, tags, reference, alternativePhone,
       visibilityLevel, department, contactType, role, priority, status, website, linkedIn, twitter, 
-      birthday, anniversary, industry, companySize, annualRevenue, isCustomer
+      birthday, anniversary, industry, companySize, annualRevenue, isCustomer, isVendor
     } = sanitizedData;
 
     // Additional business logic validation
@@ -312,11 +314,52 @@ export const createContact = async (req: Request, res: Response) => {
       companySize,
       annualRevenue,
       isCustomer: Boolean(isCustomer),
+      isVendor: Boolean(isVendor),
       createdBy: userId,
     });
 
     const savedContact = await newContact.save();
     await savedContact.populate(['department', 'createdBy']);
+    
+    // Auto-create ledger account if marked as customer or vendor
+    if (isCustomer || isVendor) {
+      try {
+        const accountId = await createCustomerLedgerAccount(
+          savedContact._id.toString(), 
+          savedContact.name, 
+          userId, 
+          Boolean(isVendor)
+        );
+        savedContact.ledgerAccountId = accountId;
+        await savedContact.save();
+        
+        const accountType = isVendor ? 'Vendor' : 'Customer';
+        logger.info(`${accountType} ledger account auto-created`, { contactId: savedContact._id, accountId });
+        
+        // Create notification
+        const notification = await Notification.create({
+          userId,
+          type: 'success',
+          title: `${accountType} Account Created`,
+          message: `${accountType} "${savedContact.name}" has been created with ledger account.`,
+          priority: 'medium',
+          actionUrl: `/dashboard/contacts/${savedContact._id}`,
+          metadata: { contactId: savedContact._id, accountId, accountType }
+        });
+        
+        // Emit real-time notification
+        if (global.io) {
+          global.io.to(userId).emit('notification:new', notification);
+        }
+      } catch (ledgerError) {
+        logger.warn('Failed to create ledger account', { 
+          error: ledgerError instanceof Error ? ledgerError.message : 'Unknown error',
+          contactId: savedContact._id,
+          isCustomer,
+          isVendor
+        });
+      }
+    }
     
     const duration = Date.now() - startTime;
     logger.info('Contact created successfully', { 
@@ -419,8 +462,67 @@ export const updateContact = async (req: Request, res: Response) => {
     const updatedContact = await contact.save();
     await updatedContact.populate(['department', 'createdBy']);
     
+    // Auto-create ledger account if newly marked as customer or vendor
+    if ((sanitizedData.isCustomer || sanitizedData.isVendor) && !updatedContact.ledgerAccountId) {
+      try {
+        const accountId = await createCustomerLedgerAccount(
+          updatedContact._id.toString(), 
+          updatedContact.name, 
+          userId,
+          Boolean(sanitizedData.isVendor)
+        );
+        updatedContact.ledgerAccountId = accountId;
+        await updatedContact.save();
+        
+        const accountType = sanitizedData.isVendor ? 'Vendor' : 'Customer';
+        logger.info(`${accountType} ledger account auto-created on update`, { contactId: updatedContact._id, accountId });
+        
+        // Create notification
+        const notification = await Notification.create({
+          userId,
+          type: 'success',
+          title: `${accountType} Account Created`,
+          message: `Contact "${updatedContact.name}" has been marked as ${accountType.toLowerCase()} with ledger account.`,
+          priority: 'medium',
+          actionUrl: `/dashboard/contacts/${updatedContact._id}`,
+          metadata: { contactId: updatedContact._id, accountId, accountType }
+        });
+        
+        // Emit real-time notification
+        if (global.io) {
+          global.io.to(userId).emit('notification:new', notification);
+        }
+      } catch (ledgerError) {
+        logger.warn('Failed to create ledger account on update', { 
+          error: ledgerError instanceof Error ? ledgerError.message : 'Unknown error',
+          contactId: updatedContact._id,
+          isCustomer: sanitizedData.isCustomer,
+          isVendor: sanitizedData.isVendor
+        });
+      }
+    }
+    
     const duration = Date.now() - startTime;
     logger.info('Contact updated successfully', { userId, contactId: updatedContact._id, duration });
+    
+    // Send update notification
+    try {
+      const notification = await Notification.create({
+        userId,
+        type: 'info',
+        title: 'Contact Updated',
+        message: `Contact "${updatedContact.name}" has been updated successfully.`,
+        priority: 'low',
+        actionUrl: `/dashboard/contacts/${updatedContact._id}`,
+        metadata: { contactId: updatedContact._id }
+      });
+      
+      if (global.io) {
+        global.io.to(userId).emit('notification:new', notification);
+      }
+    } catch (notifError) {
+      logger.warn('Failed to send update notification', { error: notifError });
+    }
     
     if (global.io) {
       global.io.emit('contact:updated', {
@@ -671,6 +773,65 @@ export const filterContacts = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error filtering contacts:', error);
     return res.status(500).json({ message: 'Error filtering contacts' });
+  }
+};
+
+// Get customers only
+export const getCustomers = async (req: Request, res: Response) => {
+  try {
+    const userId = getUserId(req);
+    const { page = '1', limit = '100' } = req.query;
+    
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(200, Math.max(1, parseInt(limit as string) || 100));
+    const skip = (pageNum - 1) * limitNum;
+    
+    const User = require('../models/User').default;
+    const Employee = require('../models/Employee').default;
+    
+    const [user, employee] = await Promise.all([
+      User.findById(userId).populate('role').lean(),
+      Employee.findOne({ user: userId }).lean()
+    ]);
+    
+    const isRoot = user?.role?.name === 'root';
+    
+    const filter: any = { isCustomer: true, status: 'active' };
+    
+    if (!isRoot) {
+      filter.$or = [
+        { visibilityLevel: 'universal' },
+        { visibilityLevel: 'personal', createdBy: userId }
+      ];
+      
+      if (employee?.department) {
+        filter.$or.push({
+          visibilityLevel: 'departmental',
+          department: employee.department
+        });
+      }
+    }
+    
+    const [customers, total] = await Promise.all([
+      Contact.find(filter)
+        .select('name email phone company isCustomer')
+        .sort({ name: 1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Contact.countDocuments(filter)
+    ]);
+    
+    logger.info('Customers fetched', { userId, count: customers.length, total });
+    
+    return res.status(200).json({ 
+      success: true, 
+      data: customers,
+      pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) }
+    });
+  } catch (error) {
+    logger.error('Error fetching customers', { error: error instanceof Error ? error.message : 'Unknown' });
+    return res.status(500).json({ success: false, message: 'Error fetching customers' });
   }
 };
 

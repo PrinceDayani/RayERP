@@ -1,5 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import AuditLog from '../models/AuditLog';
+import {
+  calculateRiskLevel,
+  maskSensitiveData,
+  generateLogHash,
+  getLastLogHash,
+  checkFailedLoginAttempts,
+  getGeolocation
+} from '../utils/auditUtils';
 
 const getClientIp = (req: Request): string => {
   return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
@@ -7,81 +15,68 @@ const getClientIp = (req: Request): string => {
          'unknown';
 };
 
-const getActionFromMethod = (method: string): 'CREATE' | 'UPDATE' | 'DELETE' | 'VIEW' => {
-  switch (method) {
-    case 'POST': return 'CREATE';
-    case 'PUT':
-    case 'PATCH': return 'UPDATE';
-    case 'DELETE': return 'DELETE';
-    default: return 'VIEW';
-  }
-};
+export const auditLog = (action: string, module: string) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const originalJson = res.json.bind(res);
+    const startTime = Date.now();
 
-const getModuleFromPath = (path: string): string => {
-  const parts = path.split('/').filter(Boolean);
-  if (parts.length > 1) {
-    return parts[1].toUpperCase().replace(/-/g, '_');
-  }
-  return 'SYSTEM';
-};
-
-export const auditLogMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-  // Skip audit logging for certain paths
-  const skipPaths = ['/api/health', '/api/audit-trail', '/uploads', '/socket.io'];
-  if (skipPaths.some(path => req.path.startsWith(path))) {
-    return next();
-  }
-
-  // Skip GET requests (only log mutations)
-  if (req.method === 'GET') {
-    return next();
-  }
-
-  // Only log if user is authenticated
-  if (!req.user) {
-    return next();
-  }
-
-  // Store original send function
-  const originalSend = res.send;
-  let responseBody: any;
-
-  // Override send to capture response
-  res.send = function (body: any): Response {
-    responseBody = body;
-    return originalSend.call(this, body);
-  };
-
-  // Wait for response to complete
-  res.on('finish', async () => {
-    try {
-      const action = getActionFromMethod(req.method);
-      const module = getModuleFromPath(req.path);
+    res.json = function (body: any) {
+      const responseTime = Date.now() - startTime;
+      const status = res.statusCode >= 200 && res.statusCode < 300 ? 'Success' : 'Failed';
       
-      let status: 'Success' | 'Failed' = 'Success';
-      if (res.statusCode >= 400) {
-        status = 'Failed';
-      }
+      // Log asynchronously to not block response
+      setImmediate(async () => {
+        try {
+          if (!req.user) return;
 
-      await AuditLog.create({
-        userId: req.user._id,
-        userEmail: req.user.email,
-        action,
-        module,
-        recordId: req.params.id || req.body?.id || undefined,
-        ipAddress: getClientIp(req),
-        userAgent: (req.get('User-Agent') || 'unknown').substring(0, 500),
-        status,
-        additionalData: {
-          path: req.path,
-          method: req.method,
-          statusCode: res.statusCode
+          const ipAddress = getClientIp(req);
+          const timestamp = new Date();
+          const riskLevel = calculateRiskLevel(action, module, status, timestamp);
+          const geolocation = await getGeolocation(ipAddress);
+          
+          // Check for failed login attempts
+          if (action === 'LOGIN' && status === 'Failed') {
+            const { shouldAlert } = await checkFailedLoginAttempts(AuditLog, req.user.email, ipAddress);
+            if (shouldAlert) {
+              console.warn(`🚨 SECURITY ALERT: Multiple failed login attempts for ${req.user.email} from ${ipAddress}`);
+              // TODO: Send email/SMS alert to admin
+            }
+          }
+
+          const previousHash = await getLastLogHash(AuditLog);
+          const currentHash = generateLogHash(timestamp, req.user._id.toString(), action, module, previousHash);
+
+          await AuditLog.create({
+            userId: req.user._id,
+            userEmail: req.user.email,
+            action,
+            module,
+            recordId: req.params.id || req.body._id,
+            oldValue: maskSensitiveData(JSON.stringify(req.body.oldValue || '')),
+            newValue: maskSensitiveData(JSON.stringify(req.body.newValue || req.body)),
+            ipAddress,
+            userAgent: (req.get('User-Agent') || 'unknown').substring(0, 500),
+            status,
+            riskLevel,
+            geolocation,
+            previousHash,
+            currentHash,
+            sessionId: req.headers['x-session-id'] as string,
+            additionalData: {
+              responseTime,
+              statusCode: res.statusCode,
+              method: req.method,
+              path: req.path
+            }
+          });
+        } catch (error) {
+          console.error('Audit logging error:', error);
         }
       });
-    } catch (error) {
-      console.error('Error creating audit log:', error);
-    }
-  });
 
-  next();
+      return originalJson(body);
+    };
+
+    next();
+  };
 };

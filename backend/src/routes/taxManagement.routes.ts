@@ -2,15 +2,11 @@ import express from 'express';
 import { protect } from '../middleware/auth.middleware';
 import { validateRequiredFields } from '../middleware/validation.middleware';
 import { requirePermission } from '../middleware/permission.middleware';
-import { auditLogMiddleware } from '../middleware/auditLog.middleware';
 import { strictLimiter } from '../middleware/rateLimiter.middleware';
 import * as taxController from '../controllers/taxManagement.controller';
 const { body, query } = require('express-validator');
 
 const router = express.Router();
-
-// Apply audit logging to all routes
-router.use(auditLogMiddleware);
 
 // Tax Management Routes
 

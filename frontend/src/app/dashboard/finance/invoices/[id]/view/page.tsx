@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { silentApiClient } from '@/lib/silentApi';
 import { formatCurrency } from '@/lib/currency';
-import { ArrowLeft, Edit, DollarSign, FileText, BookOpen, FileBarChart } from 'lucide-react';
+import { ArrowLeft, Edit, DollarSign, FileText, BookOpen, FileBarChart, Trash2 } from 'lucide-react';
 
 interface Invoice {
   _id: string;
@@ -68,6 +68,31 @@ export default function ViewInvoicePage() {
     }
   };
 
+  const deleteInvoice = async () => {
+    if (!invoice) return;
+    
+    if (['SENT', 'PAID', 'PARTIALLY_PAID'].includes(invoice.status)) {
+      alert('Cannot delete invoice that has been sent or paid');
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete invoice ${invoice.invoiceNumber}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      const response = await silentApiClient.delete(`/api/invoices/${invoice._id}`);
+      if (response?.success) {
+        router.push('/dashboard/finance/invoices');
+      } else {
+        alert('Failed to delete invoice');
+      }
+    } catch (error) {
+      console.error('Delete invoice error:', error);
+      alert('Error deleting invoice');
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -114,6 +139,16 @@ export default function ViewInvoicePage() {
             >
               <Edit className="h-4 w-4 mr-2" />
               Edit
+            </Button>
+          )}
+          {invoice.status === 'DRAFT' && (
+            <Button 
+              size="sm" 
+              variant="destructive"
+              onClick={deleteInvoice}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
             </Button>
           )}
         </div>

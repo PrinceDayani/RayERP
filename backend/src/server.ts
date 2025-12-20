@@ -36,7 +36,6 @@ import routes from "./routes/index";
 import assignmentRoutes from "./routes/assignment.routes";
 import backupRoutes from "./routes/backupRoutes";
 import errorMiddleware from "./middleware/error.middleware";
-import { auditLogMiddleware } from "./middleware/auditLog.middleware";
 
 const app = express();
 const server = http.createServer(app);
@@ -159,9 +158,6 @@ app.use((req, res, next) => {
   }
   next();
 });
-
-// Audit log middleware (logs all mutations)
-app.use(auditLogMiddleware);
 
 // Serve static files from uploads directory with CORS
 app.use('/uploads', (req, res, next) => {

@@ -109,16 +109,31 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
       queryParams.append('limit', filters.limit.toString());
 
       const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`;
+      console.log('=== FETCHING ACCOUNT LEDGER ===');
+      console.log('URL:', url);
+      console.log('Account ID:', accountId);
+      
+      const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (!response.ok) throw new Error('Failed to fetch account ledger');
+      console.log('Response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error('Failed to fetch account ledger');
+      }
 
       const data = await response.json();
+      console.log('Response data:', data);
+      console.log('Account:', data.account);
+      console.log('Entries count:', data.entries?.length);
+      
       setAccount(data.account);
       setEntries(data.entries);
     } catch (err) {
+      console.error('=== FETCH ERROR ===', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -306,7 +321,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                       )}
                     </div>
                   )}
-                  <Button onClick={() => router.push('/dashboard/finance/journal-entry')} size="sm">
+                  <Button onClick={() => router.push(`/dashboard/finance/journal-entry?accountId=${accountId}`)} size="sm">
                     <Plus className="w-4 h-4 mr-2" />
                     New Entry
                   </Button>

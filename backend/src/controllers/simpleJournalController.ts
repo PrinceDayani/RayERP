@@ -1,7 +1,14 @@
 import { Request, Response } from 'express';
 import { JournalEntry } from '../models/JournalEntry';
+import { Ledger } from '../models/Ledger';
+import ChartOfAccount from '../models/ChartOfAccount';
+import { determineCashFlowCategory, isNonCashTransaction } from '../utils/cashFlowHelper';
+import mongoose from 'mongoose';
 
 export const createJournalEntry = async (req: Request, res: Response) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
@@ -9,15 +16,80 @@ export const createJournalEntry = async (req: Request, res: Response) => {
 
     const journalData = { ...req.body, createdBy: req.user.id };
     const journalEntry = new JournalEntry(journalData);
-    await journalEntry.save();
+    await journalEntry.save({ session });
 
+    // Auto-create ledger entries with cash flow categories
+    if (journalEntry.isPosted) {
+      for (const line of journalEntry.lines) {
+        const account = await ChartOfAccount.findById(line.account).session(session);
+        if (!account) {
+          throw new Error(`Account ${line.account} not found`);
+        }
+
+        let cashFlowCategory = undefined;
+        let suggestedCategory = undefined;
+        let categoryConfidence = undefined;
+        let needsReview = false;
+        
+        // Determine category for cash accounts
+        if (!isNonCashTransaction(journalEntry.description, journalEntry.sourceType)) {
+          const result = await determineCashFlowCategory(
+            line.account.toString(),
+            journalEntry.description,
+            journalEntry.sourceType,
+            line.debit || line.credit
+          );
+          
+          if (result) {
+            cashFlowCategory = result.category;
+            suggestedCategory = result.category;
+            categoryConfidence = result.confidence;
+            needsReview = result.needsReview;
+          }
+        } else {
+          cashFlowCategory = 'NON_CASH';
+          suggestedCategory = 'NON_CASH';
+          categoryConfidence = 1.0;
+          needsReview = false;
+        }
+
+        // Calculate new balance
+        const prevBalance = account.balance || 0;
+        const newBalance = prevBalance + line.debit - line.credit;
+
+        await Ledger.create([{
+          accountId: line.account,
+          date: journalEntry.entryDate,
+          description: line.description || journalEntry.description,
+          debit: line.debit,
+          credit: line.credit,
+          balance: newBalance,
+          journalEntryId: journalEntry._id,
+          reference: journalEntry.reference || journalEntry.entryNumber,
+          cashFlowCategory,
+          suggestedCategory,
+          categoryConfidence,
+          needsReview
+        }], { session });
+
+        // Update account balance
+        account.balance = newBalance;
+        await account.save({ session });
+      }
+    }
+
+    await session.commitTransaction();
+    
     res.status(201).json({
       success: true,
       data: journalEntry,
       message: 'Journal entry created successfully'
     });
   } catch (error: any) {
+    await session.abortTransaction();
     res.status(400).json({ success: false, message: error.message });
+  } finally {
+    session.endSession();
   }
 };
 

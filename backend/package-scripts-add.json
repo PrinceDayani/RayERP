@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "build:skipcheck": "tsc --skipLibCheck",
+    "start:prod": "node dist/server.js",
+    "setup:balance-sheet": "npm install pdfkit nodemailer node-cron && npm install --save-dev @types/pdfkit @types/nodemailer @types/node-cron"
+  }
+}

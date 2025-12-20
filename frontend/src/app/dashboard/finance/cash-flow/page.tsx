@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,125 +9,133 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Coins, TrendingUp, TrendingDown, Download, Calendar, AlertCircle, Eye, Printer, RefreshCw, Loader2 } from "lucide-react";
-import { reportingApi } from "@/lib/api/finance/reportingApi";
-import { billsApi } from "@/lib/api/billsApi";
 import { BarChart, Bar, LineChart, Line, ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { useToast } from "@/hooks/use-toast";
 import { validateDateRange, formatCurrency, formatPercentage } from "@/lib/utils/validation";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CashFlowSkeleton } from "@/components/skeletons/CashFlowSkeleton";
+import { useCashFlowQuery, useHistoricalCashFlowQuery, useActivityTransactionsQuery, useExportReport } from "@/hooks/queries/useCashFlowQueries";
+import { CashFlowData, ForecastData } from "@/types/cashflow";
 
-const COLORS = ['#10b981', '#3b82f6', '#8b5cf6'];
-const LOW_CASH_THRESHOLD = 10000;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const LOW_CASH_THRESHOLD = Number(process.env.NEXT_PUBLIC_LOW_CASH_THRESHOLD) || 10000;
 
-const CashFlowPage = () => {
+const CashFlowPageContent = () => {
   const { toast } = useToast();
-  const [cashFlowData, setCashFlowData] = useState<any>(null);
-  const [compareData, setCompareData] = useState<any>(null);
-  const [forecastData, setForecastData] = useState<any[]>([]);
-  const [multiPeriodData, setMultiPeriodData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [compareMode, setCompareMode] = useState<'none' | 'yoy' | 'qoq'>('none');
-  const [drilldownActivity, setDrilldownActivity] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [lastFetch, setLastFetch] = useState<number>(0);
+  const [drilldownActivity, setDrilldownActivity] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchCashFlowData();
-  }, []);
+  const { data: cashFlowData, isLoading, error, refetch } = useCashFlowQuery(startDate, endDate);
+  const { data: compareData } = useCashFlowQuery(
+    compareMode === 'yoy' ? new Date(new Date(startDate).setFullYear(new Date(startDate).getFullYear() - 1)).toISOString().split('T')[0] : 
+    compareMode === 'qoq' ? new Date(new Date(startDate).setMonth(new Date(startDate).getMonth() - 3)).toISOString().split('T')[0] : startDate,
+    compareMode === 'yoy' ? new Date(new Date(endDate).setFullYear(new Date(endDate).getFullYear() - 1)).toISOString().split('T')[0] : 
+    compareMode === 'qoq' ? new Date(new Date(endDate).setMonth(new Date(endDate).getMonth() - 3)).toISOString().split('T')[0] : endDate,
+    compareMode !== 'none'
+  );
+  const { data: multiPeriodData } = useHistoricalCashFlowQuery(6);
+  const { data: transactions, isLoading: transactionsLoading } = useActivityTransactionsQuery(drilldownActivity, startDate, endDate);
+  const exportMutation = useExportReport();
 
-  useEffect(() => {
-    fetchHistoricalData();
-  }, []);
-
-  const setupKeyboardShortcuts = useCallback(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === 'p') { e.preventDefault(); window.print(); }
-        if (e.key === 'e') { e.preventDefault(); handleExport('csv'); }
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-
-  useEffect(() => {
-    const cleanup = setupKeyboardShortcuts();
-    return cleanup;
-  }, [setupKeyboardShortcuts]);
-
-  useEffect(() => {
-    if (compareMode !== 'none') fetchCompareData();
-  }, [compareMode]);
-
-  const fetchCashFlowData = async () => {
+  const handleRefresh = useCallback(() => {
     const validation = validateDateRange(startDate, endDate);
     if (!validation.valid) {
       toast({ title: "Validation Error", description: validation.error, variant: "destructive" });
       return;
     }
+    refetch();
+    toast({ title: "Success", description: "Data refreshed" });
+  }, [startDate, endDate, refetch, toast]);
 
-    setLoading(true);
+  const handleExport = useCallback(async (format: 'csv' | 'pdf') => {
     try {
-      const response = await reportingApi.getCashFlow(startDate, endDate);
-      if (response.success && response.data) {
-        setCashFlowData(response.data);
-        generateForecast(response.data);
-      }
+      const blob = await exportMutation.mutateAsync({
+        reportType: 'cash-flow',
+        format,
+        startDate,
+        endDate
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cash-flow-${startDate}-${endDate}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Success", description: `Report exported as ${format.toUpperCase()}` });
     } catch (error: any) {
-      console.error('Error fetching cash flow:', error);
-      toast({ title: "Error", description: error.message || "Failed to load data", variant: "destructive" });
-    } finally {
-      setLoading(false);
+      toast({ title: "Error", description: "Failed to export report", variant: "destructive" });
     }
-  };
+  }, [startDate, endDate, toast, exportMutation]);
 
-  const fetchCompareData = async () => {
-    if (compareMode === 'none') return;
+  // Auto-refresh on date change
+  useEffect(() => {
+    if (startDate && endDate) {
+      const timer = setTimeout(() => refetch(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [startDate, endDate, refetch]);
 
-    try {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'p') {
+          e.preventDefault();
+          window.print();
+        }
+        if (e.key === 'e') {
+          e.preventDefault();
+          handleExport('csv');
+        }
+        if (e.key === 'r') {
+          e.preventDefault();
+          handleRefresh();
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleExport, handleRefresh]);
+
+  const forecastData = useMemo((): ForecastData[] => {
+    if (!cashFlowData) return [];
+
+    // Use trend analysis if historical data available
+    if (multiPeriodData && multiPeriodData.length >= 3) {
+      const recentPeriods = multiPeriodData.slice(-3);
+      const avgOperating = recentPeriods.reduce((sum, p) => sum + (p.operating || 0), 0) / recentPeriods.length;
+      const avgInvesting = recentPeriods.reduce((sum, p) => sum + (p.investing || 0), 0) / recentPeriods.length;
+      const avgFinancing = recentPeriods.reduce((sum, p) => sum + (p.financing || 0), 0) / recentPeriods.length;
       
-      if (compareMode === 'yoy') {
-        start.setFullYear(start.getFullYear() - 1);
-        end.setFullYear(end.getFullYear() - 1);
-      } else if (compareMode === 'qoq') {
-        start.setMonth(start.getMonth() - 3);
-        end.setMonth(end.getMonth() - 3);
-      }
+      const growthRate = ((recentPeriods[recentPeriods.length - 1].operating - recentPeriods[0].operating) / Math.abs(recentPeriods[0].operating || 1)) / recentPeriods.length;
       
-      const response = await reportingApi.getCashFlow(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
-      if (response.success) {
-        setCompareData(response.data);
+      const forecast: ForecastData[] = [];
+      let balance = cashFlowData.closingBalance || 0;
+      
+      for (let i = 1; i <= 6; i++) {
+        const projectedOperating = avgOperating * (1 + growthRate * i);
+        balance += projectedOperating + avgInvesting + avgFinancing;
+        forecast.push({
+          month: `Month ${i}`,
+          projected: Math.max(0, balance),
+          operating: projectedOperating,
+          investing: avgInvesting,
+          financing: avgFinancing
+        });
       }
-    } catch (error: any) {
-      console.error('Compare data error:', error);
+      return forecast;
     }
-  };
 
-  const fetchHistoricalData = async () => {
-    try {
-      const response = await billsApi.getHistoricalCashFlow(6);
-      if (response.success) {
-        setMultiPeriodData(response.data);
-      }
-    } catch (error) {
-      console.error('Historical data error:', error);
-    }
-  };
-
-  const generateForecast = useCallback((data: any) => {
-    if (!data) return;
-
-    const avgOperating = data.operatingActivities?.net || 0;
-    const avgInvesting = data.investingActivities?.net || 0;
-    const avgFinancing = data.financingActivities?.net || 0;
+    // Fallback to simple average
+    const avgOperating = cashFlowData.operatingActivities?.net || 0;
+    const avgInvesting = cashFlowData.investingActivities?.net || 0;
+    const avgFinancing = cashFlowData.financingActivities?.net || 0;
     
-    const forecast = [];
-    let balance = data.closingBalance || 0;
+    const forecast: ForecastData[] = [];
+    let balance = cashFlowData.closingBalance || 0;
     
     for (let i = 1; i <= 6; i++) {
       balance += avgOperating + avgInvesting + avgFinancing;
@@ -140,49 +148,12 @@ const CashFlowPage = () => {
       });
     }
     
-    setForecastData(forecast);
-  }, []);
+    return forecast;
+  }, [cashFlowData, multiPeriodData]);
 
-  const handleExport = useCallback(async (format: 'csv' | 'pdf') => {
-    setExporting(true);
-    try {
-      const blob = await reportingApi.exportReport('cash-flow', format, startDate, endDate);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cash-flow-${startDate}-${endDate}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      toast({ title: "Success", description: `Report exported as ${format.toUpperCase()}` });
-    } catch (error: any) {
-      console.error('Export error:', error);
-      toast({ title: "Error", description: "Failed to export report", variant: "destructive" });
-    } finally {
-      setExporting(false);
-    }
-  }, [startDate, endDate, toast]);
-
-  const handleDrilldown = async (activity: string) => {
+  const handleDrilldown = useCallback((activity: string) => {
     setDrilldownActivity(activity);
-    setTransactions([]);
-    try {
-      const response = await billsApi.getActivityTransactions(activity, startDate, endDate);
-      if (response.success) {
-        setTransactions(response.data.map((t: any) => ({
-          date: new Date(t.date).toLocaleDateString('en-IN'),
-          description: t.description || t.accountId?.name || 'Transaction',
-          amount: t.debit - t.credit
-        })));
-      } else {
-        toast({ title: "Info", description: "No transactions found" });
-      }
-    } catch (error: any) {
-      console.error('Drill-down error:', error);
-      toast({ title: "Error", description: "Failed to load transactions", variant: "destructive" });
-    }
-  };
+  }, []);
 
   const waterfallData = useMemo(() => cashFlowData ? [
     { name: 'Opening', value: cashFlowData.openingBalance || 0, fill: '#3b82f6' },
@@ -192,22 +163,44 @@ const CashFlowPage = () => {
     { name: 'Closing', value: cashFlowData.closingBalance || 0, fill: '#3b82f6' }
   ] : [], [cashFlowData]);
 
-  const comparisonData = useMemo(() => cashFlowData && compareData ? [
-    { activity: 'Operating', current: cashFlowData.operatingActivities?.net || 0, previous: compareData.operatingActivities?.net || 0 },
-    { activity: 'Investing', current: cashFlowData.investingActivities?.net || 0, previous: compareData.investingActivities?.net || 0 },
-    { activity: 'Financing', current: cashFlowData.financingActivities?.net || 0, previous: compareData.financingActivities?.net || 0 }
-  ] : [], [cashFlowData, compareData]);
-
   const ratios = useMemo(() => cashFlowData ? {
     operatingCashRatio: ((cashFlowData.operatingActivities?.net || 0) / (cashFlowData.closingBalance || 1) * 100).toFixed(1),
     cashFlowMargin: ((cashFlowData.netCashFlow || 0) / (cashFlowData.operatingActivities?.inflows || 1) * 100).toFixed(1),
     cashCoverage: ((cashFlowData.operatingActivities?.net || 0) / (cashFlowData.operatingActivities?.outflows || 1)).toFixed(2)
   } : null, [cashFlowData]);
 
+  const comparisonData = useMemo(() => {
+    if (!cashFlowData || !compareData || compareMode === 'none') return [];
+    return [
+      { activity: 'Operating', current: cashFlowData.operatingActivities?.net || 0, previous: compareData.operatingActivities?.net || 0 },
+      { activity: 'Investing', current: cashFlowData.investingActivities?.net || 0, previous: compareData.investingActivities?.net || 0 },
+      { activity: 'Financing', current: cashFlowData.financingActivities?.net || 0, previous: compareData.financingActivities?.net || 0 }
+    ];
+  }, [cashFlowData, compareData, compareMode]);
+
   const lowCashWarning = useMemo(() => cashFlowData && (cashFlowData.closingBalance || 0) < LOW_CASH_THRESHOLD, [cashFlowData]);
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md">
+          <CardContent className="p-6 text-center space-y-4">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+            <p className="text-lg font-semibold">Failed to load cash flow data</p>
+            <p className="text-sm text-muted-foreground">{typeof error === 'string' ? error : error?.message || 'Unknown error'}</p>
+            <Button onClick={() => refetch()}>Try Again</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return <CashFlowSkeleton />;
+  }
+
   return (
-    <div className="flex-1 space-y-6 p-6" style={{ '@media print': { padding: 0 } } as any}>
+    <div className="flex-1 space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Coins className="h-8 w-8 text-orange-600" />
@@ -217,7 +210,7 @@ const CashFlowPage = () => {
           </div>
         </div>
         <div className="flex gap-2 no-print">
-          <Select value={compareMode} onValueChange={(val: any) => setCompareMode(val)} disabled={loading}>
+          <Select value={compareMode} onValueChange={(val: any) => setCompareMode(val)}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Compare" />
             </SelectTrigger>
@@ -233,17 +226,19 @@ const CashFlowPage = () => {
             <span>to</span>
             <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40" />
           </div>
-          <Button onClick={fetchCashFlowData} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+          <Button onClick={handleRefresh} disabled={isLoading} aria-label="Refresh cash flow data">
+            {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Refresh
           </Button>
-          <Button variant="outline" onClick={() => handleExport('csv')} disabled={exporting || !cashFlowData}>
-            <Download className="h-4 w-4 mr-2" />CSV
+          <Button variant="outline" onClick={() => handleExport('csv')} disabled={exportMutation.isPending || !cashFlowData} aria-label="Export to CSV">
+            {exportMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            CSV
           </Button>
-          <Button variant="outline" onClick={() => handleExport('pdf')} disabled={exporting || !cashFlowData}>
-            <Download className="h-4 w-4 mr-2" />PDF
+          <Button variant="outline" onClick={() => handleExport('pdf')} disabled={exportMutation.isPending || !cashFlowData} aria-label="Export to PDF">
+            {exportMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            PDF
           </Button>
-          <Button variant="outline" onClick={() => window.print()} disabled={!cashFlowData}>
+          <Button variant="outline" onClick={() => window.print()} disabled={!cashFlowData} aria-label="Print report">
             <Printer className="h-4 w-4 mr-2" />Print
           </Button>
         </div>
@@ -295,20 +290,11 @@ const CashFlowPage = () => {
           <TabsTrigger value="trends">Trends</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="statement">
-          {loading ? (
+        <TabsContent value="statement" role="tabpanel" aria-labelledby="statement-tab">
+          {!cashFlowData ? (
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Loading cash flow data...</span>
-                </div>
-              </CardContent>
-            </Card>
-          ) : !cashFlowData ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-muted-foreground">No data available. Please select a date range and click Refresh.</div>
+                <div className="text-center text-muted-foreground">No data available.</div>
               </CardContent>
             </Card>
           ) : (
@@ -426,7 +412,7 @@ const CashFlowPage = () => {
           )}
         </TabsContent>
 
-        <TabsContent value="waterfall">
+        <TabsContent value="waterfall" role="tabpanel" aria-labelledby="waterfall-tab">
           <Card>
             <CardHeader>
               <CardTitle>Cash Flow Waterfall</CardTitle>
@@ -449,7 +435,7 @@ const CashFlowPage = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="comparison">
+        <TabsContent value="comparison" role="tabpanel" aria-labelledby="comparison-tab">
           <Card>
             <CardHeader>
               <CardTitle>Period Comparison</CardTitle>
@@ -470,7 +456,7 @@ const CashFlowPage = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="forecast">
+        <TabsContent value="forecast" role="tabpanel" aria-labelledby="forecast-tab">
           <Card>
             <CardHeader>
               <CardTitle>6-Month Cash Flow Forecast</CardTitle>
@@ -493,14 +479,14 @@ const CashFlowPage = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="trends">
+        <TabsContent value="trends" role="tabpanel" aria-labelledby="trends-tab">
           <Card>
             <CardHeader>
               <CardTitle>Activity Trends</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={multiPeriodData.length > 0 ? multiPeriodData : [
+                <LineChart data={(multiPeriodData && multiPeriodData.length > 0) ? multiPeriodData : [
                   { month: 'Jan', operating: 5000, investing: -2000, financing: 1000 },
                   { month: 'Feb', operating: 6000, investing: -1500, financing: 800 },
                   { month: 'Mar', operating: 5500, investing: -2500, financing: 1200 }
@@ -525,31 +511,51 @@ const CashFlowPage = () => {
           <DialogHeader>
             <DialogTitle>Transactions: {drilldownActivity} Activities</DialogTitle>
           </DialogHeader>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.map((txn, idx) => (
-                <TableRow key={idx}>
-                  <TableCell>{txn.date}</TableCell>
-                  <TableCell>{txn.description}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(txn.amount)}</TableCell>
+          {transactionsLoading ? (
+            <div className="flex justify-center p-6">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {transactions && transactions.length > 0 ? (
+                  transactions.map((txn, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{txn.date}</TableCell>
+                      <TableCell>{txn.description}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(txn.amount)}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground">No transactions found</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </DialogContent>
       </Dialog>
 
       <div className="text-xs text-gray-500 no-print">
-        <p>Shortcuts: Ctrl+P (Print), Ctrl+E (Export)</p>
+        <p>Shortcuts: Ctrl+P (Print) | Ctrl+E (Export CSV) | Ctrl+R (Refresh)</p>
       </div>
     </div>
+  );
+};
+
+const CashFlowPage = () => {
+  return (
+    <ErrorBoundary>
+      <CashFlowPageContent />
+    </ErrorBoundary>
   );
 };
 

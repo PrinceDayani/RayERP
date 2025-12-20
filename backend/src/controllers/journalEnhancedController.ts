@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import JournalEntry from '../models/JournalEntry';
+import { generateJournalEntryNumber } from '../utils/journalNumberGenerator';
 import JournalTemplate from '../models/JournalTemplate';
 import AllocationRule from '../models/AllocationRule';
-import Account from '../models/Account';
+import Account from '../models/ChartOfAccount';
 import DepartmentBudget from '../models/DepartmentBudget';
 
 // Recurring Journal Entries
@@ -17,10 +18,11 @@ export const generateRecurringEntries = async (req: Request, res: Response) => {
 
     const generated = [];
     for (const parent of recurringEntries) {
+      const entryNumber = await generateJournalEntryNumber('RECURRING', 'GL');
       const newEntry = new JournalEntry({
         ...parent.toObject(),
         _id: undefined,
-        entryNumber: undefined,
+        entryNumber,
         parentEntryId: parent._id,
         date: new Date(),
         isPosted: false,
@@ -57,8 +59,9 @@ export const createReversingEntry = async (req: Request, res: Response) => {
       description: `Reversal: ${line.description}`
     }));
 
+    const entryNumber = await generateJournalEntryNumber('REVERSING', 'GL');
     const reversingEntry = new JournalEntry({
-      entryNumber: `REV-${original.entryNumber}`,
+      entryNumber,
       entryType: 'REVERSING',
       entryDate: req.body.reverseDate || new Date(),
       date: req.body.reverseDate || new Date(),
@@ -113,7 +116,9 @@ export const createFromTemplate = async (req: Request, res: Response) => {
       };
     });
 
+    const entryNumber = await generateJournalEntryNumber('MANUAL', 'GL');
     const entry = new JournalEntry({
+      entryNumber,
       date: date || new Date(),
       reference,
       description: template.description || template.name,
@@ -312,7 +317,7 @@ export const getAccountSuggestions = async (req: Request, res: Response) => {
       entry.lines.forEach(line => accountIds.add(line.accountId.toString()));
     });
 
-    const accounts = await Account.find({ _id: { $in: Array.from(accountIds) } });
+    const accounts = await ChartOfAccount.find({ _id: { $in: Array.from(accountIds) } });
 
     res.json({ success: true, data: accounts });
   } catch (error: any) {
@@ -389,3 +394,4 @@ function evaluateFormula(formula: string, variables: any): number {
     return 0;
   }
 }
+

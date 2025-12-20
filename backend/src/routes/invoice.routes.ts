@@ -1,17 +1,25 @@
 import express from 'express';
 import Invoice from '../models/Invoice';
+import { JournalEntry } from '../models/JournalEntry';
 import { protect } from '../middleware/auth.middleware';
 import { requireFinanceAccess } from '../middleware/financePermission.middleware';
 import {
   createInvoice,
   getInvoices,
+  getInvoiceById,
+  updateInvoice,
+  deleteInvoice,
   recordPayment,
+  sendInvoice,
+  getInvoiceSummary,
+  getCustomers,
+  getChartOfAccounts,
+  getInvoiceJournalEntry,
   invoiceRateLimit,
   validateInvoiceCreation,
   validateInvoiceUpdate,
-  validateInvoiceId,
   validatePayment
-} from '../controllers/invoiceControllerProd';
+} from '../controllers/invoiceController';
 import { invoiceHealthChecker } from '../utils/invoiceHealthCheck';
 import multer from 'multer';
 import path from 'path';
@@ -48,19 +56,10 @@ router.get('/metrics', protect, async (req, res) => {
 });
 
 // GET Customers from Contacts (before rate limiter to avoid conflicts)
-router.get('/customers/list', protect, async (req, res) => {
-  try {
-    const Contact = require('../models/Contact').default;
-    const customers = await Contact.find({ isCustomer: true, status: 'active' })
-      .select('_id name email phone company')
-      .sort({ name: 1 })
-      .lean();
-    res.json({ success: true, data: customers });
-  } catch (error: any) {
-    console.error('Error fetching customers:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+router.get('/customers/list', protect, getCustomers);
+
+// GET Chart of Accounts for invoice creation
+router.get('/accounts/list', protect, getChartOfAccounts);
 
 // Apply authentication and rate limiting
 router.use(protect);
@@ -199,14 +198,22 @@ router.post('/:id/approve', requireFinanceAccess('invoices.approve'), async (req
 });
 
 // POST Invoice - Send
-router.post('/:id/send', requireFinanceAccess('invoices.send'), async (req, res) => {
+router.post('/:id/send', requireFinanceAccess('invoices.send'), sendInvoice);
+
+// GET Invoice PDF
+router.get('/:id/pdf', requireFinanceAccess('invoices.view'), async (req, res) => {
   try {
-    const invoice = await Invoice.findByIdAndUpdate(req.params.id, { status: 'SENT', sentDate: new Date() }, { new: true });
+    const invoice = await Invoice.findById(req.params.id);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    // TODO: Send email
-    res.json({ success: true, data: invoice, message: 'Invoice sent successfully' });
+    
+    const pdfService = require('../services/pdfService').default;
+    const pdfBuffer = await pdfService.generateInvoicePDF(invoice);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoice.invoiceNumber}.pdf"`);
+    res.send(pdfBuffer);
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -351,40 +358,15 @@ router.post('/:id/attachment', upload.single('file'), async (req, res) => {
 });
 
 // GET Invoice by ID
-router.get('/:id', requireFinanceAccess('invoices.view'), async (req, res) => {
-  try {
-    const invoice = await Invoice.findById(req.params.id)
-      .populate('customerId', 'name email')
-      .populate('createdBy', 'name email');
-    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    res.json({ success: true, data: invoice });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+router.get('/:id', requireFinanceAccess('invoices.view'), getInvoiceById);
+
+// GET Journal Entry for Invoice
+router.get('/:id/journal-entry', requireFinanceAccess('invoices.view'), getInvoiceJournalEntry);
 
 // PUT Update Invoice
-router.put('/:id', requireFinanceAccess('invoices.edit'), async (req, res) => {
-  try {
-    const invoice = await Invoice.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    res.json({ success: true, data: invoice });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
+router.put('/:id', validateInvoiceUpdate, requireFinanceAccess('invoices.edit'), updateInvoice);
 
 // DELETE Invoice
-router.delete('/:id', requireFinanceAccess('invoices.delete'), async (req, res) => {
-  try {
-    const invoice = await Invoice.findById(req.params.id);
-    if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-    if (invoice.status !== 'DRAFT') return res.status(400).json({ success: false, message: 'Can only delete draft invoices' });
-    await invoice.deleteOne();
-    res.json({ success: true, message: 'Invoice deleted' });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+router.delete('/:id', requireFinanceAccess('invoices.delete'), deleteInvoice);
 
 export default router;

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus } from 'lucide-react';
+import { Plus, Checkbox } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
 
@@ -29,6 +29,15 @@ export default function FinanceAccountCreationForm({ onAccountCreated, duplicate
   ]);
   const [showTypeDialog, setShowTypeDialog] = useState(false);
   const [newTypeData, setNewTypeData] = useState({ name: '', description: '', nature: 'debit' as 'debit' | 'credit' });
+  const [linkToContact, setLinkToContact] = useState(false);
+  const [isCustomer, setIsCustomer] = useState(false);
+  const [contactData, setContactData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    company: '',
+    address: ''
+  });
 
   useCreateAccountTypeShortcut(() => setShowTypeDialog(true));
 
@@ -174,13 +183,54 @@ export default function FinanceAccountCreationForm({ onAccountCreated, duplicate
     setLoading(true);
     try {
       const token = localStorage.getItem('auth-token');
+      
+      // Create contact if linkToContact is enabled
+      let contactId = null;
+      if (linkToContact) {
+        if (!contactData.name || !contactData.phone) {
+          toast({ title: "Error", description: "Contact name and phone are required", variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+        
+        const contactResponse = await fetch(`${API_URL}/api/contacts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            ...contactData,
+            isCustomer,
+            visibilityLevel: 'personal',
+            contactType: isCustomer ? 'client' : 'personal',
+            status: 'active'
+          })
+        });
+        
+        const contactResult = await contactResponse.json();
+        if (contactResult.success) {
+          contactId = contactResult.data._id;
+          toast({ title: "Success", description: `Contact created${isCustomer ? ' as customer' : ''}` });
+        } else {
+          throw new Error(contactResult.message || 'Failed to create contact');
+        }
+      }
+      
+      // Create account with contact link
+      const accountPayload = {
+        ...formData,
+        contactId,
+        linkedContact: contactId
+      };
+      
       const response = await fetch(`${API_URL}/api/accounts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(accountPayload)
       });
 
       const data = await response.json();
@@ -202,7 +252,19 @@ export default function FinanceAccountCreationForm({ onAccountCreated, duplicate
 
   return (
     <>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex justify-between items-center">
+        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <input
+            type="checkbox"
+            id="linkToContact"
+            checked={linkToContact}
+            onChange={(e) => setLinkToContact(e.target.checked)}
+            className="w-4 h-4 text-blue-600 rounded"
+          />
+          <Label htmlFor="linkToContact" className="text-sm font-medium cursor-pointer">
+            Link this account to a contact
+          </Label>
+        </div>
         <Button type="button" variant="outline" size="sm" onClick={() => setShowTypeDialog(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add Account Type
@@ -215,6 +277,86 @@ export default function FinanceAccountCreationForm({ onAccountCreated, duplicate
         initialData={duplicateFrom}
         loading={loading}
       />
+      
+      {linkToContact && (
+        <div className="mt-6 p-6 border rounded-lg bg-blue-50 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-blue-900">Contact Details</h3>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isCustomer"
+                checked={isCustomer}
+                onChange={(e) => setIsCustomer(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded"
+              />
+              <Label htmlFor="isCustomer" className="text-sm font-medium text-blue-900 cursor-pointer">
+                Mark as Customer
+              </Label>
+            </div>
+          </div>
+          <p className="text-sm text-blue-700">This contact will be automatically created and linked to this account.</p>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-blue-900">Contact Name *</Label>
+              <Input
+                value={contactData.name}
+                onChange={(e) => setContactData({ ...contactData, name: e.target.value })}
+                placeholder="Enter contact name"
+                required
+                className="bg-white"
+              />
+            </div>
+            <div>
+              <Label className="text-blue-900">Phone *</Label>
+              <Input
+                value={contactData.phone}
+                onChange={(e) => setContactData({ ...contactData, phone: e.target.value })}
+                placeholder="+91-XXXXXXXXXX"
+                required
+                className="bg-white"
+              />
+            </div>
+            <div>
+              <Label className="text-blue-900">Email</Label>
+              <Input
+                type="email"
+                value={contactData.email}
+                onChange={(e) => setContactData({ ...contactData, email: e.target.value })}
+                placeholder="email@example.com"
+                className="bg-white"
+              />
+            </div>
+            <div>
+              <Label className="text-blue-900">Company</Label>
+              <Input
+                value={contactData.company}
+                onChange={(e) => setContactData({ ...contactData, company: e.target.value })}
+                placeholder="Company name"
+                className="bg-white"
+              />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-blue-900">Address</Label>
+              <Input
+                value={contactData.address}
+                onChange={(e) => setContactData({ ...contactData, address: e.target.value })}
+                placeholder="Complete address"
+                className="bg-white"
+              />
+            </div>
+          </div>
+          
+          {isCustomer && (
+            <div className="p-3 bg-green-100 border border-green-300 rounded-md">
+              <p className="text-sm text-green-800 font-medium">
+                ✓ This contact will be marked as a customer and will appear in invoice creation.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <Dialog open={showTypeDialog} onOpenChange={setShowTypeDialog}>
         <DialogContent>

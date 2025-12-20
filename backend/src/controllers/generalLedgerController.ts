@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { AccountGroup } from '../models/AccountGroup';
 import { AccountSubGroup } from '../models/AccountSubGroup';
 import { PartyLedger } from '../models/PartyLedger';
@@ -149,7 +149,7 @@ const buildSubGroupTree = async (parentId: any): Promise<any[]> => {
   const subGroups = await AccountSubGroup.find({ parentSubGroupId: parentId, isActive: true }).sort({ code: 1 });
   return Promise.all(subGroups.map(async (sg) => {
     const children = await buildSubGroupTree(sg._id);
-    const accounts = await Account.find({ subGroupId: sg._id, isActive: true }).sort({ code: 1 });
+    const accounts = await ChartOfAccount.find({ subGroupId: sg._id, isActive: true }).sort({ code: 1 });
     return { ...sg.toObject(), children, accounts };
   }));
 };
@@ -161,7 +161,7 @@ export const getAccountHierarchy = async (req: Request, res: Response) => {
       const rootSubGroups = await AccountSubGroup.find({ groupId: group._id, parentSubGroupId: null, isActive: true }).sort({ code: 1 });
       const subGroupsWithChildren = await Promise.all(rootSubGroups.map(async (sg) => {
         const children = await buildSubGroupTree(sg._id);
-        const accounts = await Account.find({ subGroupId: sg._id, isActive: true }).sort({ code: 1 });
+        const accounts = await ChartOfAccount.find({ subGroupId: sg._id, isActive: true }).sort({ code: 1 });
         return { ...sg.toObject(), children, accounts };
       }));
       return { ...group.toObject(), subGroups: subGroupsWithChildren };
@@ -182,8 +182,9 @@ export const getAccounts = async (req: Request, res: Response) => {
     if (isGroup !== undefined) query.isGroup = isGroup === 'true';
     if (includeInactive !== 'true') query.isActive = true;
     
-    const accounts = await Account.find(query)
+    const accounts = await ChartOfAccount.find(query)
       .populate('parentId', 'name code type')
+      .populate('contactId', 'name email')
       .lean()
       .sort({ code: 1 });
     
@@ -252,7 +253,7 @@ export const createAccount = async (req: Request, res: Response) => {
     console.log('Validation passed');
 
     // Check if account code already exists
-    const existingAccount = await Account.findOne({ code: accountData.code });
+    const existingAccount = await ChartOfAccount.findOne({ code: accountData.code });
     if (existingAccount) {
       return res.status(400).json({ message: 'Account code already exists' });
     }
@@ -261,7 +262,7 @@ export const createAccount = async (req: Request, res: Response) => {
     let level = 0;
     let parentType = accountData.type;
     if (accountData.parentId) {
-      const parent = await Account.findById(accountData.parentId);
+      const parent = await ChartOfAccount.findById(accountData.parentId);
       if (parent) {
         level = parent.level + 1;
         parentType = parent.type;
@@ -296,7 +297,7 @@ export const createAccount = async (req: Request, res: Response) => {
     }
 
     console.log('Creating account with document:', JSON.stringify(accountDoc, null, 2));
-    const account = new Account(accountDoc);
+    const account = new ChartOfAccount(accountDoc);
     console.log('Account model created, attempting to save...');
     await account.save();
     console.log('Account saved successfully:', account._id);
@@ -333,14 +334,14 @@ export const updateAccount = async (req: Request, res: Response) => {
     const updates = req.body;
 
     // Check if account exists
-    const existingAccount = await Account.findById(id);
+    const existingAccount = await ChartOfAccount.findById(id);
     if (!existingAccount) {
       return res.status(404).json({ message: 'Account not found' });
     }
 
     // Don't allow updating code if it would create a duplicate
     if (updates.code && updates.code !== existingAccount.code) {
-      const duplicate = await Account.findOne({ code: updates.code, _id: { $ne: id } });
+      const duplicate = await ChartOfAccount.findOne({ code: updates.code, _id: { $ne: id } });
       if (duplicate) {
         return res.status(400).json({ message: 'Account code already exists' });
       }
@@ -353,7 +354,7 @@ export const updateAccount = async (req: Request, res: Response) => {
 
     console.log('Cleaned updates:', JSON.stringify(updates, null, 2));
 
-    const account = await Account.findByIdAndUpdate(
+    const account = await ChartOfAccount.findByIdAndUpdate(
       id,
       updates,
       { new: true, runValidators: true }
@@ -376,7 +377,7 @@ export const updateAccount = async (req: Request, res: Response) => {
 export const deleteAccount = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const account = await Account.findByIdAndDelete(id);
+    const account = await ChartOfAccount.findByIdAndDelete(id);
     if (!account) {
       return res.status(404).json({ message: 'Account not found' });
     }
@@ -426,8 +427,12 @@ export const getJournalEntries = async (req: Request, res: Response) => {
     const skip = (Number(page) - 1) * Number(limit);
     
     const journalEntries = await JournalEntry.find(query)
-      .populate('lines.account', 'code name type')
-      .populate('createdBy', 'firstName lastName email')
+      .populate({
+        path: 'lines.account',
+        select: 'code name type',
+        options: { strictPopulate: false }
+      })
+      .populate('createdBy', 'firstName lastName name email')
       .sort({ entryDate: -1, entryNumber: -1 })
       .limit(Number(limit))
       .skip(skip)
@@ -480,7 +485,7 @@ export const createJournalEntry = async (req: Request, res: Response) => {
       }
       
       // Verify account exists
-      const account = await Account.findById(accountId);
+      const account = await ChartOfAccount.findById(accountId);
       if (!account) {
         return res.status(400).json({ 
           message: `Line ${i + 1}: Invalid account ID`
@@ -572,33 +577,46 @@ export const createJournalEntry = async (req: Request, res: Response) => {
     // Auto-post the journal entry and update account balances
     try {
       console.log('=== AUTO-POSTING JOURNAL ENTRY ===');
+      console.log('Entry ID:', journalEntry._id);
+      console.log('Entry Number:', journalEntry.entryNumber);
+      console.log('Lines count:', sanitizedLines.length);
+      
       for (const line of sanitizedLines) {
-        const account = await Account.findById(line.account);
+        const account = await ChartOfAccount.findById(line.account);
         if (account) {
           const oldBalance = account.balance;
           let newBalance = account.balance;
-          if (['asset', 'expense'].includes(account.type)) {
+          if (['ASSET', 'EXPENSE'].includes(account.type)) {
             newBalance += line.debit - line.credit;
           } else {
             newBalance += line.credit - line.debit;
           }
-          console.log(`Updating account ${account.code} (${account.name}):`);
-          console.log(`  Old balance: ${oldBalance}`);
-          console.log(`  Debit: ${line.debit}, Credit: ${line.credit}`);
-          console.log(`  New balance: ${newBalance}`);
-          await Account.findByIdAndUpdate(line.account, { balance: newBalance });
-          console.log('  ✓ Balance updated');
+          console.log(`Account ${account.code}: ${oldBalance} -> ${newBalance} (Dr:${line.debit} Cr:${line.credit})`);
+          await ChartOfAccount.findByIdAndUpdate(line.account, { balance: newBalance });
         } else {
-          console.log(`Account not found: ${line.account}`);
+          console.log('Account not found:', line.account);
         }
       }
+      
       journalEntry.isPosted = true;
+      journalEntry.status = 'POSTED';
       await journalEntry.save();
+      console.log('Entry saved with isPosted:', journalEntry.isPosted, 'status:', journalEntry.status);
+      
+      // Verify it was saved
+      const verifyEntry = await JournalEntry.findById(journalEntry._id).lean();
+      console.log('Verification - isPosted:', verifyEntry?.isPosted, 'status:', verifyEntry?.status);
       console.log('=== AUTO-POST COMPLETE ===');
     } catch (autoPostError) {
-      console.error('Auto-post failed:', autoPostError);
+      console.error('=== AUTO-POST FAILED ===');
+      console.error(autoPostError);
       logger.error('Auto-post failed:', autoPostError);
     }
+
+    await journalEntry.populate([
+      { path: 'lines.account', select: 'code name' },
+      { path: 'createdBy', select: 'name email' }
+    ]);
 
     res.status(201).json(journalEntry);
   } catch (error) {
@@ -755,7 +773,7 @@ export const postJournalEntry = async (req: Request, res: Response) => {
         console.error('Line missing account:', line);
         continue;
       }
-      const account = await Account.findById(accountId).session(session);
+      const account = await ChartOfAccount.findById(accountId).session(session);
       if (!account) {
         console.error('Account not found:', accountId);
         continue;
@@ -763,7 +781,7 @@ export const postJournalEntry = async (req: Request, res: Response) => {
 
       // Calculate new balance based on account type
       let newBalance = account.balance;
-      if (['asset', 'expense'].includes(account.type)) {
+      if (['ASSET', 'EXPENSE'].includes(account.type)) {
         // Debit increases, credit decreases
         newBalance += line.debit - line.credit;
       } else {
@@ -772,7 +790,7 @@ export const postJournalEntry = async (req: Request, res: Response) => {
       }
 
       // Update account balance
-      await Account.findByIdAndUpdate(
+      await ChartOfAccount.findByIdAndUpdate(
         accountId,
         { balance: newBalance },
         { session }
@@ -818,13 +836,13 @@ export const getTrialBalance = async (req: Request, res: Response) => {
     const { asOfDate } = req.query;
     const dateFilter = asOfDate ? new Date(asOfDate as string) : new Date();
     
-    const accounts = await Account.find({ isActive: true }).sort({ code: 1 });
+    const accounts = await ChartOfAccount.find({ isActive: true }).sort({ code: 1 });
     
     const trialBalance = accounts.map(account => {
       // For normal balance calculation based on account type
       let debit = 0, credit = 0;
       
-      if (['asset', 'expense'].includes(account.type)) {
+      if (['ASSET', 'EXPENSE'].includes(account.type)) {
         if (account.balance >= 0) {
           debit = account.balance;
         } else {
@@ -872,14 +890,21 @@ export const getAccountLedger = async (req: Request, res: Response) => {
     const { accountId } = req.params;
     const { startDate, endDate, page = 1, limit = 50 } = req.query;
     
-    const account = await Account.findById(accountId);
+    console.log('=== GET ACCOUNT LEDGER ===');
+    console.log('Account ID:', accountId);
+    console.log('Date range:', startDate, 'to', endDate);
+    
+    const account = await ChartOfAccount.findById(accountId);
     if (!account) {
+      console.log('Account not found');
       return res.status(404).json({ message: 'Account not found' });
     }
+    console.log('Account found:', account.code, account.name);
 
     // Get journal entries that include this account
     const journalQuery: any = {
-      'lines.account': accountId
+      'lines.account': accountId,
+      isPosted: true
     };
     if (startDate && endDate) {
       journalQuery.entryDate = {
@@ -887,11 +912,19 @@ export const getAccountLedger = async (req: Request, res: Response) => {
         $lte: new Date(endDate as string)
       };
     }
+    
+    console.log('Query:', JSON.stringify(journalQuery));
 
     const journalEntries = await JournalEntry.find(journalQuery)
-      .sort({ entryDate: 1 })
+      .sort({ entryDate: 1, createdAt: 1 })
       .limit(Number(limit))
-      .skip((Number(page) - 1) * Number(limit));
+      .skip((Number(page) - 1) * Number(limit))
+      .lean();
+      
+    console.log('Found', journalEntries.length, 'journal entries');
+    journalEntries.forEach(e => {
+      console.log('Entry:', e.entryNumber, 'Posted:', e.isPosted, 'Date:', e.entryDate);
+    });
 
     // Transform to ledger format with auto-calculated running balance
     let runningBalance = 0;
@@ -900,7 +933,7 @@ export const getAccountLedger = async (req: Request, res: Response) => {
         .filter((line: any) => line.account.toString() === accountId)
         .map((line: any) => {
           // Auto-calculate running balance based on account type
-          if (['asset', 'expense'].includes(account.type)) {
+          if (['ASSET', 'EXPENSE'].includes(account.type)) {
             runningBalance += line.debit - line.credit;
           } else {
             runningBalance += line.credit - line.debit;
@@ -920,8 +953,11 @@ export const getAccountLedger = async (req: Request, res: Response) => {
           };
         });
     });
+    
+    console.log('Transformed to', entries.length, 'ledger entries');
 
     const total = await JournalEntry.countDocuments(journalQuery);
+    console.log('Total matching entries:', total);
 
     res.json({
       account: {
@@ -940,6 +976,8 @@ export const getAccountLedger = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
+    console.error('=== ERROR IN GET ACCOUNT LEDGER ===');
+    console.error(error);
     logger.error('Error fetching account ledger:', error);
     res.status(500).json({ message: 'Error fetching account ledger' });
   }
@@ -967,8 +1005,8 @@ export const getFinancialReports = async (req: Request, res: Response) => {
         const incomeSubGroups = await AccountSubGroup.find({ groupId: incomeGroup._id, isActive: true });
         const expenseSubGroups = await AccountSubGroup.find({ groupId: expensesGroup._id, isActive: true });
         
-        const incomeAccounts = await Account.find({ type: 'revenue', isActive: true });
-        const expenseAccounts = await Account.find({ type: 'expense', isActive: true });
+        const incomeAccounts = await ChartOfAccount.find({ type: 'REVENUE', isActive: true });
+        const expenseAccounts = await ChartOfAccount.find({ type: 'EXPENSE', isActive: true });
         
         const totalIncome = incomeAccounts.reduce((sum, a) => sum + a.balance, 0);
         const totalExpenses = expenseAccounts.reduce((sum, a) => sum + a.balance, 0);
@@ -1007,8 +1045,8 @@ export const getFinancialReports = async (req: Request, res: Response) => {
         const assetSubGroups = await AccountSubGroup.find({ groupId: assetsGroup._id, isActive: true });
         const liabilitySubGroups = await AccountSubGroup.find({ groupId: liabilitiesGroup._id, isActive: true });
         
-        const assetAccounts = await Account.find({ type: 'asset', isActive: true });
-        const liabilityAccounts = await Account.find({ type: 'liability', isActive: true });
+        const assetAccounts = await ChartOfAccount.find({ type: 'ASSET', isActive: true });
+        const liabilityAccounts = await ChartOfAccount.find({ type: 'LIABILITY', isActive: true });
         
         const totalAssets = assetAccounts.reduce((sum, a) => sum + a.balance, 0);
         const totalLiabilities = liabilityAccounts.reduce((sum, a) => sum + a.balance, 0);
@@ -1037,7 +1075,7 @@ export const getFinancialReports = async (req: Request, res: Response) => {
         break;
         
       case 'cash-flow':
-        const cashAccounts = await Account.find({ 
+        const cashAccounts = await ChartOfAccount.find({ 
           subType: 'cash',
           isActive: true 
         });
@@ -1382,7 +1420,7 @@ export const calculateInterest = async (req: Request, res: Response) => {
     const { accountId } = req.params;
     const { fromDate, toDate } = req.body;
     
-    const account = await Account.findById(accountId);
+    const account = await ChartOfAccount.findById(accountId);
     if (!account) return res.status(404).json({ message: 'Account not found' });
     if (!account.enableInterest) return res.status(400).json({ message: 'Interest not enabled for this account' });
     
@@ -1426,7 +1464,7 @@ export const getInterestReport = async (req: Request, res: Response) => {
     const { accountId } = req.params;
     const { fiscalYear } = req.query;
     
-    const account = await Account.findById(accountId);
+    const account = await ChartOfAccount.findById(accountId);
     if (!account) return res.status(404).json({ message: 'Account not found' });
     
     const startDate = new Date(`${fiscalYear}-04-01`);
@@ -1498,7 +1536,7 @@ export const getBudgetVarianceReport = async (req: Request, res: Response) => {
     const budgets = await GLBudget.find({ fiscalYear }).populate('accountId', 'code name type');
     
     for (const budget of budgets) {
-      const account = await Account.findById(budget.accountId);
+      const account = await ChartOfAccount.findById(budget.accountId);
       if (account) {
         budget.actualAmount = account.balance;
         budget.variance = budget.budgetAmount - budget.actualAmount;
@@ -1519,7 +1557,7 @@ export const getAccountBudgetStatus = async (req: Request, res: Response) => {
     const { fiscalYear } = req.query;
     
     const budget = await GLBudget.findOne({ accountId, fiscalYear });
-    const account = await Account.findById(accountId);
+    const account = await ChartOfAccount.findById(accountId);
     
     if (!account) return res.status(404).json({ message: 'Account not found' });
     
@@ -1539,7 +1577,7 @@ export const getAccountBudgetStatus = async (req: Request, res: Response) => {
 
 export const recalculateBalances = async (req: Request, res: Response) => {
   try {
-    const accounts = await Account.find();
+    const accounts = await ChartOfAccount.find();
     for (const account of accounts) {
       account.balance = account.openingBalance || 0;
       await account.save();
@@ -1553,17 +1591,17 @@ export const recalculateBalances = async (req: Request, res: Response) => {
         const accountId = (line as any).account;
         if (!accountId) continue;
         
-        const account = await Account.findById(accountId);
+        const account = await ChartOfAccount.findById(accountId);
         if (!account) continue;
         
         let newBalance = account.balance;
-        if (['asset', 'expense'].includes(account.type)) {
+        if (['ASSET', 'EXPENSE'].includes(account.type)) {
           newBalance += line.debit - line.credit;
         } else {
           newBalance += line.credit - line.debit;
         }
         
-        await Account.findByIdAndUpdate(accountId, { balance: newBalance });
+        await ChartOfAccount.findByIdAndUpdate(accountId, { balance: newBalance });
         account.balance = newBalance;
         updatedCount++;
       }
@@ -1598,7 +1636,7 @@ export const exportInvoice = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Entry IDs are required' });
     }
 
-    const account = await Account.findById(accountId);
+    const account = await ChartOfAccount.findById(accountId);
     if (!account) {
       return res.status(404).json({ message: 'Account not found' });
     }
@@ -1641,3 +1679,5 @@ export const exportInvoice = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error exporting invoice' });
   }
 };
+
+

@@ -19,7 +19,32 @@ export interface IChartOfAccount extends Document {
     gstRate?: number;
     hsnCode?: string;
     sacCode?: string;
+    gstNo?: string;
+    panNo?: string;
+    tdsApplicable?: boolean;
   };
+  contactId?: mongoose.Types.ObjectId;
+  contactInfo?: {
+    phone?: string;
+    email?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    primaryPhone?: string;
+    primaryEmail?: string;
+  };
+  bankDetails?: {
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    branchName?: string;
+  };
+  createContact?: boolean;
+  reconciliationStatus?: 'pending' | 'in_progress' | 'reconciled';
+  lastReconciledDate?: Date;
+  reconciledBalance?: number;
+  enableInterest?: boolean;
+  interestRate?: number;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -91,7 +116,53 @@ const ChartOfAccountSchema = new Schema<IChartOfAccount>({
   taxInfo: {
     gstRate: Number,
     hsnCode: String,
-    sacCode: String
+    sacCode: String,
+    gstNo: String,
+    panNo: String,
+    tdsApplicable: Boolean
+  },
+  contactId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Contact'
+  },
+  contactInfo: {
+    phone: String,
+    email: String,
+    address: String,
+    city: String,
+    state: String,
+    primaryPhone: String,
+    primaryEmail: String
+  },
+  bankDetails: {
+    bankName: String,
+    accountNumber: String,
+    ifscCode: String,
+    branchName: String
+  },
+  createContact: {
+    type: Boolean,
+    default: false
+  },
+  reconciliationStatus: {
+    type: String,
+    enum: ['pending', 'in_progress', 'reconciled'],
+    default: 'pending'
+  },
+  lastReconciledDate: {
+    type: Date
+  },
+  reconciledBalance: {
+    type: Number,
+    default: 0
+  },
+  enableInterest: {
+    type: Boolean,
+    default: false
+  },
+  interestRate: {
+    type: Number,
+    default: 0
   },
   createdBy: {
     type: Schema.Types.ObjectId,

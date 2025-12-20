@@ -45,7 +45,7 @@ export interface IVoucher extends Document {
 }
 
 const VoucherLineSchema = new Schema<IVoucherLine>({
-  accountId: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
+  accountId: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount', required: true },
   debit: { type: Number, default: 0, min: 0 },
   credit: { type: Number, default: 0, min: 0 },
   description: { type: String, trim: true },
@@ -69,12 +69,12 @@ const VoucherSchema = new Schema<IVoucher>({
   totalAmount: { type: Number, required: true, min: 0 },
   isPosted: { type: Boolean, default: false, index: true },
   status: { type: String, enum: ['draft', 'posted', 'cancelled'], default: 'draft', index: true },
-  partyId: { type: Schema.Types.ObjectId, ref: 'Account' },
+  partyId: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' },
   partyName: { type: String, trim: true },
   paymentMode: { type: String, enum: ['cash', 'bank', 'cheque', 'upi', 'card', 'neft', 'rtgs'] },
   chequeNumber: { type: String, trim: true },
   chequeDate: { type: Date },
-  bankAccountId: { type: Schema.Types.ObjectId, ref: 'Account' },
+  bankAccountId: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' },
   invoiceNumber: { type: String, trim: true },
   invoiceDate: { type: Date },
   dueDate: { type: Date },

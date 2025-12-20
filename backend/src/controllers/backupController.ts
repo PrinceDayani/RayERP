@@ -12,7 +12,7 @@ import Attendance from '../models/Attendance';
 import Department from '../models/Department';
 import Budget from '../models/Budget';
 import { Role } from '../models/Role';
-import Account from '../models/Account';
+import Account from '../models/ChartOfAccount';
 import ActivityLog from '../models/ActivityLog';
 import Chat from '../models/Chat';
 import Leave from '../models/Leave';

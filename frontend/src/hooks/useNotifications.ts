@@ -70,6 +70,7 @@ export const useNotifications = () => {
     };
 
     socket.on('notification:received', handleNotificationReceived);
+    socket.on('notification:new', handleNotificationReceived); // Listen for new notifications from backend
     socket.on('order:new', (order: any) => {
       handleNotificationReceived({
         type: 'order',
@@ -154,6 +155,7 @@ export const useNotifications = () => {
 
     return () => {
       socket.off('notification:received', handleNotificationReceived);
+      socket.off('notification:new', handleNotificationReceived);
       socket.off('order:new');
       socket.off('inventory:lowStock');
       socket.off('project:updated');

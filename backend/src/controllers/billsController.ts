@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { logger } from '../utils/logger';
 import { Bill } from '../models/Bill';
 import { BillPayment } from '../models/BillPayment';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { Ledger } from '../models/Ledger';
 
 export const createBill = async (req: Request, res: Response) => {
@@ -169,7 +169,7 @@ export const makePayment = async (req: Request, res: Response) => {
 
     // Deduct from payment account (default to bill account if not specified)
     const accountToDeduct = paymentAccountId || bill.accountId;
-    await Account.findByIdAndUpdate(
+    await ChartOfAccount.findByIdAndUpdate(
       accountToDeduct,
       { $inc: { balance: -amount } },
       { session }
@@ -297,14 +297,14 @@ export const getActivityTransactions = async (req: Request, res: Response) => {
     let accounts: any[] = [];
     
     if (activity === 'operating') {
-      const revenueAccounts = await Account.find({ type: 'revenue', isActive: true });
-      const expenseAccounts = await Account.find({ type: 'expense', isActive: true });
+      const revenueAccounts = await ChartOfAccount.find({ type: 'REVENUE', isActive: true });
+      const expenseAccounts = await ChartOfAccount.find({ type: 'EXPENSE', isActive: true });
       accounts = [...revenueAccounts, ...expenseAccounts];
     } else if (activity === 'investing') {
-      accounts = await Account.find({ type: 'asset', subType: 'fixed', isActive: true });
+      accounts = await ChartOfAccount.find({ type: 'ASSET', subType: 'fixed', isActive: true });
     } else if (activity === 'financing') {
-      const liabilityAccounts = await Account.find({ type: 'liability', isActive: true });
-      const equityAccounts = await Account.find({ type: 'equity', isActive: true });
+      const liabilityAccounts = await ChartOfAccount.find({ type: 'LIABILITY', isActive: true });
+      const equityAccounts = await ChartOfAccount.find({ type: 'EQUITY', isActive: true });
       accounts = [...liabilityAccounts, ...equityAccounts];
     }
 
@@ -332,11 +332,11 @@ export const getHistoricalCashFlow = async (req: Request, res: Response) => {
       const endDate = new Date(now.getFullYear(), now.getMonth() - i, 0);
       const startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
 
-      const revenueAccounts = await Account.find({ type: 'revenue', isActive: true });
-      const expenseAccounts = await Account.find({ type: 'expense', isActive: true });
-      const fixedAssetAccounts = await Account.find({ type: 'asset', subType: 'fixed', isActive: true });
-      const liabilityAccounts = await Account.find({ type: 'liability', isActive: true });
-      const equityAccounts = await Account.find({ type: 'equity', isActive: true });
+      const revenueAccounts = await ChartOfAccount.find({ type: 'REVENUE', isActive: true });
+      const expenseAccounts = await ChartOfAccount.find({ type: 'EXPENSE', isActive: true });
+      const fixedAssetAccounts = await ChartOfAccount.find({ type: 'ASSET', subType: 'fixed', isActive: true });
+      const liabilityAccounts = await ChartOfAccount.find({ type: 'LIABILITY', isActive: true });
+      const equityAccounts = await ChartOfAccount.find({ type: 'EQUITY', isActive: true });
 
       const dateQuery = { date: { $gte: startDate, $lte: endDate } };
 
@@ -364,4 +364,7 @@ export const getHistoricalCashFlow = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message || 'Failed to fetch historical data' });
   }
 };
+
+
+
 

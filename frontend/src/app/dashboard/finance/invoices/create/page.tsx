@@ -34,6 +34,8 @@ export default function CreateInvoicePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [filteredAccounts, setFilteredAccounts] = useState<Account[]>([]);
+  const [accountSearch, setAccountSearch] = useState('');
   const [customers, setCustomers] = useState<any[]>([]);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', email: '', phone: '' });
@@ -57,13 +59,25 @@ export default function CreateInvoicePage() {
   }, []);
 
   const fetchAccounts = async () => {
-    const response = await silentApiClient.get('/api/chart-of-accounts');
-    setAccounts(response?.data || []);
+    const response = await silentApiClient.get('/api/invoices/accounts/list');
+    const accountsData = response?.data || [];
+    setAccounts(accountsData);
+    setFilteredAccounts(accountsData);
+  };
+
+  const handleAccountSearch = (search: string) => {
+    setAccountSearch(search);
+    const filtered = accounts.filter(acc => 
+      acc.name.toLowerCase().includes(search.toLowerCase()) || 
+      acc.code.toLowerCase().includes(search.toLowerCase()) ||
+      acc.type.toLowerCase().includes(search.toLowerCase())
+    );
+    setFilteredAccounts(filtered);
   };
 
   const fetchCustomers = async () => {
-    const response = await silentApiClient.get('/api/contacts');
-    setCustomers(response?.data?.filter((c: any) => c.isCustomer === true) || []);
+    const response = await silentApiClient.get('/api/invoices/customers/list');
+    setCustomers(response?.data || []);
   };
 
   const createCustomer = async () => {
@@ -265,19 +279,36 @@ export default function CreateInvoicePage() {
                   partyName: customer?.name || '',
                   partyEmail: customer?.email || ''
                 });
+                
+                // Show customer ledger account info
+                if (customer?.ledgerAccountId) {
+                  const customerAccount = accounts.find(acc => acc._id === customer.ledgerAccountId);
+                  if (customerAccount) {
+                    toast.success(`Customer ledger account: ${customerAccount.code} - ${customerAccount.name}`);
+                  }
+                } else {
+                  toast.info('Customer ledger account will be auto-created');
+                }
               }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select customer" />
                 </SelectTrigger>
                 <SelectContent>
                   {customers.length === 0 ? (
-                    <div className="p-2 text-sm text-gray-500">
-                      No customers found. Go to Contacts and mark contacts as customers, or click "+ Add" to create a new customer.
+                    <div className="p-3 text-sm space-y-2">
+                      <p className="font-medium text-orange-600">No customers found</p>
+                      <p className="text-gray-600">To add customers:</p>
+                      <ol className="list-decimal ml-4 space-y-1 text-gray-600">
+                        <li>Go to Contacts page</li>
+                        <li>Create or edit a contact</li>
+                        <li>Check the "Customer Status" checkbox</li>
+                      </ol>
+                      <p className="text-gray-600 mt-2">Or click "+ Add" above to create a new customer now.</p>
                     </div>
                   ) : (
                     customers.map((customer) => (
                       <SelectItem key={customer._id} value={customer._id}>
-                        {customer.name}
+                        {customer.name} {customer.company ? `(${customer.company})` : ''}
                       </SelectItem>
                     ))
                   )}
@@ -416,9 +447,17 @@ export default function CreateInvoicePage() {
                         <SelectValue placeholder="Select account" />
                       </SelectTrigger>
                       <SelectContent>
-                        {accounts.filter(acc => acc.type === 'revenue').map((account) => (
+                        <div className="p-2">
+                          <Input 
+                            placeholder="Search accounts..." 
+                            className="mb-2"
+                            value={accountSearch}
+                            onChange={(e) => handleAccountSearch(e.target.value)}
+                          />
+                        </div>
+                        {filteredAccounts.map((account) => (
                           <SelectItem key={account._id} value={account._id}>
-                            {account.code} - {account.name}
+                            {account.code} - {account.name} ({account.type})
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -30,9 +30,9 @@ interface Customer {
 
 interface Account {
   _id: string;
-  accountCode: string;
-  accountName: string;
-  accountType: string;
+  code: string;
+  name: string;
+  type: string;
 }
 
 interface Invoice {
@@ -109,7 +109,7 @@ export default function EditInvoicePage() {
   useEffect(() => {
     const fetchData = async () => {
       const [customersRes, accountsRes] = await Promise.all([
-        silentApiClient.get('/api/contacts?type=customer'),
+        silentApiClient.get('/api/invoices/customers/list'),
         silentApiClient.get('/api/chart-of-accounts')
       ]);
       
@@ -182,6 +182,32 @@ export default function EditInvoicePage() {
     }
     
     setLoading(false);
+  };
+
+  const deleteInvoice = async () => {
+    if (!invoice) return;
+    
+    if (['SENT', 'PAID', 'PARTIALLY_PAID'].includes(invoice.status)) {
+      toast.error('Cannot delete invoice that has been sent or paid');
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete invoice ${invoice.invoiceNumber}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      const response = await silentApiClient.delete(`/api/invoices/${invoice._id}`);
+      if (response?.success) {
+        toast.success('Invoice deleted successfully');
+        router.push('/dashboard/finance/invoices');
+      } else {
+        toast.error('Failed to delete invoice');
+      }
+    } catch (error) {
+      console.error('Delete invoice error:', error);
+      toast.error('Error deleting invoice');
+    }
   };
 
   if (fetchLoading) {
@@ -380,9 +406,9 @@ export default function EditInvoicePage() {
                         <SelectValue placeholder="Select account" />
                       </SelectTrigger>
                       <SelectContent>
-                        {accounts.filter(acc => acc.accountType === 'REVENUE').map((account) => (
+                        {accounts.filter(acc => acc.type === 'REVENUE').map((account) => (
                           <SelectItem key={account._id} value={account._id}>
-                            {account.accountCode} - {account.accountName}
+                            {account.code} - {account.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -444,13 +470,27 @@ export default function EditInvoicePage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => router.back()}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Updating...' : 'Update Invoice'}
-          </Button>
+        <div className="flex justify-between">
+          <div>
+            {invoice.status === 'DRAFT' && (
+              <Button 
+                type="button" 
+                variant="destructive" 
+                onClick={deleteInvoice}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Invoice
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-4">
+            <Button type="button" variant="outline" onClick={() => router.back()}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Invoice'}
+            </Button>
+          </div>
         </div>
       </form>
     </div>

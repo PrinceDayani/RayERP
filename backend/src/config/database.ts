@@ -16,7 +16,7 @@ export const connectDB = async () => {
       bufferCommands: false,
       
       // Read/Write concerns for performance
-      readPreference: 'secondaryPreferred',
+      readPreference: 'primary',
       writeConcern: { w: 'majority', j: true },
       
       // Compression

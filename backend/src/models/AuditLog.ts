@@ -15,6 +15,14 @@ export interface IAuditLog extends Document {
   sessionId?: string;
   requestId?: string;
   additionalData?: any;
+  riskLevel?: 'Low' | 'Medium' | 'High' | 'Critical';
+  geolocation?: {
+    country?: string;
+    city?: string;
+    timezone?: string;
+  };
+  previousHash?: string;
+  currentHash?: string;
 }
 
 const AuditLogSchema = new Schema<IAuditLog>({
@@ -31,7 +39,15 @@ const AuditLogSchema = new Schema<IAuditLog>({
   status: { type: String, enum: ['Success', 'Failed', 'Warning'], default: 'Success' },
   sessionId: String,
   requestId: String,
-  additionalData: Schema.Types.Mixed
+  additionalData: Schema.Types.Mixed,
+  riskLevel: { type: String, enum: ['Low', 'Medium', 'High', 'Critical'], default: 'Low' },
+  geolocation: {
+    country: String,
+    city: String,
+    timezone: String
+  },
+  previousHash: String,
+  currentHash: String
 }, { timestamps: true });
 
 AuditLogSchema.index({ timestamp: -1 });
@@ -41,6 +57,7 @@ AuditLogSchema.index({ status: 1 });
 AuditLogSchema.index({ status: 1, timestamp: -1 });
 AuditLogSchema.index({ userEmail: 1, timestamp: -1 });
 AuditLogSchema.index({ ipAddress: 1 });
+AuditLogSchema.index({ riskLevel: 1, timestamp: -1 });
 // TTL index for automatic cleanup after 7 years (2555 days)
 AuditLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 220752000 });
 

@@ -39,6 +39,11 @@ interface Account {
   balance: number;
   currency: string;
   isActive: boolean;
+  contactId?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
   contactInfo?: {
     city?: string;
     state?: string;
@@ -46,6 +51,7 @@ interface Account {
     primaryEmail?: string;
   };
   taxInfo?: {
+    gstRate?: number;
     gstNo?: string;
     panNo?: string;
     tdsApplicable?: boolean;
@@ -70,7 +76,7 @@ export default function AccountsPage() {
   const [duplicateAccount, setDuplicateAccount] = useState<Account | null>(null);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 50,
+    limit: 100,
     total: 0,
     pages: 0
   });
@@ -86,25 +92,42 @@ export default function AccountsPage() {
     fetchAccounts();
   }, [searchTerm, typeFilter, pagination.page]);
 
+  // Listen for real-time account creation
+  useEffect(() => {
+    const socket = (window as any).socket;
+    if (socket) {
+      socket.on('chartOfAccounts:created', () => {
+        fetchAccounts();
+      });
+      return () => {
+        socket.off('chartOfAccounts:created');
+      };
+    }
+  }, []);
+
   const fetchAccounts = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('auth-token');
       const params = new URLSearchParams({
         page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
+        limit: '100',
         ...(searchTerm && { search: searchTerm }),
         ...(typeFilter && typeFilter !== 'all' && { type: typeFilter })
       });
 
-      const response = await fetch(`${API_URL}/api/accounts?${params}`, {
+      const response = await fetch(`${API_URL}/api/general-ledger/accounts?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       const data = await response.json();
-      if (data.success) {
-        setAccounts(data.data);
-        setPagination(prev => ({ ...prev, ...data.pagination }));
+      if (data.accounts) {
+        setAccounts(data.accounts);
+        setPagination(prev => ({ 
+          ...prev, 
+          total: data.total || data.accounts.length,
+          pages: Math.ceil((data.total || data.accounts.length) / prev.limit)
+        }));
       }
     } catch (error) {
       console.error('Error fetching accounts:', error);
@@ -339,6 +362,7 @@ export default function AccountsPage() {
                     <TableHead>Type</TableHead>
                     <TableHead>Sub Type</TableHead>
                     <TableHead>Balance</TableHead>
+                    <TableHead>Customer/Vendor</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Tax Info</TableHead>
                     <TableHead>Bank</TableHead>
@@ -371,24 +395,30 @@ export default function AccountsPage() {
                         {formatCurrency(account.balance, account.currency)}
                       </TableCell>
                       <TableCell className="text-sm">
-                          {account.contactInfo?.city && (
+                        {account.contactId ? (
+                          <div className="space-y-1">
+                            <div className="text-xs font-medium">{account.contactId.name}</div>
+                            {account.contactId.email && (
+                              <div className="text-xs text-muted-foreground">{account.contactId.email}</div>
+                            )}
+                          </div>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {account.contactInfo?.city && (
                           <div className="space-y-1">
                             <div className="text-xs">{account.contactInfo.city}, {account.contactInfo.state}</div>
                             {account.contactInfo.primaryPhone && (
-                              <div className="text-xs text-muted-foreground">
-                                {account.contactInfo.primaryPhone}
-                              </div>
+                              <div className="text-xs text-muted-foreground">{account.contactInfo.primaryPhone}</div>
                             )}
                             {account.contactInfo.primaryEmail && (
-                              <div className="text-xs text-muted-foreground">
-                                {account.contactInfo.primaryEmail}
-                              </div>
+                              <div className="text-xs text-muted-foreground">{account.contactInfo.primaryEmail}</div>
                             )}
                           </div>
                         )}
                       </TableCell>
                       <TableCell className="text-sm">
-                          <div className="space-y-1">
+                        <div className="space-y-1">
                           {account.taxInfo?.gstNo && (
                             <div className="text-xs font-mono">GST: {account.taxInfo.gstNo}</div>
                           )}
@@ -401,7 +431,7 @@ export default function AccountsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                          {account.bankDetails?.bankName && (
+                        {account.bankDetails?.bankName && (
                           <div className="space-y-1">
                             <div className="text-xs">{account.bankDetails.bankName}</div>
                             {account.bankDetails.accountNumber && (
@@ -410,9 +440,7 @@ export default function AccountsPage() {
                               </div>
                             )}
                             {account.bankDetails.ifscCode && (
-                              <div className="text-xs text-muted-foreground font-mono">
-                                {account.bankDetails.ifscCode}
-                              </div>
+                              <div className="text-xs text-muted-foreground font-mono">{account.bankDetails.ifscCode}</div>
                             )}
                           </div>
                         )}

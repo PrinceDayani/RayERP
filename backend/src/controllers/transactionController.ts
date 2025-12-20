@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Transaction from '../models/Transaction';
-import Account  from '../models/Account';
+import Account  from '../models/ChartOfAccount';
 
 export const createTransaction = async (req: Request, res: Response) => {
   try {
@@ -88,14 +88,14 @@ export const postTransaction = async (req: Request, res: Response) => {
 
     // Update account balances
     for (const entry of transaction.entries) {
-      const account = await Account.findById(entry.accountId);
+      const account = await ChartOfAccount.findById(entry.accountId);
       if (account) {
-        if (['asset', 'expense'].includes(account.type)) {
-          account.balance += entry.debit - entry.credit;
+        if (['asset', 'expense'].includes(ChartOfAccount.type)) {
+          ChartOfAccount.balance += entry.debit - entry.credit;
         } else {
-          account.balance += entry.credit - entry.debit;
+          ChartOfAccount.balance += entry.credit - entry.debit;
         }
-        await account.save();
+        await ChartOfAccount.save();
       }
     }
 

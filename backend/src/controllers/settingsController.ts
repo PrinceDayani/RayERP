@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Settings } from '../models/Settings';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { PartyLedger } from '../models/PartyLedger';
 import mongoose from 'mongoose';
 
@@ -65,22 +65,22 @@ export const convertToIndianMode = async (req: Request, res: Response) => {
   session.startTransaction();
   
   try {
-    const accounts = await Account.find({ isActive: true }).session(session);
+    const accounts = await ChartOfAccount.find({ isActive: true }).session(session);
     let converted = 0;
 
     for (const account of accounts) {
-      const existingParty = await PartyLedger.findOne({ accountId: account._id }).session(session);
+      const existingParty = await PartyLedger.findOne({ accountId: ChartOfAccount._id }).session(session);
       
-      if (!existingParty && ['asset', 'liability'].includes(account.type)) {
+      if (!existingParty && ['asset', 'liability'].includes(ChartOfAccount.type)) {
         await PartyLedger.create([{
-          code: account.code,
-          name: account.name,
-          accountId: account._id,
-          currentBalance: account.balance,
-          openingBalance: account.openingBalance,
-          balanceType: account.type === 'asset' ? 'debit' : 'credit',
-          currency: account.currency || 'INR',
-          isActive: account.isActive
+          code: ChartOfAccount.code,
+          name: ChartOfAccount.name,
+          accountId: ChartOfAccount._id,
+          currentBalance: ChartOfAccount.balance,
+          openingBalance: ChartOfAccount.openingBalance,
+          balanceType: ChartOfAccount.type === 'asset' ? 'debit' : 'credit',
+          currency: ChartOfAccount.currency || 'INR',
+          isActive: ChartOfAccount.isActive
         }], { session });
         converted++;
       }
@@ -135,3 +135,4 @@ export const convertToWesternMode = async (req: Request, res: Response) => {
     session.endSession();
   }
 };
+

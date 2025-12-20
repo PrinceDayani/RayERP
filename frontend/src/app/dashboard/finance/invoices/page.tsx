@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { silentApiClient } from '@/lib/silentApi';
 import { formatCurrency } from '@/lib/currency';
 import { toast } from '@/lib/toast';
-import { Plus, Search, Eye, Edit, DollarSign, BookOpen, CreditCard, FileBarChart } from 'lucide-react';
+import { Plus, Search, Eye, Edit, DollarSign, BookOpen, CreditCard, FileBarChart, Send, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import TestButton from '@/components/TestButton';
 
 interface Invoice {
   _id: string;
@@ -40,15 +41,22 @@ export default function InvoicesPage() {
   };
 
   const markAsPaid = async (invoiceId: string) => {
-    const response = await silentApiClient.post(`/api/invoices/${invoiceId}/payment`, {
-      amount: invoices.find(inv => inv._id === invoiceId)?.balanceAmount || 0,
-      paymentMethod: 'CASH'
-    });
-    if (response?.success) {
-      toast.success('Invoice marked as paid');
-      fetchInvoices();
-    } else {
-      toast.error('Payment feature coming soon');
+    console.log('Marking as paid:', invoiceId);
+    try {
+      const response = await silentApiClient.post(`/api/invoices/${invoiceId}/payment`, {
+        amount: invoices.find(inv => inv._id === invoiceId)?.balanceAmount || 0,
+        paymentMethod: 'CASH'
+      });
+      console.log('Mark as paid response:', response);
+      if (response?.success) {
+        toast.success('Invoice marked as paid');
+        fetchInvoices();
+      } else {
+        toast.error('Failed to mark as paid');
+      }
+    } catch (error) {
+      console.error('Mark as paid error:', error);
+      toast.error('Error marking as paid');
     }
   };
 
@@ -56,15 +64,80 @@ export default function InvoicesPage() {
     const amount = prompt('Enter payment amount:');
     if (!amount || isNaN(parseFloat(amount))) return;
     
-    const response = await silentApiClient.post(`/api/invoices/${invoiceId}/payment`, { 
-      amount: parseFloat(amount),
-      paymentMethod: 'CASH'
-    });
-    if (response?.success) {
-      toast.success('Payment recorded');
-      fetchInvoices();
-    } else {
-      toast.error('Payment feature coming soon');
+    console.log('Recording payment:', invoiceId, amount);
+    try {
+      const response = await silentApiClient.post(`/api/invoices/${invoiceId}/payment`, { 
+        amount: parseFloat(amount),
+        paymentMethod: 'CASH'
+      });
+      console.log('Record payment response:', response);
+      if (response?.success) {
+        toast.success('Payment recorded');
+        fetchInvoices();
+      } else {
+        toast.error('Failed to record payment');
+      }
+    } catch (error) {
+      console.error('Record payment error:', error);
+      toast.error('Error recording payment');
+    }
+  };
+
+  const sendInvoice = async (invoiceId: string) => {
+    const invoice = invoices.find(inv => inv._id === invoiceId);
+    if (!invoice) return;
+    
+    if (!confirm(`Send invoice ${invoice.invoiceNumber}? This will create a journal entry and cannot be undone.`)) {
+      return;
+    }
+    
+    console.log('Sending invoice:', invoiceId);
+    try {
+      const response = await silentApiClient.post(`/api/invoices/${invoiceId}/send`);
+      console.log('Send invoice response:', response);
+      if (response?.success) {
+        const emailStatus = response.data?.emailStatus;
+        const emailMsg = emailStatus === 'sent' ? ' Email sent!' : 
+                        emailStatus === 'failed' ? ' (Email failed)' : 
+                        ' (No email address)';
+        toast.success(`Invoice sent successfully!${emailMsg}`);
+        fetchInvoices();
+      } else {
+        toast.error(response?.message || 'Failed to send invoice');
+      }
+    } catch (error: any) {
+      console.error('Send invoice error:', error);
+      const errorMsg = error?.response?.data?.message || 'Error sending invoice';
+      toast.error(errorMsg);
+    }
+  };
+
+  const deleteInvoice = async (invoiceId: string) => {
+    const invoice = invoices.find(inv => inv._id === invoiceId);
+    if (!invoice) return;
+    
+    if (['SENT', 'PAID', 'PARTIALLY_PAID'].includes(invoice.status)) {
+      toast.error('Cannot delete invoice that has been sent or paid');
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete invoice ${invoice.invoiceNumber}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    console.log('Deleting invoice:', invoiceId);
+    try {
+      const response = await silentApiClient.delete(`/api/invoices/${invoiceId}`);
+      console.log('Delete invoice response:', response);
+      if (response?.success) {
+        toast.success('Invoice deleted successfully');
+        fetchInvoices();
+      } else {
+        toast.error('Failed to delete invoice');
+      }
+    } catch (error) {
+      console.error('Delete invoice error:', error);
+      toast.error('Error deleting invoice');
     }
   };
 
@@ -109,10 +182,13 @@ export default function InvoicesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Invoices</h1>
           <p className="text-gray-600 mt-1">Manage your sales invoices and track payments</p>
         </div>
-        <Button onClick={() => router.push('/dashboard/finance/invoices/create')} className="bg-blue-600 hover:bg-blue-700 shadow-lg">
-          <Plus className="h-4 w-4 mr-2" />
-          Create Invoice
-        </Button>
+        <div className="flex gap-2">
+          <TestButton />
+          <Button onClick={() => router.push('/dashboard/finance/invoices/create')} className="bg-blue-600 hover:bg-blue-700 shadow-lg">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Invoice
+          </Button>
+        </div>
       </div>
 
       <Card className="mb-6 shadow-sm">
@@ -234,26 +310,26 @@ export default function InvoicesPage() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          {invoice.journalEntryId && (
+                          {invoice.status === 'DRAFT' && (
                             <Button 
                               variant="ghost" 
-                              size="sm" 
-                              title="View Journal Entry"
-                              onClick={() => router.push(`/dashboard/finance/journal-entry?source=invoice&sourceId=${invoice._id}`)}
-                              className="hover:bg-purple-100 hover:text-purple-600"
+                              size="sm"
+                              title="Send Invoice (Creates Journal Entry)"
+                              onClick={() => sendInvoice(invoice._id)}
+                              className="hover:bg-orange-100 hover:text-orange-600"
                             >
-                              <BookOpen className="h-4 w-4" />
+                              <Send className="h-4 w-4" />
                             </Button>
                           )}
                           {invoice.journalEntryId && (
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              title="View Ledger"
-                              onClick={() => router.push(`/dashboard/finance/ledger?invoice=${invoice._id}`)}
-                              className="hover:bg-orange-100 hover:text-orange-600"
+                              title="View Journal Entry"
+                              onClick={() => router.push(`/dashboard/finance/journal-entry/${invoice.journalEntryId}`)}
+                              className="hover:bg-purple-100 hover:text-purple-600"
                             >
-                              <FileBarChart className="h-4 w-4" />
+                              <BookOpen className="h-4 w-4" />
                             </Button>
                           )}
                           {invoice.status !== 'PAID' && invoice.balanceAmount > 0 && (
@@ -277,6 +353,17 @@ export default function InvoicesPage() {
                                 <DollarSign className="h-4 w-4" />
                               </Button>
                             </>
+                          )}
+                          {invoice.status === 'DRAFT' && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              title="Delete Invoice"
+                              onClick={() => deleteInvoice(invoice._id)}
+                              className="hover:bg-red-100 hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </td>

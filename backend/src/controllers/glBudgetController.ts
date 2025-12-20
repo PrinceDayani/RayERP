@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { GLBudget } from '../models/GLBudget';
 import { BudgetTemplate } from '../models/BudgetTemplate';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 
 export const createBudget = async (req: Request, res: Response) => {
   try {
@@ -337,3 +337,4 @@ export const deleteBudget = async (req: Request, res: Response) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+

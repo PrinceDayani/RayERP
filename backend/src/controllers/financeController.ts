@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Account from '../models/Account';
+import Account from '../models/ChartOfAccount';
 import Transaction from '../models/Transaction';
 import Invoice from '../models/Invoice';
 import Payment from '../models/Payment';
@@ -25,7 +25,7 @@ export const getFinanceDashboard = async (req: Request, res: Response) => {
       recentTransactions,
       accountBalances
     ] = await Promise.all([
-      Account.countDocuments({ ...filter, isActive: true }),
+      ChartOfAccount.countDocuments({ ...filter, isActive: true }),
       Transaction.countDocuments({ ...filter, status: 'posted' }),
       Invoice.countDocuments(filter),
       Payment.countDocuments(filter),
@@ -34,15 +34,15 @@ export const getFinanceDashboard = async (req: Request, res: Response) => {
         .sort({ date: -1 })
         .limit(10)
         .populate('entries.accountId', 'name code'),
-      Account.find({ ...filter, isActive: true })
+      ChartOfAccount.find({ ...filter, isActive: true })
         .select('name code balance type')
         .sort({ code: 1 })
     ]);
 
     // Calculate totals by account type
     const balancesByType = accountBalances.reduce((acc: any, account: any) => {
-      if (!acc[account.type]) acc[account.type] = 0;
-      acc[account.type] += account.balance;
+      if (!acc[ChartOfAccount.type]) acc[ChartOfAccount.type] = 0;
+      acc[ChartOfAccount.type] += ChartOfAccount.balance;
       return acc;
     }, {});
 
@@ -73,16 +73,16 @@ export const getTrialBalance = async (req: Request, res: Response) => {
     const filter: any = { isActive: true };
     if (projectId) filter.projectId = projectId;
 
-    const accounts = await Account.find(filter)
+    const accounts = await ChartOfAccount.find(filter)
       .select('code name type balance')
       .sort({ code: 1 });
 
     const trialBalance = accounts.map(account => ({
-      code: account.code,
-      name: account.name,
-      type: account.type,
-      debit: account.balance >= 0 ? account.balance : 0,
-      credit: account.balance < 0 ? Math.abs(account.balance) : 0
+      code: ChartOfAccount.code,
+      name: ChartOfAccount.name,
+      type: ChartOfAccount.type,
+      debit: ChartOfAccount.balance >= 0 ? ChartOfAccount.balance : 0,
+      credit: ChartOfAccount.balance < 0 ? Math.abs(ChartOfAccount.balance) : 0
     }));
 
     const totalDebits = trialBalance.reduce((sum, acc) => sum + acc.debit, 0);
@@ -112,7 +112,7 @@ export const getBalanceSheet = async (req: Request, res: Response) => {
     const filter: any = { isActive: true };
     if (projectId) filter.projectId = projectId;
 
-    const accounts = await Account.find(filter)
+    const accounts = await ChartOfAccount.find(filter)
       .select('code name type subType balance')
       .sort({ code: 1 });
 
@@ -159,7 +159,7 @@ export const getProfitLoss = async (req: Request, res: Response) => {
     const filter: any = { isActive: true };
     if (projectId) filter.projectId = projectId;
 
-    const accounts = await Account.find(filter)
+    const accounts = await ChartOfAccount.find(filter)
       .select('code name type subType balance')
       .sort({ code: 1 });
 
@@ -217,7 +217,7 @@ export const getCashFlow = async (req: Request, res: Response) => {
     transactions.forEach(transaction => {
       transaction.entries.forEach(entry => {
         const account = entry.accountId as any;
-        if (account && account.type === 'asset' && account.name.toLowerCase().includes('cash')) {
+        if (account && ChartOfAccount.type === 'asset' && ChartOfAccount.name.toLowerCase().includes('cash')) {
           const cashFlow = {
             date: transaction.date,
             description: transaction.description,
@@ -290,7 +290,7 @@ export const getAccountLedger = async (req: Request, res: Response) => {
         .limit(Number(limit))
         .populate('journalEntryId', 'entryNumber description'),
       Ledger.countDocuments(filter),
-      Account.findById(accountId).select('name code type balance')
+      ChartOfAccount.findById(accountId).select('name code type balance')
     ]);
 
     if (!account) {
@@ -362,7 +362,7 @@ export const getFinancialHealth = async (req: Request, res: Response) => {
     if (projectId) filter.projectId = projectId;
 
     const [accounts, invoices, payments] = await Promise.all([
-      Account.find(filter),
+      ChartOfAccount.find(filter),
       Invoice.find(projectId ? { projectId } : {}),
       Payment.find(projectId ? { projectId } : {})
     ]);

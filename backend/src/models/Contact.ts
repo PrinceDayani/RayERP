@@ -23,8 +23,12 @@ export interface IContact extends Document {
   priority: 'low' | 'medium' | 'high' | 'critical';
   status: 'active' | 'inactive' | 'archived';
   
-  // Customer flag
+  // Customer/Vendor flags
   isCustomer: boolean;
+  isVendor: boolean;
+  
+  // Ledger account for customers/vendors
+  ledgerAccountId?: mongoose.Types.ObjectId;
   
   // Additional contact info
   website?: string;
@@ -95,8 +99,12 @@ const ContactSchema: Schema = new Schema(
     companySize: { type: String, required: false },
     annualRevenue: { type: String, required: false },
     
-    // Customer flag
+    // Customer/Vendor flags
     isCustomer: { type: Boolean, default: false },
+    isVendor: { type: Boolean, default: false },
+    
+    // Ledger account for customers/vendors
+    ledgerAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'ChartOfAccount', required: false },
     
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   },

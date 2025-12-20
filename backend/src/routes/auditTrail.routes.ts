@@ -3,7 +3,7 @@ import { protect } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/permission.middleware';
 import { apiLimiter, strictLimiter } from '../middleware/rateLimiter.middleware';
 import { query, body } from 'express-validator';
-import { getAuditLogs, getAuditStats, getAuditLogById, createAuditLog, getSecurityEvents, exportAuditLogs, getComplianceMetrics, cleanupOldLogs } from '../controllers/auditTrailController';
+import { getAuditLogs, getAuditStats, getAuditLogById, createAuditLog, getSecurityEvents, getSecurityAlerts, exportAuditLogs, getComplianceMetrics, cleanupOldLogs } from '../controllers/auditTrailController';
 
 const router = express.Router();
 
@@ -22,6 +22,7 @@ router.get('/',
     query('user').optional().isString(),
     query('ipAddress').optional().isString(),
     query('status').optional().isIn(['Success', 'Failed', 'Warning']),
+    query('riskLevel').optional().isIn(['Low', 'Medium', 'High', 'Critical']),
     query('startDate').optional().isISO8601(),
     query('endDate').optional().isISO8601()
   ],
@@ -43,6 +44,8 @@ router.get('/:id', protect, requirePermission('audit.view'), getAuditLogById);
 
 
 router.get('/security/events', protect, requirePermission('audit.view'), getSecurityEvents);
+
+router.get('/security/alerts', protect, requirePermission('audit.view'), getSecurityAlerts);
 
 router.post('/log',
   protect,

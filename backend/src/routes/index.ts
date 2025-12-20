@@ -32,6 +32,7 @@ import budgetTemplateRoutes from './budgetTemplateRoutes';
 import accountRoutes from './account.routes';
 import transactionRoutes from './transaction.routes';
 import invoiceRoutes from './invoice.routes';
+import receiptRoutes from './receipt.routes';
 import paymentRoutes from './payment.routes';
 import expenseRoutes from './expense.routes';
 import financialReportRoutes from './financialReport.routes';
@@ -75,6 +76,7 @@ import notificationSettingsRoutes from './notificationSettings.routes';
 import dataExportRoutes from './dataExport.routes';
 import permissionManagementRoutes from './permissionManagement.routes';
 import salesReportRoutes from './salesReport.routes';
+import approvalRoutes from './approval.routes';
 
 const router = express.Router();
 
@@ -118,6 +120,7 @@ router.use('/notification-settings', notificationSettingsRoutes);
 router.use('/data-export', dataExportRoutes);
 router.use('/permission-management', permissionManagementRoutes);
 router.use('/sales-reports', salesReportRoutes);
+router.use('/approvals', approvalRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);
@@ -125,6 +128,7 @@ router.use('/budget-templates', budgetTemplateRoutes);
 router.use('/accounts', accountRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/invoices', invoiceRoutes);
+router.use('/receipts', receiptRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/expenses', expenseRoutes);
 router.use('/project-ledger', projectLedgerRoutes);

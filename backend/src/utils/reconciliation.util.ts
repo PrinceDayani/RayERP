@@ -1,4 +1,4 @@
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { JournalEntry } from '../models/JournalEntry';
 import { Ledger } from '../models/Ledger';
 import { logger } from '../utils/logger';
@@ -42,29 +42,29 @@ export async function performReconciliation(): Promise<ReconciliationResult> {
 
     try {
         // Check 1: Verify account balances
-        const accounts = await Account.find({ isActive: true });
+        const accounts = await ChartOfAccount.find({ isActive: true });
         totalAccounts = accounts.length;
 
         for (const account of accounts) {
-            const ledgerEntries = await Ledger.find({ accountId: account._id });
+            const ledgerEntries = await Ledger.find({ accountId: ChartOfAccount._id });
 
             const calculatedBalance = ledgerEntries.reduce(
                 (sum, entry) => sum + entry.debit - entry.credit,
                 0
             );
 
-            const balanceDiff = Math.abs(account.balance - calculatedBalance);
+            const balanceDiff = Math.abs(ChartOfAccount.balance - calculatedBalance);
 
             if (balanceDiff > 0.01) { // Allow 1 paisa tolerance for rounding
                 accountsWithIssues++;
                 issues.push({
                     type: 'BALANCE_MISMATCH',
                     severity: balanceDiff > 1000 ? 'HIGH' : balanceDiff > 10 ? 'MEDIUM' : 'LOW',
-                    accountCode: account.code,
-                    accountName: account.name,
+                    accountCode: ChartOfAccount.code,
+                    accountName: ChartOfAccount.name,
                     expected: calculatedBalance,
-                    actual: account.balance,
-                    message: `Account balance mismatch: Expected ${calculatedBalance}, Actual ${account.balance}`
+                    actual: ChartOfAccount.balance,
+                    message: `Account balance mismatch: Expected ${calculatedBalance}, Actual ${ChartOfAccount.balance}`
                 });
             }
         }
@@ -147,24 +147,26 @@ export async function fixBalanceMismatches(accountIds?: string[]): Promise<numbe
         query._id = { $in: accountIds };
     }
 
-    const accounts = await Account.find(query);
+    const accounts = await ChartOfAccount.find(query);
     let fixed = 0;
 
     for (const account of accounts) {
-        const ledgerEntries = await Ledger.find({ accountId: account._id });
+        const ledgerEntries = await Ledger.find({ accountId: ChartOfAccount._id });
 
         const calculatedBalance = ledgerEntries.reduce(
             (sum, entry) => sum + entry.debit - entry.credit,
             0
         );
 
-        if (Math.abs(account.balance - calculatedBalance) > 0.01) {
-            account.balance = calculatedBalance;
-            await account.save();
+        if (Math.abs(ChartOfAccount.balance - calculatedBalance) > 0.01) {
+            ChartOfAccount.balance = calculatedBalance;
+            await ChartOfAccount.save();
             fixed++;
-            logger.info(`Fixed balance for account ${account.code}: ${calculatedBalance}`);
+            logger.info(`Fixed balance for account ${ChartOfAccount.code}: ${calculatedBalance}`);
         }
     }
 
     return fixed;
 }
+
+

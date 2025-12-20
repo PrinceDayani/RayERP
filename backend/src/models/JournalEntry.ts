@@ -221,6 +221,46 @@ JournalEntrySchema.index({ status: 1, entryDate: 1 });
 JournalEntrySchema.index({ periodYear: 1, periodMonth: 1 });
 JournalEntrySchema.index({ isRecurring: 1, nextRecurringDate: 1 });
 
+// Auto-create Ledger entries when JournalEntry is posted
+JournalEntrySchema.post('save', async function(doc) {
+  if (doc.isPosted && doc.status === 'POSTED') {
+    const Ledger = mongoose.model('Ledger');
+    const Account = mongoose.model('Account');
+    
+    // Check if ledger entries already exist
+    const existingCount = await Ledger.countDocuments({ journalEntryId: doc._id });
+    if (existingCount > 0) return; // Already created
+    
+    // Create ledger entries for each line
+    const ledgerEntries = [];
+    for (const line of doc.lines) {
+      const account = await Account.findById(line.account);
+      if (!account) continue;
+      
+      // Calculate balance based on account type
+      const isDebitNormal = ['asset', 'expense'].includes(account.type);
+      const balance = isDebitNormal ? line.debit - line.credit : line.credit - line.debit;
+      
+      ledgerEntries.push({
+        accountId: line.account,
+        date: doc.entryDate,
+        description: line.description || doc.description,
+        debit: line.debit,
+        credit: line.credit,
+        balance,
+        journalEntryId: doc._id,
+        reference: doc.reference || doc.entryNumber,
+        department: line.department,
+        costCenter: line.costCenter
+      });
+    }
+    
+    if (ledgerEntries.length > 0) {
+      await Ledger.insertMany(ledgerEntries);
+    }
+  }
+});
+
 const JournalEntry = mongoose.model<IJournalEntry>('JournalEntry', JournalEntrySchema);
 export { JournalEntry };
 export default JournalEntry;

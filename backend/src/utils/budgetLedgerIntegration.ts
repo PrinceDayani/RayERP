@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import Budget from '../models/Budget';
 import ProjectJournalEntry from '../models/ProjectLedger';
 import JournalEntry from '../models/JournalEntry';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { Ledger } from '../models/Ledger';
 import { logger } from './logger';
 
@@ -11,7 +11,7 @@ export interface BudgetLedgerSync {
   budgetId: mongoose.Types.ObjectId;
   amount: number;
   category: string;
-  transactionType: 'expense' | 'revenue' | 'adjustment';
+  transactiontype: 'EXPENSE' | 'REVENUE' | 'adjustment';
   description: string;
   accountCode?: string;
 }
@@ -213,19 +213,19 @@ export class BudgetLedgerIntegration {
   // Update account balances and create ledger entries
   private static async updateAccountBalances(journalEntry: any, session: mongoose.ClientSession) {
     for (const line of journalEntry.lines) {
-      const account = await Account.findById(line.accountId).session(session);
+      const account = await ChartOfAccount.findById(line.accountId).session(session);
       if (!account) continue;
 
       // Calculate new balance
-      let newBalance = account.balance;
-      if (['asset', 'expense'].includes(account.type)) {
+      let newBalance = ChartOfAccount.balance;
+      if (['ASSET', 'EXPENSE'].includes(ChartOfAccount.type)) {
         newBalance += line.debit - line.credit;
       } else {
         newBalance += line.credit - line.debit;
       }
 
       // Update account balance
-      await Account.findByIdAndUpdate(
+      await ChartOfAccount.findByIdAndUpdate(
         line.accountId,
         { balance: newBalance },
         { session }
@@ -420,16 +420,16 @@ export class BudgetLedgerIntegration {
   }
 
   private static async getAccountName(accountCode: string): Promise<string> {
-    const account = await Account.findOne({ code: accountCode });
-    return account ? account.name : 'Unknown Account';
+    const account = await ChartOfAccount.findOne({ code: accountCode });
+    return account ? ChartOfAccount.name : 'Unknown Account';
   }
 
   private static async getAccountId(accountCode: string): Promise<mongoose.Types.ObjectId> {
-    const account = await Account.findOne({ code: accountCode });
+    const account = await ChartOfAccount.findOne({ code: accountCode });
     if (!account) {
       throw new Error(`Account with code ${accountCode} not found`);
     }
-    return account._id;
+    return ChartOfAccount._id;
   }
 
   // Generate comprehensive financial report
@@ -482,3 +482,5 @@ export class BudgetLedgerIntegration {
     }
   }
 }
+
+

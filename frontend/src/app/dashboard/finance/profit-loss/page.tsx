@@ -39,56 +39,60 @@ const ProfitLossPage = () => {
   const fetchProfitLossData = async () => {
     setLoading(true);
     try {
-      const response = await reportingApi.getProfitLoss(startDate, endDate);
-      if (response.success) setProfitLossData(response.data);
-      
-      const compRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports/comparative?reportType=profit-loss&period1Start=${startDate}&period1End=${endDate}&period2Start=${getPreviousYearDate(startDate)}&period2End=${getPreviousYearDate(endDate)}`, {
+      // Fetch main P&L with budget comparison
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports/profit-loss?startDate=${startDate}&endDate=${endDate}&includeBudget=true&compareYoY=true`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
-      const compData = await compRes.json();
-      if (compData.success) setComparison(compData.data);
+      const plData = await response.json();
       
-      const multiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports/multi-period?startDate=${startDate}&endDate=${endDate}&periodType=monthly`, {
+      if (plData.success) {
+        setProfitLossData(plData.data);
+        
+        // Set budget data if available
+        if (plData.data.budget) {
+          setBudgetData(plData.data.budget);
+        }
+        
+        // Set comparison data if available
+        if (plData.data.comparison) {
+          setComparison({
+            period1: {
+              totalRevenue: plData.data.revenue.total,
+              totalExpenses: plData.data.operatingExpenses.total,
+              netIncome: plData.data.netIncome
+            },
+            period2: plData.data.comparison.previous,
+            variance: plData.data.comparison.variance
+          });
+        }
+        
+        // Set ratios from main response
+        setRatios({
+          ebitda: plData.data.ebitda,
+          ebitdaMargin: plData.data.margins.ebitda,
+          ebit: plData.data.ebit,
+          operatingMargin: plData.data.margins.operating,
+          grossProfit: plData.data.grossProfit,
+          grossMargin: plData.data.margins.gross,
+          netIncome: plData.data.netIncome,
+          netMargin: plData.data.margins.net
+        });
+      }
+      
+      // Fetch multi-period data
+      const multiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports/profit-loss/multi-period?startDate=${startDate}&endDate=${endDate}&periodType=monthly`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const multiData = await multiRes.json();
-      if (multiData.success) setMultiPeriod(multiData.data);
+      if (multiData.success) setMultiPeriod(multiData.data.periods);
       
+      // Fetch forecast data
       const forecastRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports/forecast?months=3`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const forecastData = await forecastRes.json();
       if (forecastData.success) setForecast(forecastData.data);
       
-      const budgetRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports-enhanced/profit-loss-budget?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const budgetJson = await budgetRes.json();
-      if (budgetJson.success) setBudgetData(budgetJson.data);
-      
-      const waterfallRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports-enhanced/profit-loss-waterfall?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const waterfallJson = await waterfallRes.json();
-      if (waterfallJson.success) setWaterfallData(waterfallJson.data);
-      
-      const insightsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports-enhanced/profit-loss-insights?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const insightsJson = await insightsRes.json();
-      if (insightsJson.success) setInsights(insightsJson.data);
-      
-      const ratiosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports-enhanced/profit-loss-ratios?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const ratiosJson = await ratiosRes.json();
-      if (ratiosJson.success) setRatios(ratiosJson.data);
-      
-      const scenariosRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/financial-reports-enhanced/profit-loss-scenarios?startDate=${startDate}&endDate=${endDate}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-      const scenariosJson = await scenariosRes.json();
-      if (scenariosJson.success) setScenarios(scenariosJson.data);
     } catch (error) {
       console.error('Error fetching P&L:', error);
     } finally {
@@ -181,16 +185,13 @@ const ProfitLossPage = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-9 w-full">
+          <TabsList className="grid grid-cols-6 w-full">
             <TabsTrigger value="current">Current</TabsTrigger>
             <TabsTrigger value="comparison">YoY</TabsTrigger>
-            <TabsTrigger value="multiperiod">Multi-Period</TabsTrigger>
-            <TabsTrigger value="forecast">Forecast</TabsTrigger>
+            <TabsTrigger value="multiperiod">Trend</TabsTrigger>
             <TabsTrigger value="budget">Budget</TabsTrigger>
-            <TabsTrigger value="waterfall">Waterfall</TabsTrigger>
-            <TabsTrigger value="ratios">EBITDA</TabsTrigger>
-            <TabsTrigger value="scenarios">Scenarios</TabsTrigger>
-            <TabsTrigger value="insights"><Zap className="h-4 w-4" /></TabsTrigger>
+            <TabsTrigger value="ratios">Metrics</TabsTrigger>
+            <TabsTrigger value="forecast">Forecast</TabsTrigger>
           </TabsList>
 
           <TabsContent value="current">
@@ -202,12 +203,12 @@ const ProfitLossPage = () => {
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">?{profitLossData.totalRevenue?.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-green-600">₹{profitLossData.revenue?.total?.toLocaleString()}</div>
                   {profitLossData.comparison && (
                     <div className="flex items-center text-sm mt-1">
-                      {profitLossData.comparison.variance > 0 ? <ArrowUpRight className="h-4 w-4 text-green-600" /> : <ArrowDownRight className="h-4 w-4 text-red-600" />}
-                      <span className={profitLossData.comparison.variance > 0 ? 'text-green-600' : 'text-red-600'}>
-                        {Math.abs(profitLossData.comparison.variance).toLocaleString()} vs last year
+                      {profitLossData.comparison.variance.revenue > 0 ? <ArrowUpRight className="h-4 w-4 text-green-600" /> : <ArrowDownRight className="h-4 w-4 text-red-600" />}
+                      <span className={profitLossData.comparison.variance.revenue > 0 ? 'text-green-600' : 'text-red-600'}>
+                        {Math.abs(profitLossData.comparison.variance.revenue).toLocaleString()} vs last year
                       </span>
                     </div>
                   )}
@@ -215,18 +216,18 @@ const ProfitLossPage = () => {
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-red-600">?{profitLossData.totalExpenses?.toLocaleString()}</div></CardContent>
+                <CardContent><div className="text-2xl font-bold text-red-600">₹{profitLossData.operatingExpenses?.total?.toLocaleString()}</div></CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Net Income</CardTitle></CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${profitLossData.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>?{profitLossData.netIncome?.toLocaleString()}</div>
-                  <p className="text-sm text-muted-foreground">{profitLossData.grossMargin?.toFixed(2)}% margin</p>
+                  <div className={`text-2xl font-bold ${profitLossData.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{profitLossData.netIncome?.toLocaleString()}</div>
+                  <p className="text-sm text-muted-foreground">{profitLossData.margins?.gross?.toFixed(2)}% margin</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Operating Margin</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{profitLossData.operatingMargin?.toFixed(2)}%</div></CardContent>
+                <CardContent><div className="text-2xl font-bold">{profitLossData.margins?.operating?.toFixed(2)}%</div></CardContent>
               </Card>
             </div>
 
@@ -234,16 +235,16 @@ const ProfitLossPage = () => {
               <Card>
                 <CardHeader><CardTitle className="text-green-600">Revenue</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  {profitLossData.revenue?.map((item: any, index: number) => (
+                  {profitLossData.revenue?.items?.map((item: any, index: number) => (
                     <div key={index} className="flex justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer" onClick={() => drillDown(item.accountId, item.account, item.code)}>
                       <span>{item.account} ({item.code})</span>
-                      <span className="font-medium">?{item.amount.toLocaleString()}</span>
+                      <span className="font-medium">₹{item.amount.toLocaleString()}</span>
                     </div>
                   ))}
                   <hr />
                   <div className="flex justify-between font-bold">
                     <span>Total Revenue</span>
-                    <span className="text-green-600">?{profitLossData.totalRevenue?.toLocaleString()}</span>
+                    <span className="text-green-600">₹{profitLossData.revenue?.total?.toLocaleString()}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -251,16 +252,16 @@ const ProfitLossPage = () => {
               <Card>
                 <CardHeader><CardTitle className="text-red-600">Expenses</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  {profitLossData.expenses?.map((item: any, index: number) => (
+                  {profitLossData.operatingExpenses?.items?.map((item: any, index: number) => (
                     <div key={index} className="flex justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer" onClick={() => drillDown(item.accountId, item.account, item.code)}>
                       <span>{item.account} ({item.code})</span>
-                      <span className="font-medium">?{item.amount.toLocaleString()}</span>
+                      <span className="font-medium">₹{item.amount.toLocaleString()}</span>
                     </div>
                   ))}
                   <hr />
                   <div className="flex justify-between font-bold">
-                    <span>Total Expenses</span>
-                    <span className="text-red-600">?{profitLossData.totalExpenses?.toLocaleString()}</span>
+                    <span>Total Operating Expenses</span>
+                    <span className="text-red-600">₹{profitLossData.operatingExpenses?.total?.toLocaleString()}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -280,16 +281,16 @@ const ProfitLossPage = () => {
                       <div><div className="text-sm text-muted-foreground">Current Period</div></div>
                       <div><div className="text-sm text-muted-foreground">Previous Period</div></div>
                       <div className="font-medium">Revenue</div>
-                      <div className="font-bold text-green-600">?{comparison.period1.totalRevenue?.toLocaleString()}</div>
-                      <div>?{comparison.period2.totalRevenue?.toLocaleString()}</div>
+                      <div className="font-bold text-green-600">₹{comparison.period1.totalRevenue?.toLocaleString()}</div>
+                      <div>₹{comparison.period2.totalRevenue?.toLocaleString()}</div>
                       <div className="font-medium">Expenses</div>
-                      <div className="font-bold text-red-600">?{comparison.period1.totalExpenses?.toLocaleString()}</div>
-                      <div>?{comparison.period2.totalExpenses?.toLocaleString()}</div>
+                      <div className="font-bold text-red-600">₹{comparison.period1.totalExpenses?.toLocaleString()}</div>
+                      <div>₹{comparison.period2.totalExpenses?.toLocaleString()}</div>
                       <div className="font-medium">Net Income</div>
-                      <div className="font-bold">?{comparison.period1.netIncome?.toLocaleString()}</div>
-                      <div>?{comparison.period2.netIncome?.toLocaleString()}</div>
+                      <div className="font-bold">₹{comparison.period1.netIncome?.toLocaleString()}</div>
+                      <div>₹{comparison.period2.netIncome?.toLocaleString()}</div>
                       <div className="font-medium">Variance</div>
-                      <div className="font-bold text-blue-600">?{comparison.variance.netIncome?.toLocaleString()}</div>
+                      <div className="font-bold text-blue-600">₹{comparison.variance.netIncome?.toLocaleString()}</div>
                       <div className="text-sm">{comparison.variance.revenuePercent?.toFixed(2)}% change</div>
                     </div>
                   </CardContent>
@@ -299,43 +300,31 @@ const ProfitLossPage = () => {
           </TabsContent>
 
           <TabsContent value="multiperiod">
-            {multiPeriod && (
+            {multiPeriod && multiPeriod.length > 0 ? (
               <Card>
-                <CardHeader><CardTitle>Monthly Breakdown</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Period-over-Period Analysis</CardTitle></CardHeader>
                 <CardContent>
                   <div className="space-y-2">
+                    <div className="grid grid-cols-5 gap-4 p-2 font-medium border-b">
+                      <div>Period</div>
+                      <div className="text-right">Revenue</div>
+                      <div className="text-right">COGS</div>
+                      <div className="text-right">Gross Profit</div>
+                      <div className="text-right">Net Income</div>
+                    </div>
                     {multiPeriod.map((period: any, i: number) => (
-                      <div key={i} className="grid grid-cols-4 gap-4 p-2 hover:bg-muted rounded">
-                        <div className="font-medium">{new Date(period.period).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
-                        <div className="text-green-600">?{period.totalRevenue?.toLocaleString()}</div>
-                        <div className="text-red-600">?{period.totalExpenses?.toLocaleString()}</div>
-                        <div className="font-bold">?{period.netIncome?.toLocaleString()}</div>
+                      <div key={i} className="grid grid-cols-5 gap-4 p-2 hover:bg-muted rounded">
+                        <div className="font-medium">{period.period}</div>
+                        <div className="text-right text-green-600">₹{period.totalRevenue?.toLocaleString()}</div>
+                        <div className="text-right text-orange-600">₹{period.totalCOGS?.toLocaleString()}</div>
+                        <div className="text-right text-blue-600">₹{period.grossProfit?.toLocaleString()}</div>
+                        <div className="text-right font-bold">₹{period.netIncome?.toLocaleString()}</div>
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="forecast">
-            {forecast && (
-              <Card>
-                <CardHeader><CardTitle>3-Month Forecast</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {forecast.forecast?.map((f: any, i: number) => (
-                      <div key={i} className="grid grid-cols-4 gap-4 p-2 bg-blue-50 rounded">
-                        <div className="font-medium">Month {f.month}</div>
-                        <div className="text-green-600">?{f.revenue?.toLocaleString()}</div>
-                        <div className="text-red-600">?{f.expenses?.toLocaleString()}</div>
-                        <div className="font-bold">?{f.netIncome?.toLocaleString()}</div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            ) : <Card><CardContent className="p-6">No multi-period data available</CardContent></Card>}
           </TabsContent>
 
           <TabsContent value="budget">
@@ -343,94 +332,143 @@ const ProfitLossPage = () => {
               <Card>
                 <CardHeader><CardTitle>Budget vs Actual Comparison</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {['revenue', 'expenses', 'netIncome'].map((key) => (
-                      <div key={key} className="grid grid-cols-5 gap-4 p-3 bg-gray-50 rounded">
-                        <div className="font-medium capitalize">{key.replace(/([A-Z])/g, ' ?1')}</div>
-                        <div className="text-green-600">?{budgetData[key]?.actual?.toLocaleString()}</div>
-                        <div>?{budgetData[key]?.budget?.toLocaleString()}</div>
-                        <div className={budgetData[key]?.variance > 0 ? 'text-green-600' : 'text-red-600'}>
-                          ?{budgetData[key]?.variance?.toLocaleString()}
-                        </div>
-                        <div className={budgetData[key]?.variancePercent > 0 ? 'text-green-600' : 'text-red-600'}>
-                          {budgetData[key]?.variancePercent?.toFixed(1)}%
-                        </div>
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-5 gap-4 p-3 bg-gray-50 rounded font-medium">
+                      <div>Metric</div>
+                      <div className="text-right">Actual</div>
+                      <div className="text-right">Budget</div>
+                      <div className="text-right">Variance</div>
+                      <div className="text-right">%</div>
+                    </div>
+                    <div className="grid grid-cols-5 gap-4 p-3 hover:bg-muted rounded">
+                      <div className="font-medium">Revenue</div>
+                      <div className="text-right text-green-600">₹{profitLossData?.revenue?.total?.toLocaleString()}</div>
+                      <div className="text-right">₹{budgetData.revenue?.toLocaleString()}</div>
+                      <div className={`text-right ${budgetData.variance?.revenue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        ₹{budgetData.variance?.revenue?.toLocaleString()}
                       </div>
-                    ))}
+                      <div className={`text-right ${budgetData.variance?.revenuePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {budgetData.variance?.revenuePercent?.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-5 gap-4 p-3 hover:bg-muted rounded">
+                      <div className="font-medium">Expenses</div>
+                      <div className="text-right text-red-600">₹{profitLossData?.operatingExpenses?.total?.toLocaleString()}</div>
+                      <div className="text-right">₹{budgetData.expenses?.toLocaleString()}</div>
+                      <div className={`text-right ${budgetData.variance?.expenses <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        ₹{budgetData.variance?.expenses?.toLocaleString()}
+                      </div>
+                      <div className="text-right">-</div>
+                    </div>
+                    <div className="grid grid-cols-5 gap-4 p-3 bg-blue-50 rounded font-bold">
+                      <div>Net Income</div>
+                      <div className="text-right">₹{profitLossData?.netIncome?.toLocaleString()}</div>
+                      <div className="text-right">₹{budgetData.netIncome?.toLocaleString()}</div>
+                      <div className={`text-right ${budgetData.variance?.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        ₹{budgetData.variance?.netIncome?.toLocaleString()}
+                      </div>
+                      <div className={`text-right ${budgetData.variance?.netIncomePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {budgetData.variance?.netIncomePercent?.toFixed(1)}%
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            ) : <Card><CardContent className="p-6">Loading budget data...</CardContent></Card>}
-          </TabsContent>
-
-          <TabsContent value="waterfall">
-            <WaterfallChart data={waterfallData} />
+            ) : <Card><CardContent className="p-6">No budget data available. Set budgets to enable comparison.</CardContent></Card>}
           </TabsContent>
 
           <TabsContent value="ratios">
             {ratios ? (
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">Gross Profit</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-blue-600">₹{ratios.grossProfit?.toLocaleString()}</div>
+                      <p className="text-sm text-muted-foreground mt-1">{ratios.grossMargin?.toFixed(2)}% margin</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">EBITDA</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-purple-600">₹{ratios.ebitda?.toLocaleString()}</div>
+                      <p className="text-sm text-muted-foreground mt-1">{ratios.ebitdaMargin?.toFixed(2)}% margin</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">EBIT (Operating Profit)</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-orange-600">₹{ratios.ebit?.toLocaleString()}</div>
+                      <p className="text-sm text-muted-foreground mt-1">{ratios.operatingMargin?.toFixed(2)}% margin</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">Net Income (PAT)</CardTitle></CardHeader>
+                    <CardContent>
+                      <div className={`text-2xl font-bold ${ratios.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        ₹{ratios.netIncome?.toLocaleString()}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{ratios.netMargin?.toFixed(2)}% margin</p>
+                    </CardContent>
+                  </Card>
+                </div>
+                <Card>
+                  <CardHeader><CardTitle>Financial Metrics Breakdown</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
+                        <span className="font-medium">Gross Margin</span>
+                        <span className="text-lg font-bold text-blue-600">{ratios.grossMargin?.toFixed(2)}%</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-purple-50 rounded">
+                        <span className="font-medium">EBITDA Margin</span>
+                        <span className="text-lg font-bold text-purple-600">{ratios.ebitdaMargin?.toFixed(2)}%</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-orange-50 rounded">
+                        <span className="font-medium">Operating Margin (EBIT)</span>
+                        <span className="text-lg font-bold text-orange-600">{ratios.operatingMargin?.toFixed(2)}%</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                        <span className="font-medium">Net Profit Margin</span>
+                        <span className="text-lg font-bold text-green-600">{ratios.netMargin?.toFixed(2)}%</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : <Card><CardContent className="p-6">Loading metrics...</CardContent></Card>}
+          </TabsContent>
+
+          <TabsContent value="forecast">
+            {forecast ? (
               <Card>
-                <CardHeader><CardTitle>EBITDA & Advanced Ratios</CardTitle></CardHeader>
+                <CardHeader><CardTitle>3-Month Forecast</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 gap-6">
-                    <div className="p-4 bg-blue-50 rounded">
-                      <p className="text-sm text-muted-foreground">EBITDA</p>
-                      <p className="text-3xl font-bold text-blue-600">?{ratios.ebitda?.toLocaleString()}</p>
-                      <p className="text-sm mt-1">{ratios.ebitdaMargin}% margin</p>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-4 gap-4 p-2 font-medium border-b">
+                      <div>Month</div>
+                      <div className="text-right">Revenue</div>
+                      <div className="text-right">Expenses</div>
+                      <div className="text-right">Net Income</div>
                     </div>
-                    <div className="p-4 bg-green-50 rounded">
-                      <p className="text-sm text-muted-foreground">Operating Income</p>
-                      <p className="text-3xl font-bold text-green-600">?{ratios.operatingIncome?.toLocaleString()}</p>
-                      <p className="text-sm mt-1">{ratios.operatingMargin}% margin</p>
-                    </div>
-                    <div className="p-4 bg-purple-50 rounded">
-                      <p className="text-sm text-muted-foreground">ROI / ROE / ROA</p>
-                      <p className="text-3xl font-bold text-purple-600">{ratios.roi}% / {ratios.roe}% / {ratios.roa}%</p>
-                    </div>
+                    {forecast.forecast?.map((f: any, i: number) => (
+                      <div key={i} className="grid grid-cols-4 gap-4 p-3 bg-blue-50 rounded hover:bg-blue-100">
+                        <div className="font-medium">Month {f.month}</div>
+                        <div className="text-right text-green-600">₹{f.revenue?.toLocaleString()}</div>
+                        <div className="text-right text-red-600">₹{f.expenses?.toLocaleString()}</div>
+                        <div className="text-right font-bold">₹{f.netIncome?.toLocaleString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 p-4 bg-yellow-50 rounded border border-yellow-200">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Note:</strong> Forecast is based on historical data with 5% growth rate assumption. 
+                      Actual results may vary based on market conditions.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
-            ) : <Card><CardContent className="p-6">Loading ratios...</CardContent></Card>}
-          </TabsContent>
-
-          <TabsContent value="scenarios">
-            {scenarios ? (
-              <Card>
-                <CardHeader><CardTitle>Scenario Analysis</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="p-6 bg-green-50 rounded-lg border-2 border-green-200">
-                      <h4 className="font-bold text-green-700 mb-3">Best Case</h4>
-                      <div className="space-y-2">
-                        <div><span className="text-sm">Revenue:</span> <span className="font-bold">?{scenarios.bestCase?.revenue?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Expenses:</span> <span className="font-bold">?{scenarios.bestCase?.expenses?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Net Income:</span> <span className="font-bold text-green-600">?{scenarios.bestCase?.netIncome?.toLocaleString()}</span></div>
-                      </div>
-                    </div>
-                    <div className="p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
-                      <h4 className="font-bold text-blue-700 mb-3">Expected</h4>
-                      <div className="space-y-2">
-                        <div><span className="text-sm">Revenue:</span> <span className="font-bold">?{scenarios.expected?.revenue?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Expenses:</span> <span className="font-bold">?{scenarios.expected?.expenses?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Net Income:</span> <span className="font-bold text-blue-600">?{scenarios.expected?.netIncome?.toLocaleString()}</span></div>
-                      </div>
-                    </div>
-                    <div className="p-6 bg-red-50 rounded-lg border-2 border-red-200">
-                      <h4 className="font-bold text-red-700 mb-3">Worst Case</h4>
-                      <div className="space-y-2">
-                        <div><span className="text-sm">Revenue:</span> <span className="font-bold">?{scenarios.worstCase?.revenue?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Expenses:</span> <span className="font-bold">?{scenarios.worstCase?.expenses?.toLocaleString()}</span></div>
-                        <div><span className="text-sm">Net Income:</span> <span className="font-bold text-red-600">?{scenarios.worstCase?.netIncome?.toLocaleString()}</span></div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : <Card><CardContent className="p-6">Loading scenarios...</CardContent></Card>}
-          </TabsContent>
-
-          <TabsContent value="insights">
-            <AIInsights insights={insights} />
+            ) : <Card><CardContent className="p-6">Loading forecast...</CardContent></Card>}
           </TabsContent>
         </Tabs>
 

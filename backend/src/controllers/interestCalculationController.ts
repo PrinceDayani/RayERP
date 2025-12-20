@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { InterestCalculation } from '../models/InterestCalculation';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 
 const calculateSimpleInterest = (principal: number, rate: number, days: number) => {
   return (principal * rate * days) / (365 * 100);
@@ -239,11 +239,11 @@ export const runScheduledCalculations = async (req: Request, res: Response) => {
 
     const results = [];
     for (const calc of scheduled) {
-      const account = await Account.findById(calc.accountId);
+      const account = await ChartOfAccount.findById(calc.accountId);
       if (!account) continue;
 
       const days = Math.ceil((calc.toDate.getTime() - calc.fromDate.getTime()) / (1000 * 60 * 60 * 24));
-      const principal = account.balance;
+      const principal = ChartOfAccount.balance;
       
       let interestAmount = 0;
       if (calc.calculationType === 'simple') {
@@ -342,3 +342,4 @@ export const deleteCalculation = async (req: Request, res: Response) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+

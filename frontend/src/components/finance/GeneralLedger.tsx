@@ -1344,7 +1344,7 @@ const GeneralLedger = () => {
                       </TableRow>
                     ) : (
                       ledgerEntries.map((entry, index) => (
-                        <TableRow key={`ledger-entry-${entry._id}-${index}`} {...getLedgerRowProps(index)}>
+                        <TableRow key={`ledger-entry-${entry._id}-${index}`}>
                           <TableCell>{new Date(entry.date).toLocaleDateString()}</TableCell>
                           <TableCell>{entry.time || '-'}</TableCell>
                           <TableCell>{entry.reference}</TableCell>

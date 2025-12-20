@@ -4,6 +4,7 @@ import ChartOfAccount from '../models/ChartOfAccount';
 import JournalEntry from '../models/JournalEntry';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
+import { generateJournalEntryNumber } from '../utils/journalNumberGenerator';
 
 const VOUCHER_PREFIXES: Record<VoucherType, string> = {
   payment: 'PAY',
@@ -147,14 +148,15 @@ export const getVouchers = async (req: Request, res: Response) => {
     
     const [vouchers, total] = await Promise.all([
       Voucher.find(query)
-        .populate('lines.accountId', 'code name type')
-        .populate('partyId', 'code name')
-        .populate('bankAccountId', 'code name')
-        .populate('createdBy', 'name email')
-        .populate('approvedBy', 'name email')
+        .populate({ path: 'lines.accountId', select: 'code name type', model: 'ChartOfAccount' })
+        .populate({ path: 'partyId', select: 'code name', model: 'ChartOfAccount' })
+        .populate({ path: 'bankAccountId', select: 'code name', model: 'ChartOfAccount' })
+        .populate({ path: 'createdBy', select: 'name email', model: 'User' })
+        .populate({ path: 'approvedBy', select: 'name email', model: 'User' })
         .sort({ date: -1, voucherNumber: -1 })
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(Number(limit))
+        .lean(),
       Voucher.countDocuments(query)
     ]);
 
@@ -311,7 +313,7 @@ export const postVoucher = async (req: Request, res: Response) => {
       projectId: line.projectId
     }));
 
-    const entryNumber = `JE-${voucher.voucherNumber}`;
+    const entryNumber = await generateJournalEntryNumber('VOUCHER', 'GL');
     await JournalEntry.create([{
       entryNumber,
       voucherType: voucher.voucherType,

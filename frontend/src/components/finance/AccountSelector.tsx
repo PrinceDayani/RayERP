@@ -81,7 +81,10 @@ export function AccountSelector({ value, onValueChange, accounts, onAccountCreat
                   value={acc._id}
                   className={idx === selectedIndex ? 'bg-primary/10' : ''}
                 >
-                  {acc.code} - {acc.name}
+                  <div className="flex justify-between items-center w-full">
+                    <span>{acc.code} - {acc.name}</span>
+                    <span className="text-xs text-muted-foreground ml-4">Bal: {acc.balance?.toLocaleString() || '0'}</span>
+                  </div>
                 </SelectItem>
               ))
             )}

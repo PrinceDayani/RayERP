@@ -105,5 +105,11 @@ export const invoiceAPI = {
   getCustomers: async () => {
     const response = await api.get('/invoices/customers/list');
     return response.data.data || [];
+  },
+
+  // Get Chart of Accounts for invoice creation
+  getChartOfAccounts: async () => {
+    const response = await api.get('/invoices/accounts/list');
+    return response.data.data || [];
   }
 };

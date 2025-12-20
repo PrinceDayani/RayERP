@@ -1,7 +1,7 @@
 import express from 'express';
 import JournalEntry from '../models/JournalEntry';
 import JournalEntryTemplate from '../models/JournalEntryTemplate';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { GLBudget } from '../models/GLBudget';
 import AllocationRule from '../models/AllocationRule';
 import { protect } from '../middleware/auth.middleware';
@@ -37,7 +37,7 @@ const performBudgetCheck = async (lines: any[], year: number) => {
     const budget = await GLBudget.findOne({ account: line.account, fiscalYear: year, status: 'APPROVED' });
     if (budget) {
       const entries = await JournalEntry.find({ 'lines.account': line.account, periodYear: year, status: 'POSTED' });
-      const actualAmount = entries.reduce((sum, e) => sum + e.lines.filter(l => l.account.toString() === line.account.toString()).reduce((s, l) => s + l.debit - l.credit, 0), 0);
+      const actualAmount = entries.reduce((sum, e) => sum + e.lines.filter(l => l.ChartOfAccount.toString() === line.ChartOfAccount.toString()).reduce((s, l) => s + l.debit - l.credit, 0), 0);
       const newAmount = actualAmount + (line.debit - line.credit);
       
       const totalBudget = budget.budgetAmount || 0;
@@ -230,7 +230,7 @@ router.post('/:id/post', requireFinanceAccess('journal.post'), async (req, res) 
     
     // Update account balances
     for (const line of entry.lines) {
-      await Account.findByIdAndUpdate(line.account, {
+      await ChartOfAccount.findByIdAndUpdate(line.account, {
         $inc: { balance: line.debit - line.credit }
       });
     }
@@ -256,7 +256,7 @@ router.post('/batch-post', async (req, res) => {
         await entry.save();
         
         for (const line of entry.lines) {
-          await Account.findByIdAndUpdate(line.account, {
+          await ChartOfAccount.findByIdAndUpdate(line.account, {
             $inc: { balance: line.debit - line.credit }
           });
         }
@@ -316,7 +316,7 @@ router.post('/:id/reverse', async (req, res) => {
     
     // Update account balances
     for (const line of reversedLines) {
-      await Account.findByIdAndUpdate(line.account, {
+      await ChartOfAccount.findByIdAndUpdate(line.account, {
         $inc: { balance: line.debit - line.credit }
       });
     }
@@ -432,7 +432,7 @@ router.post('/generate-recurring', async (req, res) => {
       
       if (parent.autoPost) {
         for (const line of newEntry.lines) {
-          await Account.findByIdAndUpdate(line.account, {
+          await ChartOfAccount.findByIdAndUpdate(line.account, {
             $inc: { balance: line.debit - line.credit }
           });
         }
@@ -591,3 +591,4 @@ router.delete('/:id', requireFinanceAccess('journal.delete'), async (req, res) =
 });
 
 export default router;
+

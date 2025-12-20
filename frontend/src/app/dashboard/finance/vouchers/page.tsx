@@ -18,6 +18,10 @@ import { AccountSelector } from '@/components/finance/AccountSelector';
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export default function VouchersPage() {
+  // Debug API URL
+  if (typeof window !== 'undefined') {
+    console.log('API_URL:', API_URL);
+  }
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
@@ -60,6 +64,16 @@ export default function VouchersPage() {
   const fetchVouchers = async () => {
     try {
       setLoading(true);
+      
+      if (!API_URL) {
+        throw new Error('API URL is not configured. Please check your .env.local file.');
+      }
+
+      const token = localStorage.getItem('auth-token');
+      if (!token) {
+        throw new Error('Authentication token not found. Please login again.');
+      }
+
       const params = new URLSearchParams();
       params.append('limit', '20');
       params.append('page', page.toString());
@@ -69,10 +83,26 @@ export default function VouchersPage() {
       if (filterType !== 'all') params.append('voucherType', filterType);
       if (filterStatus !== 'all') params.append('status', filterStatus);
       
-      const res = await fetch(`${API_URL}/api/vouchers?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
+      const url = `${API_URL}/api/vouchers?${params}`;
+      console.log('Fetching vouchers from:', url);
+      
+      const res = await fetch(url, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
+      
+      console.log('Response status:', res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('API Error Response:', errorText);
+        throw new Error(`API returned ${res.status}: ${errorText}`);
+      }
+      
       const data = await res.json();
+      console.log('Vouchers data:', data);
       
       if (data.success) {
         setVouchers(data.data || []);
@@ -80,9 +110,14 @@ export default function VouchersPage() {
       } else {
         throw new Error(data.message || 'Failed to fetch vouchers');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching vouchers:', error);
-      toast({ title: 'Error', description: 'Failed to load vouchers', variant: 'destructive' });
+      const errorMsg = error.message || 'Failed to load vouchers';
+      toast({ 
+        title: 'Error Loading Vouchers', 
+        description: errorMsg.includes('fetch') ? 'Cannot connect to server. Please ensure backend is running on port 5000.' : errorMsg,
+        variant: 'destructive' 
+      });
     } finally {
       setLoading(false);
     }
@@ -90,9 +125,23 @@ export default function VouchersPage() {
 
   const fetchAccounts = async () => {
     try {
+      if (!API_URL) return;
+      
+      const token = localStorage.getItem('auth-token');
+      if (!token) return;
+      
       const res = await fetch(`${API_URL}/api/general-ledger/accounts`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
+      
+      if (!res.ok) {
+        console.error('Failed to fetch accounts:', res.status);
+        return;
+      }
+      
       const data = await res.json();
       setAccounts(data.accounts || data.data || []);
     } catch (error) {
@@ -102,13 +151,27 @@ export default function VouchersPage() {
 
   const fetchStats = async () => {
     try {
+      if (!API_URL) return;
+      
+      const token = localStorage.getItem('auth-token');
+      if (!token) return;
+      
       const params = new URLSearchParams();
       if (dateFrom) params.append('startDate', dateFrom);
       if (dateTo) params.append('endDate', dateTo);
       
       const res = await fetch(`${API_URL}/api/vouchers/stats?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
+      
+      if (!res.ok) {
+        console.error('Failed to fetch stats:', res.status);
+        return;
+      }
+      
       const data = await res.json();
       
       if (data.success) {

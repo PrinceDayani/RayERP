@@ -30,6 +30,16 @@ const BalanceSheetPage = () => {
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [scheduleEmail, setScheduleEmail] = useState('');
   const [scheduleFrequency, setScheduleFrequency] = useState('monthly');
+  const [format, setFormat] = useState<'report' | 'account'>('report');
+  const [showCommonSize, setShowCommonSize] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['current-assets', 'non-current-assets', 'current-liabilities', 'long-term-liabilities', 'equity']));
+  const [error, setError] = useState<string | null>(null);
+  const [showNotesDialog, setShowNotesDialog] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<any>(null);
+  const [noteText, setNoteText] = useState('');
+  const [noteType, setNoteType] = useState('general');
+  const [showInsights, setShowInsights] = useState(true);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
 
   useEffect(() => {
     fetchBalanceSheetData();
@@ -73,14 +83,18 @@ const BalanceSheetPage = () => {
 
   const fetchBalanceSheetData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await reportingApi.getBalanceSheet(asOfDate, compareDate || undefined);
       if (response.success) {
         setBalanceSheetData(response.data);
         if (compareMode === 'multi') fetchMultiPeriodData();
+      } else {
+        setError('Failed to fetch balance sheet data');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching balance sheet:', error);
+      setError(error.message || 'An error occurred while fetching data');
     } finally {
       setLoading(false);
     }
@@ -150,22 +164,72 @@ const BalanceSheetPage = () => {
     window.print();
   };
 
-  const handleScheduleReport = () => {
-    console.log('Scheduling report:', { email: scheduleEmail, frequency: scheduleFrequency });
-    setShowScheduleDialog(false);
+  const handleScheduleReport = async () => {
+    try {
+      await fetch('/api/finance/reports/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportType: 'balance-sheet',
+          frequency: scheduleFrequency,
+          email: scheduleEmail,
+          parameters: { asOfDate }
+        })
+      });
+      setShowScheduleDialog(false);
+      setScheduleEmail('');
+    } catch (error) {
+      console.error('Schedule error:', error);
+    }
   };
 
-  const filteredAssets = balanceSheetData?.assets?.filter((a: any) => 
+  const handleAddNote = async () => {
+    try {
+      await fetch('/api/finance/accounts/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountId: selectedAccount.accountId,
+          note: noteText,
+          noteType,
+          asOfDate
+        })
+      });
+      setShowNotesDialog(false);
+      setNoteText('');
+      fetchBalanceSheetData();
+    } catch (error) {
+      console.error('Add note error:', error);
+    }
+  };
+
+  const toggleSection = (section: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(section)) {
+      newExpanded.delete(section);
+    } else {
+      newExpanded.add(section);
+    }
+    setExpandedSections(newExpanded);
+  };
+
+  const getAccountChange = (accountId: string, type: 'assets' | 'liabilities' | 'equity') => {
+    if (!balanceSheetData?.comparison?.accounts) return null;
+    const accountComparison = balanceSheetData.comparison.accounts[type]?.find((a: any) => a.accountId === accountId);
+    return accountComparison ? accountComparison.change : 0;
+  };
+
+  const filteredAssets = balanceSheetData?.assets?.current?.filter((a: any) => 
     a.account.toLowerCase().includes(searchTerm.toLowerCase()) || 
     a.code.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  const filteredLiabilities = balanceSheetData?.liabilities?.filter((l: any) => 
+  const filteredLiabilities = balanceSheetData?.liabilities?.current?.filter((l: any) => 
     l.account.toLowerCase().includes(searchTerm.toLowerCase()) || 
     l.code.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  const filteredEquity = balanceSheetData?.equity?.filter((e: any) => 
+  const filteredEquity = balanceSheetData?.equity?.shareCapital?.filter((e: any) => 
     e.account.toLowerCase().includes(searchTerm.toLowerCase()) || 
     e.code.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
@@ -176,21 +240,26 @@ const BalanceSheetPage = () => {
     { name: 'Equity', value: balanceSheetData.totalEquity }
   ] : [];
 
-  const renderAccountRow = (item: any, type: string) => {
-    const change = balanceSheetData?.comparison ? 
-      (type === 'assets' ? item.amount - (balanceSheetData.comparison.totalAssets / balanceSheetData.assets.length) :
-       type === 'liabilities' ? item.amount - (balanceSheetData.comparison.totalLiabilities / balanceSheetData.liabilities.length) :
-       item.amount - (balanceSheetData.comparison.totalEquity / balanceSheetData.equity.length)) : 0;
+  const renderAccountRow = (item: any, type: 'assets' | 'liabilities' | 'equity') => {
+    const change = getAccountChange(item.accountId, type);
+    const percentage = showCommonSize && balanceSheetData?.commonSize ? 
+      balanceSheetData.commonSize[type]?.find((a: any) => a.accountId === item.accountId)?.percentage : null;
+    const hasNotes = balanceSheetData?.notes?.[item.accountId]?.length > 0;
     
     return (
-      <div key={item.code} className="flex justify-between items-center text-sm py-1 hover:bg-gray-50 px-2 rounded cursor-pointer print:hover:bg-white" onClick={() => handleDrilldown(item)}>
+      <div key={item.code} className="flex justify-between items-center text-sm py-1 hover:bg-gray-50 px-2 rounded print:hover:bg-white">
         <div className="flex items-center gap-2">
-          <span>{item.account} ({item.code})</span>
-          <Eye className="h-3 w-3 text-gray-400 print:hidden" />
+          <span className="cursor-pointer" onClick={() => handleDrilldown(item)}>{item.account} ({item.code})</span>
+          <Eye className="h-3 w-3 text-gray-400 print:hidden cursor-pointer" onClick={() => handleDrilldown(item)} />
+          {hasNotes && <span className="text-xs text-blue-600 cursor-pointer" onClick={() => { setSelectedAccount(item); setShowNotesDialog(true); }}>📝</span>}
+          <button className="text-xs text-gray-400 hover:text-blue-600 print:hidden" onClick={() => { setSelectedAccount(item); setShowNotesDialog(true); }}>+Note</button>
         </div>
         <div className="flex items-center gap-3">
           <span className="font-medium">₹{item.amount.toLocaleString('en-IN')}</span>
-          {compareDate && (
+          {showCommonSize && percentage !== null && (
+            <span className="text-xs text-gray-500">({percentage.toFixed(1)}%)</span>
+          )}
+          {compareDate && change !== null && change !== 0 && (
             <span className={`text-xs flex items-center gap-1 print:hidden ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
               {Math.abs(change).toLocaleString('en-IN')}
@@ -209,6 +278,12 @@ const BalanceSheetPage = () => {
           .print-area, .print-area * { visibility: visible; }
           .print-area { position: absolute; left: 0; top: 0; width: 100%; }
           .print\\:hidden { display: none !important; }
+        }
+        @media (max-width: 768px) {
+          .grid-cols-3 { grid-template-columns: 1fr !important; }
+          .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+          .flex-wrap { flex-wrap: wrap !important; }
+          .text-3xl { font-size: 1.5rem !important; }
         }
       `}</style>
 
@@ -245,6 +320,8 @@ const BalanceSheetPage = () => {
             <Input type="date" value={compareDate} onChange={(e) => setCompareDate(e.target.value)} className="w-40" placeholder="Compare date" />
           )}
           <Button onClick={fetchBalanceSheetData}>Refresh</Button>
+          <Button variant="outline" onClick={() => setFormat(format === 'report' ? 'account' : 'report')}>{format === 'report' ? 'Account Format' : 'Report Format'}</Button>
+          <Button variant="outline" onClick={() => setShowCommonSize(!showCommonSize)}>{showCommonSize ? 'Hide %' : 'Show %'}</Button>
           <Button variant="outline" onClick={() => setShowSaveDialog(true)}><Save className="h-4 w-4 mr-2" />Save View</Button>
           <Button variant="outline" onClick={handlePrint}><Printer className="h-4 w-4 mr-2" />Print</Button>
           <Button variant="outline" onClick={() => handleExport('csv')}><Download className="h-4 w-4 mr-2" />CSV</Button>
@@ -276,12 +353,26 @@ const BalanceSheetPage = () => {
         </TabsList>
 
         <TabsContent value="statement" className="print-area">
+          {error && (
+            <Card className="mb-6 border-red-200 bg-red-50">
+              <CardContent className="p-4">
+                <p className="text-red-600">{error}</p>
+              </CardContent>
+            </Card>
+          )}
+
           {balanceSheetData?.ratios && (
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-4 gap-4 mb-6">
               <Card>
                 <CardContent className="p-4">
                   <p className="text-sm text-gray-600">Current Ratio</p>
                   <p className="text-2xl font-bold">{balanceSheetData.ratios.currentRatio.toFixed(2)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-gray-600">Quick Ratio</p>
+                  <p className="text-2xl font-bold">{balanceSheetData.ratios.quickRatio.toFixed(2)}</p>
                 </CardContent>
               </Card>
               <Card>
@@ -292,8 +383,8 @@ const BalanceSheetPage = () => {
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-sm text-gray-600">Working Capital</p>
-                  <p className="text-2xl font-bold">₹{balanceSheetData.ratios.workingCapital.toLocaleString('en-IN')}</p>
+                  <p className="text-sm text-gray-600">Equity Ratio</p>
+                  <p className="text-2xl font-bold">{(balanceSheetData.ratios.equityRatio * 100).toFixed(1)}%</p>
                 </CardContent>
               </Card>
             </div>
@@ -306,13 +397,44 @@ const BalanceSheetPage = () => {
               </CardContent>
             </Card>
           ) : balanceSheetData ? (
+            format === 'report' ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-green-600">Assets</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {filteredAssets.map((asset: any) => renderAccountRow(asset, 'assets'))}
+                  <div className="font-semibold text-sm cursor-pointer" onClick={() => toggleSection('current-assets')}>
+                    {expandedSections.has('current-assets') ? '▼' : '▶'} Current Assets
+                  </div>
+                  {expandedSections.has('current-assets') && balanceSheetData.assets?.current?.map((asset: any) => renderAccountRow(asset, 'assets'))}
+                  {expandedSections.has('current-assets') && (
+                    <div className="flex justify-between text-sm font-medium pl-4">
+                      <span>Total Current Assets</span>
+                      <span>₹{balanceSheetData.assets?.totalCurrent?.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  <div className="font-semibold text-sm cursor-pointer mt-2" onClick={() => toggleSection('non-current-assets')}>
+                    {expandedSections.has('non-current-assets') ? '▼' : '▶'} Non-Current Assets
+                  </div>
+                  {expandedSections.has('non-current-assets') && (
+                    <>
+                      <div className="text-xs font-medium pl-4">Fixed Assets</div>
+                      {balanceSheetData.assets?.nonCurrent?.fixed?.map((asset: any) => <div key={asset.code} className="pl-6">{renderAccountRow(asset, 'assets')}</div>)}
+                      <div className="text-xs font-medium pl-4 mt-1">Intangible Assets</div>
+                      {balanceSheetData.assets?.nonCurrent?.intangible?.map((asset: any) => <div key={asset.code} className="pl-6">{renderAccountRow(asset, 'assets')}</div>)}
+                      {balanceSheetData.assets?.nonCurrent?.other?.length > 0 && (
+                        <>
+                          <div className="text-xs font-medium pl-4 mt-1">Other Assets</div>
+                          {balanceSheetData.assets?.nonCurrent?.other?.map((asset: any) => <div key={asset.code} className="pl-6">{renderAccountRow(asset, 'assets')}</div>)}
+                        </>
+                      )}
+                      <div className="flex justify-between text-sm font-medium pl-4 mt-1">
+                        <span>Total Non-Current Assets</span>
+                        <span>₹{balanceSheetData.assets?.totalNonCurrent?.toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
+                  )}
                   <hr className="my-2" />
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total Assets</span>
@@ -322,7 +444,7 @@ const BalanceSheetPage = () => {
                     <div className="text-sm text-gray-600 flex justify-between">
                       <span>Change:</span>
                       <span className={balanceSheetData.comparison.assetChange >= 0 ? 'text-green-600' : 'text-red-600'}>
-                        ₹{Math.abs(balanceSheetData.comparison.assetChange).toLocaleString('en-IN')}
+                        ₹{Math.abs(balanceSheetData.comparison.assetChange).toLocaleString('en-IN')} ({balanceSheetData.comparison.assetChangePercent?.toFixed(1)}%)
                       </span>
                     </div>
                   )}
@@ -334,7 +456,26 @@ const BalanceSheetPage = () => {
                   <CardTitle className="text-red-600">Liabilities</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {filteredLiabilities.map((liability: any) => renderAccountRow(liability, 'liabilities'))}
+                  <div className="font-semibold text-sm cursor-pointer" onClick={() => toggleSection('current-liabilities')}>
+                    {expandedSections.has('current-liabilities') ? '▼' : '▶'} Current Liabilities
+                  </div>
+                  {expandedSections.has('current-liabilities') && balanceSheetData.liabilities?.current?.map((liability: any) => renderAccountRow(liability, 'liabilities'))}
+                  {expandedSections.has('current-liabilities') && (
+                    <div className="flex justify-between text-sm font-medium pl-4">
+                      <span>Total Current Liabilities</span>
+                      <span>₹{balanceSheetData.liabilities?.totalCurrent?.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  <div className="font-semibold text-sm cursor-pointer mt-2" onClick={() => toggleSection('long-term-liabilities')}>
+                    {expandedSections.has('long-term-liabilities') ? '▼' : '▶'} Long-Term Liabilities
+                  </div>
+                  {expandedSections.has('long-term-liabilities') && balanceSheetData.liabilities?.longTerm?.map((liability: any) => renderAccountRow(liability, 'liabilities'))}
+                  {expandedSections.has('long-term-liabilities') && (
+                    <div className="flex justify-between text-sm font-medium pl-4">
+                      <span>Total Long-Term Liabilities</span>
+                      <span>₹{balanceSheetData.liabilities?.totalLongTerm?.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
                   <hr className="my-2" />
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total Liabilities</span>
@@ -344,7 +485,7 @@ const BalanceSheetPage = () => {
                     <div className="text-sm text-gray-600 flex justify-between">
                       <span>Change:</span>
                       <span className={balanceSheetData.comparison.liabilityChange >= 0 ? 'text-red-600' : 'text-green-600'}>
-                        ₹{Math.abs(balanceSheetData.comparison.liabilityChange).toLocaleString('en-IN')}
+                        ₹{Math.abs(balanceSheetData.comparison.liabilityChange).toLocaleString('en-IN')} ({balanceSheetData.comparison.liabilityChangePercent?.toFixed(1)}%)
                       </span>
                     </div>
                   )}
@@ -356,7 +497,37 @@ const BalanceSheetPage = () => {
                   <CardTitle className="text-blue-600">Equity</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {filteredEquity.map((item: any) => renderAccountRow(item, 'equity'))}
+                  <div className="font-semibold text-sm cursor-pointer" onClick={() => toggleSection('equity')}>
+                    {expandedSections.has('equity') ? '▼' : '▶'} Equity Components
+                  </div>
+                  {expandedSections.has('equity') && (
+                    <>
+                      {balanceSheetData.equity?.shareCapital?.length > 0 && (
+                        <>
+                          <div className="text-xs font-medium pl-4">Share Capital</div>
+                          {balanceSheetData.equity.shareCapital.map((item: any) => <div key={item.code} className="pl-6">{renderAccountRow(item, 'equity')}</div>)}
+                        </>
+                      )}
+                      {balanceSheetData.equity?.retainedEarnings?.length > 0 && (
+                        <>
+                          <div className="text-xs font-medium pl-4 mt-1">Retained Earnings</div>
+                          {balanceSheetData.equity.retainedEarnings.map((item: any) => <div key={item.code} className="pl-6">{renderAccountRow(item, 'equity')}</div>)}
+                        </>
+                      )}
+                      {balanceSheetData.equity?.reserves?.length > 0 && (
+                        <>
+                          <div className="text-xs font-medium pl-4 mt-1">Reserves</div>
+                          {balanceSheetData.equity.reserves.map((item: any) => <div key={item.code} className="pl-6">{renderAccountRow(item, 'equity')}</div>)}
+                        </>
+                      )}
+                      {balanceSheetData.equity?.other?.length > 0 && (
+                        <>
+                          <div className="text-xs font-medium pl-4 mt-1">Other Equity</div>
+                          {balanceSheetData.equity.other.map((item: any) => <div key={item.code} className="pl-6">{renderAccountRow(item, 'equity')}</div>)}
+                        </>
+                      )}
+                    </>
+                  )}
                   <hr className="my-2" />
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total Equity</span>
@@ -366,7 +537,7 @@ const BalanceSheetPage = () => {
                     <div className="text-sm text-gray-600 flex justify-between">
                       <span>Change:</span>
                       <span className={balanceSheetData.comparison.equityChange >= 0 ? 'text-green-600' : 'text-red-600'}>
-                        ₹{Math.abs(balanceSheetData.comparison.equityChange).toLocaleString('en-IN')}
+                        ₹{Math.abs(balanceSheetData.comparison.equityChange).toLocaleString('en-IN')} ({balanceSheetData.comparison.equityChangePercent?.toFixed(1)}%)
                       </span>
                     </div>
                   )}
@@ -376,81 +547,606 @@ const BalanceSheetPage = () => {
                     <span>₹{(balanceSheetData.totalLiabilities + balanceSheetData.totalEquity).toLocaleString('en-IN')}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {Math.abs(balanceSheetData.totalAssets - (balanceSheetData.totalLiabilities + balanceSheetData.totalEquity)) < 0.01 ? 
-                      "✓ Balance sheet balances" : "⚠ Balance sheet does not balance"}
+                    {balanceSheetData.balanced ? 
+                      "✓ Balance sheet balances" : `⚠ Difference: ₹${Math.abs(balanceSheetData.balanceDifference).toLocaleString('en-IN')}`}
                   </p>
+                  {balanceSheetData.budget && (
+                    <div className="mt-4 p-3 bg-blue-50 rounded">
+                      <p className="text-xs font-semibold mb-1">Budget Variance</p>
+                      <div className="text-xs space-y-1">
+                        <div className="flex justify-between">
+                          <span>Assets:</span>
+                          <span className={balanceSheetData.budget.variance.assets >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            ₹{Math.abs(balanceSheetData.budget.variance.assets).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Equity:</span>
+                          <span className={balanceSheetData.budget.variance.equity >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            ₹{Math.abs(balanceSheetData.budget.variance.equity).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
+            ) : (
+              <Card>
+                <CardContent className="p-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Account</TableHead>
+                        <TableHead>Code</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        {showCommonSize && <TableHead className="text-right">%</TableHead>}
+                        {compareDate && <TableHead className="text-right">Change</TableHead>}
+                        <TableHead className="text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow className="bg-green-50 font-semibold">
+                        <TableCell colSpan={6} className="text-green-700">ASSETS</TableCell>
+                      </TableRow>
+                      <TableRow className="bg-gray-50">
+                        <TableCell colSpan={6} className="font-medium text-sm">Current Assets</TableCell>
+                      </TableRow>
+                      {balanceSheetData.assets?.current?.map((asset: any) => {
+                        const change = getAccountChange(asset.accountId, 'assets');
+                        const percentage = showCommonSize && balanceSheetData?.commonSize?.assets?.find((a: any) => a.accountId === asset.accountId)?.percentage;
+                        return (
+                          <TableRow key={asset.code} className="hover:bg-gray-50">
+                            <TableCell className="pl-8">{asset.account}</TableCell>
+                            <TableCell>{asset.code}</TableCell>
+                            <TableCell className="text-right font-medium">₹{asset.amount.toLocaleString('en-IN')}</TableCell>
+                            {showCommonSize && <TableCell className="text-right text-sm text-gray-600">{percentage?.toFixed(1)}%</TableCell>}
+                            {compareDate && <TableCell className="text-right"><span className={change >= 0 ? 'text-green-600' : 'text-red-600'}>{change !== 0 ? `₹${Math.abs(change).toLocaleString('en-IN')}` : '-'}</span></TableCell>}
+                            <TableCell className="text-center">
+                              <Button variant="ghost" size="sm" onClick={() => handleDrilldown(asset)}><Eye className="h-3 w-3" /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedAccount(asset); setShowNotesDialog(true); }}>+Note</Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      <TableRow className="font-medium bg-gray-100">
+                        <TableCell colSpan={2}>Total Current Assets</TableCell>
+                        <TableCell className="text-right">₹{balanceSheetData.assets?.totalCurrent?.toLocaleString('en-IN')}</TableCell>
+                        {showCommonSize && <TableCell></TableCell>}
+                        {compareDate && <TableCell></TableCell>}
+                        <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow className="bg-gray-50">
+                        <TableCell colSpan={6} className="font-medium text-sm">Non-Current Assets</TableCell>
+                      </TableRow>
+                      {balanceSheetData.assets?.nonCurrent?.fixed?.map((asset: any) => {
+                        const change = getAccountChange(asset.accountId, 'assets');
+                        const percentage = showCommonSize && balanceSheetData?.commonSize?.assets?.find((a: any) => a.accountId === asset.accountId)?.percentage;
+                        return (
+                          <TableRow key={asset.code} className="hover:bg-gray-50">
+                            <TableCell className="pl-8">{asset.account}</TableCell>
+                            <TableCell>{asset.code}</TableCell>
+                            <TableCell className="text-right font-medium">₹{asset.amount.toLocaleString('en-IN')}</TableCell>
+                            {showCommonSize && <TableCell className="text-right text-sm text-gray-600">{percentage?.toFixed(1)}%</TableCell>}
+                            {compareDate && <TableCell className="text-right"><span className={change >= 0 ? 'text-green-600' : 'text-red-600'}>{change !== 0 ? `₹${Math.abs(change).toLocaleString('en-IN')}` : '-'}</span></TableCell>}
+                            <TableCell className="text-center">
+                              <Button variant="ghost" size="sm" onClick={() => handleDrilldown(asset)}><Eye className="h-3 w-3" /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedAccount(asset); setShowNotesDialog(true); }}>+Note</Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      <TableRow className="font-medium bg-gray-100">
+                        <TableCell colSpan={2}>Total Non-Current Assets</TableCell>
+                        <TableCell className="text-right">₹{balanceSheetData.assets?.totalNonCurrent?.toLocaleString('en-IN')}</TableCell>
+                        {showCommonSize && <TableCell></TableCell>}
+                        {compareDate && <TableCell></TableCell>}
+                        <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow className="font-bold bg-green-100">
+                        <TableCell colSpan={2} className="text-green-700">TOTAL ASSETS</TableCell>
+                        <TableCell className="text-right text-green-700">₹{balanceSheetData.totalAssets?.toLocaleString('en-IN')}</TableCell>
+                        {showCommonSize && <TableCell></TableCell>}
+                        {compareDate && <TableCell className="text-right text-green-700">{balanceSheetData.comparison && `₹${Math.abs(balanceSheetData.comparison.assetChange).toLocaleString('en-IN')} (${balanceSheetData.comparison.assetChangePercent?.toFixed(1)}%)`}</TableCell>}
+                        <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow><TableCell colSpan={6} className="h-4"></TableCell></TableRow>
+                      <TableRow className="bg-red-50 font-semibold">
+                        <TableCell colSpan={6} className="text-red-700">LIABILITIES</TableCell>
+                      </TableRow>
+                      <TableRow className="bg-gray-50">
+                        <TableCell colSpan={6} className="font-medium text-sm">Current Liabilities</TableCell>
+                      </TableRow>
+                      {balanceSheetData.liabilities?.current?.map((liability: any) => {
+                        const change = getAccountChange(liability.accountId, 'liabilities');
+                        const percentage = showCommonSize && balanceSheetData?.commonSize?.liabilities?.find((a: any) => a.accountId === liability.accountId)?.percentage;
+                        return (
+                          <TableRow key={liability.code} className="hover:bg-gray-50">
+                            <TableCell className="pl-8">{liability.account}</TableCell>
+                            <TableCell>{liability.code}</TableCell>
+                            <TableCell className="text-right font-medium">₹{liability.amount.toLocaleString('en-IN')}</TableCell>
+                            {showCommonSize && <TableCell className="text-right text-sm text-gray-600">{percentage?.toFixed(1)}%</TableCell>}
+                            {compareDate && <TableCell className="text-right"><span className={change >= 0 ? 'text-red-600' : 'text-green-600'}>{change !== 0 ? `₹${Math.abs(change).toLocaleString('en-IN')}` : '-'}</span></TableCell>}
+                            <TableCell className="text-center">
+                              <Button variant="ghost" size="sm" onClick={() => handleDrilldown(liability)}><Eye className="h-3 w-3" /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedAccount(liability); setShowNotesDialog(true); }}>+Note</Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      <TableRow className="font-medium bg-gray-100">
+                        <TableCell colSpan={2}>Total Current Liabilities</TableCell>
+                        <TableCell className="text-right">₹{balanceSheetData.liabilities?.totalCurrent?.toLocaleString('en-IN')}</TableCell>
+                        {showCommonSize && <TableCell></TableCell>}
+                        {compareDate && <TableCell></TableCell>}
+                        <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow className="bg-gray-50">
+                        <TableCell colSpan={6} className="font-medium text-sm">Long-Term Liabilities</TableCell>
+                      </TableRow>
+                      {balanceSheetData.liabilities?.longTerm?.map((liability: any) => {
+                        const change = getAccountChange(liability.accountId, 'liabilities');
+                        const percentage = showCommonSize && balanceSheetData?.commonSize?.liabilities?.find((a: any) => a.accountId === liability.accountId)?.percentage;
+                        return (
+                          <TableRow key={liability.code} className="hover:bg-gray-50">
+                            <TableCell className="pl-8">{liability.account}</TableCell>
+                            <TableCell>{liability.code}</TableCell>
+                            <TableCell className="text-right font-medium">₹{liability.amount.toLocaleString('en-IN')}</TableCell>
+                            {showCommonSize && <TableCell className="text-right text-sm text-gray-600">{percentage?.toFixed(1)}%</TableCell>}
+                            {compareDate && <TableCell className="text-right"><span className={change >= 0 ? 'text-red-600' : 'text-green-600'}>{change !== 0 ? `₹${Math.abs(change).toLocaleString('en-IN')}` : '-'}</span></TableCell>}
+                            <TableCell className="text-center">
+                              <Button variant="ghost" size="sm" onClick={() => handleDrilldown(liability)}><Eye className="h-3 w-3" /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedAccount(liability); setShowNotesDialog(true); }}>+Note</Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      <TableRow className="font-medium bg-gray-100">
+                        <TableCell colSpan={2}>Total Long-Term Liabilities</TableCell>
+                        <TableCell className="text-right">₹{balanceSheetData.liabilities?.totalLongTerm?.toLocaleString('en-IN')}</TableCell>
+                        {showCommonSize && <TableCell></TableCell>}
+                        {compareDate && <TableCell></TableCell>}
+                        <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow className="font-bold bg-red-100">
+                        <TableCell colSpan={2} className="text-red-700">TOTAL LIABILITIES</TableCell>
+                        <TableCell className="text-right text-red-700">₹{balanceSheetData.totalLiabilities?.toLocaleString('en-IN')}</TableCell>
+                        {showCommonSize && <TableCell></TableCell>}
+                        {compareDate && <TableCell className="text-right text-red-700">{balanceSheetData.comparison && `₹${Math.abs(balanceSheetData.comparison.liabilityChange).toLocaleString('en-IN')} (${balanceSheetData.comparison.liabilityChangePercent?.toFixed(1)}%)`}</TableCell>}
+                        <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow><TableCell colSpan={6} className="h-4"></TableCell></TableRow>
+                      <TableRow className="bg-blue-50 font-semibold">
+                        <TableCell colSpan={6} className="text-blue-700">EQUITY</TableCell>
+                      </TableRow>
+                      {balanceSheetData.equity?.shareCapital?.map((item: any) => {
+                        const change = getAccountChange(item.accountId, 'equity');
+                        const percentage = showCommonSize && balanceSheetData?.commonSize?.equity?.find((a: any) => a.accountId === item.accountId)?.percentage;
+                        return (
+                          <TableRow key={item.code} className="hover:bg-gray-50">
+                            <TableCell className="pl-8">{item.account}</TableCell>
+                            <TableCell>{item.code}</TableCell>
+                            <TableCell className="text-right font-medium">₹{item.amount.toLocaleString('en-IN')}</TableCell>
+                            {showCommonSize && <TableCell className="text-right text-sm text-gray-600">{percentage?.toFixed(1)}%</TableCell>}
+                            {compareDate && <TableCell className="text-right"><span className={change >= 0 ? 'text-green-600' : 'text-red-600'}>{change !== 0 ? `₹${Math.abs(change).toLocaleString('en-IN')}` : '-'}</span></TableCell>}
+                            <TableCell className="text-center">
+                              <Button variant="ghost" size="sm" onClick={() => handleDrilldown(item)}><Eye className="h-3 w-3" /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedAccount(item); setShowNotesDialog(true); }}>+Note</Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {balanceSheetData.equity?.retainedEarnings?.map((item: any) => {
+                        const change = getAccountChange(item.accountId, 'equity');
+                        const percentage = showCommonSize && balanceSheetData?.commonSize?.equity?.find((a: any) => a.accountId === item.accountId)?.percentage;
+                        return (
+                          <TableRow key={item.code} className="hover:bg-gray-50">
+                            <TableCell className="pl-8">{item.account}</TableCell>
+                            <TableCell>{item.code}</TableCell>
+                            <TableCell className="text-right font-medium">₹{item.amount.toLocaleString('en-IN')}</TableCell>
+                            {showCommonSize && <TableCell className="text-right text-sm text-gray-600">{percentage?.toFixed(1)}%</TableCell>}
+                            {compareDate && <TableCell className="text-right"><span className={change >= 0 ? 'text-green-600' : 'text-red-600'}>{change !== 0 ? `₹${Math.abs(change).toLocaleString('en-IN')}` : '-'}</span></TableCell>}
+                            <TableCell className="text-center">
+                              <Button variant="ghost" size="sm" onClick={() => handleDrilldown(item)}><Eye className="h-3 w-3" /></Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedAccount(item); setShowNotesDialog(true); }}>+Note</Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      <TableRow className="font-bold bg-blue-100">
+                        <TableCell colSpan={2} className="text-blue-700">TOTAL EQUITY</TableCell>
+                        <TableCell className="text-right text-blue-700">₹{balanceSheetData.totalEquity?.toLocaleString('en-IN')}</TableCell>
+                        {showCommonSize && <TableCell></TableCell>}
+                        {compareDate && <TableCell className="text-right text-blue-700">{balanceSheetData.comparison && `₹${Math.abs(balanceSheetData.comparison.equityChange).toLocaleString('en-IN')} (${balanceSheetData.comparison.equityChangePercent?.toFixed(1)}%)`}</TableCell>}
+                        <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow><TableCell colSpan={6} className="h-4"></TableCell></TableRow>
+                      <TableRow className="font-bold bg-gray-200">
+                        <TableCell colSpan={2}>TOTAL LIABILITIES + EQUITY</TableCell>
+                        <TableCell className="text-right">₹{(balanceSheetData.totalLiabilities + balanceSheetData.totalEquity).toLocaleString('en-IN')}</TableCell>
+                        {showCommonSize && <TableCell></TableCell>}
+                        {compareDate && <TableCell></TableCell>}
+                        <TableCell></TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-xs text-center py-2">
+                          {balanceSheetData.balanced ? 
+                            <span className="text-green-600">✓ Balance sheet balances</span> : 
+                            <span className="text-red-600">⚠ Difference: ₹{Math.abs(balanceSheetData.balanceDifference).toLocaleString('en-IN')}</span>
+                          }
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )
           ) : null}
         </TabsContent>
 
         <TabsContent value="charts">
-          <div className="grid grid-cols-2 gap-6">
+          {loading ? (
+            <div className="grid grid-cols-2 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i}>
+                  <CardContent className="p-6 h-80 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                      <p className="text-gray-500">Loading chart...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : !balanceSheetData ? (
             <Card>
-              <CardHeader>
-                <CardTitle>Composition</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+              <CardContent className="p-12 text-center">
+                <BarChart3 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No data available. Please refresh to load balance sheet data.</p>
+                <Button onClick={fetchBalanceSheetData} className="mt-4">Load Data</Button>
               </CardContent>
             </Card>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Asset Composition</span>
+                      <span className="text-sm font-normal text-gray-500">₹{balanceSheetData.totalAssets?.toLocaleString('en-IN')}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {balanceSheetData.totalAssets > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie 
+                            data={[
+                              { name: 'Current Assets', value: balanceSheetData.assets?.totalCurrent || 0 },
+                              { name: 'Fixed Assets', value: balanceSheetData.assets?.nonCurrent?.fixed?.reduce((sum: number, a: any) => sum + a.amount, 0) || 0 },
+                              { name: 'Intangible Assets', value: balanceSheetData.assets?.nonCurrent?.intangible?.reduce((sum: number, a: any) => sum + a.amount, 0) || 0 },
+                              { name: 'Other Assets', value: balanceSheetData.assets?.nonCurrent?.other?.reduce((sum: number, a: any) => sum + a.amount, 0) || 0 }
+                            ].filter(d => d.value > 0)} 
+                            dataKey="value" 
+                            nameKey="name" 
+                            cx="50%" 
+                            cy="50%" 
+                            outerRadius={100} 
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                            labelLine={true}
+                          >
+                            {[0, 1, 2, 3].map((index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`} />
+                          <Legend verticalAlign="bottom" height={36} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-80 flex items-center justify-center text-gray-400">
+                        <p>No asset data available</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Comparison</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={[
-                    { name: 'Assets', current: balanceSheetData?.totalAssets || 0, previous: balanceSheetData?.comparison?.totalAssets || 0 },
-                    { name: 'Liabilities', current: balanceSheetData?.totalLiabilities || 0, previous: balanceSheetData?.comparison?.totalLiabilities || 0 },
-                    { name: 'Equity', current: balanceSheetData?.totalEquity || 0, previous: balanceSheetData?.comparison?.totalEquity || 0 }
-                  ]}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`} />
-                    <Legend />
-                    <Bar dataKey="current" fill="#3b82f6" name="Current" />
-                    <Bar dataKey="previous" fill="#94a3b8" name="Previous" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Liability & Equity Structure</span>
+                      <span className="text-sm font-normal text-gray-500">₹{(balanceSheetData.totalLiabilities + balanceSheetData.totalEquity)?.toLocaleString('en-IN')}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(balanceSheetData.totalLiabilities + balanceSheetData.totalEquity) > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie 
+                            data={[
+                              { name: 'Current Liabilities', value: balanceSheetData.liabilities?.totalCurrent || 0 },
+                              { name: 'Long-Term Liabilities', value: balanceSheetData.liabilities?.totalLongTerm || 0 },
+                              { name: 'Equity', value: balanceSheetData.totalEquity || 0 }
+                            ].filter(d => d.value > 0)} 
+                            dataKey="value" 
+                            nameKey="name" 
+                            cx="50%" 
+                            cy="50%" 
+                            outerRadius={100} 
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                            labelLine={true}
+                          >
+                            {[0, 1, 2].map((index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`} />
+                          <Legend verticalAlign="bottom" height={36} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-80 flex items-center justify-center text-gray-400">
+                        <p>No liability/equity data available</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Period Comparison</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {compareDate && balanceSheetData.comparison ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={[
+                          { name: 'Assets', current: balanceSheetData.totalAssets || 0, previous: balanceSheetData.comparison.totalAssets || 0 },
+                          { name: 'Liabilities', current: balanceSheetData.totalLiabilities || 0, previous: balanceSheetData.comparison.totalLiabilities || 0 },
+                          { name: 'Equity', current: balanceSheetData.totalEquity || 0, previous: balanceSheetData.comparison.totalEquity || 0 }
+                        ]}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`} />
+                          <Tooltip formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`} />
+                          <Legend />
+                          <Bar dataKey="current" fill="#3b82f6" name="Current Period" radius={[8, 8, 0, 0]} />
+                          <Bar dataKey="previous" fill="#94a3b8" name="Previous Period" radius={[8, 8, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-80 flex items-center justify-center text-gray-400">
+                        <div className="text-center">
+                          <p className="mb-2">No comparison data available</p>
+                          <p className="text-sm">Select a comparison mode (YoY/QoQ/Custom) to view period comparison</p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Financial Ratios</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {balanceSheetData.ratios ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={[
+                          { name: 'Current', value: balanceSheetData.ratios.currentRatio || 0, benchmark: 2.0 },
+                          { name: 'Quick', value: balanceSheetData.ratios.quickRatio || 0, benchmark: 1.0 },
+                          { name: 'D/E', value: balanceSheetData.ratios.debtToEquity || 0, benchmark: 1.5 },
+                          { name: 'Equity %', value: (balanceSheetData.ratios.equityRatio || 0) * 100, benchmark: 50 }
+                        ]} layout="vertical">
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" />
+                          <YAxis dataKey="name" type="category" width={80} />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="value" fill="#8b5cf6" name="Actual" radius={[0, 8, 8, 0]} />
+                          <Bar dataKey="benchmark" fill="#d1d5db" name="Benchmark" radius={[0, 8, 8, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-80 flex items-center justify-center text-gray-400">
+                        <p>No ratio data available</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Asset vs Liability Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={[
+                      { category: 'Current Assets', amount: balanceSheetData.assets?.totalCurrent || 0, type: 'Asset' },
+                      { category: 'Non-Current Assets', amount: balanceSheetData.assets?.totalNonCurrent || 0, type: 'Asset' },
+                      { category: 'Current Liabilities', amount: balanceSheetData.liabilities?.totalCurrent || 0, type: 'Liability' },
+                      { category: 'Long-Term Liabilities', amount: balanceSheetData.liabilities?.totalLongTerm || 0, type: 'Liability' },
+                      { category: 'Equity', amount: balanceSheetData.totalEquity || 0, type: 'Equity' }
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="category" angle={-45} textAnchor="end" height={100} />
+                      <YAxis tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`} />
+                      <Tooltip formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`} />
+                      <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
+                        {[
+                          { category: 'Current Assets', amount: balanceSheetData.assets?.totalCurrent || 0, type: 'Asset' },
+                          { category: 'Non-Current Assets', amount: balanceSheetData.assets?.totalNonCurrent || 0, type: 'Asset' },
+                          { category: 'Current Liabilities', amount: balanceSheetData.liabilities?.totalCurrent || 0, type: 'Liability' },
+                          { category: 'Long-Term Liabilities', amount: balanceSheetData.liabilities?.totalLongTerm || 0, type: 'Liability' },
+                          { category: 'Equity', amount: balanceSheetData.totalEquity || 0, type: 'Equity' }
+                        ].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.type === 'Asset' ? '#10b981' : entry.type === 'Liability' ? '#ef4444' : '#3b82f6'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="trends">
-          <Card>
-            <CardHeader>
-              <CardTitle>Multi-Period Trend Analysis</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={multiPeriodData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="period" />
-                  <YAxis />
-                  <Tooltip formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`} />
-                  <Legend />
-                  <Line type="monotone" dataKey="assets" stroke="#10b981" name="Assets" strokeWidth={2} />
-                  <Line type="monotone" dataKey="liabilities" stroke="#ef4444" name="Liabilities" strokeWidth={2} />
-                  <Line type="monotone" dataKey="equity" stroke="#3b82f6" name="Equity" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {loading ? (
+            <Card>
+              <CardContent className="p-12 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                  <p className="text-gray-500">Loading trend data...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : !balanceSheetData ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <TrendingUp className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No data available. Please refresh to load balance sheet data.</p>
+                <Button onClick={fetchBalanceSheetData} className="mt-4">Load Data</Button>
+              </CardContent>
+            </Card>
+          ) : multiPeriodData.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <TrendingUp className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 mb-2">No multi-period data available</p>
+                <p className="text-sm text-gray-400 mb-4">Select "Multi-Period" comparison mode to view trends</p>
+                <Button onClick={() => handleCompareMode('multi')}>Load Multi-Period Data</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Multi-Period Trend Analysis</span>
+                    <span className="text-sm font-normal text-gray-500">{multiPeriodData.length} periods</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <LineChart data={multiPeriodData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="period" />
+                      <YAxis tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`} />
+                      <Tooltip formatter={(value: any) => `₹${value.toLocaleString('en-IN')}`} />
+                      <Legend />
+                      <Line type="monotone" dataKey="assets" stroke="#10b981" name="Assets" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
+                      <Line type="monotone" dataKey="liabilities" stroke="#ef4444" name="Liabilities" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
+                      <Line type="monotone" dataKey="equity" stroke="#3b82f6" name="Equity" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Growth Trends</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={multiPeriodData.map((period, idx) => {
+                        if (idx === 0) return { period: period.period, assetGrowth: 0, equityGrowth: 0 };
+                        const prev = multiPeriodData[idx - 1];
+                        return {
+                          period: period.period,
+                          assetGrowth: prev.assets > 0 ? ((period.assets - prev.assets) / prev.assets) * 100 : 0,
+                          equityGrowth: prev.equity > 0 ? ((period.equity - prev.equity) / prev.equity) * 100 : 0
+                        };
+                      })}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="period" />
+                        <YAxis tickFormatter={(value) => `${value.toFixed(0)}%`} />
+                        <Tooltip formatter={(value: any) => `${value.toFixed(2)}%`} />
+                        <Legend />
+                        <Bar dataKey="assetGrowth" fill="#10b981" name="Asset Growth %" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="equityGrowth" fill="#3b82f6" name="Equity Growth %" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Debt-to-Equity Trend</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={multiPeriodData.map(period => ({
+                        period: period.period,
+                        debtToEquity: period.equity > 0 ? (period.liabilities / period.equity).toFixed(2) : 0,
+                        benchmark: 1.5
+                      }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="period" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="debtToEquity" stroke="#8b5cf6" name="D/E Ratio" strokeWidth={3} dot={{ r: 6 }} />
+                        <Line type="monotone" dataKey="benchmark" stroke="#d1d5db" name="Benchmark" strokeWidth={2} strokeDasharray="5 5" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Period-over-Period Changes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Period</th>
+                          <th className="text-right p-2">Assets</th>
+                          <th className="text-right p-2">Change</th>
+                          <th className="text-right p-2">Liabilities</th>
+                          <th className="text-right p-2">Change</th>
+                          <th className="text-right p-2">Equity</th>
+                          <th className="text-right p-2">Change</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {multiPeriodData.map((period, idx) => {
+                          const prev = idx > 0 ? multiPeriodData[idx - 1] : null;
+                          const assetChange = prev ? ((period.assets - prev.assets) / prev.assets) * 100 : 0;
+                          const liabilityChange = prev ? ((period.liabilities - prev.liabilities) / prev.liabilities) * 100 : 0;
+                          const equityChange = prev ? ((period.equity - prev.equity) / prev.equity) * 100 : 0;
+                          return (
+                            <tr key={idx} className="border-b hover:bg-gray-50">
+                              <td className="p-2 font-medium">{period.period}</td>
+                              <td className="text-right p-2">₹{period.assets.toLocaleString('en-IN')}</td>
+                              <td className={`text-right p-2 ${assetChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {prev ? `${assetChange >= 0 ? '+' : ''}${assetChange.toFixed(1)}%` : '-'}
+                              </td>
+                              <td className="text-right p-2">₹{period.liabilities.toLocaleString('en-IN')}</td>
+                              <td className={`text-right p-2 ${liabilityChange >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                {prev ? `${liabilityChange >= 0 ? '+' : ''}${liabilityChange.toFixed(1)}%` : '-'}
+                              </td>
+                              <td className="text-right p-2">₹{period.equity.toLocaleString('en-IN')}</td>
+                              <td className={`text-right p-2 ${equityChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {prev ? `${equityChange >= 0 ? '+' : ''}${equityChange.toFixed(1)}%` : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -518,6 +1214,96 @@ const BalanceSheetPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showNotesDialog} onOpenChange={setShowNotesDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Note to {selectedAccount?.account}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select value={noteType} onValueChange={setNoteType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="general">General</SelectItem>
+                <SelectItem value="valuation">Valuation</SelectItem>
+                <SelectItem value="contingency">Contingency</SelectItem>
+                <SelectItem value="policy">Policy</SelectItem>
+              </SelectContent>
+            </Select>
+            <textarea 
+              className="w-full p-2 border rounded" 
+              rows={4} 
+              placeholder="Enter note..." 
+              value={noteText} 
+              onChange={(e) => setNoteText(e.target.value)}
+            />
+            {balanceSheetData?.notes?.[selectedAccount?.accountId]?.length > 0 && (
+              <div className="border-t pt-2">
+                <p className="text-sm font-semibold mb-2">Existing Notes:</p>
+                {balanceSheetData.notes[selectedAccount.accountId].map((note: any, idx: number) => (
+                  <div key={idx} className="text-xs bg-gray-50 p-2 rounded mb-1">
+                    <span className="font-medium">{note.noteType}:</span> {note.note}
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button onClick={handleAddNote} disabled={!noteText}>Add Note</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {showInsights && balanceSheetData?.insights?.length > 0 && (
+        <Card className="print:hidden">
+          <CardHeader>
+            <CardTitle className="flex justify-between items-center">
+              <span>AI-Powered Insights</span>
+              <Button variant="ghost" size="sm" onClick={() => setShowInsights(false)}>×</Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {balanceSheetData.insights.map((insight: any, idx: number) => (
+              <div key={idx} className={`p-3 rounded border-l-4 ${
+                insight.type === 'warning' ? 'bg-yellow-50 border-yellow-500' :
+                insight.type === 'alert' ? 'bg-red-50 border-red-500' :
+                insight.type === 'success' ? 'bg-green-50 border-green-500' :
+                'bg-blue-50 border-blue-500'
+              }`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-xs font-semibold uppercase">{insight.category}</span>
+                    <p className="text-sm mt-1">{insight.message}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded ${
+                    insight.severity === 'high' ? 'bg-red-200 text-red-800' :
+                    insight.severity === 'medium' ? 'bg-yellow-200 text-yellow-800' :
+                    'bg-gray-200 text-gray-800'
+                  }`}>{insight.severity}</span>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {balanceSheetData?.ratios?.roe !== undefined && (
+        <Card className="print:hidden">
+          <CardHeader>
+            <CardTitle>Profitability Ratios</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-600">Return on Equity (ROE)</p>
+              <p className="text-2xl font-bold">{balanceSheetData.ratios.roe.toFixed(2)}%</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Return on Assets (ROA)</p>
+              <p className="text-2xl font-bold">{balanceSheetData.ratios.roa.toFixed(2)}%</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="text-xs text-gray-500 print:hidden">
         <p>Keyboard shortcuts: Ctrl+P (Print), Ctrl+S (Save View), Ctrl+E (Export CSV), Ctrl+F (Search)</p>

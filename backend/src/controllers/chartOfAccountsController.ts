@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { AccountTemplate, AccountMapping, OpeningBalance } from '../models/AccountTemplate';
 import JournalEntry from '../models/JournalEntry';
 
@@ -23,9 +23,9 @@ export const applyTemplate = async (req: Request, res: Response) => {
 
     const createdAccounts = [];
     for (const acc of template.accounts) {
-      const existing = await Account.findOne({ code: acc.code });
+      const existing = await ChartOfAccount.findOne({ code: acc.code });
       if (!existing) {
-        const account = await Account.create({
+        const account = await ChartOfAccount.create({
           ...acc,
           balance: 0,
           isActive: true
@@ -86,7 +86,7 @@ export const setOpeningBalance = async (req: Request, res: Response) => {
     });
 
     // Update account balance
-    const account = await Account.findById(accountId);
+    const account = await ChartOfAccount.findById(accountId);
     if (account) {
       account.openingBalance = debitBalance - creditBalance;
       account.balance = account.openingBalance;
@@ -121,13 +121,13 @@ export const bulkImportAccounts = async (req: Request, res: Response) => {
 
     for (const acc of accounts) {
       try {
-        const existing = await Account.findOne({ code: acc.code });
+        const existing = await ChartOfAccount.findOne({ code: acc.code });
         if (existing) {
           errors.push({ code: acc.code, error: 'Account code already exists' });
           continue;
         }
 
-        const account = await Account.create(acc);
+        const account = await ChartOfAccount.create(acc);
         results.push(account);
       } catch (error: any) {
         errors.push({ code: acc.code, error: error.message });
@@ -142,7 +142,7 @@ export const bulkImportAccounts = async (req: Request, res: Response) => {
 
 export const exportAccounts = async (req: Request, res: Response) => {
   try {
-    const accounts = await Account.find({ isActive: true }).populate('parentId', 'code name');
+    const accounts = await ChartOfAccount.find({ isActive: true }).populate('parentId', 'code name');
     
     const csv = [
       'Code,Name,Type,SubType,Category,Parent Code,Opening Balance,Current Balance,Is Group,Active',
@@ -165,7 +165,7 @@ export const setAccountRestriction = async (req: Request, res: Response) => {
     const { accountId } = req.params;
     const { allowPosting, restrictionReason } = req.body;
 
-    const account = await Account.findByIdAndUpdate(
+    const account = await ChartOfAccount.findByIdAndUpdate(
       accountId,
       { 
         allowPosting: allowPosting !== undefined ? allowPosting : true,
@@ -190,7 +190,7 @@ export const getConsolidationReport = async (req: Request, res: Response) => {
     const { accountIds, startDate, endDate } = req.query;
     const ids = (accountIds as string).split(',');
 
-    const accounts = await Account.find({ _id: { $in: ids } });
+    const accounts = await ChartOfAccount.find({ _id: { $in: ids } });
     const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
     const query: any = {
@@ -223,7 +223,7 @@ export const updateReconciliationStatus = async (req: Request, res: Response) =>
     const { accountId } = req.params;
     const { reconciliationStatus, lastReconciledDate, reconciledBalance } = req.body;
 
-    const account = await Account.findByIdAndUpdate(
+    const account = await ChartOfAccount.findByIdAndUpdate(
       accountId,
       {
         reconciliationStatus: reconciliationStatus || 'pending',
@@ -245,7 +245,7 @@ export const updateReconciliationStatus = async (req: Request, res: Response) =>
 
 export const getReconciliationReport = async (req: Request, res: Response) => {
   try {
-    const accounts = await Account.find({ 
+    const accounts = await ChartOfAccount.find({ 
       isActive: true,
       type: { $in: ['asset', 'liability'] }
     }).select('code name balance reconciliationStatus lastReconciledDate reconciledBalance');
@@ -262,3 +262,4 @@ export const getReconciliationReport = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

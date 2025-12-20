@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import JournalEntry from '../models/JournalEntry';
 import { Voucher } from '../models/Voucher';
 import { logger } from '../utils/logger';
@@ -10,8 +10,8 @@ export const getAdvancedProfitLoss = async (req: Request, res: Response) => {
     const start = new Date(startDate as string);
     const end = new Date(endDate as string);
 
-    const revenueAccounts = await Account.find({ type: 'revenue', isActive: true });
-    const expenseAccounts = await Account.find({ type: 'expense', isActive: true });
+    const revenueAccounts = await ChartOfAccount.find({ type: 'REVENUE', isActive: true });
+    const expenseAccounts = await ChartOfAccount.find({ type: 'EXPENSE', isActive: true });
 
     const revenue = revenueAccounts.map(a => ({
       code: a.code,
@@ -53,9 +53,9 @@ export const getAdvancedBalanceSheet = async (req: Request, res: Response) => {
     const { asOfDate } = req.query;
     const date = new Date(asOfDate as string || Date.now());
 
-    const assets = await Account.find({ type: 'asset', isActive: true });
-    const liabilities = await Account.find({ type: 'liability', isActive: true });
-    const equity = await Account.find({ type: 'equity', isActive: true });
+    const assets = await ChartOfAccount.find({ type: 'ASSET', isActive: true });
+    const liabilities = await ChartOfAccount.find({ type: 'LIABILITY', isActive: true });
+    const equity = await ChartOfAccount.find({ type: 'EQUITY', isActive: true });
 
     const assetItems = assets.map(a => ({ code: a.code, name: a.name, amount: a.balance }));
     const liabilityItems = liabilities.map(a => ({ code: a.code, name: a.name, amount: a.balance }));
@@ -85,7 +85,7 @@ export const getCashFlowStatement = async (req: Request, res: Response) => {
     const start = new Date(startDate as string);
     const end = new Date(endDate as string);
 
-    const cashAccounts = await Account.find({ 
+    const cashAccounts = await ChartOfAccount.find({ 
       $or: [{ subType: 'cash' }, { name: /cash|bank/i }],
       isActive: true 
     });
@@ -102,11 +102,11 @@ export const getCashFlowStatement = async (req: Request, res: Response) => {
         const account = line.accountId as any;
         const amount = line.debit - line.credit;
         
-        if (account.type === 'revenue' || account.type === 'expense') {
+        if (ChartOfAccount.type === 'REVENUE' || ChartOfAccount.type === 'EXPENSE') {
           operating += amount;
-        } else if (account.subType === 'fixed-asset') {
+        } else if (ChartOfAccount.subType === 'fixed-asset') {
           investing += amount;
-        } else if (account.type === 'liability' || account.type === 'equity') {
+        } else if (ChartOfAccount.type === 'LIABILITY' || ChartOfAccount.type === 'EQUITY') {
           financing += amount;
         }
       });
@@ -158,3 +158,6 @@ export const getVoucherRegister = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error generating voucher register' });
   }
 };
+
+
+

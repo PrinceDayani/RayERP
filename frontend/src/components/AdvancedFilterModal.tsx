@@ -13,6 +13,7 @@ interface AdvancedFilters {
   status: string;
   userSearch: string;
   ipAddress: string;
+  riskLevel: string;
   startDate: string;
   endDate: string;
 }
@@ -39,6 +40,7 @@ export default function AdvancedFilterModal({ open, onClose, onApply, currentFil
       status: 'all',
       userSearch: '',
       ipAddress: '',
+      riskLevel: 'all',
       startDate: '',
       endDate: ''
     };
@@ -125,6 +127,22 @@ export default function AdvancedFilterModal({ open, onClose, onApply, currentFil
               value={filters.ipAddress}
               onChange={(e) => setFilters({ ...filters, ipAddress: e.target.value })}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="adv-risk">Risk Level</Label>
+            <Select value={filters.riskLevel} onValueChange={(value) => setFilters({ ...filters, riskLevel: value })}>
+              <SelectTrigger id="adv-risk">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Risk Levels</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+                <SelectItem value="Critical">Critical</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

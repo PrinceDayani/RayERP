@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { AccountType } from '../models/AccountType';
 import { generateEntryNumber } from '../utils/numberGenerator';
+import { createContactFromAccount } from '../utils/accountContact';
 
 // Bulk create accounts
 export const bulkCreateAccounts = async (req: Request, res: Response) => {
@@ -44,7 +45,7 @@ export const bulkCreateAccounts = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Validation errors', errors });
     }
 
-    const createdAccounts = await Account.insertMany(processedAccounts);
+    const createdAccounts = await ChartOfAccount.insertMany(processedAccounts);
     res.status(201).json({ 
       success: true, 
       data: createdAccounts,
@@ -90,7 +91,20 @@ export const createAccount = async (req: Request, res: Response) => {
     }
     
     const account = new Account({ ...req.body, createdBy: req.user.id });
-    await account.save();
+    await ChartOfAccount.save();
+    
+    // Auto-create contact if requested and account is customer/vendor type
+    if (req.body.createContact) {
+      try {
+        await createContactFromAccount(ChartOfAccount._id.toString(), req.body, req.user.id);
+      } catch (contactError) {
+        logger.warn('Failed to auto-create contact', { 
+          error: contactError instanceof Error ? contactError.message : 'Unknown',
+          accountId: ChartOfAccount._id 
+        });
+      }
+    }
+    
     res.status(201).json({ success: true, data: account, message: 'Account created successfully' });
   } catch (error: any) {
     if (error.code === 11000) {
@@ -114,7 +128,7 @@ const generateAccountCode = async (type: string): Promise<string> => {
   const prefix = prefixMap[type] || 'ACC';
   
   // Get next sequence number for this type
-  const lastAccount = await Account.findOne(
+  const lastAccount = await ChartOfAccount.findOne(
     { code: { $regex: `^${prefix}` } },
     {},
     { sort: { code: -1 } }
@@ -147,7 +161,7 @@ export const getAccounts = async (req: Request, res: Response) => {
     }
     
     const skip = (Number(page) - 1) * Number(limit);
-    const accounts = await Account.find(filter)
+    const accounts = await ChartOfAccount.find(filter)
       .populate('parentId', 'name code')
       .populate('projectId', 'name')
       .populate('createdBy', 'name email')
@@ -155,10 +169,10 @@ export const getAccounts = async (req: Request, res: Response) => {
       .skip(skip)
       .limit(Number(limit));
       
-    const total = await Account.countDocuments(filter);
+    const total = await ChartOfAccount.countDocuments(filter);
     
     // Get summary stats
-    const stats = await Account.aggregate([
+    const stats = await ChartOfAccount.aggregate([
       { $match: filter },
       { $group: {
         _id: '$type',
@@ -185,7 +199,7 @@ export const getAccounts = async (req: Request, res: Response) => {
 
 export const getAccountById = async (req: Request, res: Response) => {
   try {
-    const account = await Account.findById(req.params.id)
+    const account = await ChartOfAccount.findById(req.params.id)
       .populate('parentId', 'name code')
       .populate('projectId', 'name')
       .populate('createdBy', 'name email');
@@ -200,7 +214,7 @@ export const getAccountById = async (req: Request, res: Response) => {
 
 export const updateAccount = async (req: Request, res: Response) => {
   try {
-    const existingAccount = await Account.findById(req.params.id);
+    const existingAccount = await ChartOfAccount.findById(req.params.id);
     if (!existingAccount) {
       return res.status(404).json({ success: false, message: 'Account not found' });
     }
@@ -221,11 +235,23 @@ export const updateAccount = async (req: Request, res: Response) => {
       delete req.body.code; // Remove code from update
     }
     
-    const account = await Account.findByIdAndUpdate(
+    const account = await ChartOfAccount.findByIdAndUpdate(
       req.params.id, 
       { ...req.body, updatedAt: new Date() }, 
       { new: true, runValidators: true }
     );
+    
+    // Auto-create contact if requested and account doesn't have one
+    if (req.body.createContact && !account?.contactId && req.user) {
+      try {
+        await createContactFromAccount(ChartOfAccount._id.toString(), req.body, req.user.id);
+      } catch (contactError) {
+        logger.warn('Failed to auto-create contact on update', { 
+          error: contactError instanceof Error ? contactError.message : 'Unknown',
+          accountId: ChartOfAccount._id 
+        });
+      }
+    }
     
     res.json({ success: true, data: account, message: 'Account updated successfully' });
   } catch (error: any) {
@@ -235,7 +261,7 @@ export const updateAccount = async (req: Request, res: Response) => {
 
 export const deleteAccount = async (req: Request, res: Response) => {
   try {
-    const account = await Account.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    const account = await ChartOfAccount.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
     if (!account) {
       return res.status(404).json({ success: false, message: 'Account not found' });
     }
@@ -252,7 +278,7 @@ export const duplicateAccount = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    const originalAccount = await Account.findById(req.params.id);
+    const originalAccount = await ChartOfAccount.findById(req.params.id);
     if (!originalAccount) {
       return res.status(404).json({ success: false, message: 'Account not found' });
     }
@@ -321,7 +347,7 @@ export const getAccountTypes = async (req: Request, res: Response) => {
     ];
     
     // Get count for each type
-    const counts = await Account.aggregate([
+    const counts = await ChartOfAccount.aggregate([
       { $group: { _id: '$type', count: { $sum: 1 } } }
     ]);
     
@@ -439,7 +465,7 @@ export const deleteAccountType = async (req: Request, res: Response) => {
     }
 
     // Check if any accounts use this type
-    const accountsUsingType = await Account.countDocuments({ type: accountType.value });
+    const accountsUsingType = await ChartOfAccount.countDocuments({ type: accountType.value });
     if (accountsUsingType > 0) {
       return res.status(400).json({ 
         success: false, 
@@ -454,3 +480,4 @@ export const deleteAccountType = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

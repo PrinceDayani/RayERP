@@ -6,7 +6,7 @@ import ApprovalWorkflow from '../models/ApprovalWorkflow';
 import FinancialDocument from '../models/FinancialDocument';
 import SmartAlert from '../models/SmartAlert';
 import JournalEntry from '../models/JournalEntry';
-import Account from '../models/Account';
+import Account from '../models/ChartOfAccount';
 import FiscalYear from '../models/FiscalYear';
 
 // Multi-Currency
@@ -71,7 +71,7 @@ export const getAgingAnalysis = async (req: Request, res: Response) => {
     const { type = 'receivables' } = req.query;
     const accountType = type === 'receivables' ? 'ACCOUNTS_RECEIVABLE' : 'ACCOUNTS_PAYABLE';
     
-    const accounts = await Account.find({ type: accountType });
+    const accounts = await ChartOfAccount.find({ type: accountType });
     const now = new Date();
     
     const aging = await Promise.all(accounts.map(async (acc) => {
@@ -131,7 +131,7 @@ export const closeFinancialYear = async (req: Request, res: Response) => {
     if (!fiscalYear) return res.status(404).json({ message: 'Fiscal year not found' });
     if (fiscalYear.status === 'CLOSED') return res.status(400).json({ message: 'Year already closed' });
     
-    const accounts = await Account.find();
+    const accounts = await ChartOfAccount.find();
     const openingBalances = await Promise.all(accounts.map(async (acc) => {
       const entries = await JournalEntry.find({
         'lines.accountId': acc._id,
@@ -440,3 +440,4 @@ export const autoDetectAnomalies = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+

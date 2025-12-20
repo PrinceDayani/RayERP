@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { JournalEntry } from '../models/JournalEntry';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { PartyLedger } from '../models/PartyLedger';
 
 describe('Journal Entry Posting', () => {
@@ -14,13 +14,13 @@ describe('Journal Entry Posting', () => {
 
   beforeEach(async () => {
     await JournalEntry.deleteMany({});
-    await Account.deleteMany({});
+    await ChartOfAccount.deleteMany({});
     await PartyLedger.deleteMany({});
   });
 
   describe('Balance Updates', () => {
     it('should update Account balance correctly for asset accounts', async () => {
-      const account = await Account.create({
+      const account = await ChartOfAccount.create({
         code: 'A001',
         name: 'Cash',
         type: 'asset',
@@ -33,8 +33,8 @@ describe('Journal Entry Posting', () => {
         date: new Date(),
         description: 'Test entry',
         lines: [
-          { accountId: account._id, debit: 500, credit: 0, description: 'Debit cash' },
-          { accountId: account._id, debit: 0, credit: 500, description: 'Credit cash' }
+          { accountId: ChartOfAccount._id, debit: 500, credit: 0, description: 'Debit cash' },
+          { accountId: ChartOfAccount._id, debit: 0, credit: 500, description: 'Credit cash' }
         ]
       });
 
@@ -42,25 +42,25 @@ describe('Journal Entry Posting', () => {
       session.startTransaction();
 
       for (const line of journalEntry.lines) {
-        const acc = await Account.findById(line.accountId).session(session);
+        const acc = await ChartOfAccount.findById(line.accountId).session(session);
         let newBalance = acc!.balance;
         if (['asset', 'expense'].includes(acc!.type)) {
           newBalance += line.debit - line.credit;
         } else {
           newBalance += line.credit - line.debit;
         }
-        await Account.findByIdAndUpdate(line.accountId, { balance: newBalance }, { session });
+        await ChartOfAccount.findByIdAndUpdate(line.accountId, { balance: newBalance }, { session });
       }
 
       await session.commitTransaction();
       session.endSession();
 
-      const updatedAccount = await Account.findById(account._id);
+      const updatedAccount = await ChartOfAccount.findById(ChartOfAccount._id);
       expect(updatedAccount?.balance).toBe(1000);
     });
 
     it('should update both Account and PartyLedger balances', async () => {
-      const account = await Account.create({
+      const account = await ChartOfAccount.create({
         code: 'A002',
         name: 'Customer A',
         type: 'asset',
@@ -71,7 +71,7 @@ describe('Journal Entry Posting', () => {
       const partyLedger = await PartyLedger.create({
         code: 'PL001',
         name: 'Customer A',
-        accountId: account._id,
+        accountId: ChartOfAccount._id,
         currentBalance: 0,
         balanceType: 'debit'
       });
@@ -81,7 +81,7 @@ describe('Journal Entry Posting', () => {
         date: new Date(),
         description: 'Sale to customer',
         lines: [
-          { accountId: account._id, debit: 1000, credit: 0, description: 'Customer receivable' }
+          { accountId: ChartOfAccount._id, debit: 1000, credit: 0, description: 'Customer receivable' }
         ]
       });
 
@@ -89,9 +89,9 @@ describe('Journal Entry Posting', () => {
       session.startTransaction();
 
       for (const line of journalEntry.lines) {
-        const acc = await Account.findById(line.accountId).session(session);
+        const acc = await ChartOfAccount.findById(line.accountId).session(session);
         let newBalance = acc!.balance + line.debit - line.credit;
-        await Account.findByIdAndUpdate(line.accountId, { balance: newBalance }, { session });
+        await ChartOfAccount.findByIdAndUpdate(line.accountId, { balance: newBalance }, { session });
 
         const party = await PartyLedger.findOne({ accountId: line.accountId }).session(session);
         if (party) {
@@ -108,7 +108,7 @@ describe('Journal Entry Posting', () => {
       await session.commitTransaction();
       session.endSession();
 
-      const updatedAccount = await Account.findById(account._id);
+      const updatedAccount = await ChartOfAccount.findById(ChartOfAccount._id);
       const updatedParty = await PartyLedger.findById(partyLedger._id);
       
       expect(updatedAccount?.balance).toBe(1000);
@@ -134,7 +134,7 @@ describe('Journal Entry Posting', () => {
 
       try {
         for (const line of journalEntry.lines) {
-          const account = await Account.findById(line.accountId).session(session);
+          const account = await ChartOfAccount.findById(line.accountId).session(session);
           if (!account) {
             throw new Error(`Account ${line.accountId} not found`);
           }
@@ -150,7 +150,7 @@ describe('Journal Entry Posting', () => {
     });
 
     it('should reject if debits do not equal credits', async () => {
-      const account = await Account.create({
+      const account = await ChartOfAccount.create({
         code: 'A003',
         name: 'Test Account',
         type: 'asset',
@@ -163,8 +163,8 @@ describe('Journal Entry Posting', () => {
           date: new Date(),
           description: 'Unbalanced entry',
           lines: [
-            { accountId: account._id, debit: 100, credit: 0, description: 'Debit' },
-            { accountId: account._id, debit: 0, credit: 50, description: 'Credit' }
+            { accountId: ChartOfAccount._id, debit: 100, credit: 0, description: 'Debit' },
+            { accountId: ChartOfAccount._id, debit: 0, credit: 50, description: 'Credit' }
           ]
         });
         fail('Should have thrown error');
@@ -174,7 +174,7 @@ describe('Journal Entry Posting', () => {
     });
 
     it('should reject inactive accounts', async () => {
-      const account = await Account.create({
+      const account = await ChartOfAccount.create({
         code: 'A004',
         name: 'Inactive Account',
         type: 'asset',
@@ -182,8 +182,9 @@ describe('Journal Entry Posting', () => {
         isActive: false
       });
 
-      const isActive = account.isActive;
+      const isActive = ChartOfAccount.isActive;
       expect(isActive).toBe(false);
     });
   });
 });
+

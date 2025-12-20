@@ -59,18 +59,27 @@ export default function MasterLedgerPage() {
         credentials: 'include'
       });
       
-      const data = await res.json();
-      
       if (!res.ok) {
-        console.error('API Error:', res.status, res.statusText, data);
-        setError(`Failed to load entries: ${data.message || res.statusText}`);
+        const errorData = await res.json().catch(() => ({ message: res.statusText }));
+        console.error('API Error:', res.status, res.statusText, errorData);
+        setError(`Failed to load entries: ${errorData.message || res.statusText}`);
         setEntries([]);
         return;
       }
       
+      const data = await res.json();
+      
       // Handle different response formats
       const entriesData = data.journalEntries || data.data || data || [];
-      setEntries(Array.isArray(entriesData) ? entriesData : []);
+      const validEntries = Array.isArray(entriesData) ? entriesData.map((entry: any) => ({
+        ...entry,
+        date: entry.entryDate || entry.date,
+        lines: (entry.lines || []).map((line: any) => ({
+          ...line,
+          account: line.account || { code: 'N/A', name: 'Unknown', type: 'N/A' }
+        }))
+      })) : [];
+      setEntries(validEntries);
     } catch (error) {
       console.error('Error fetching entries:', error);
       setError('Failed to connect to server. Please try again.');

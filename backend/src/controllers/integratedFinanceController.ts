@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { BudgetLedgerIntegration } from '../utils/budgetLedgerIntegration';
 import Budget from '../models/Budget';
 import ProjectJournalEntry from '../models/ProjectLedger';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { Ledger } from '../models/Ledger';
 import mongoose from 'mongoose';
 import { logger } from '../utils/logger';
@@ -289,7 +289,7 @@ export const getAccountBalancesWithProjects = async (req: Request, res: Response
     const { accountCode } = req.params;
     const { includeProjectBreakdown = 'true' } = req.query;
 
-    const account = await Account.findOne({ code: accountCode });
+    const account = await ChartOfAccount.findOne({ code: accountCode });
     if (!account) {
       return res.status(404).json({
         success: false,
@@ -301,7 +301,7 @@ export const getAccountBalancesWithProjects = async (req: Request, res: Response
     
     if (includeProjectBreakdown === 'true') {
       // Get ledger entries grouped by project
-      const ledgerEntries = await Ledger.find({ accountId: account._id })
+      const ledgerEntries = await Ledger.find({ accountId: ChartOfAccount._id })
         .populate('journalEntryId', 'reference')
         .sort({ date: -1 });
 
@@ -338,11 +338,11 @@ export const getAccountBalancesWithProjects = async (req: Request, res: Response
       success: true,
       data: {
         account: {
-          id: account._id,
-          code: account.code,
-          name: account.name,
-          type: account.type,
-          balance: account.balance
+          id: ChartOfAccount._id,
+          code: ChartOfAccount.code,
+          name: ChartOfAccount.name,
+          type: ChartOfAccount.type,
+          balance: ChartOfAccount.balance
         },
         projectBreakdown,
         totalProjects: projectBreakdown.length,

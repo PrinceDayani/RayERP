@@ -3,6 +3,14 @@ import AuditLog from '../models/AuditLog';
 import mongoose from 'mongoose';
 import { Parser } from 'json2csv';
 const { validationResult } = require('express-validator');
+import {
+  calculateRiskLevel,
+  maskSensitiveData,
+  generateLogHash,
+  getLastLogHash,
+  checkFailedLoginAttempts,
+  getGeolocation
+} from '../utils/auditUtils';
 
 interface AuditFilter {
   module?: string;
@@ -10,6 +18,7 @@ interface AuditFilter {
   userEmail?: { $regex: string; $options: string };
   ipAddress?: { $regex: string; $options: string };
   status?: string;
+  riskLevel?: string;
   timestamp?: {
     $gte?: Date;
     $lte?: Date;
@@ -41,6 +50,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
       user,
       ipAddress,
       status,
+      riskLevel,
       startDate,
       endDate
     } = req.query;
@@ -51,6 +61,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     if (user) filter.userEmail = { $regex: sanitizeRegex(user as string), $options: 'i' };
     if (ipAddress) filter.ipAddress = { $regex: sanitizeRegex(ipAddress as string), $options: 'i' };
     if (status && status !== 'all') filter.status = status as string;
+    if (riskLevel && riskLevel !== 'all') filter.riskLevel = riskLevel as string;
     
     if (startDate || endDate) {
       filter.timestamp = {};
@@ -183,17 +194,28 @@ export const createAuditLog = async (req: Request, res: Response) => {
       return str.replace(/[\n\r]/g, ' ').substring(0, 5000);
     };
 
+    const ipAddress = getClientIp(req);
+    const timestamp = new Date();
+    const riskLevel = calculateRiskLevel(action, module, 'Success', timestamp);
+    const geolocation = await getGeolocation(ipAddress);
+    const previousHash = await getLastLogHash(AuditLog);
+    const currentHash = generateLogHash(timestamp, req.user._id.toString(), action, module, previousHash);
+
     const log = await AuditLog.create({
       userId: req.user._id,
       userEmail: req.user.email,
       action,
       module: sanitize(module),
       recordId: sanitize(recordId),
-      oldValue: sanitize(oldValue),
-      newValue: sanitize(newValue),
-      ipAddress: getClientIp(req),
+      oldValue: maskSensitiveData(oldValue),
+      newValue: maskSensitiveData(newValue),
+      ipAddress,
       userAgent: (req.get('User-Agent') || 'unknown').substring(0, 500),
       status: 'Success',
+      riskLevel,
+      geolocation,
+      previousHash,
+      currentHash,
       additionalData: additionalData ? JSON.parse(JSON.stringify(additionalData)) : undefined
     });
 
@@ -211,7 +233,7 @@ export const getSecurityEvents = async (req: Request, res: Response) => {
     const events = await AuditLog.find({
       $or: [
         { status: 'Failed' },
-        { action: 'LOGIN', status: 'Failed' }
+        { riskLevel: { $in: ['High', 'Critical'] } }
       ]
     })
       .select('-__v')
@@ -225,6 +247,52 @@ export const getSecurityEvents = async (req: Request, res: Response) => {
       console.error('Error fetching security events:', error.message);
     }
     res.status(500).json({ success: false, message: 'Failed to fetch security events', code: 'SERVER_ERROR' });
+  }
+};
+
+export const getSecurityAlerts = async (req: Request, res: Response) => {
+  try {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    
+    const [failedLogins, criticalActions, suspiciousIPs] = await Promise.all([
+      AuditLog.aggregate([
+        { $match: { action: 'LOGIN', status: 'Failed', timestamp: { $gte: tenMinutesAgo } } },
+        { $group: { _id: '$userEmail', count: { $sum: 1 }, ips: { $addToSet: '$ipAddress' } } },
+        { $match: { count: { $gte: 5 } } }
+      ]),
+      AuditLog.countDocuments({ riskLevel: 'Critical', timestamp: { $gte: tenMinutesAgo } }),
+      AuditLog.aggregate([
+        { $match: { timestamp: { $gte: tenMinutesAgo } } },
+        { $group: { _id: '$ipAddress', count: { $sum: 1 } } },
+        { $match: { count: { $gte: 50 } } }
+      ])
+    ]);
+
+    const alerts = [
+      ...failedLogins.map(f => ({
+        type: 'FAILED_LOGIN',
+        severity: 'High',
+        message: `${f.count} failed login attempts for ${f._id}`,
+        details: f
+      })),
+      ...(criticalActions > 0 ? [{
+        type: 'CRITICAL_ACTION',
+        severity: 'Critical',
+        message: `${criticalActions} critical actions in last 10 minutes`,
+        details: { count: criticalActions }
+      }] : []),
+      ...suspiciousIPs.map(ip => ({
+        type: 'SUSPICIOUS_IP',
+        severity: 'Medium',
+        message: `High activity from IP ${ip._id}: ${ip.count} actions`,
+        details: ip
+      }))
+    ];
+
+    res.json({ success: true, data: alerts, count: alerts.length });
+  } catch (error) {
+    console.error('Error fetching security alerts:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch security alerts', code: 'SERVER_ERROR' });
   }
 };
 

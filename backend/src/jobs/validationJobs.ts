@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import { logger } from '../utils/logger';
 import { performReconciliation, fixBalanceMismatches } from '../utils/reconciliation.util';
 import { JournalEntry } from '../models/JournalEntry';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { Ledger } from '../models/Ledger';
 
 /**
@@ -153,7 +153,7 @@ export const orphanedRecordsJob = cron.schedule('0 3 * * 0', async () => {
 
         for (const entry of allEntries) {
             for (const line of entry.lines || []) {
-                const account = await Account.findById(line.accountId);
+                const account = await ChartOfAccount.findById(line.accountId);
                 if (!account) {
                     entriesWithMissingAccounts.push({
                         entryNumber: entry.entryNumber,
@@ -332,3 +332,5 @@ export async function runAllValidationJobs() {
 
     logger.info('✅ All validation jobs completed');
 }
+
+
