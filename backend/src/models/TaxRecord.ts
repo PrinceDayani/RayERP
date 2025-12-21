@@ -110,7 +110,7 @@ TaxRecordSchema.index({ status: 1, dueDate: 1, isDeleted: 1 });
 TaxRecordSchema.index({ isDeleted: 1, createdAt: -1 });
 
 // Query helper to exclude deleted records
-TaxRecordSchema.query.active = function() {
+(TaxRecordSchema.query as any).active = function(this: any) {
     return this.where({ isDeleted: false });
 };
 

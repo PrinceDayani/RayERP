@@ -99,12 +99,12 @@ export const closePeriod = async (req: Request, res: Response) => {
     for (const line of closingLines) {
       const account = await ChartOfAccount.findById(line.accountId).session(session);
       if (account) {
-        if (['ASSET', 'EXPENSE'].includes(ChartOfAccount.type)) {
-          ChartOfAccount.balance += line.debit - line.credit;
+        if (['ASSET', 'EXPENSE'].includes(account.type)) {
+          account.balance += line.debit - line.credit;
         } else {
-          ChartOfAccount.balance += line.credit - line.debit;
+          account.balance += line.credit - line.debit;
         }
-        await ChartOfAccount.save({ session });
+        await account.save({ session });
 
         await Ledger.create([{
           accountId: line.accountId,
@@ -112,7 +112,7 @@ export const closePeriod = async (req: Request, res: Response) => {
           description: line.description,
           debit: line.debit,
           credit: line.credit,
-          balance: ChartOfAccount.balance,
+          balance: account.balance,
           journalEntryId: closingEntry[0]._id,
           reference: closingEntry[0].reference
         }], { session });

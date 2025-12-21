@@ -10,7 +10,13 @@ import {
   getReceiptStats,
   validateReceiptCreation
 } from '../controllers/receiptController';
-import { invoiceRateLimit } from '../controllers/invoiceController';
+import rateLimit from 'express-rate-limit';
+
+const invoiceRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { success: false, message: 'Too many requests' }
+});
 
 const router = express.Router();
 

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import Invoice from '../models/Invoice';
+import { Invoice } from '../models/Finance';
 import User from '../models/User';
 
 const seedSalesData = async () => {

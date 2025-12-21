@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCreateEntryShortcut } from '@/hooks/useKeyboardShortcuts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -59,6 +59,8 @@ interface AccountLedgerProps {
 const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId }) => {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get('highlight');
   const { formatAmount } = useCurrency();
   const accountId = propAccountId || (params.id as string);
   
@@ -455,6 +457,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                       key={entry._id}
                       {...getRowProps(idx)}
                       onClick={(e) => toggleEntrySelection(entry._id, e)}
+                      className={entry.reference === highlightId ? 'bg-yellow-100 border-2 border-yellow-400' : ''}
                     >
                       <TableCell className="font-medium">
                         {format(new Date(entry.date), 'MMM dd, yyyy')}

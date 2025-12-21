@@ -4,6 +4,8 @@ import { AccountType } from '../models/AccountType';
 import { generateEntryNumber } from '../utils/numberGenerator';
 import { createContactFromAccount } from '../utils/accountContact';
 
+const logger = { warn: (msg: string, data?: any) => console.warn(msg, data) };
+
 // Bulk create accounts
 export const bulkCreateAccounts = async (req: Request, res: Response) => {
   try {
@@ -90,17 +92,17 @@ export const createAccount = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Invalid IFSC code format' });
     }
     
-    const account = new Account({ ...req.body, createdBy: req.user.id });
-    await ChartOfAccount.save();
+    const account = new ChartOfAccount({ ...req.body, createdBy: req.user.id });
+    await account.save();
     
     // Auto-create contact if requested and account is customer/vendor type
     if (req.body.createContact) {
       try {
-        await createContactFromAccount(ChartOfAccount._id.toString(), req.body, req.user.id);
+        await createContactFromAccount(account._id.toString(), req.body, req.user.id);
       } catch (contactError) {
         logger.warn('Failed to auto-create contact', { 
           error: contactError instanceof Error ? contactError.message : 'Unknown',
-          accountId: ChartOfAccount._id 
+          accountId: account._id 
         });
       }
     }
@@ -145,6 +147,8 @@ const generateAccountCode = async (type: string): Promise<string> => {
 
 export const getAccounts = async (req: Request, res: Response) => {
   try {
+    console.log('getAccounts called with query:', req.query);
+    
     const { projectId, type, search, page = 1, limit = 50, includeInactive = false } = req.query;
     const filter: any = includeInactive === 'true' ? {} : { isActive: true };
     
@@ -160,15 +164,24 @@ export const getAccounts = async (req: Request, res: Response) => {
       ];
     }
     
+    console.log('Filter applied:', filter);
+    
+    // Check total count first
+    const totalCount = await ChartOfAccount.countDocuments({});
+    const activeCount = await ChartOfAccount.countDocuments({ isActive: true });
+    console.log(`Total accounts: ${totalCount}, Active accounts: ${activeCount}`);
+    
     const skip = (Number(page) - 1) * Number(limit);
     const accounts = await ChartOfAccount.find(filter)
       .populate('parentId', 'name code')
-      .populate('projectId', 'name')
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .lean();
       
+    console.log(`Found ${accounts.length} accounts`);
+    
     const total = await ChartOfAccount.countDocuments(filter);
     
     // Get summary stats
@@ -193,7 +206,8 @@ export const getAccounts = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('getAccounts error:', error.message, error.stack);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch accounts' });
   }
 };
 
@@ -201,7 +215,6 @@ export const getAccountById = async (req: Request, res: Response) => {
   try {
     const account = await ChartOfAccount.findById(req.params.id)
       .populate('parentId', 'name code')
-      .populate('projectId', 'name')
       .populate('createdBy', 'name email');
     if (!account) {
       return res.status(404).json({ success: false, message: 'Account not found' });
@@ -244,11 +257,11 @@ export const updateAccount = async (req: Request, res: Response) => {
     // Auto-create contact if requested and account doesn't have one
     if (req.body.createContact && !account?.contactId && req.user) {
       try {
-        await createContactFromAccount(ChartOfAccount._id.toString(), req.body, req.user.id);
+        await createContactFromAccount(account._id.toString(), req.body, req.user.id);
       } catch (contactError) {
         logger.warn('Failed to auto-create contact on update', { 
           error: contactError instanceof Error ? contactError.message : 'Unknown',
-          accountId: ChartOfAccount._id 
+          accountId: account._id 
         });
       }
     }
@@ -305,7 +318,7 @@ export const duplicateAccount = async (req: Request, res: Response) => {
       duplicateData.bankDetails.accountNumber = '';
     }
     
-    const duplicateAccount = new Account(duplicateData);
+    const duplicateAccount = new ChartOfAccount(duplicateData);
     await duplicateAccount.save();
     
     res.status(201).json({ 

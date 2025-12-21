@@ -1,12 +1,21 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export interface IPaymentAllocation {
+  invoiceId: mongoose.Types.ObjectId;
+  invoiceNumber: string;
+  amount: number;
+  allocationDate: Date;
+  accountId?: mongoose.Types.ObjectId;
+}
+
 export interface IPayment extends Document {
   paymentNumber: string;
-  projectId?: mongoose.Types.ObjectId;
-  invoiceIds: mongoose.Types.ObjectId[];
-  customerId?: mongoose.Types.ObjectId;
+  paymentType: 'invoice-based' | 'independent' | 'advance';
+  customerId: mongoose.Types.ObjectId;
   customerName: string;
   totalAmount: number;
+  allocatedAmount: number;
+  unappliedAmount: number;
   currency: string;
   exchangeRate: number;
   baseAmount: number;
@@ -14,15 +23,15 @@ export interface IPayment extends Document {
   paymentMethod: 'CASH' | 'CHEQUE' | 'BANK_TRANSFER' | 'UPI' | 'CARD' | 'NEFT' | 'RTGS' | 'WALLET';
   bankAccount?: string;
   reference?: string;
+  allocations: IPaymentAllocation[];
+  purpose?: string;
+  category?: 'advance' | 'deposit' | 'miscellaneous' | 'refund';
+  projectId?: mongoose.Types.ObjectId;
+  invoiceIds: mongoose.Types.ObjectId[];
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED' | 'DISPUTED';
   approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
   approvedBy?: mongoose.Types.ObjectId;
   approvedAt?: Date;
-  allocations: Array<{
-    invoiceId: mongoose.Types.ObjectId;
-    amount: number;
-    accountId?: mongoose.Types.ObjectId;
-  }>;
   schedules?: Array<{
     dueDate: Date;
     amount: number;
@@ -61,11 +70,12 @@ export interface IPayment extends Document {
 
 const paymentSchema = new Schema<IPayment>({
   paymentNumber: { type: String, required: true, unique: true },
-  projectId: { type: Schema.Types.ObjectId, ref: 'Project' },
-  invoiceIds: [{ type: Schema.Types.ObjectId, ref: 'Invoice' }],
-  customerId: { type: Schema.Types.ObjectId, ref: 'Contact' },
+  paymentType: { type: String, enum: ['invoice-based', 'independent', 'advance'], default: 'invoice-based', required: true },
+  customerId: { type: Schema.Types.ObjectId, ref: 'Contact', required: true },
   customerName: { type: String, required: true },
   totalAmount: { type: Number, required: true, min: 0 },
+  allocatedAmount: { type: Number, default: 0, min: 0 },
+  unappliedAmount: { type: Number, default: 0, min: 0 },
   currency: { type: String, default: 'INR' },
   exchangeRate: { type: Number, default: 1 },
   baseAmount: { type: Number, required: true },
@@ -73,15 +83,21 @@ const paymentSchema = new Schema<IPayment>({
   paymentMethod: { type: String, enum: ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'UPI', 'CARD', 'NEFT', 'RTGS', 'WALLET'], required: true },
   bankAccount: String,
   reference: String,
+  allocations: [{
+    invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice', required: true },
+    invoiceNumber: { type: String, required: true },
+    amount: { type: Number, required: true, min: 0 },
+    allocationDate: { type: Date, default: Date.now },
+    accountId: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' }
+  }],
+  purpose: String,
+  category: { type: String, enum: ['advance', 'deposit', 'miscellaneous', 'refund'] },
+  projectId: { type: Schema.Types.ObjectId, ref: 'Project' },
+  invoiceIds: [{ type: Schema.Types.ObjectId, ref: 'Invoice' }],
   status: { type: String, enum: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'COMPLETED', 'FAILED', 'CANCELLED', 'REFUNDED', 'DISPUTED'], default: 'DRAFT' },
   approvalStatus: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
   approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   approvedAt: Date,
-  allocations: [{
-    invoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice' },
-    amount: Number,
-    accountId: { type: Schema.Types.ObjectId, ref: 'Account' }
-  }],
   schedules: [{
     dueDate: Date,
     amount: Number,
@@ -117,9 +133,12 @@ const paymentSchema = new Schema<IPayment>({
 }, { timestamps: true });
 
 paymentSchema.index({ paymentNumber: 1 });
+paymentSchema.index({ paymentType: 1, status: 1 });
+paymentSchema.index({ customerId: 1, paymentDate: -1 });
 paymentSchema.index({ status: 1, paymentDate: -1 });
-paymentSchema.index({ customerId: 1 });
+paymentSchema.index({ 'allocations.invoiceId': 1 });
 paymentSchema.index({ 'reconciliation.status': 1 });
+paymentSchema.index({ unappliedAmount: 1 }, { partialFilterExpression: { unappliedAmount: { $gt: 0 } } });
 
 paymentSchema.pre('save', function(next) {
   if (!this.paymentNumber) {
@@ -130,7 +149,44 @@ paymentSchema.pre('save', function(next) {
     this.paymentNumber = `PAY-${year}${month}-${random}`;
   }
   if (!this.baseAmount) this.baseAmount = this.totalAmount * this.exchangeRate;
+  if (this.allocations && this.allocations.length > 0) {
+    this.allocatedAmount = this.allocations.reduce((sum, alloc) => sum + alloc.amount, 0);
+  } else {
+    this.allocatedAmount = 0;
+  }
+  this.unappliedAmount = this.totalAmount - this.allocatedAmount;
+  if (this.allocatedAmount > this.totalAmount) {
+    return next(new Error('Allocated amount cannot exceed total payment amount'));
+  }
+  if (this.paymentType === 'independent' && !this.category) {
+    this.category = 'miscellaneous';
+  }
   next();
 });
+
+paymentSchema.statics.findUnallocated = function(customerId?: string, limit = 50) {
+  const filter: any = { unappliedAmount: { $gt: 0 }, status: { $in: ['APPROVED', 'COMPLETED'] } };
+  if (customerId) filter.customerId = customerId;
+  return this.find(filter).sort({ paymentDate: -1 }).limit(limit).lean();
+};
+
+paymentSchema.statics.getCustomerBalance = async function(customerId: string) {
+  const result = await this.aggregate([
+    { $match: { customerId: new mongoose.Types.ObjectId(customerId), status: { $in: ['APPROVED', 'COMPLETED'] } } },
+    { $group: { _id: null, totalPaid: { $sum: '$totalAmount' }, totalAllocated: { $sum: '$allocatedAmount' }, totalUnapplied: { $sum: '$unappliedAmount' } } }
+  ]);
+  return result[0] || { totalPaid: 0, totalAllocated: 0, totalUnapplied: 0 };
+};
+
+paymentSchema.methods.canAllocate = function(amount: number): boolean {
+  return this.unappliedAmount >= amount;
+};
+
+paymentSchema.methods.addAllocation = async function(invoiceId: mongoose.Types.ObjectId, invoiceNumber: string, amount: number) {
+  if (!this.canAllocate(amount)) throw new Error('Insufficient unapplied balance');
+  this.allocations.push({ invoiceId, invoiceNumber, amount, allocationDate: new Date() });
+  await this.save();
+  return this;
+};
 
 export default mongoose.model<IPayment>('Payment', paymentSchema);

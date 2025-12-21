@@ -237,7 +237,7 @@ export const getContactById = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Error fetching contact by ID', {
       error: error instanceof Error ? error.message : 'Unknown error',
-      userId: userId || 'unknown'
+      userId: req.user?.id || 'unknown'
     });
     return res.status(500).json({ success: false, message: 'Error fetching contact' });
   }

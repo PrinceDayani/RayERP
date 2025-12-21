@@ -22,7 +22,7 @@ export const determineCashFlowCategory = async (
   if (!account) return undefined;
 
   // Only categorize if it's a cash/bank account
-  if (ChartOfAccount.type !== 'asset' || ChartOfAccount.subType !== 'cash') {
+  if (account.type.toUpperCase() !== 'ASSET' || account.subType !== 'cash') {
     return undefined;
   }
 

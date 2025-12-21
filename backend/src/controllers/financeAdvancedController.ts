@@ -7,6 +7,7 @@ import FinancialDocument from '../models/FinancialDocument';
 import SmartAlert from '../models/SmartAlert';
 import JournalEntry from '../models/JournalEntry';
 import Account from '../models/ChartOfAccount';
+import ChartOfAccount from '../models/ChartOfAccount';
 import FiscalYear from '../models/FiscalYear';
 
 // Multi-Currency

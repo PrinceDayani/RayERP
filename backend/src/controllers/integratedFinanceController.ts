@@ -301,7 +301,7 @@ export const getAccountBalancesWithProjects = async (req: Request, res: Response
     
     if (includeProjectBreakdown === 'true') {
       // Get ledger entries grouped by project
-      const ledgerEntries = await Ledger.find({ accountId: ChartOfAccount._id })
+      const ledgerEntries = await Ledger.find({ accountId: account._id })
         .populate('journalEntryId', 'reference')
         .sort({ date: -1 });
 
@@ -338,11 +338,11 @@ export const getAccountBalancesWithProjects = async (req: Request, res: Response
       success: true,
       data: {
         account: {
-          id: ChartOfAccount._id,
-          code: ChartOfAccount.code,
-          name: ChartOfAccount.name,
-          type: ChartOfAccount.type,
-          balance: ChartOfAccount.balance
+          id: account._id,
+          code: account.code,
+          name: account.name,
+          type: account.type,
+          balance: account.balance
         },
         projectBreakdown,
         totalProjects: projectBreakdown.length,

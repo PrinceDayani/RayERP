@@ -46,25 +46,25 @@ export async function performReconciliation(): Promise<ReconciliationResult> {
         totalAccounts = accounts.length;
 
         for (const account of accounts) {
-            const ledgerEntries = await Ledger.find({ accountId: ChartOfAccount._id });
+            const ledgerEntries = await Ledger.find({ accountId: account._id });
 
             const calculatedBalance = ledgerEntries.reduce(
                 (sum, entry) => sum + entry.debit - entry.credit,
                 0
             );
 
-            const balanceDiff = Math.abs(ChartOfAccount.balance - calculatedBalance);
+            const balanceDiff = Math.abs(account.balance - calculatedBalance);
 
             if (balanceDiff > 0.01) { // Allow 1 paisa tolerance for rounding
                 accountsWithIssues++;
                 issues.push({
                     type: 'BALANCE_MISMATCH',
                     severity: balanceDiff > 1000 ? 'HIGH' : balanceDiff > 10 ? 'MEDIUM' : 'LOW',
-                    accountCode: ChartOfAccount.code,
-                    accountName: ChartOfAccount.name,
+                    accountCode: account.code,
+                    accountName: account.name,
                     expected: calculatedBalance,
-                    actual: ChartOfAccount.balance,
-                    message: `Account balance mismatch: Expected ${calculatedBalance}, Actual ${ChartOfAccount.balance}`
+                    actual: account.balance,
+                    message: `Account balance mismatch: Expected ${calculatedBalance}, Actual ${account.balance}`
                 });
             }
         }
@@ -151,18 +151,18 @@ export async function fixBalanceMismatches(accountIds?: string[]): Promise<numbe
     let fixed = 0;
 
     for (const account of accounts) {
-        const ledgerEntries = await Ledger.find({ accountId: ChartOfAccount._id });
+        const ledgerEntries = await Ledger.find({ accountId: account._id });
 
         const calculatedBalance = ledgerEntries.reduce(
             (sum, entry) => sum + entry.debit - entry.credit,
             0
         );
 
-        if (Math.abs(ChartOfAccount.balance - calculatedBalance) > 0.01) {
-            ChartOfAccount.balance = calculatedBalance;
-            await ChartOfAccount.save();
+        if (Math.abs(account.balance - calculatedBalance) > 0.01) {
+            account.balance = calculatedBalance;
+            await account.save();
             fixed++;
-            logger.info(`Fixed balance for account ${ChartOfAccount.code}: ${calculatedBalance}`);
+            logger.info(`Fixed balance for account ${account.code}: ${calculatedBalance}`);
         }
     }
 

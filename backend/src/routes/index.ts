@@ -31,9 +31,6 @@ import budgetRoutes from './budgetRoutes';
 import budgetTemplateRoutes from './budgetTemplateRoutes';
 import accountRoutes from './account.routes';
 import transactionRoutes from './transaction.routes';
-import invoiceRoutes from './invoice.routes';
-import receiptRoutes from './receipt.routes';
-import paymentRoutes from './payment.routes';
 import expenseRoutes from './expense.routes';
 import financialReportRoutes from './financialReport.routes';
 import projectLedgerRoutes from './projectLedger.routes';
@@ -58,9 +55,9 @@ import journalEnhancedRoutes from './journalEnhanced.routes';
 import invoiceTemplateRoutes from './invoiceTemplate.routes';
 import journalTemplateRoutes from './journalTemplate.routes';
 import allocationRuleRoutes from './allocationRule.routes';
-import invoiceNewRoutes from './invoice.routes';
+
 import journalEntryRoutes from './journalEntry.routes';
-import invoiceTemplateNewRoutes from './invoiceTemplate.routes';
+
 import journalEntryTemplateRoutes from './journalEntryTemplate.routes';
 import projectFinanceEnhanced from './projectFinanceEnhanced';
 import financialReportsEnhanced from './financialReportsEnhanced';
@@ -127,9 +124,7 @@ router.use('/budgets', budgetRoutes);
 router.use('/budget-templates', budgetTemplateRoutes);
 router.use('/accounts', accountRoutes);
 router.use('/transactions', transactionRoutes);
-router.use('/invoices', invoiceRoutes);
-router.use('/receipts', receiptRoutes);
-router.use('/payments', paymentRoutes);
+router.use('/finance', financeRoutes);
 router.use('/expenses', expenseRoutes);
 router.use('/project-ledger', projectLedgerRoutes);
 router.use('/general-ledger', generalLedgerRoutes);
@@ -139,7 +134,7 @@ router.use('/bank-reconciliation', bankReconciliationRoutes);
 router.use('/recurring-entries', recurringEntryRoutes);
 router.use('/vouchers', voucherRoutes);
 router.use('/advanced-reports', advancedReportRoutes);
-router.use('/finance', financeRoutes);
+
 router.use('/finance-advanced', financeAdvancedRoutes);
 router.use('/bills', billsRoutes);
 router.use('/cost-centers', costCenterRoutes);
@@ -151,9 +146,9 @@ router.use('/journal-enhanced', journalEnhancedRoutes);
 router.use('/invoice-templates', invoiceTemplateRoutes);
 router.use('/journal-templates', journalTemplateRoutes);
 router.use('/allocation-rules', allocationRuleRoutes);
-router.use('/invoices-new', invoiceNewRoutes);
+
 router.use('/journal-entries', journalEntryRoutes);
-router.use('/invoice-templates-new', invoiceTemplateNewRoutes);
+
 router.use('/journal-entry-templates', journalEntryTemplateRoutes);
 router.use('/project-finance', projectFinanceEnhanced);
 router.use('/financial-reports', financialReportRoutes);

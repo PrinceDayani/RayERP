@@ -28,38 +28,26 @@ export interface IInvoice extends Document {
   invoiceNumber: string;
   invoiceType: 'SALES' | 'PURCHASE' | 'CREDIT_NOTE' | 'DEBIT_NOTE';
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'SENT' | 'VIEWED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'FACTORED';
-  
-  // Party Details
   customerId?: mongoose.Types.ObjectId;
   vendorId?: mongoose.Types.ObjectId;
   partyName: string;
   partyEmail?: string;
   partyAddress?: string;
   partyGSTIN?: string;
-  
-  // Dates
   invoiceDate: Date;
   dueDate: Date;
   sentDate?: Date;
   viewedDate?: Date;
   paidDate?: Date;
-  
-  // Currency
   currency: string;
   exchangeRate: number;
   baseCurrency: string;
-  
-  // Line Items
   lineItems: IInvoiceLineItem[];
-  
-  // Amounts
   subtotal: number;
   totalTax: number;
   totalDiscount: number;
   totalAmount: number;
   amountInBaseCurrency: number;
-  
-  // Payment
   paymentTerms: 'NET_15' | 'NET_30' | 'NET_60' | 'NET_90' | 'DUE_ON_RECEIPT' | 'CUSTOM';
   customPaymentTerms?: string;
   earlyPaymentDiscount?: number;
@@ -67,27 +55,19 @@ export interface IInvoice extends Document {
   paidAmount: number;
   balanceAmount: number;
   payments: IPaymentRecord[];
-  
-  // Late Fees
   lateFeePercentage?: number;
   lateFeeAmount: number;
   gracePeriodDays: number;
-  
-  // Recurring
   isRecurring: boolean;
   recurringFrequency?: 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUALLY' | 'ANNUALLY';
   recurringStartDate?: Date;
   recurringEndDate?: Date;
   nextRecurringDate?: Date;
   parentInvoiceId?: mongoose.Types.ObjectId;
-  
-  // Links
-  linkedInvoiceId?: mongoose.Types.ObjectId; // For credit/debit notes
+  linkedInvoiceId?: mongoose.Types.ObjectId;
   purchaseOrderId?: mongoose.Types.ObjectId;
   deliveryNoteId?: mongoose.Types.ObjectId;
   journalEntryId?: mongoose.Types.ObjectId;
-  
-  // Approval
   approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
   approvalWorkflow: Array<{
     level: number;
@@ -96,33 +76,21 @@ export interface IInvoice extends Document {
     date?: Date;
     comments?: string;
   }>;
-  
-  // Template & Branding
   templateId?: mongoose.Types.ObjectId;
-  
-  // Factoring
   isFactored: boolean;
   factoringCompany?: string;
   factoringDate?: Date;
   factoringAmount?: number;
-  
-  // E-Invoice
   eInvoiceIRN?: string;
   eInvoiceAckNo?: string;
   eInvoiceAckDate?: Date;
   eInvoiceQRCode?: string;
-  
-  // Reminders & Dunning
   remindersSent: number;
   lastReminderDate?: Date;
   dunningLevel: number;
-  
-  // Notes & Attachments
   notes?: string;
   internalNotes?: string;
   attachments: string[];
-  
-  // Audit
   createdBy: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
   cancelledBy?: mongoose.Types.ObjectId;
@@ -134,24 +102,20 @@ const InvoiceSchema = new Schema<IInvoice>({
   invoiceNumber: { type: String, required: true, unique: true },
   invoiceType: { type: String, enum: ['SALES', 'PURCHASE', 'CREDIT_NOTE', 'DEBIT_NOTE'], required: true },
   status: { type: String, enum: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'SENT', 'VIEWED', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELLED', 'FACTORED'], default: 'DRAFT' },
-  
   customerId: { type: Schema.Types.ObjectId, ref: 'Contact' },
   vendorId: { type: Schema.Types.ObjectId, ref: 'Contact' },
   partyName: { type: String, required: true },
   partyEmail: String,
   partyAddress: String,
   partyGSTIN: String,
-  
   invoiceDate: { type: Date, required: true },
   dueDate: { type: Date, required: true },
   sentDate: Date,
   viewedDate: Date,
   paidDate: Date,
-  
   currency: { type: String, default: 'INR' },
   exchangeRate: { type: Number, default: 1 },
   baseCurrency: { type: String, default: 'INR' },
-  
   lineItems: [{
     description: { type: String, required: true },
     quantity: { type: Number, required: true },
@@ -163,13 +127,11 @@ const InvoiceSchema = new Schema<IInvoice>({
     account: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' },
     costCenter: { type: Schema.Types.ObjectId, ref: 'CostCenter' }
   }],
-  
   subtotal: { type: Number, required: true },
   totalTax: { type: Number, default: 0 },
   totalDiscount: { type: Number, default: 0 },
   totalAmount: { type: Number, required: true },
   amountInBaseCurrency: { type: Number, required: true },
-  
   paymentTerms: { type: String, enum: ['NET_15', 'NET_30', 'NET_60', 'NET_90', 'DUE_ON_RECEIPT', 'CUSTOM'], default: 'NET_30' },
   customPaymentTerms: String,
   earlyPaymentDiscount: Number,
@@ -187,23 +149,19 @@ const InvoiceSchema = new Schema<IInvoice>({
     voucherId: { type: Schema.Types.ObjectId, ref: 'Voucher' },
     notes: String
   }],
-  
   lateFeePercentage: Number,
   lateFeeAmount: { type: Number, default: 0 },
   gracePeriodDays: { type: Number, default: 0 },
-  
   isRecurring: { type: Boolean, default: false },
   recurringFrequency: { type: String, enum: ['MONTHLY', 'QUARTERLY', 'SEMI_ANNUALLY', 'ANNUALLY'] },
   recurringStartDate: Date,
   recurringEndDate: Date,
   nextRecurringDate: Date,
   parentInvoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice' },
-  
   linkedInvoiceId: { type: Schema.Types.ObjectId, ref: 'Invoice' },
   purchaseOrderId: { type: Schema.Types.ObjectId, ref: 'PurchaseOrder' },
   deliveryNoteId: { type: Schema.Types.ObjectId, ref: 'DeliveryNote' },
   journalEntryId: { type: Schema.Types.ObjectId, ref: 'JournalEntry' },
-  
   approvalStatus: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
   approvalWorkflow: [{
     level: Number,
@@ -212,27 +170,21 @@ const InvoiceSchema = new Schema<IInvoice>({
     date: Date,
     comments: String
   }],
-  
   templateId: { type: Schema.Types.ObjectId, ref: 'InvoiceTemplate' },
-  
   isFactored: { type: Boolean, default: false },
   factoringCompany: String,
   factoringDate: Date,
   factoringAmount: Number,
-  
   eInvoiceIRN: String,
   eInvoiceAckNo: String,
   eInvoiceAckDate: Date,
   eInvoiceQRCode: String,
-  
   remindersSent: { type: Number, default: 0 },
   lastReminderDate: Date,
   dunningLevel: { type: Number, default: 0 },
-  
   notes: String,
   internalNotes: String,
   attachments: [String],
-  
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   cancelledBy: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -240,7 +192,6 @@ const InvoiceSchema = new Schema<IInvoice>({
   cancellationDate: Date
 }, { timestamps: true });
 
-// Production-ready indexes
 InvoiceSchema.index({ invoiceNumber: 1 }, { unique: true });
 InvoiceSchema.index({ status: 1, dueDate: 1, balanceAmount: 1 });
 InvoiceSchema.index({ customerId: 1, status: 1, invoiceDate: -1 });
@@ -248,7 +199,6 @@ InvoiceSchema.index({ invoiceDate: -1, status: 1 });
 InvoiceSchema.index({ createdBy: 1, status: 1, invoiceDate: -1 });
 InvoiceSchema.index({ partyName: 'text', invoiceNumber: 'text' });
 
-// Pre-save validation
 InvoiceSchema.pre('save', function(next) {
   if (this.totalAmount < 0 || this.paidAmount < 0) {
     return next(new Error('Amounts cannot be negative'));
@@ -261,7 +211,6 @@ InvoiceSchema.pre('save', function(next) {
   next();
 });
 
-// Static methods
 InvoiceSchema.statics.findOverdue = function(limit = 50) {
   return this.find({
     status: { $in: ['SENT', 'VIEWED', 'PARTIALLY_PAID'] },

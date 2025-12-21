@@ -1317,7 +1317,7 @@ export default function ContactsPage() {
                       <Checkbox
                         checked={contact.isCustomer || false}
                         className="h-5 w-5"
-                        readOnly
+                        disabled
                       />
                     </div>
 

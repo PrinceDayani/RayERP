@@ -84,7 +84,7 @@ export const uploadBankStatement = async (req: Request, res: Response) => {
     const userId = (req as any).user?.id;
 
     const account = await ChartOfAccount.findById(accountId);
-    if (!account || ChartOfAccount.type !== 'asset') {
+    if (!account || account.type.toLowerCase() !== 'asset') {
       return res.status(400).json({ message: 'Invalid bank account' });
     }
 
@@ -124,7 +124,7 @@ export const startReconciliation = async (req: Request, res: Response) => {
       date: { $lte: statement.statementDate }
     }).sort({ date: 1 });
 
-    const bookBalance = ChartOfAccount.balance;
+    const bookBalance = account.balance;
     const bankBalance = statement.closingBalance;
 
     const matchedTransactions: mongoose.Types.ObjectId[] = [];

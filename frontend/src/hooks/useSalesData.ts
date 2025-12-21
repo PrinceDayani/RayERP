@@ -54,7 +54,7 @@ export const useSalesData = (options: UseSalesDataOptions = {}): UseSalesDataRet
           const ledgerResponse = await apiClient.get(
             `/general-ledger/accounts/${accountId}/ledger?${params.toString()}`
           );
-          ledgerData = ledgerResponse.entries || [];
+          ledgerData = (ledgerResponse as any).entries || [];
         } catch (ledgerError) {
           console.warn('Ledger data not available:', ledgerError);
           ledgerData = null;

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import Invoice from '../models/Invoice';
+import { Invoice } from '../models/Finance';
 import Contact from '../models/Contact';
 import User from '../models/User';
 import ChartOfAccount from '../models/ChartOfAccount';

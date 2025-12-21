@@ -4,7 +4,7 @@ import { requirePermission } from '../middleware/rbac.middleware';
 import Employee from '../models/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
-import Invoice from '../models/Invoice';
+import { Invoice } from '../models/Finance';
 import { io } from '../server';
 
 const router = express.Router();
@@ -24,62 +24,70 @@ router.get('/stats', protect, requirePermission('dashboard.view'), async (req, r
     // Use aggregation for ultra-fast counting
     const [employeeStats, projectStats, taskStats, salesStats] = await Promise.all([
       Employee.aggregate([
-        { $facet: {
-          total: [{ $count: 'count' }],
-          active: [{ $match: { status: 'active' } }, { $count: 'count' }]
-        }}
+        {
+          $facet: {
+            total: [{ $count: 'count' }],
+            active: [{ $match: { status: 'active' } }, { $count: 'count' }]
+          }
+        }
       ]),
       Project.aggregate([
-        { $facet: {
-          total: [{ $count: 'count' }],
-          active: [{ $match: { status: 'active' } }, { $count: 'count' }],
-          completed: [{ $match: { status: 'completed' } }, { $count: 'count' }],
-          financials: [{ $group: { _id: null, revenue: { $sum: '$budget' }, expenses: { $sum: '$spentBudget' } } }]
-        }}
+        {
+          $facet: {
+            total: [{ $count: 'count' }],
+            active: [{ $match: { status: 'active' } }, { $count: 'count' }],
+            completed: [{ $match: { status: 'completed' } }, { $count: 'count' }],
+            financials: [{ $group: { _id: null, revenue: { $sum: '$budget' }, expenses: { $sum: '$spentBudget' } } }]
+          }
+        }
       ]),
       Task.aggregate([
-        { $facet: {
-          total: [{ $count: 'count' }],
-          completed: [{ $match: { status: 'completed' } }, { $count: 'count' }],
-          inProgress: [{ $match: { status: 'in-progress' } }, { $count: 'count' }],
-          pending: [{ $match: { status: 'todo' } }, { $count: 'count' }]
-        }}
+        {
+          $facet: {
+            total: [{ $count: 'count' }],
+            completed: [{ $match: { status: 'completed' } }, { $count: 'count' }],
+            inProgress: [{ $match: { status: 'in-progress' } }, { $count: 'count' }],
+            pending: [{ $match: { status: 'todo' } }, { $count: 'count' }]
+          }
+        }
       ]),
       Invoice.aggregate([
-        { $group: {
-          _id: null,
-          totalRevenue: { $sum: '$totalAmount' },
-          totalPaid: { $sum: '$paidAmount' },
-          count: { $sum: 1 },
-          overdueCount: { 
-            $sum: { 
-              $cond: [
-                { 
-                  $and: [
-                    { $lt: ['$dueDate', new Date()] },
-                    { $gt: ['$balanceAmount', 0] }
-                  ]
-                }, 
-                1, 
-                0
-              ] 
-            } 
-          },
-          overdueAmount: { 
-            $sum: { 
-              $cond: [
-                { 
-                  $and: [
-                    { $lt: ['$dueDate', new Date()] },
-                    { $gt: ['$balanceAmount', 0] }
-                  ]
-                }, 
-                '$balanceAmount', 
-                0
-              ] 
-            } 
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$totalAmount' },
+            totalPaid: { $sum: '$paidAmount' },
+            count: { $sum: 1 },
+            overdueCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $lt: ['$dueDate', new Date()] },
+                      { $gt: ['$balanceAmount', 0] }
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            overdueAmount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $lt: ['$dueDate', new Date()] },
+                      { $gt: ['$balanceAmount', 0] }
+                    ]
+                  },
+                  '$balanceAmount',
+                  0
+                ]
+              }
+            }
           }
-        }}
+        }
       ])
     ]);
 
@@ -100,26 +108,26 @@ router.get('/stats', protect, requirePermission('dashboard.view'), async (req, r
       completedTasks: taskStats[0].completed[0]?.count || 0,
       inProgressTasks: taskStats[0].inProgress[0]?.count || 0,
       pendingTasks: taskStats[0].pending[0]?.count || 0,
-      
+
       // Combined revenue (for backward compatibility)
       revenue: salesRevenue > 0 ? salesRevenue : projectRevenue,
       expenses: projectExpenses,
       profit: (salesRevenue > 0 ? salesRevenue : projectRevenue) - projectExpenses,
-      
+
       // Separated data for executive view
       salesRevenue: salesRevenue,
       salesPaid: salesPaid,
       salesPending: salesRevenue - salesPaid,
       salesCount: salesCount,
-      
+
       projectRevenue: projectRevenue,
       projectExpenses: projectExpenses,
       projectProfit: projectRevenue - projectExpenses,
-      
+
       // Invoice specific metrics
       overdueInvoices: salesStats[0]?.overdueCount || 0,
       overdueAmount: salesStats[0]?.overdueAmount || 0,
-      
+
       timestamp: new Date().toISOString()
     };
 

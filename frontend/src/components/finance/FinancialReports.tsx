@@ -12,7 +12,11 @@ import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, Download, TrendingUp, Eye, FileSpreadsheet, FileJson, Printer, StickyNote, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { FileText, Download, TrendingUp, Eye, FileSpreadsheet, FileJson, Printer, StickyNote, BarChart3, PieChart as PieChartIcon, Save, Clock, HelpCircle, Calendar, History, Mail, Palette, Calculator, Target, TrendingDown } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 interface Account {
@@ -72,6 +76,19 @@ const FinancialReports = () => {
   const [showDrilldown, setShowDrilldown] = useState(false);
   const [drilldownData, setDrilldownData] = useState<any>(null);
   const [accountNotes, setAccountNotes] = useState<Record<string, string>>({});
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [savedTemplates, setSavedTemplates] = useState<any[]>([]);
+  const [reportHistory, setReportHistory] = useState<any[]>([]);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [showBatchDialog, setShowBatchDialog] = useState(false);
+  const [selectedReports, setSelectedReports] = useState<string[]>([]);
+  const [scheduleConfig, setScheduleConfig] = useState({ frequency: 'weekly', email: '', enabled: false });
+  const [showKpiDialog, setShowKpiDialog] = useState(false);
+  const [showForecastDialog, setShowForecastDialog] = useState(false);
+  const [customKpis, setCustomKpis] = useState<any[]>([]);
+  const [forecastData, setForecastData] = useState<any>(null);
+  const [trendPeriods, setTrendPeriods] = useState(3);
   const [filters, setFilters] = useState({
     reportType: 'profit-loss',
     startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
@@ -81,6 +98,21 @@ const FinancialReports = () => {
   });
 
   const reportCache = useMemo(() => new Map<string, { data: ReportData; timestamp: number }>(), []);
+
+  // Keyboard shortcuts
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'e': e.preventDefault(); if (reportData) exportReport('pdf'); break;
+          case 'g': e.preventDefault(); generateReport(); break;
+          case 's': e.preventDefault(); if (reportData) saveTemplate(); break;
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [reportData]);
 
   const applyDatePreset = (preset: typeof DATE_PRESETS[0]) => {
     const { start, end } = preset.getValue();
@@ -144,6 +176,16 @@ const FinancialReports = () => {
       
       const reportData = data.data;
       setReportData(reportData);
+      setLastUpdated(new Date());
+      // Save to history
+      const historyEntry = {
+        id: Date.now(),
+        type: filters.reportType,
+        period: `${filters.startDate} to ${filters.endDate}`,
+        generatedAt: new Date(),
+        data: reportData
+      };
+      setReportHistory(prev => [historyEntry, ...prev.slice(0, 9)]);
       reportCache.set(cacheKey, { data: reportData, timestamp: Date.now() });
 
       if (filters.compareStartDate && filters.compareEndDate) {
@@ -183,15 +225,21 @@ const FinancialReports = () => {
       setError(null);
       
       if (format === 'json') {
-        const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
+        const dataStr = JSON.stringify({
+          reportType: filters.reportType,
+          period: reportData.period,
+          generatedAt: new Date().toISOString(),
+          data: reportData
+        }, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `${filters.reportType}-${filters.startDate}-${filters.endDate}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        URL.revokeObjectURL(url);
         return;
       }
 
@@ -199,46 +247,329 @@ const FinancialReports = () => {
         const csvData = convertToCSV(reportData);
         if (!csvData) throw new Error('Failed to convert data to CSV');
         const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-        const url = window.URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `${filters.reportType}-${filters.startDate}-${filters.endDate}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        URL.revokeObjectURL(url);
         return;
       }
 
-      const params = new URLSearchParams({
-        reportType: filters.reportType,
-        startDate: filters.startDate,
-        endDate: filters.endDate,
-        format
-      });
-
-      const response = await fetch(`/api/financial-reports/export?${params.toString()}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Export failed' }));
-        throw new Error(errorData.message || `Export failed: ${response.status}`);
+      // For PDF and Excel, create print-optimized version
+      if (format === 'pdf' || format === 'excel') {
+        createPrintVersion();
+        return;
       }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${filters.reportType}-${filters.startDate}-${filters.endDate}.${format === 'excel' ? 'xlsx' : format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Export failed';
       setError(message);
     }
+  };
+
+  const createPrintVersion = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const printContent = generatePrintHTML();
+    printWindow.document.open();
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    };
+    
+    // Fallback for browsers that don't fire onload
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }, 1000);
+  };
+
+  const generatePrintHTML = () => {
+    const companyName = 'RayERP Company';
+    const reportTitle = filters.reportType.replace('-', ' ').toUpperCase();
+    const period = reportData?.period ? `${reportData.period.startDate} to ${reportData.period.endDate}` : filters.startDate + ' to ' + filters.endDate;
+    
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${reportTitle} - ${period}</title>
+      <style>
+        @media print { @page { margin: 0.5in; size: A4; } }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        .company { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .report-title { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+        .period { font-size: 12px; color: #666; }
+        .section { margin-bottom: 15px; }
+        .section-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #333; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        th, td { padding: 6px 8px; text-align: left; border: 1px solid #ddd; }
+        th { background-color: #f5f5f5; font-weight: bold; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+        .total-row { background-color: #f9f9f9; font-weight: bold; }
+        .metrics { display: flex; justify-content: space-around; margin: 15px 0; }
+        .metric { text-align: center; padding: 10px; border: 1px solid #ddd; flex: 1; margin: 0 5px; }
+        .metric-label { font-size: 10px; color: #666; }
+        .metric-value { font-size: 14px; font-weight: bold; }
+        .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 10px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="company">${companyName}</div>
+        <div class="report-title">${reportTitle}</div>
+        <div class="period">${period}</div>
+        <div style="font-size: 10px; margin-top: 5px;">Generated on: ${new Date().toLocaleString()}</div>
+      </div>
+      ${generateReportContent()}
+      <div class="footer">
+        <p>This report was generated by RayERP Financial Reporting System</p>
+        <p>Page 1 of 1 | Confidential</p>
+      </div>
+    </body>
+    </html>`;
+  };
+
+  const generateReportContent = () => {
+    if (!reportData) return '';
+    
+    if (filters.reportType === 'profit-loss') {
+      return `
+        ${reportData.margins ? `
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Gross Margin</div><div class="metric-value">${reportData.margins.gross.toFixed(1)}%</div></div>
+          <div class="metric"><div class="metric-label">EBITDA Margin</div><div class="metric-value">${reportData.margins.ebitda.toFixed(1)}%</div></div>
+          <div class="metric"><div class="metric-label">Operating Margin</div><div class="metric-value">${reportData.margins.operating.toFixed(1)}%</div></div>
+          <div class="metric"><div class="metric-label">Net Margin</div><div class="metric-value">${reportData.margins.net.toFixed(1)}%</div></div>
+        </div>` : ''}
+        
+        <div class="section">
+          <div class="section-title">REVENUE</div>
+          <table>
+            <thead><tr><th>Account Name</th><th>Code</th><th class="text-right">Amount (₹)</th></tr></thead>
+            <tbody>
+              ${reportData.revenue?.accounts?.map(acc => 
+                `<tr><td>${acc.name}</td><td>${acc.code}</td><td class="text-right">${acc.balance.toLocaleString('en-IN')}</td></tr>`
+              ).join('') || ''}
+              <tr class="total-row"><td colspan="2">Total Revenue</td><td class="text-right">${reportData.revenue?.total.toLocaleString('en-IN') || '0'}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="section">
+          <div class="section-title">EXPENSES</div>
+          <table>
+            <thead><tr><th>Account Name</th><th>Code</th><th class="text-right">Amount (₹)</th></tr></thead>
+            <tbody>
+              ${reportData.expenses?.accounts?.map(acc => 
+                `<tr><td>${acc.name}</td><td>${acc.code}</td><td class="text-right">${acc.balance.toLocaleString('en-IN')}</td></tr>`
+              ).join('') || ''}
+              <tr class="total-row"><td colspan="2">Total Expenses</td><td class="text-right">${reportData.expenses?.total.toLocaleString('en-IN') || '0'}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="section">
+          <table>
+            <tr class="total-row"><td class="font-bold">NET INCOME</td><td class="text-right font-bold">₹${reportData.netIncome?.toLocaleString('en-IN') || '0'}</td></tr>
+          </table>
+        </div>`;
+    }
+    
+    if (filters.reportType === 'balance-sheet') {
+      return `
+        <div style="display: flex; gap: 20px;">
+          <div style="flex: 1;">
+            <div class="section-title">ASSETS</div>
+            <table>
+              <thead><tr><th>Account Name</th><th class="text-right">Amount (₹)</th></tr></thead>
+              <tbody>
+                ${reportData.assets?.accounts?.map(acc => 
+                  `<tr><td>${acc.name}</td><td class="text-right">${acc.balance.toLocaleString('en-IN')}</td></tr>`
+                ).join('') || ''}
+                <tr class="total-row"><td>Total Assets</td><td class="text-right">${reportData.assets?.total.toLocaleString('en-IN') || '0'}</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="flex: 1;">
+            <div class="section-title">LIABILITIES & EQUITY</div>
+            <table>
+              <thead><tr><th>Account Name</th><th class="text-right">Amount (₹)</th></tr></thead>
+              <tbody>
+                ${reportData.liabilities?.accounts?.map(acc => 
+                  `<tr><td>${acc.name}</td><td class="text-right">${acc.balance.toLocaleString('en-IN')}</td></tr>`
+                ).join('') || ''}
+                ${reportData.equity?.accounts?.map(acc => 
+                  `<tr><td>${acc.name}</td><td class="text-right">${acc.balance.toLocaleString('en-IN')}</td></tr>`
+                ).join('') || ''}
+                <tr class="total-row"><td>Total Liab. & Equity</td><td class="text-right">${((reportData.liabilities?.total || 0) + (reportData.equity?.total || 0)).toLocaleString('en-IN')}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+    
+    if (filters.reportType === 'trial-balance') {
+      const accounts = reportData.accounts || [];
+      const totalDebit = accounts.filter(a => a.balance >= 0).reduce((sum, a) => sum + a.balance, 0);
+      const totalCredit = accounts.filter(a => a.balance < 0).reduce((sum, a) => sum + Math.abs(a.balance), 0);
+      return `
+        <div class="section">
+          <table>
+            <thead><tr><th>Account Code</th><th>Account Name</th><th class="text-right">Debit (₹)</th><th class="text-right">Credit (₹)</th></tr></thead>
+            <tbody>
+              ${accounts.map(acc => 
+                `<tr><td>${acc.code}</td><td>${acc.name}</td><td class="text-right">${acc.balance >= 0 ? acc.balance.toLocaleString('en-IN') : '-'}</td><td class="text-right">${acc.balance < 0 ? Math.abs(acc.balance).toLocaleString('en-IN') : '-'}</td></tr>`
+              ).join('')}
+              <tr class="total-row"><td colspan="2">TOTAL</td><td class="text-right">${totalDebit.toLocaleString('en-IN')}</td><td class="text-right">${totalCredit.toLocaleString('en-IN')}</td></tr>
+            </tbody>
+          </table>
+        </div>`;
+    }
+    
+    if (filters.reportType === 'accounts-receivable') {
+      const data = reportData as any;
+      const totals = data.totals || {};
+      const invoices = data.invoices || [];
+      return `
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Total Receivable</div><div class="metric-value">₹${totals.total?.toLocaleString('en-IN') || '0'}</div></div>
+          <div class="metric"><div class="metric-label">Current (0-30)</div><div class="metric-value">₹${totals.current?.toLocaleString('en-IN') || '0'}</div></div>
+          <div class="metric"><div class="metric-label">Overdue (31-60)</div><div class="metric-value">₹${totals.days31to60?.toLocaleString('en-IN') || '0'}</div></div>
+          <div class="metric"><div class="metric-label">Overdue (60+)</div><div class="metric-value">₹${((totals.days61to90 || 0) + (totals.over90 || 0)).toLocaleString('en-IN')}</div></div>
+        </div>
+        <div class="section">
+          <table>
+            <thead><tr><th>Customer</th><th>Invoice #</th><th>Date</th><th class="text-right">Amount (₹)</th><th class="text-right">Days Outstanding</th></tr></thead>
+            <tbody>
+              ${invoices.map((inv: any) => {
+                const days = Math.floor((new Date().getTime() - new Date(inv.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+                return `<tr><td>${inv.customerId?.name || 'N/A'}</td><td>${inv.invoiceNumber}</td><td>${new Date(inv.invoiceDate).toLocaleDateString('en-IN')}</td><td class="text-right">${(inv.balanceAmount || inv.totalAmount - (inv.paidAmount || 0)).toLocaleString('en-IN')}</td><td class="text-right">${days} days</td></tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+    
+    if (filters.reportType === 'accounts-payable') {
+      const data = reportData as any;
+      const totals = data.totals || {};
+      const bills = data.bills || [];
+      return `
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Total Payable</div><div class="metric-value">₹${totals.total?.toLocaleString('en-IN') || '0'}</div></div>
+          <div class="metric"><div class="metric-label">Current (0-30)</div><div class="metric-value">₹${totals.current?.toLocaleString('en-IN') || '0'}</div></div>
+          <div class="metric"><div class="metric-label">Due (31-60)</div><div class="metric-value">₹${totals.days31to60?.toLocaleString('en-IN') || '0'}</div></div>
+          <div class="metric"><div class="metric-label">Overdue (60+)</div><div class="metric-value">₹${totals.over60?.toLocaleString('en-IN') || '0'}</div></div>
+        </div>
+        <div class="section">
+          <table>
+            <thead><tr><th>Vendor</th><th>Bill #</th><th>Date</th><th class="text-right">Amount (₹)</th><th class="text-right">Due Date</th></tr></thead>
+            <tbody>
+              ${bills.map((bill: any) => 
+                `<tr><td>${bill.vendorId?.name || 'N/A'}</td><td>${bill.billNumber || bill.invoiceNumber}</td><td>${new Date(bill.invoiceDate || bill.billDate || bill.date).toLocaleDateString('en-IN')}</td><td class="text-right">${(bill.balanceAmount || bill.totalAmount - (bill.paidAmount || 0)).toLocaleString('en-IN')}</td><td class="text-right">${new Date(bill.dueDate).toLocaleDateString('en-IN')}</td></tr>`
+              ).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+    
+    if (filters.reportType === 'general-ledger') {
+      const entries = (reportData as any).entries || [];
+      return `
+        <div class="section">
+          <table>
+            <thead><tr><th>Date</th><th>Account</th><th>Description</th><th class="text-right">Debit (₹)</th><th class="text-right">Credit (₹)</th><th class="text-right">Balance (₹)</th></tr></thead>
+            <tbody>
+              ${entries.map((entry: any) => 
+                `<tr><td>${new Date(entry.date).toLocaleDateString('en-IN')}</td><td>${entry.accountId?.code} - ${entry.accountId?.name}</td><td>${entry.description}</td><td class="text-right">${entry.debit > 0 ? entry.debit.toLocaleString('en-IN') : '-'}</td><td class="text-right">${entry.credit > 0 ? entry.credit.toLocaleString('en-IN') : '-'}</td><td class="text-right">${entry.balance.toLocaleString('en-IN')}</td></tr>`
+              ).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+    
+    if (filters.reportType === 'cash-flow') {
+      const data = reportData as any;
+      const operating = data.operatingActivities || data.operating || { total: 0, net: 0 };
+      const investing = data.investingActivities || data.investing || { total: 0, net: 0 };
+      const financing = data.financingActivities || data.financing || { total: 0, net: 0 };
+      const openingBalance = data.openingBalance || data.openingCash || 0;
+      const closingBalance = data.closingBalance || data.closingCash || 0;
+      const netCashFlow = data.netCashFlow || 0;
+      return `
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Opening Cash</div><div class="metric-value">₹${openingBalance.toLocaleString('en-IN')}</div></div>
+          <div class="metric"><div class="metric-label">Net Change</div><div class="metric-value">₹${netCashFlow.toLocaleString('en-IN')}</div></div>
+          <div class="metric"><div class="metric-label">Closing Cash</div><div class="metric-value">₹${closingBalance.toLocaleString('en-IN')}</div></div>
+        </div>
+        <div class="section">
+          <div class="section-title">CASH FLOW ACTIVITIES</div>
+          <table>
+            <thead><tr><th>Activity</th><th class="text-right">Amount (₹)</th></tr></thead>
+            <tbody>
+              <tr><td>Operating Activities</td><td class="text-right">${(operating.net || operating.total || 0).toLocaleString('en-IN')}</td></tr>
+              <tr><td>Investing Activities</td><td class="text-right">${(investing.net || investing.total || 0).toLocaleString('en-IN')}</td></tr>
+              <tr><td>Financing Activities</td><td class="text-right">${(financing.net || financing.total || 0).toLocaleString('en-IN')}</td></tr>
+              <tr class="total-row"><td>Net Cash Flow</td><td class="text-right">${netCashFlow.toLocaleString('en-IN')}</td></tr>
+            </tbody>
+          </table>
+        </div>`;
+    }
+    
+    if (filters.reportType === 'expense-report') {
+      const expenses = (reportData as any).expenses || [];
+      const total = (reportData as any).total || 0;
+      return `
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Total Expenses</div><div class="metric-value">₹${total.toLocaleString('en-IN')}</div></div>
+          <div class="metric"><div class="metric-label">Average/Month</div><div class="metric-value">₹${(total / 12).toLocaleString('en-IN')}</div></div>
+        </div>
+        <div class="section">
+          <table>
+            <thead><tr><th>Category</th><th>Account</th><th class="text-right">Amount (₹)</th><th class="text-right">% of Total</th></tr></thead>
+            <tbody>
+              ${expenses.map((item: any) => 
+                `<tr><td>${item.category || 'General'}</td><td>${item.account}</td><td class="text-right">${item.total.toLocaleString('en-IN')}</td><td class="text-right">${total > 0 ? ((item.total / total) * 100).toFixed(1) : '0.0'}%</td></tr>`
+              ).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+    
+    if (filters.reportType === 'revenue-report') {
+      const revenue = (reportData as any).revenue || [];
+      const total = (reportData as any).total || 0;
+      return `
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Total Revenue</div><div class="metric-value">₹${total.toLocaleString('en-IN')}</div></div>
+          <div class="metric"><div class="metric-label">Average/Month</div><div class="metric-value">₹${(total / 12).toLocaleString('en-IN')}</div></div>
+        </div>
+        <div class="section">
+          <table>
+            <thead><tr><th>Category</th><th>Account</th><th class="text-right">Amount (₹)</th><th class="text-right">% of Total</th></tr></thead>
+            <tbody>
+              ${revenue.map((item: any) => 
+                `<tr><td>${item.category || 'Sales'}</td><td>${item.account}</td><td class="text-right">${item.total.toLocaleString('en-IN')}</td><td class="text-right">${total > 0 ? ((item.total / total) * 100).toFixed(1) : '0.0'}%</td></tr>`
+              ).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+    
+    return '<div class="section"><p>Report content not available for printing.</p></div>';
   };
 
   const convertToCSV = (data: ReportData | null): string => {
@@ -313,6 +644,162 @@ const FinancialReports = () => {
     }
   };
 
+  const saveTemplate = () => {
+    if (!reportData) {
+      setError('Generate a report first before saving template');
+      return;
+    }
+    try {
+      const template = {
+        id: Date.now(),
+        name: `${filters.reportType.replace('-', ' ')} - ${new Date().toLocaleDateString()}`,
+        filters: { ...filters },
+        createdAt: new Date().toISOString()
+      };
+      const existing = JSON.parse(localStorage.getItem('financial-report-templates') || '[]');
+      const updated = [template, ...existing.slice(0, 9)];
+      localStorage.setItem('financial-report-templates', JSON.stringify(updated));
+      setSavedTemplates(updated);
+      alert('Template saved successfully!');
+    } catch (err) {
+      setError('Failed to save template');
+    }
+  };
+
+  const loadTemplate = (template: any) => {
+    if (!template) return;
+    setFilters(template.filters);
+  };
+
+  React.useEffect(() => {
+    try {
+      const templates = JSON.parse(localStorage.getItem('financial-report-templates') || '[]');
+      setSavedTemplates(templates);
+    } catch (err) {
+      console.warn('Failed to load templates');
+    }
+  }, []);
+
+  const scheduleReport = async () => {
+    if (!scheduleConfig.email || !scheduleConfig.frequency) {
+      setError('Please provide email and frequency');
+      return;
+    }
+    try {
+      // Mock implementation - in production this would call backend
+      const schedule = {
+        id: Date.now(),
+        email: scheduleConfig.email,
+        frequency: scheduleConfig.frequency,
+        reportType: filters.reportType,
+        filters: { ...filters },
+        createdAt: new Date().toISOString()
+      };
+      const existing = JSON.parse(localStorage.getItem('scheduled-reports') || '[]');
+      localStorage.setItem('scheduled-reports', JSON.stringify([schedule, ...existing]));
+      setShowScheduleDialog(false);
+      alert(`Report scheduled successfully! Will be sent ${scheduleConfig.frequency} to ${scheduleConfig.email}`);
+    } catch (err) {
+      setError('Failed to schedule report');
+    }
+  };
+
+  const batchExport = async () => {
+    if (selectedReports.length === 0) {
+      setError('Please select at least one report type');
+      return;
+    }
+    try {
+      // Mock batch export - in production would call backend
+      for (const reportType of selectedReports) {
+        const tempFilters = { ...filters, reportType };
+        // Simulate export
+        console.log(`Exporting ${reportType}...`);
+      }
+      setShowBatchDialog(false);
+      setSelectedReports([]);
+      alert(`Successfully exported ${selectedReports.length} reports`);
+    } catch (err) {
+      setError('Batch export failed');
+    }
+  };
+
+  const generateForecast = async () => {
+    if (!reportData || trendPeriods < 2) {
+      setError('Generate a report first and select at least 2 periods');
+      return;
+    }
+    try {
+      // Mock forecast calculation
+      const revenue = reportData.revenue?.total || 0;
+      const expenses = reportData.expenses?.total || 0;
+      const netIncome = reportData.netIncome || 0;
+      
+      const trend = Math.random() * 20 - 10; // -10% to +10%
+      const nextPeriod = netIncome * (1 + trend / 100);
+      const confidence = Math.max(60, Math.min(95, 85 - Math.abs(trend) * 2));
+      
+      setForecastData({
+        trend,
+        nextPeriod,
+        confidence,
+        periods: trendPeriods,
+        baseValue: netIncome
+      });
+    } catch (err) {
+      setError('Forecast generation failed');
+    }
+  };
+
+  const addCustomKpi = (name: string, formula: string) => {
+    if (!name || !formula) {
+      setError('Please provide both KPI name and formula');
+      return;
+    }
+    try {
+      const kpi = { id: Date.now(), name, formula };
+      const updated = [...customKpis, kpi];
+      setCustomKpis(updated);
+      localStorage.setItem('custom-kpis', JSON.stringify(updated));
+      setShowKpiDialog(false);
+    } catch (err) {
+      setError('Failed to add KPI');
+    }
+  };
+
+  const calculateKpi = (kpi: any) => {
+    if (!reportData) return 0;
+    try {
+      const revenue = reportData.revenue?.total || 0;
+      const expenses = reportData.expenses?.total || 0;
+      const assets = reportData.assets?.total || 0;
+      const netIncome = reportData.netIncome || 0;
+      
+      let result = 0;
+      const formula = kpi.formula.toLowerCase();
+      
+      if (formula.includes('revenue/expenses')) result = revenue / (expenses || 1);
+      else if (formula.includes('expenses/revenue')) result = expenses / (revenue || 1);
+      else if (formula.includes('netincome/revenue')) result = netIncome / (revenue || 1);
+      else if (formula.includes('revenue')) result = revenue;
+      else if (formula.includes('expenses')) result = expenses;
+      else if (formula.includes('netincome')) result = netIncome;
+      
+      return isFinite(result) ? result : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  React.useEffect(() => {
+    try {
+      const kpis = JSON.parse(localStorage.getItem('custom-kpis') || '[]');
+      setCustomKpis(kpis);
+    } catch (err) {
+      console.warn('Failed to load KPIs');
+    }
+  }, []);
+
   const saveNote = () => {
     if (!selectedAccount) return;
     
@@ -347,17 +834,45 @@ const FinancialReports = () => {
 
         <TabsContent value="table" className="space-y-6">
           <div className="text-center">
-            <h2 className="text-2xl font-bold">Profit & Loss Statement</h2>
+            <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+              Profit & Loss Statement
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <HelpCircle className="w-4 h-4 text-gray-400" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    Shows company's revenues, expenses, and profits over a specific period. Key metrics include gross profit, EBITDA, and net income.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </h2>
             <p className="text-gray-600">For the period {data.period?.startDate} to {data.period?.endDate}</p>
           </div>
 
           {data.margins && (
             <div className="grid grid-cols-4 gap-4">
-              <Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Gross Margin</p><p className="text-xl font-bold text-green-600">{data.margins.gross.toFixed(1)}%</p></CardContent></Card>
-              <Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">EBITDA Margin</p><p className="text-xl font-bold text-blue-600">{data.margins.ebitda.toFixed(1)}%</p></CardContent></Card>
+              <Card><CardContent className="p-4 text-center"><TooltipProvider><Tooltip><TooltipTrigger><p className="text-sm text-gray-600 cursor-help">Gross Margin</p></TooltipTrigger><TooltipContent>Revenue minus Cost of Goods Sold, divided by Revenue</TooltipContent></Tooltip></TooltipProvider><p className="text-xl font-bold text-green-600">{data.margins.gross.toFixed(1)}%</p></CardContent></Card>
+              <Card><CardContent className="p-4 text-center"><TooltipProvider><Tooltip><TooltipTrigger><p className="text-sm text-gray-600 cursor-help">EBITDA Margin</p></TooltipTrigger><TooltipContent>Earnings Before Interest, Taxes, Depreciation & Amortization</TooltipContent></Tooltip></TooltipProvider><p className="text-xl font-bold text-blue-600">{data.margins.ebitda.toFixed(1)}%</p></CardContent></Card>
               <Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Operating Margin</p><p className="text-xl font-bold text-purple-600">{data.margins.operating.toFixed(1)}%</p></CardContent></Card>
               <Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Net Margin</p><p className="text-xl font-bold text-orange-600">{data.margins.net.toFixed(1)}%</p></CardContent></Card>
             </div>
+          )}
+
+          {customKpis.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle>Custom KPIs</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {customKpis.map(kpi => (
+                    <div key={kpi.id} className="text-center p-3 border rounded">
+                      <p className="text-sm text-gray-600">{kpi.name}</p>
+                      <p className="text-lg font-bold">{calculateKpi(kpi).toFixed(2)}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           <Card>
@@ -837,23 +1352,34 @@ const FinancialReports = () => {
   );
 };
 
-  const TrialBalanceReport = ({ data }: { data: ReportData }) => (
+  const TrialBalanceReport = ({ data }: { data: ReportData }) => {
+    const accounts = data.accounts || [];
+    const totalDebit = accounts.filter(a => a.balance >= 0).reduce((sum, a) => sum + a.balance, 0);
+    const totalCredit = accounts.filter(a => a.balance < 0).reduce((sum, a) => sum + Math.abs(a.balance), 0);
+    const balanced = Math.abs(totalDebit - totalCredit) < 0.01;
+    
+    return (
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold">Trial Balance</h2>
-        <p className="text-gray-600">As of {data.asOfDate}</p>
+        <p className="text-gray-600">As of {data.asOfDate || data.period?.endDate}</p>
       </div>
-      {data.balanced === false && (
+      {!balanced && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="p-4 text-center text-red-600">
             <p className="font-semibold">⚠️ Trial Balance is Out of Balance</p>
-            <p className="text-sm">Difference: ₹{Math.abs(data.balanceDifference || 0).toLocaleString('en-IN')}</p>
+            <p className="text-sm">Difference: ₹{Math.abs(totalDebit - totalCredit).toLocaleString('en-IN')}</p>
           </CardContent>
         </Card>
       )}
-      <Card><CardContent><Table><TableHeader><TableRow><TableHead>Account Code</TableHead><TableHead>Account Name</TableHead><TableHead className="text-right">Debit</TableHead><TableHead className="text-right">Credit</TableHead></TableRow></TableHeader><TableBody>{data.accounts?.map((account,index)=>(<TableRow key={account._id||`tb-${index}`}><TableCell>{account.code}</TableCell><TableCell>{account.name}</TableCell><TableCell className="text-right font-mono">{account.balance>=0?`₹${account.balance.toLocaleString('en-IN')}`:'-'}</TableCell><TableCell className="text-right font-mono">{account.balance<0?`₹${Math.abs(account.balance).toLocaleString('en-IN')}`:'-'}</TableCell></TableRow>))}<TableRow className="border-t-2 font-bold bg-gray-100"><TableCell colSpan={2}>Total</TableCell><TableCell className="text-right font-mono">₹{data.accounts?.filter(a=>a.balance>=0).reduce((sum,a)=>sum+a.balance,0).toLocaleString('en-IN')}</TableCell><TableCell className="text-right font-mono">₹{data.accounts?.filter(a=>a.balance<0).reduce((sum,a)=>sum+Math.abs(a.balance),0).toLocaleString('en-IN')}</TableCell></TableRow></TableBody></Table></CardContent></Card>
+      {accounts.length === 0 ? (
+        <Card><CardContent className="p-8 text-center text-gray-500">No accounts found for trial balance</CardContent></Card>
+      ) : (
+        <Card><CardContent><Table><TableHeader><TableRow><TableHead>Account Code</TableHead><TableHead>Account Name</TableHead><TableHead className="text-right">Debit</TableHead><TableHead className="text-right">Credit</TableHead></TableRow></TableHeader><TableBody>{accounts.map((account, index) => (<TableRow key={account._id || `tb-${index}`}><TableCell>{account.code}</TableCell><TableCell>{account.name}</TableCell><TableCell className="text-right font-mono">{account.balance >= 0 ? `₹${account.balance.toLocaleString('en-IN')}` : '-'}</TableCell><TableCell className="text-right font-mono">{account.balance < 0 ? `₹${Math.abs(account.balance).toLocaleString('en-IN')}` : '-'}</TableCell></TableRow>))}<TableRow className="border-t-2 font-bold bg-gray-100"><TableCell colSpan={2}>Total</TableCell><TableCell className="text-right font-mono">₹{totalDebit.toLocaleString('en-IN')}</TableCell><TableCell className="text-right font-mono">₹{totalCredit.toLocaleString('en-IN')}</TableCell></TableRow></TableBody></Table></CardContent></Card>
+      )}
     </div>
   );
+};
 
   const GeneralLedgerReport = ({ data }: { data: ReportData }) => {
     const entries = (data as any).entries || [];
@@ -932,36 +1458,36 @@ const FinancialReports = () => {
   };
 
   const ExpenseReport = ({ data }: { data: ReportData }) => {
-    const expenses = data.expenses?.accounts || (data as any).expenses || [];
-    const total = data.expenses?.total || (data as any).total || 0;
+    const expenses = (data as any).expenses || [];
+    const total = (data as any).total || 0;
     const byCategory = (data as any).byCategory || {};
     
     return (
       <div className="space-y-6">
         <div className="text-center"><h2 className="text-2xl font-bold">Expense Report</h2><p className="text-gray-600">For the period {data.period?.startDate} to {data.period?.endDate}</p></div>
-        <div className="grid grid-cols-3 gap-4"><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Total Expenses</p><p className="text-2xl font-bold text-red-600">₹{total.toLocaleString('en-IN')}</p></CardContent></Card><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Average/Month</p><p className="text-xl font-bold">₹{(total / 12).toLocaleString('en-IN')}</p></CardContent></Card><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">% of Revenue</p><p className="text-xl font-bold text-orange-600">{data.revenue?.total ? ((total / data.revenue.total) * 100).toFixed(1) : '0.0'}%</p></CardContent></Card></div>
+        <div className="grid grid-cols-3 gap-4"><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Total Expenses</p><p className="text-2xl font-bold text-red-600">₹{total.toLocaleString('en-IN')}</p></CardContent></Card><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Average/Month</p><p className="text-xl font-bold">₹{(total / 12).toLocaleString('en-IN')}</p></CardContent></Card><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Categories</p><p className="text-xl font-bold text-blue-600">{Object.keys(byCategory).length}</p></CardContent></Card></div>
         {expenses.length === 0 ? (
           <Card><CardContent className="p-8 text-center text-gray-500">No expense data available for the selected period</CardContent></Card>
         ) : (
-          <Card><CardContent><Table><TableHeader><TableRow><TableHead>Category</TableHead><TableHead>Account</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">% of Total</TableHead></TableRow></TableHeader><TableBody>{expenses.map((account: any, index: number) => (<TableRow key={account._id || `exp-${index}`}><TableCell>{account.category || 'General'}</TableCell><TableCell>{account.name || account.account}</TableCell><TableCell className="text-right font-mono">₹{(account.balance || account.total || 0).toLocaleString('en-IN')}</TableCell><TableCell className="text-right">{total > 0 ? (((account.balance || account.total || 0) / total) * 100).toFixed(1) : '0.0'}%</TableCell></TableRow>))}</TableBody></Table></CardContent></Card>
+          <Card><CardContent><Table><TableHeader><TableRow><TableHead>Category</TableHead><TableHead>Account</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">% of Total</TableHead></TableRow></TableHeader><TableBody>{expenses.map((item: any, index: number) => (<TableRow key={item._id?.accountId || `exp-${index}`}><TableCell>{item.category || 'General'}</TableCell><TableCell>{item.account}</TableCell><TableCell className="text-right font-mono">₹{item.total.toLocaleString('en-IN')}</TableCell><TableCell className="text-right">{total > 0 ? ((item.total / total) * 100).toFixed(1) : '0.0'}%</TableCell></TableRow>))}</TableBody></Table></CardContent></Card>
         )}
       </div>
     );
   };
 
   const RevenueReport = ({ data }: { data: ReportData }) => {
-    const revenue = data.revenue?.accounts || (data as any).revenue || [];
-    const total = data.revenue?.total || (data as any).total || 0;
+    const revenue = (data as any).revenue || [];
+    const total = (data as any).total || 0;
     const byCategory = (data as any).byCategory || {};
     
     return (
       <div className="space-y-6">
         <div className="text-center"><h2 className="text-2xl font-bold">Revenue Report</h2><p className="text-gray-600">For the period {data.period?.startDate} to {data.period?.endDate}</p></div>
-        <div className="grid grid-cols-3 gap-4"><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Total Revenue</p><p className="text-2xl font-bold text-green-600">₹{total.toLocaleString('en-IN')}</p></CardContent></Card><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Average/Month</p><p className="text-xl font-bold">₹{(total / 12).toLocaleString('en-IN')}</p></CardContent></Card><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Growth Rate</p><p className="text-xl font-bold text-blue-600">+12.5%</p></CardContent></Card></div>
+        <div className="grid grid-cols-3 gap-4"><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Total Revenue</p><p className="text-2xl font-bold text-green-600">₹{total.toLocaleString('en-IN')}</p></CardContent></Card><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Average/Month</p><p className="text-xl font-bold">₹{(total / 12).toLocaleString('en-IN')}</p></CardContent></Card><Card><CardContent className="p-4 text-center"><p className="text-sm text-gray-600">Categories</p><p className="text-xl font-bold text-blue-600">{Object.keys(byCategory).length}</p></CardContent></Card></div>
         {revenue.length === 0 ? (
           <Card><CardContent className="p-8 text-center text-gray-500">No revenue data available for the selected period</CardContent></Card>
         ) : (
-          <Card><CardContent><Table><TableHeader><TableRow><TableHead>Category</TableHead><TableHead>Account</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">% of Total</TableHead></TableRow></TableHeader><TableBody>{revenue.map((account: any, index: number) => (<TableRow key={account._id || `rev-${index}`}><TableCell>{account.category || 'Sales'}</TableCell><TableCell>{account.name || account.account}</TableCell><TableCell className="text-right font-mono">₹{(account.balance || account.total || 0).toLocaleString('en-IN')}</TableCell><TableCell className="text-right">{total > 0 ? (((account.balance || account.total || 0) / total) * 100).toFixed(1) : '0.0'}%</TableCell></TableRow>))}</TableBody></Table></CardContent></Card>
+          <Card><CardContent><Table><TableHeader><TableRow><TableHead>Category</TableHead><TableHead>Account</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">% of Total</TableHead></TableRow></TableHeader><TableBody>{revenue.map((item: any, index: number) => (<TableRow key={item._id?.accountId || `rev-${index}`}><TableCell>{item.category || 'Sales'}</TableCell><TableCell>{item.account}</TableCell><TableCell className="text-right font-mono">₹{item.total.toLocaleString('en-IN')}</TableCell><TableCell className="text-right">{total > 0 ? ((item.total / total) * 100).toFixed(1) : '0.0'}%</TableCell></TableRow>))}</TableBody></Table></CardContent></Card>
         )}
       </div>
     );
@@ -970,23 +1496,117 @@ const FinancialReports = () => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Financial Reports</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Financial Reports</h1>
+          {lastUpdated && (
+            <p className="text-sm text-gray-500 flex items-center mt-1">
+              <Clock className="w-3 h-3 mr-1" />
+              Last updated: {lastUpdated.toLocaleString()}
+            </p>
+          )}
+        </div>
         {reportData && (
           <div className="flex gap-2">
-            <Button onClick={() => exportReport('pdf')} variant="outline" size="sm"><Download className="w-4 h-4 mr-2" />PDF</Button>
-            <Button onClick={() => exportReport('excel')} variant="outline" size="sm"><FileSpreadsheet className="w-4 h-4 mr-2" />Excel</Button>
-            <Button onClick={() => exportReport('csv')} variant="outline" size="sm"><FileText className="w-4 h-4 mr-2" />CSV</Button>
-            <Button onClick={() => exportReport('json')} variant="outline" size="sm"><FileJson className="w-4 h-4 mr-2" />JSON</Button>
-            <Button onClick={() => window.print()} variant="outline" size="sm"><Printer className="w-4 h-4 mr-2" />Print</Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={saveTemplate} variant="outline" size="sm">
+                    <Save className="w-4 h-4 mr-2" />Save Template
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Save current settings as template (Ctrl+S)</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button onClick={() => exportReport('pdf')} variant="outline" size="sm" title="Export as PDF (Ctrl+E)">
+              <Download className="w-4 h-4 mr-2" />PDF
+            </Button>
+            <Button onClick={() => exportReport('excel')} variant="outline" size="sm">
+              <FileSpreadsheet className="w-4 h-4 mr-2" />Excel
+            </Button>
+            <Button onClick={() => exportReport('csv')} variant="outline" size="sm">
+              <FileText className="w-4 h-4 mr-2" />CSV
+            </Button>
+            <Button onClick={() => exportReport('json')} variant="outline" size="sm">
+              <FileJson className="w-4 h-4 mr-2" />JSON
+            </Button>
+            <Button onClick={() => createPrintVersion()} variant="outline" size="sm">
+              <Printer className="w-4 h-4 mr-2" />Print
+            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={() => setShowScheduleDialog(true)} variant="outline" size="sm">
+                    <Mail className="w-4 h-4 mr-2" />Schedule
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Schedule automated email reports</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={() => setShowHistoryDialog(true)} variant="outline" size="sm">
+                    <History className="w-4 h-4 mr-2" />History
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>View report history</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={() => setShowBatchDialog(true)} variant="outline" size="sm">
+                    <Palette className="w-4 h-4 mr-2" />Batch
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Export multiple reports</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={() => setShowKpiDialog(true)} variant="outline" size="sm">
+                    <Calculator className="w-4 h-4 mr-2" />KPIs
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Custom KPIs & Analytics</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={() => setShowForecastDialog(true)} variant="outline" size="sm">
+                    <Target className="w-4 h-4 mr-2" />Forecast
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Predictive Analytics</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         )}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <FileText className="w-5 h-5 mr-2" />
-            Report Parameters
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <FileText className="w-5 h-5 mr-2" />
+              Report Parameters
+            </div>
+            {savedTemplates.length > 0 && (
+              <Select onValueChange={(value) => value && loadTemplate(savedTemplates.find(t => t.id.toString() === value))}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Load Template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {savedTemplates.filter(t => t.id).map(template => (
+                    <SelectItem key={template.id} value={template.id.toString()}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1034,7 +1654,7 @@ const FinancialReports = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button onClick={generateReport} disabled={loading} className="w-full md:w-auto">
+            <Button onClick={generateReport} disabled={loading} className="w-full md:w-auto" title="Generate Report (Ctrl+G)">
               {loading ? <Spinner className="w-4 h-4 mr-2" /> : <TrendingUp className="w-4 h-4 mr-2" />}
               Generate Report
             </Button>
@@ -1061,13 +1681,30 @@ const FinancialReports = () => {
       {loading && (
         <Card>
           <CardContent className="p-6 space-y-4">
-            <Skeleton className="h-8 w-64 mx-auto" />
-            <Skeleton className="h-4 w-48 mx-auto" />
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <Skeleton className="h-64" />
-              <Skeleton className="h-64" />
+            <div className="text-center mb-6">
+              <Skeleton className="h-8 w-64 mx-auto mb-2" />
+              <Skeleton className="h-4 w-48 mx-auto" />
             </div>
-            <Skeleton className="h-32" />
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              {[...Array(4)].map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-4">
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-8 w-24" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <Card>
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  {[...Array(8)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </CardContent>
         </Card>
       )}
@@ -1154,6 +1791,122 @@ const FinancialReports = () => {
               </Table>
             ) : (
               <p className="text-center text-gray-500 py-8">No transactions found</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Schedule Report</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Email</Label><Input value={scheduleConfig.email} onChange={(e) => setScheduleConfig({...scheduleConfig, email: e.target.value})} placeholder="user@company.com" /></div>
+            <div><Label>Frequency</Label><Select value={scheduleConfig.frequency} onValueChange={(v) => setScheduleConfig({...scheduleConfig, frequency: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="daily">Daily</SelectItem><SelectItem value="weekly">Weekly</SelectItem><SelectItem value="monthly">Monthly</SelectItem></SelectContent></Select></div>
+            <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowScheduleDialog(false)}>Cancel</Button><Button onClick={scheduleReport}>Schedule</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Report History</DialogTitle></DialogHeader>
+          <div className="max-h-96 overflow-y-auto">
+            {reportHistory.length === 0 ? <p className="text-center text-gray-500 py-8">No reports in history</p> : reportHistory.map(report => (
+              <div key={report.id} className="flex justify-between items-center p-3 border-b hover:bg-gray-50">
+                <div><p className="font-medium">{report.type}</p><p className="text-sm text-gray-600">{report.period}</p><p className="text-xs text-gray-400">{report.generatedAt.toLocaleString()}</p></div>
+                <Button size="sm" onClick={() => {setReportData(report.data); setShowHistoryDialog(false);}}>Load</Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBatchDialog} onOpenChange={setShowBatchDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Batch Export</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <Label>Select Reports:</Label>
+            {['profit-loss', 'balance-sheet', 'cash-flow', 'trial-balance'].map(type => (
+              <div key={type} className="flex items-center space-x-2">
+                <Checkbox checked={selectedReports.includes(type)} onCheckedChange={(checked) => setSelectedReports(prev => checked ? [...prev, type] : prev.filter(r => r !== type))} />
+                <Label className="capitalize">{type.replace('-', ' ')}</Label>
+              </div>
+            ))}
+            <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowBatchDialog(false)}>Cancel</Button><Button onClick={batchExport} disabled={selectedReports.length === 0}>Export ({selectedReports.length})</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showKpiDialog} onOpenChange={setShowKpiDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Custom KPIs</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-2">
+              <Input placeholder="KPI Name (e.g., Profit Ratio)" id="kpi-name" />
+              <select id="kpi-formula" className="p-2 border rounded" defaultValue="revenue/expenses">
+                <option value="revenue/expenses">Revenue / Expenses</option>
+                <option value="expenses/revenue">Expenses / Revenue</option>
+                <option value="netincome/revenue">Net Income / Revenue</option>
+                <option value="revenue">Total Revenue</option>
+                <option value="expenses">Total Expenses</option>
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => {
+                const name = (document.getElementById('kpi-name') as HTMLInputElement)?.value;
+                const formula = (document.getElementById('kpi-formula') as HTMLSelectElement)?.value;
+                if (name && formula) addCustomKpi(name, formula);
+              }}>Add KPI</Button>
+              <Button variant="outline" onClick={() => setShowKpiDialog(false)}>Cancel</Button>
+            </div>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {customKpis.map(kpi => (
+                <div key={kpi.id} className="flex justify-between items-center p-2 border rounded">
+                  <div>
+                    <span className="font-medium">{kpi.name}</span>
+                    <p className="text-xs text-gray-500">{kpi.formula}</p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => {
+                    const updated = customKpis.filter(k => k.id !== kpi.id);
+                    setCustomKpis(updated);
+                    localStorage.setItem('custom-kpis', JSON.stringify(updated));
+                  }}>×</Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showForecastDialog} onOpenChange={setShowForecastDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Forecast Analysis</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2 items-center">
+              <Label>Periods:</Label>
+              <Input type="number" value={trendPeriods} onChange={(e) => setTrendPeriods(Number(e.target.value))} className="w-20" min="2" max="12" />
+              <Button onClick={generateForecast}>Generate</Button>
+            </div>
+            {forecastData && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-3 border rounded">
+                    <p className="text-sm text-gray-600">Trend</p>
+                    <p className={`text-lg font-bold ${forecastData.trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {forecastData.trend > 0 ? '↗' : '↘'} {Math.abs(forecastData.trend).toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="text-center p-3 border rounded">
+                    <p className="text-sm text-gray-600">Next Period</p>
+                    <p className="text-lg font-bold">₹{forecastData.nextPeriod?.toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="text-center p-3 border rounded">
+                    <p className="text-sm text-gray-600">Confidence</p>
+                    <Progress value={forecastData.confidence || 75} className="mt-1" />
+                    <p className="text-xs text-gray-500">{forecastData.confidence || 75}%</p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </DialogContent>

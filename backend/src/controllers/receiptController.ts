@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Receipt from '../models/Receipt';
-import Invoice from '../models/Invoice';
+import { Invoice } from '../models/Finance';
 import { logger } from '../utils/logger';
 import { body, param, validationResult } from 'express-validator';
 import mongoose from 'mongoose';

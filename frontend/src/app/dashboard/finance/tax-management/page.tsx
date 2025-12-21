@@ -83,9 +83,9 @@ export default function TaxManagementPage() {
         taxAPI.getTaxLiabilities()
       ]);
 
-      if (liabilitiesResponse.success) {
-        setTaxRecords(liabilitiesResponse.data?.records || []);
-        const data = liabilitiesResponse.data;
+      if ((liabilitiesResponse as any).success) {
+        setTaxRecords((liabilitiesResponse as any).data?.records || []);
+        const data = (liabilitiesResponse as any).data;
         if (data?.summary) {
           setStats({
             totalTax: data.summary.totalTax || 0,
@@ -210,11 +210,11 @@ export default function TaxManagementPage() {
         parseFloat(tdsRate)
       );
 
-      if (response.success) {
-        setTdsResult(response.data);
+      if ((response as any).success) {
+        setTdsResult((response as any).data);
         toast({
           title: 'TDS Calculated',
-          description: `TDS Amount: ₹${response.data.tdsAmount.toLocaleString()}`,
+          description: `TDS Amount: ₹${(response as any).data.tdsAmount.toLocaleString()}`,
         });
       }
     } catch (error: any) {
@@ -234,11 +234,11 @@ export default function TaxManagementPage() {
         incomeTaxDeductions ? parseFloat(incomeTaxDeductions) : undefined
       );
 
-      if (response.success) {
-        setIncomeTaxResult(response.data);
+      if ((response as any).success) {
+        setIncomeTaxResult((response as any).data);
         toast({
           title: 'Income Tax Calculated',
-          description: `Tax Amount: ₹${response.data.calculatedTax.toLocaleString()}`,
+          description: `Tax Amount: ₹${(response as any).data.calculatedTax.toLocaleString()}`,
         });
       }
     } catch (error: any) {

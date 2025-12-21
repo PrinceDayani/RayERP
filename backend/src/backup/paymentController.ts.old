@@ -1,0 +1,480 @@
+import { Request, Response } from 'express';
+import mongoose from 'mongoose';
+import Payment from '../models/Payment';
+import Invoice from '../models/Invoice';
+import JournalEntry from '../models/JournalEntry';
+import Account from '../models/ChartOfAccount';
+
+export const createPayment = async (req: Request, res: Response) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
+    
+    // Validate allocations
+    if (req.body.allocations?.length) {
+      let totalAllocated = 0;
+      for (const alloc of req.body.allocations) {
+        const invoice = await Invoice.findById(alloc.invoiceId).session(session);
+        if (!invoice) throw new Error(`Invoice ${alloc.invoiceId} not found`);
+        const outstanding = invoice.totalAmount - (invoice.paidAmount || 0);
+        if (alloc.amount > outstanding) throw new Error(`Payment exceeds outstanding amount for invoice ${invoice.invoiceNumber}`);
+        totalAllocated += alloc.amount;
+      }
+      if (totalAllocated > req.body.totalAmount) throw new Error('Total allocation exceeds payment amount');
+    }
+    
+    const payment = new Payment({ ...req.body, createdBy: req.user.id });
+    await payment.save({ session });
+
+    // Update invoices
+    if (payment.allocations?.length) {
+      for (const alloc of payment.allocations) {
+        const invoice = await Invoice.findById(alloc.invoiceId).session(session);
+        if (invoice) {
+          invoice.paidAmount = (invoice.paidAmount || 0) + alloc.amount;
+          invoice.status = invoice.paidAmount >= invoice.totalAmount ? 'PAID' : 'PARTIALLY_PAID';
+          await invoice.save({ session });
+        }
+      }
+    }
+
+    // Auto-create journal entry for the payment
+    if (payment.accountId) {
+      const paymentAccount = await Account.findById(payment.accountId).session(session);
+      
+      if (paymentAccount) {
+        const jeLines = [];
+        
+        // Debit: Selected payment account
+        jeLines.push({
+          account: paymentAccount._id,
+          debit: payment.baseAmount,
+          credit: 0,
+          description: `Payment received from ${payment.customerName}`
+        });
+        
+        if (payment.allocations?.length) {
+          // Credit: Accounts receivable for each invoice
+          const receivableAccount = await Account.findOne({ code: '1200' }).session(session);
+          if (receivableAccount) {
+            for (const alloc of payment.allocations) {
+              const invoice = await Invoice.findById(alloc.invoiceId).session(session);
+              jeLines.push({
+                account: receivableAccount._id,
+                debit: 0,
+                credit: alloc.amount,
+                description: `Payment against invoice ${invoice?.invoiceNumber || alloc.invoiceId}`,
+                reference: invoice?.invoiceNumber
+              });
+            }
+          }
+        } else {
+          // Credit: General accounts receivable
+          const receivableAccount = await Account.findOne({ code: '1200' }).session(session);
+          if (receivableAccount) {
+            jeLines.push({
+              account: receivableAccount._id,
+              debit: 0,
+              credit: payment.baseAmount,
+              description: `Unallocated payment from ${payment.customerName}`
+            });
+          }
+        }
+        
+        if (jeLines.length >= 2) {
+          const je = new JournalEntry({
+            entryDate: payment.paymentDate,
+            description: `Payment received - ${payment.paymentNumber}`,
+            reference: payment.paymentNumber,
+            lines: jeLines,
+            totalDebit: payment.baseAmount,
+            totalCredit: payment.baseAmount,
+            status: 'POSTED',
+            createdBy: req.user.id
+          });
+          await je.save({ session });
+          
+          payment.journalEntryId = je._id as mongoose.Types.ObjectId;
+          await payment.save({ session });
+        }
+      }
+    }
+    
+    await session.commitTransaction();
+    res.status(201).json({ success: true, data: payment });
+  } catch (error: any) {
+    await session.abortTransaction();
+    res.status(400).json({ success: false, message: error.message });
+  } finally {
+    session.endSession();
+  }
+};
+
+export const getPayments = async (req: Request, res: Response) => {
+  try {
+    const { page = 1, limit = 10, status, projectId } = req.query;
+    const filter: any = {};
+    if (status) filter.status = status;
+    if (projectId) filter.projectId = projectId;
+
+    const payments = await Payment.find(filter)
+      .populate('customerId', 'name email')
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(Number(limit) * 1)
+      .skip((Number(page) - 1) * Number(limit))
+      .lean();
+
+    const total = await Payment.countDocuments(filter);
+    
+    res.json({ 
+      success: true, 
+      data: payments,
+      pagination: { page: Number(page), limit: Number(limit), total }
+    });
+  } catch (error: any) {
+    console.error('Payment fetch error:', error.message, error.stack);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch payments' });
+  }
+};
+
+export const getPaymentById = async (req: Request, res: Response) => {
+  try {
+    const payment = await Payment.findById(req.params.id)
+      .populate('invoiceIds', 'invoiceNumber totalAmount')
+      .populate('customerId', 'name email')
+      .populate('projectId', 'name')
+      .populate('allocations.invoiceId', 'invoiceNumber')
+      .populate('allocations.accountId', 'name code')
+      .populate('createdBy', 'name email')
+      .lean();
+    
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Payment not found' });
+    }
+    res.json({ success: true, data: payment });
+  } catch (error: any) {
+    console.error('Payment fetch by ID error:', error.message, error.stack);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch payment' });
+  }
+};
+
+export const updatePayment = async (req: Request, res: Response) => {
+  try {
+    const payment = await Payment.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    res.json({ success: true, data: payment });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deletePayment = async (req: Request, res: Response) => {
+  try {
+    const payment = await Payment.findByIdAndDelete(req.params.id);
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    res.json({ success: true, message: 'Payment deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updatePaymentStatus = async (req: Request, res: Response) => {
+  try {
+    const { status } = req.body;
+    const payment = await Payment.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    res.json({ success: true, data: payment });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const approvePayment = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
+    const payment = await Payment.findByIdAndUpdate(req.params.id, {
+      approvalStatus: 'APPROVED',
+      approvedBy: req.user.id,
+      approvedAt: new Date(),
+      status: 'APPROVED'
+    }, { new: true });
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    res.json({ success: true, data: payment });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const processRefund = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
+    const { amount, reason } = req.body;
+    const payment = await Payment.findByIdAndUpdate(req.params.id, {
+      status: 'REFUNDED',
+      refund: { amount, reason, refundDate: new Date(), refundedBy: req.user.id }
+    }, { new: true });
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    res.json({ success: true, data: payment });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const raiseDispute = async (req: Request, res: Response) => {
+  try {
+    const { reason } = req.body;
+    const payment = await Payment.findByIdAndUpdate(req.params.id, {
+      status: 'DISPUTED',
+      dispute: { reason, status: 'OPEN', raisedDate: new Date() }
+    }, { new: true });
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    res.json({ success: true, data: payment });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const reconcilePayment = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
+    const { bankStatementId } = req.body;
+    const payment = await Payment.findByIdAndUpdate(req.params.id, {
+      'reconciliation.status': 'RECONCILED',
+      'reconciliation.reconciledDate': new Date(),
+      'reconciliation.reconciledBy': req.user.id,
+      'reconciliation.bankStatementId': bankStatementId
+    }, { new: true });
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    res.json({ success: true, data: payment });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createJournalEntry = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
+    const payment = await Payment.findById(req.params.id);
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    if (payment.journalEntryId) return res.status(400).json({ success: false, message: 'Journal entry already exists' });
+    
+    // Get appropriate accounts based on payment method
+    const accountMap: Record<string, string> = {
+      CASH: '1010', CHEQUE: '1020', BANK_TRANSFER: '1030', UPI: '1030',
+      CARD: '1040', NEFT: '1030', RTGS: '1030', WALLET: '1050'
+    };
+    const accountCode = accountMap[payment.paymentMethod] || '1010';
+    const paymentAccount = await Account.findOne({ code: accountCode });
+    const receivableAccount = await Account.findOne({ code: '1200' });
+    
+    if (!paymentAccount || !receivableAccount) throw new Error('Required accounts not found');
+    
+    const je = new JournalEntry({
+      entryDate: payment.paymentDate,
+      description: `Payment received - ${payment.paymentNumber}`,
+      reference: payment.paymentNumber,
+      lines: [
+        { account: paymentAccount._id, debit: payment.baseAmount, credit: 0, description: `${payment.paymentMethod} received` },
+        { account: receivableAccount._id, debit: 0, credit: payment.baseAmount, description: 'Accounts receivable' }
+      ],
+      totalDebit: payment.baseAmount,
+      totalCredit: payment.baseAmount,
+      status: 'POSTED',
+      createdBy: req.user.id
+    });
+    await je.save();
+    
+    payment.journalEntryId = je._id as mongoose.Types.ObjectId;
+    await payment.save();
+    
+    res.json({ success: true, data: { payment, journalEntry: je } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getPaymentAnalytics = async (req: Request, res: Response) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const filter: any = {};
+    if (startDate && endDate) {
+      filter.paymentDate = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
+    }
+    
+    const [statusBreakdown, methodBreakdown, totalStats] = await Promise.all([
+      Payment.aggregate([
+        { $match: filter },
+        { $group: { _id: '$status', count: { $sum: 1 }, totalAmount: { $sum: '$baseAmount' }, avgAmount: { $avg: '$baseAmount' } }},
+        { $sort: { totalAmount: -1 } }
+      ]),
+      Payment.aggregate([
+        { $match: filter },
+        { $group: { _id: '$paymentMethod', count: { $sum: 1 }, total: { $sum: '$baseAmount' } }}
+      ]),
+      Payment.aggregate([
+        { $match: filter },
+        { $group: { _id: null, totalPayments: { $sum: 1 }, totalAmount: { $sum: '$baseAmount' }, avgAmount: { $avg: '$baseAmount' } }}
+      ])
+    ]);
+    
+    res.json({ success: true, data: { statusBreakdown, methodBreakdown, totalStats: totalStats[0] || {} } });
+  } catch (error: any) {
+    console.error('Payment analytics error:', error.message, error.stack);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch analytics' });
+  }
+};
+
+export const batchPayments = async (req: Request, res: Response) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
+    const { payments } = req.body;
+    if (!Array.isArray(payments) || !payments.length) throw new Error('Payments array required');
+    
+    const created = [];
+    for (const paymentData of payments) {
+      const payment = new Payment({ ...paymentData, createdBy: req.user.id });
+      await payment.save({ session });
+      
+      if (payment.allocations?.length) {
+        for (const alloc of payment.allocations) {
+          const invoice = await Invoice.findById(alloc.invoiceId).session(session);
+          if (invoice) {
+            invoice.paidAmount = (invoice.paidAmount || 0) + alloc.amount;
+            invoice.status = invoice.paidAmount >= invoice.totalAmount ? 'PAID' : 'PARTIALLY_PAID';
+            await invoice.save({ session });
+          }
+        }
+      }
+      created.push(payment);
+    }
+    
+    await session.commitTransaction();
+    res.status(201).json({ success: true, data: created, count: created.length });
+  } catch (error: any) {
+    await session.abortTransaction();
+    res.status(400).json({ success: false, message: error.message });
+  } finally {
+    session.endSession();
+  }
+};
+
+export const sendReminder = async (req: Request, res: Response) => {
+  try {
+    const payment = await Payment.findById(req.params.id).populate('customerId', 'name email');
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+    
+    payment.remindersSent = (payment.remindersSent || 0) + 1;
+    payment.lastReminderDate = new Date();
+    await payment.save();
+    
+    // TODO: Integrate email/SMS service
+    res.json({ success: true, message: 'Reminder sent', data: { remindersSent: payment.remindersSent } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const reversePayment = async (req: Request, res: Response) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
+    const { reason } = req.body;
+    const payment = await Payment.findById(req.params.id).session(session);
+    if (!payment) throw new Error('Payment not found');
+    if (payment.status === 'CANCELLED') throw new Error('Payment already cancelled');
+    
+    // Reverse invoice allocations
+    if (payment.allocations?.length) {
+      for (const alloc of payment.allocations) {
+        const invoice = await Invoice.findById(alloc.invoiceId).session(session);
+        if (invoice) {
+          invoice.paidAmount = Math.max(0, (invoice.paidAmount || 0) - alloc.amount);
+          invoice.status = invoice.paidAmount === 0 ? 'UNPAID' : invoice.paidAmount >= invoice.totalAmount ? 'PAID' : 'PARTIALLY_PAID';
+          await invoice.save({ session });
+        }
+      }
+    }
+    
+    payment.status = 'CANCELLED';
+    payment.notes = (payment.notes || '') + `\n[REVERSED: ${reason}]`;
+    await payment.save({ session });
+    
+    await session.commitTransaction();
+    res.json({ success: true, data: payment, message: 'Payment reversed successfully' });
+  } catch (error: any) {
+    await session.abortTransaction();
+    res.status(400).json({ success: false, message: error.message });
+  } finally {
+    session.endSession();
+  }
+};
+
+export const getPaymentAging = async (req: Request, res: Response) => {
+  try {
+    const now = new Date();
+    const aging = await Payment.aggregate([
+      { $match: { status: { $in: ['PENDING_APPROVAL', 'APPROVED'] } } },
+      { $addFields: { daysOld: { $divide: [{ $subtract: [now, '$paymentDate'] }, 86400000] } } },
+      { $bucket: {
+        groupBy: '$daysOld',
+        boundaries: [0, 30, 60, 90, 120],
+        default: '120+',
+        output: { count: { $sum: 1 }, totalAmount: { $sum: '$baseAmount' } }
+      }}
+    ]);
+    res.json({ success: true, data: aging });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const detectDuplicates = async (req: Request, res: Response) => {
+  try {
+    const duplicates = await Payment.aggregate([
+      { $group: {
+        _id: { customerId: '$customerId', totalAmount: '$totalAmount', paymentDate: '$paymentDate', reference: '$reference' },
+        count: { $sum: 1 },
+        payments: { $push: { id: '$_id', paymentNumber: '$paymentNumber' } }
+      }},
+      { $match: { count: { $gt: 1 } } }
+    ]);
+    res.json({ success: true, data: duplicates, count: duplicates.length });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getCashFlow = async (req: Request, res: Response) => {
+  try {
+    const { startDate, endDate, groupBy = 'day' } = req.query;
+    const filter: any = { status: 'COMPLETED' };
+    if (startDate && endDate) {
+      filter.paymentDate = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
+    }
+    
+    const groupFormat: Record<string, any> = {
+      day: { $dateToString: { format: '%Y-%m-%d', date: '$paymentDate' } },
+      week: { $dateToString: { format: '%Y-W%V', date: '$paymentDate' } },
+      month: { $dateToString: { format: '%Y-%m', date: '$paymentDate' } }
+    };
+    
+    const cashFlow = await Payment.aggregate([
+      { $match: filter },
+      { $group: {
+        _id: groupFormat[groupBy as string] || groupFormat.day,
+        totalInflow: { $sum: '$baseAmount' },
+        count: { $sum: 1 }
+      }},
+      { $sort: { _id: 1 } }
+    ]);
+    
+    res.json({ success: true, data: cashFlow });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

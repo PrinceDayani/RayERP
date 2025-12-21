@@ -37,7 +37,7 @@ const performBudgetCheck = async (lines: any[], year: number) => {
     const budget = await GLBudget.findOne({ account: line.account, fiscalYear: year, status: 'APPROVED' });
     if (budget) {
       const entries = await JournalEntry.find({ 'lines.account': line.account, periodYear: year, status: 'POSTED' });
-      const actualAmount = entries.reduce((sum, e) => sum + e.lines.filter(l => l.ChartOfAccount.toString() === line.ChartOfAccount.toString()).reduce((s, l) => s + l.debit - l.credit, 0), 0);
+      const actualAmount = entries.reduce((sum, e) => sum + e.lines.filter(l => l.account.toString() === line.account.toString()).reduce((s, l) => s + l.debit - l.credit, 0), 0);
       const newAmount = actualAmount + (line.debit - line.credit);
       
       const totalBudget = budget.budgetAmount || 0;

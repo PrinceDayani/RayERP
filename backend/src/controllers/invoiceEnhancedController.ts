@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Invoice from '../models/Invoice';
+import { Invoice } from '../models/Finance';
 import InvoiceTemplate from '../models/InvoiceTemplate';
 import { Voucher } from '../models/Voucher';
 import JournalEntry from '../models/JournalEntry';

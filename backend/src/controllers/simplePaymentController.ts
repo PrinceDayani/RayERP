@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Payment from '../models/Payment';
+import { Payment } from '../models/Finance';
 
 export const createPayment = async (req: Request, res: Response) => {
   try {

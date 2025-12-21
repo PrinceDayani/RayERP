@@ -37,9 +37,9 @@ export class ContactHealthChecker {
     try {
       // Test basic database connectivity
       const [totalContacts, activeContacts, customerContacts] = await Promise.all([
-        Contact.countDocuments().timeout(5000),
-        Contact.countDocuments({ status: 'active' }).timeout(5000),
-        Contact.countDocuments({ isCustomer: true }).timeout(5000)
+        Contact.countDocuments().maxTimeMS(5000),
+        Contact.countDocuments({ status: 'active' }).maxTimeMS(5000),
+        Contact.countDocuments({ isCustomer: true }).maxTimeMS(5000)
       ]);
 
       const responseTime = Date.now() - startTime;

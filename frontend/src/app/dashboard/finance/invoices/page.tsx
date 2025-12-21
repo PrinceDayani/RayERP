@@ -1,380 +1,656 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { silentApiClient } from '@/lib/silentApi';
-import { formatCurrency } from '@/lib/currency';
-import { toast } from '@/lib/toast';
-import { Plus, Search, Eye, Edit, DollarSign, BookOpen, CreditCard, FileBarChart, Send, Trash2 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, FileText, CreditCard, Receipt, RefreshCw, BarChart3, Search, Download, Filter, Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import TestButton from '@/components/TestButton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-interface Invoice {
+// Import new components
+import AdvancedFilters from './components/AdvancedFilters';
+import FinanceAnalyticsDashboard from './components/FinanceAnalyticsDashboard';
+import BulkActionsToolbar from './components/BulkActionsToolbar';
+import FinanceRecordActions from './components/FinanceRecordActions';
+import EmptyState from './components/EmptyState';
+import InvoiceForm from './components/InvoiceForm';
+import PaymentForm from './components/PaymentForm';
+
+interface FinanceRecord {
   _id: string;
-  invoiceNumber: string;
+  type: 'payment' | 'invoice';
   partyName: string;
   totalAmount: number;
-  paidAmount: number;
-  balanceAmount: number;
+  currency: string;
   status: string;
-  invoiceDate: string;
-  dueDate: string;
-  journalEntryId?: string;
+  paymentNumber?: string;
+  invoiceNumber?: string;
+  paymentDate?: string;
+  invoiceDate?: string;
+  createdAt: string;
 }
 
-export default function InvoicesPage() {
+export default function EnhancedFinancePage() {
   const router = useRouter();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [activeTab, setActiveTab] = useState<'all' | 'invoices' | 'payments' | 'receipts'>('all');
+  const [records, setRecords] = useState<FinanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState<any>({});
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-
-  const fetchInvoices = async () => {
-    setLoading(true);
-    const response = await silentApiClient.get('/api/invoices');
-    const data = response?.data;
-    setInvoices(Array.isArray(data) ? data : []);
-    setLoading(false);
-  };
-
-  const markAsPaid = async (invoiceId: string) => {
-    console.log('Marking as paid:', invoiceId);
-    try {
-      const response = await silentApiClient.post(`/api/invoices/${invoiceId}/payment`, {
-        amount: invoices.find(inv => inv._id === invoiceId)?.balanceAmount || 0,
-        paymentMethod: 'CASH'
-      });
-      console.log('Mark as paid response:', response);
-      if (response?.success) {
-        toast.success('Invoice marked as paid');
-        fetchInvoices();
-      } else {
-        toast.error('Failed to mark as paid');
-      }
-    } catch (error) {
-      console.error('Mark as paid error:', error);
-      toast.error('Error marking as paid');
-    }
-  };
-
-  const recordPayment = async (invoiceId: string) => {
-    const amount = prompt('Enter payment amount:');
-    if (!amount || isNaN(parseFloat(amount))) return;
-    
-    console.log('Recording payment:', invoiceId, amount);
-    try {
-      const response = await silentApiClient.post(`/api/invoices/${invoiceId}/payment`, { 
-        amount: parseFloat(amount),
-        paymentMethod: 'CASH'
-      });
-      console.log('Record payment response:', response);
-      if (response?.success) {
-        toast.success('Payment recorded');
-        fetchInvoices();
-      } else {
-        toast.error('Failed to record payment');
-      }
-    } catch (error) {
-      console.error('Record payment error:', error);
-      toast.error('Error recording payment');
-    }
-  };
-
-  const sendInvoice = async (invoiceId: string) => {
-    const invoice = invoices.find(inv => inv._id === invoiceId);
-    if (!invoice) return;
-    
-    if (!confirm(`Send invoice ${invoice.invoiceNumber}? This will create a journal entry and cannot be undone.`)) {
-      return;
-    }
-    
-    console.log('Sending invoice:', invoiceId);
-    try {
-      const response = await silentApiClient.post(`/api/invoices/${invoiceId}/send`);
-      console.log('Send invoice response:', response);
-      if (response?.success) {
-        const emailStatus = response.data?.emailStatus;
-        const emailMsg = emailStatus === 'sent' ? ' Email sent!' : 
-                        emailStatus === 'failed' ? ' (Email failed)' : 
-                        ' (No email address)';
-        toast.success(`Invoice sent successfully!${emailMsg}`);
-        fetchInvoices();
-      } else {
-        toast.error(response?.message || 'Failed to send invoice');
-      }
-    } catch (error: any) {
-      console.error('Send invoice error:', error);
-      const errorMsg = error?.response?.data?.message || 'Error sending invoice';
-      toast.error(errorMsg);
-    }
-  };
-
-  const deleteInvoice = async (invoiceId: string) => {
-    const invoice = invoices.find(inv => inv._id === invoiceId);
-    if (!invoice) return;
-    
-    if (['SENT', 'PAID', 'PARTIALLY_PAID'].includes(invoice.status)) {
-      toast.error('Cannot delete invoice that has been sent or paid');
-      return;
-    }
-    
-    if (!confirm(`Are you sure you want to delete invoice ${invoice.invoiceNumber}? This action cannot be undone.`)) {
-      return;
-    }
-    
-    console.log('Deleting invoice:', invoiceId);
-    try {
-      const response = await silentApiClient.delete(`/api/invoices/${invoiceId}`);
-      console.log('Delete invoice response:', response);
-      if (response?.success) {
-        toast.success('Invoice deleted successfully');
-        fetchInvoices();
-      } else {
-        toast.error('Failed to delete invoice');
-      }
-    } catch (error) {
-      console.error('Delete invoice error:', error);
-      toast.error('Error deleting invoice');
-    }
-  };
-
-
+  const [sortBy, setSortBy] = useState('date');
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchInvoices();
-  }, []);
+    fetchRecords();
+    fetchAnalytics();
+  }, [activeTab, page, filters, searchTerm, statusFilter, sortBy]);
 
-  const filteredInvoices = (Array.isArray(invoices) ? invoices : []).filter(invoice => {
-    const matchesSearch = invoice.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || invoice.status?.toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
-  });
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'sent': return 'bg-blue-100 text-blue-800';
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      case 'overdue': return 'bg-red-100 text-red-800';
-      case 'partially_paid': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const fetchAnalytics = async () => {
+    try {
+      const response = await fetch('/api/finance/analytics');
+      const data = await response.json();
+      if (data.success) {
+        setAnalyticsData(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error);
+      // Set empty analytics if fetch fails
+      setAnalyticsData({
+        revenueData: [],
+        statusBreakdown: [],
+        paymentMethods: [],
+        metrics: {
+          totalRevenue: 0,
+          totalInvoices: 0,
+          totalPayments: 0,
+          overdueAmount: 0,
+          overdueCount: 0,
+          avgPaymentTime: 0,
+        },
+      });
     }
   };
 
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-lg">Loading invoices...</div>
-        </div>
-      </div>
-    );
-  }
+  const fetchRecords = async () => {
+    try {
+      setLoading(true);
+      const type = activeTab === 'invoices' ? 'invoice' : activeTab === 'payments' ? 'payment' : '';
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '20',
+        ...(type && { type }),
+        ...(searchTerm && { search: searchTerm }),
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(filters.dateRange?.from && { startDate: filters.dateRange.from.toISOString() }),
+        ...(filters.dateRange?.to && { endDate: filters.dateRange.to.toISOString() }),
+        ...(filters.amountRange?.min > 0 && { minAmount: filters.amountRange.min.toString() }),
+        ...(filters.amountRange?.max < 1000000 && { maxAmount: filters.amountRange.max.toString() }),
+        ...(filters.statuses?.length > 0 && { statuses: filters.statuses.join(',') }),
+      });
+
+      const response = await fetch(`/api/finance?${params}`);
+      const data = await response.json();
+
+      if (data.success) {
+        let sortedRecords = data.data || [];
+        if (sortBy === 'amount') {
+          sortedRecords = sortedRecords.sort((a: any, b: any) => b.totalAmount - a.totalAmount);
+        } else if (sortBy === 'party') {
+          sortedRecords = sortedRecords.sort((a: any, b: any) => a.partyName.localeCompare(b.partyName));
+        }
+        setRecords(sortedRecords);
+        setTotal(data.pagination?.total || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch records:', error);
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSelectRecord = (id: string) => {
+    const newSelected = new Set(selectedRecords);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedRecords(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRecords.size === records.length) {
+      setSelectedRecords(new Set());
+    } else {
+      setSelectedRecords(new Set(records.map(r => r._id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (confirm(`Delete ${selectedRecords.size} records?`)) {
+      // API call to bulk delete
+      console.log('Bulk delete:', Array.from(selectedRecords));
+      setSelectedRecords(new Set());
+      fetchRecords();
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    // API call to bulk approve
+    console.log('Bulk approve:', Array.from(selectedRecords));
+    setSelectedRecords(new Set());
+    fetchRecords();
+  };
+
+  const handleBulkSend = async () => {
+    // API call to bulk send emails
+    console.log('Bulk send:', Array.from(selectedRecords));
+    setSelectedRecords(new Set());
+  };
+
+  const handleRecordPayment = (invoiceId: string) => {
+    setSelectedInvoiceForPayment(invoiceId);
+    setShowPaymentForm(true);
+  };
+
+  const handleViewLedger = async (recordId: string, recordType: string) => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const endpoint = recordType === 'invoice' ? 'invoices' : 'payments';
+      const response = await fetch(`${API_URL}/api/finance/${endpoint}/${recordId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const accountId = data.data?.accountId || data.data?.account?._id;
+        if (accountId) {
+          router.push(`/dashboard/finance/account-ledger/${accountId}?highlight=${recordId}`);
+        } else {
+          router.push(`/dashboard/finance/account-ledger`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch record:', error);
+      router.push(`/dashboard/finance/account-ledger`);
+    }
+  };
+
+  const handleApprove = async (recordId: string, recordType: string) => {
+    if (!confirm('Approve this record?')) return;
+    try {
+      const token = localStorage.getItem('auth-token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const endpoint = recordType === 'invoice' ? 'invoices' : 'payments';
+      const response = await fetch(`${API_URL}/api/finance/${endpoint}/${recordId}/approve`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+      });
+      if (response.ok) {
+        alert('Record approved successfully');
+        fetchRecords();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to approve');
+      }
+    } catch (error) {
+      console.error('Failed to approve:', error);
+      alert('Failed to approve record');
+    }
+  };
+
+  const handleMarkPaid = async (invoiceId: string) => {
+    if (!confirm('Mark this invoice as paid?')) return;
+    try {
+      const token = localStorage.getItem('auth-token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/finance/invoices/${invoiceId}/mark-paid`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+      });
+      if (response.ok) {
+        alert('Invoice marked as paid');
+        fetchRecords();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to mark as paid');
+      }
+    } catch (error) {
+      console.error('Failed to mark as paid:', error);
+      alert('Failed to mark invoice as paid');
+    }
+  };
+
+  const handleSendEmail = async (recordId: string, recordType: string) => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const endpoint = recordType === 'invoice' ? 'invoices' : 'payments';
+      const response = await fetch(`${API_URL}/api/finance/${endpoint}/${recordId}/send`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+      });
+      if (response.ok) {
+        alert('Email sent successfully');
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to send email');
+      }
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      alert('Failed to send email');
+    }
+  };
+
+  const handleDelete = async (recordId: string, recordType: string) => {
+    if (!confirm('Delete this record? This action cannot be undone.')) return;
+    try {
+      const token = localStorage.getItem('auth-token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const endpoint = recordType === 'invoice' ? 'invoices' : 'payments';
+      const response = await fetch(`${API_URL}/api/finance/${endpoint}/${recordId}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+      });
+      if (response.ok) {
+        alert('Record deleted successfully');
+        fetchRecords();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to delete');
+      }
+    } catch (error) {
+      console.error('Failed to delete:', error);
+      alert('Failed to delete record');
+    }
+  };
+
+  const handleInvoiceSubmit = async (data: any) => {
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem('auth-token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/finance/invoices`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      if (response.ok) {
+        setShowInvoiceForm(false);
+        fetchRecords();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to create invoice');
+      }
+    } catch (error) {
+      console.error('Failed to create invoice:', error);
+      alert('Failed to create invoice');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePaymentSubmit = async (data: any) => {
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem('auth-token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/finance/payments`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      if (response.ok) {
+        setShowPaymentForm(false);
+        fetchRecords();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to create payment');
+      }
+    } catch (error) {
+      console.error('Failed to create payment:', error);
+      alert('Failed to create payment');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      DRAFT: 'bg-gray-500',
+      PENDING_APPROVAL: 'bg-yellow-500',
+      APPROVED: 'bg-green-500',
+      SENT: 'bg-blue-500',
+      PAID: 'bg-green-600',
+      PARTIALLY_PAID: 'bg-orange-500',
+      OVERDUE: 'bg-red-500',
+      CANCELLED: 'bg-gray-600',
+      COMPLETED: 'bg-green-700',
+    };
+    return colors[status] || 'bg-gray-400';
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const formatCurrency = (amount: number, currency: string = 'INR') => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency,
+    }).format(amount);
+  };
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Invoices</h1>
-          <p className="text-gray-600 mt-1">Manage your sales invoices and track payments</p>
+          <h1 className="text-3xl font-bold">Finance Management</h1>
+          <p className="text-muted-foreground">Unified invoices, payments, and receipts</p>
         </div>
         <div className="flex gap-2">
-          <TestButton />
-          <Button onClick={() => router.push('/dashboard/finance/invoices/create')} className="bg-blue-600 hover:bg-blue-700 shadow-lg">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Invoice
+          <Button variant="outline" onClick={() => router.push('/dashboard/finance/invoices/analytics')}>
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Analytics
+          </Button>
+          <Button variant="outline" onClick={() => fetchRecords()}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+          <Button onClick={() => setShowInvoiceForm(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Invoice
+          </Button>
+          <Button onClick={() => setShowPaymentForm(true)} variant="default">
+            <CreditCard className="mr-2 h-4 w-4" />
+            New Payment
           </Button>
         </div>
       </div>
 
-      <Card className="mb-6 shadow-sm">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Total Revenue</CardDescription>
+            <CardTitle className="text-2xl">{formatCurrency(analyticsData?.metrics?.totalRevenue || 0)}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Total Invoices</CardDescription>
+            <CardTitle className="text-2xl">{analyticsData?.metrics?.totalInvoices || 0}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Overdue</CardDescription>
+            <CardTitle className="text-2xl text-orange-600">{formatCurrency(analyticsData?.metrics?.overdueAmount || 0)}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Avg Payment Time</CardDescription>
+            <CardTitle className="text-2xl">{analyticsData?.metrics?.avgPaymentTime || 0} days</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Search & Filters */}
+      <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by invoice number or customer name..."
+                  placeholder="Search by party name, invoice number..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10"
+                  className="pl-10"
                 />
               </div>
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px]"
-            >
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="sent">Sent</option>
-              <option value="paid">Paid</option>
-              <option value="partially_paid">Partially Paid</option>
-              <option value="overdue">Overdue</option>
-            </select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="SENT">Sent</SelectItem>
+                <SelectItem value="PAID">Paid</SelectItem>
+                <SelectItem value="OVERDUE">Overdue</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Date</SelectItem>
+                <SelectItem value="amount">Amount</SelectItem>
+                <SelectItem value="party">Party Name</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => { setSearchTerm(''); setStatusFilter('all'); setSortBy('date'); }}>
+              Clear
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
-        <CardHeader className="bg-gray-50 border-b">
-          <CardTitle className="text-lg font-semibold text-gray-900">
-            Invoice List ({filteredInvoices.length})
-          </CardTitle>
+      {/* Advanced Filters */}
+      <AdvancedFilters onFilterChange={setFilters} customers={[]} />
+
+      {/* Main Content */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Finance Records</CardTitle>
+          <CardDescription>View and manage all financial transactions</CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredInvoices.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="mb-6">
-                <div className="bg-blue-50 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-4">
-                  <DollarSign className="h-10 w-10 text-blue-500" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No invoices found</h3>
-                <p className="text-gray-500 mb-8 max-w-md mx-auto">Create your first invoice to start tracking sales and revenue</p>
-              </div>
-              <Button 
-                onClick={() => router.push('/dashboard/finance/invoices/create')}
-                className="bg-blue-600 hover:bg-blue-700 shadow-lg px-6 py-3"
-                size="lg"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Create Your First Invoice
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Invoice #</th>
-                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Customer</th>
-                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Date</th>
-                    <th className="text-left py-4 px-4 font-semibold text-gray-700">Due Date</th>
-                    <th className="text-right py-4 px-4 font-semibold text-gray-700">Amount</th>
-                    <th className="text-right py-4 px-4 font-semibold text-gray-700">Paid</th>
-                    <th className="text-right py-4 px-4 font-semibold text-gray-700">Balance</th>
-                    <th className="text-center py-4 px-4 font-semibold text-gray-700">Status</th>
-                    <th className="text-center py-4 px-4 font-semibold text-gray-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredInvoices.map((invoice) => (
-                    <tr key={invoice._id} className="border-b border-gray-100 hover:bg-blue-50 transition-colors">
-                      <td className="py-4 px-4">
-                        <span className="font-semibold text-blue-600">{invoice.invoiceNumber}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="font-medium text-gray-900">{invoice.partyName}</span>
-                      </td>
-                      <td className="py-4 px-4 text-gray-600">
-                        {new Date(invoice.invoiceDate).toLocaleDateString()}
-                      </td>
-                      <td className="py-4 px-4 text-gray-600">
-                        {new Date(invoice.dueDate).toLocaleDateString()}
-                      </td>
-                      <td className="py-4 px-4 text-right font-semibold">{formatCurrency(invoice.totalAmount)}</td>
-                      <td className="py-4 px-4 text-right text-green-600 font-medium">{formatCurrency(invoice.paidAmount)}</td>
-                      <td className="py-4 px-4 text-right font-medium">
-                        <span className={invoice.balanceAmount > 0 ? 'text-red-600' : 'text-gray-500'}>
-                          {formatCurrency(invoice.balanceAmount)}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <Badge className={`${getStatusColor(invoice.status)} font-medium`}>
-                          {invoice.status.replace('_', ' ')}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <div className="flex gap-1 justify-center">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            title="View Details"
-                            onClick={() => router.push(`/dashboard/finance/invoices/${invoice._id}/view`)}
-                            className="hover:bg-blue-100 hover:text-blue-600"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            title="Edit Invoice"
-                            onClick={() => router.push(`/dashboard/finance/invoices/${invoice._id}/edit`)}
-                            disabled={invoice.status === 'PAID'}
-                            className="hover:bg-green-100 hover:text-green-600 disabled:opacity-50"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          {invoice.status === 'DRAFT' && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              title="Send Invoice (Creates Journal Entry)"
-                              onClick={() => sendInvoice(invoice._id)}
-                              className="hover:bg-orange-100 hover:text-orange-600"
-                            >
-                              <Send className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {invoice.journalEntryId && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              title="View Journal Entry"
-                              onClick={() => router.push(`/dashboard/finance/journal-entry/${invoice.journalEntryId}`)}
-                              className="hover:bg-purple-100 hover:text-purple-600"
-                            >
-                              <BookOpen className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {invoice.status !== 'PAID' && invoice.balanceAmount > 0 && (
-                            <>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                title="Record Payment"
-                                onClick={() => recordPayment(invoice._id)}
-                                className="hover:bg-yellow-100 hover:text-yellow-600"
-                              >
-                                <CreditCard className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                title="Mark as Paid"
-                                onClick={() => markAsPaid(invoice._id)}
-                                className="hover:bg-green-100 hover:text-green-600"
-                              >
-                                <DollarSign className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                          {invoice.status === 'DRAFT' && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              title="Delete Invoice"
-                              onClick={() => deleteInvoice(invoice._id)}
-                              className="hover:bg-red-100 hover:text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="all">All Records</TabsTrigger>
+              <TabsTrigger value="invoices">
+                <FileText className="mr-2 h-4 w-4" />
+                Invoices
+              </TabsTrigger>
+              <TabsTrigger value="payments">
+                <CreditCard className="mr-2 h-4 w-4" />
+                Payments
+              </TabsTrigger>
+              <TabsTrigger value="receipts">
+                <Receipt className="mr-2 h-4 w-4" />
+                Receipts
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value={activeTab} className="mt-0">
+              {loading ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : records.length === 0 ? (
+                <EmptyState type={activeTab} onCreateNew={() => setShowInvoiceForm(true)} />
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectedRecords.size === records.length}
+                            onCheckedChange={toggleSelectAll}
+                          />
+                        </TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Number</TableHead>
+                        <TableHead>Party</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {records.map((record) => (
+                        <TableRow key={record._id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRecords.has(record._id)}
+                              onCheckedChange={() => toggleSelectRecord(record._id)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {record.type === 'invoice' ? <FileText className="mr-1 h-3 w-3" /> : <CreditCard className="mr-1 h-3 w-3" />}
+                              {record.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {record.invoiceNumber || record.paymentNumber}
+                          </TableCell>
+                          <TableCell>{record.partyName}</TableCell>
+                          <TableCell>
+                            {formatDate(record.invoiceDate || record.paymentDate || record.createdAt)}
+                          </TableCell>
+                          <TableCell>{formatCurrency(record.totalAmount, record.currency)}</TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(record.status)}>{record.status}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <FinanceRecordActions
+                              recordId={record._id}
+                              recordType={record.type}
+                              status={record.status}
+                              onView={() => router.push(`/dashboard/finance/invoices/${record._id}`)}
+                              onDownloadPDF={() => window.open(`/api/finance/${record.type === 'invoice' ? 'invoices' : 'payments'}/${record._id}/pdf`, '_blank')}
+                              onSendEmail={() => handleSendEmail(record._id, record.type)}
+                              onDuplicate={() => console.log('Duplicate', record._id)}
+                              onMarkPaid={record.type === 'invoice' ? () => handleMarkPaid(record._id) : undefined}
+                              onRecordPayment={record.type === 'invoice' ? () => handleRecordPayment(record._id) : undefined}
+                              onViewLedger={() => handleViewLedger(record._id, record.type)}
+                              onApprove={() => handleApprove(record._id, record.type)}
+                              onEdit={() => router.push(`/dashboard/finance/invoices/${record._id}/edit`)}
+                              onDelete={() => handleDelete(record._id, record.type)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Pagination */}
+                  <div className="flex justify-between items-center mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Showing {records.length > 0 ? (page - 1) * 20 + 1 : 0} to {Math.min(page * 20, total)} of {total} records
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                      >
+                        Previous
+                      </Button>
+                      <span className="flex items-center px-3 text-sm">Page {page}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => p + 1)}
+                        disabled={page * 20 >= total}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
+
+      {/* Bulk Actions Toolbar */}
+      <BulkActionsToolbar
+        selectedCount={selectedRecords.size}
+        onBulkDelete={handleBulkDelete}
+        onBulkApprove={handleBulkApprove}
+        onBulkSend={handleBulkSend}
+        onClearSelection={() => setSelectedRecords(new Set())}
+      />
+
+      {/* Invoice Form Dialog */}
+      <Dialog open={showInvoiceForm} onOpenChange={setShowInvoiceForm}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Invoice</DialogTitle>
+          </DialogHeader>
+          <InvoiceForm
+            onSubmit={handleInvoiceSubmit}
+            onCancel={() => setShowInvoiceForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Form Dialog */}
+      <Dialog open={showPaymentForm} onOpenChange={setShowPaymentForm}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New Payment</DialogTitle>
+          </DialogHeader>
+          <PaymentForm
+            onSubmit={handlePaymentSubmit}
+            onCancel={() => setShowPaymentForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import Invoice from '../models/Invoice';
+import { Invoice } from '../models/Finance';
 import JournalEntry from '../models/JournalEntry';
 import AllocationRule from '../models/AllocationRule';
 

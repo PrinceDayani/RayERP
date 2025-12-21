@@ -66,11 +66,11 @@ export const billsAPI = {
 // ACCOUNTS API
 // ============================================================================
 export const accountsAPI = {
-  getAll: async () => api.get('/accounts'),
-  getById: async (id: string) => api.get(`/accounts/${id}`),
-  create: async (data: any) => api.post('/accounts', data),
-  update: async (id: string, data: any) => api.put(`/accounts/${id}`, data),
-  delete: async (id: string) => api.delete(`/accounts/${id}`),
+  getAll: async (params?: { page?: number; limit?: number }) => api.get('/chart-of-accounts', { params: { limit: 10000, ...params } }),
+  getById: async (id: string) => api.get(`/chart-of-accounts/${id}`),
+  create: async (data: any) => api.post('/chart-of-accounts', data),
+  update: async (id: string, data: any) => api.put(`/chart-of-accounts/${id}`, data),
+  delete: async (id: string) => api.delete(`/chart-of-accounts/${id}`),
 };
 
 // ============================================================================

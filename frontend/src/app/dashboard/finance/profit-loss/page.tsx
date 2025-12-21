@@ -58,7 +58,7 @@ const ProfitLossPage = () => {
           setComparison({
             period1: {
               totalRevenue: plData.data.revenue.total,
-              totalExpenses: plData.data.operatingExpenses.total,
+              totalExpenses: plData.data.expenses.total,
               netIncome: plData.data.netIncome
             },
             period2: plData.data.comparison.previous,
@@ -216,7 +216,7 @@ const ProfitLossPage = () => {
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold text-red-600">₹{profitLossData.operatingExpenses?.total?.toLocaleString()}</div></CardContent>
+                <CardContent><div className="text-2xl font-bold text-red-600">₹{profitLossData.expenses?.total?.toLocaleString()}</div></CardContent>
               </Card>
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Net Income</CardTitle></CardHeader>
@@ -235,10 +235,10 @@ const ProfitLossPage = () => {
               <Card>
                 <CardHeader><CardTitle className="text-green-600">Revenue</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  {profitLossData.revenue?.items?.map((item: any, index: number) => (
-                    <div key={index} className="flex justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer" onClick={() => drillDown(item.accountId, item.account, item.code)}>
-                      <span>{item.account} ({item.code})</span>
-                      <span className="font-medium">₹{item.amount.toLocaleString()}</span>
+                  {profitLossData.revenue?.accounts?.map((item: any, index: number) => (
+                    <div key={index} className="flex justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer" onClick={() => drillDown(item._id, item.name, item.code)}>
+                      <span>{item.name} ({item.code})</span>
+                      <span className="font-medium">₹{item.balance?.toLocaleString()}</span>
                     </div>
                   ))}
                   <hr />
@@ -252,16 +252,16 @@ const ProfitLossPage = () => {
               <Card>
                 <CardHeader><CardTitle className="text-red-600">Expenses</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  {profitLossData.operatingExpenses?.items?.map((item: any, index: number) => (
-                    <div key={index} className="flex justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer" onClick={() => drillDown(item.accountId, item.account, item.code)}>
-                      <span>{item.account} ({item.code})</span>
-                      <span className="font-medium">₹{item.amount.toLocaleString()}</span>
+                  {profitLossData.expenses?.accounts?.map((item: any, index: number) => (
+                    <div key={index} className="flex justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer" onClick={() => drillDown(item._id, item.name, item.code)}>
+                      <span>{item.name} ({item.code})</span>
+                      <span className="font-medium">₹{item.balance?.toLocaleString()}</span>
                     </div>
                   ))}
                   <hr />
                   <div className="flex justify-between font-bold">
                     <span>Total Operating Expenses</span>
-                    <span className="text-red-600">₹{profitLossData.operatingExpenses?.total?.toLocaleString()}</span>
+                    <span className="text-red-600">₹{profitLossData.expenses?.total?.toLocaleString()}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -353,7 +353,7 @@ const ProfitLossPage = () => {
                     </div>
                     <div className="grid grid-cols-5 gap-4 p-3 hover:bg-muted rounded">
                       <div className="font-medium">Expenses</div>
-                      <div className="text-right text-red-600">₹{profitLossData?.operatingExpenses?.total?.toLocaleString()}</div>
+                      <div className="text-right text-red-600">₹{profitLossData?.expenses?.total?.toLocaleString()}</div>
                       <div className="text-right">₹{budgetData.expenses?.toLocaleString()}</div>
                       <div className={`text-right ${budgetData.variance?.expenses <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         ₹{budgetData.variance?.expenses?.toLocaleString()}

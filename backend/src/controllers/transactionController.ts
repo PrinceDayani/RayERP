@@ -88,14 +88,14 @@ export const postTransaction = async (req: Request, res: Response) => {
 
     // Update account balances
     for (const entry of transaction.entries) {
-      const account = await ChartOfAccount.findById(entry.accountId);
+      const account = await Account.findById(entry.accountId);
       if (account) {
-        if (['asset', 'expense'].includes(ChartOfAccount.type)) {
-          ChartOfAccount.balance += entry.debit - entry.credit;
+        if (['asset', 'expense'].includes(account.type)) {
+          account.balance += entry.debit - entry.credit;
         } else {
-          ChartOfAccount.balance += entry.credit - entry.debit;
+          account.balance += entry.credit - entry.debit;
         }
-        await ChartOfAccount.save();
+        await account.save();
       }
     }
 

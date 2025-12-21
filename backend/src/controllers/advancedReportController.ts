@@ -102,11 +102,11 @@ export const getCashFlowStatement = async (req: Request, res: Response) => {
         const account = line.accountId as any;
         const amount = line.debit - line.credit;
         
-        if (ChartOfAccount.type === 'REVENUE' || ChartOfAccount.type === 'EXPENSE') {
+        if (account?.type === 'REVENUE' || account?.type === 'EXPENSE') {
           operating += amount;
-        } else if (ChartOfAccount.subType === 'fixed-asset') {
+        } else if (account?.subType === 'fixed-asset') {
           investing += amount;
-        } else if (ChartOfAccount.type === 'LIABILITY' || ChartOfAccount.type === 'EQUITY') {
+        } else if (account?.type === 'LIABILITY' || account?.type === 'EQUITY') {
           financing += amount;
         }
       });

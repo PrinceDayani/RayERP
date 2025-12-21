@@ -69,18 +69,18 @@ export const convertToIndianMode = async (req: Request, res: Response) => {
     let converted = 0;
 
     for (const account of accounts) {
-      const existingParty = await PartyLedger.findOne({ accountId: ChartOfAccount._id }).session(session);
+      const existingParty = await PartyLedger.findOne({ accountId: account._id }).session(session);
       
-      if (!existingParty && ['asset', 'liability'].includes(ChartOfAccount.type)) {
+      if (!existingParty && ['ASSET', 'LIABILITY'].includes(account.type.toUpperCase())) {
         await PartyLedger.create([{
-          code: ChartOfAccount.code,
-          name: ChartOfAccount.name,
-          accountId: ChartOfAccount._id,
-          currentBalance: ChartOfAccount.balance,
-          openingBalance: ChartOfAccount.openingBalance,
-          balanceType: ChartOfAccount.type === 'asset' ? 'debit' : 'credit',
-          currency: ChartOfAccount.currency || 'INR',
-          isActive: ChartOfAccount.isActive
+          code: account.code,
+          name: account.name,
+          accountId: account._id,
+          currentBalance: account.balance,
+          openingBalance: account.openingBalance,
+          balanceType: account.type.toUpperCase() === 'ASSET' ? 'debit' : 'credit',
+          currency: account.currency || 'INR',
+          isActive: account.isActive
         }], { session });
         converted++;
       }

@@ -37,6 +37,13 @@ export interface Contact {
   companySize?: string;
   annualRevenue?: string;
   
+  // Customer/Vendor flags
+  isCustomer?: boolean;
+  isVendor?: boolean;
+  
+  // Ledger account for customers/vendors
+  ledgerAccountId?: string;
+  
   createdAt?: Date;
   updatedAt?: Date;
 }

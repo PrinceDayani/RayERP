@@ -1,4 +1,4 @@
-import Invoice from '../models/Invoice';
+import { Invoice } from '../models/Finance';
 import { logger } from './logger';
 
 export interface InvoiceHealthStatus {
@@ -41,16 +41,16 @@ export class InvoiceHealthChecker {
         overdueInvoices,
         outstandingResult
       ] = await Promise.all([
-        Invoice.countDocuments().timeout(5000),
-        Invoice.countDocuments({ status: 'PAID' }).timeout(5000),
+        Invoice.countDocuments().maxTimeMS(5000),
+        Invoice.countDocuments({ status: 'PAID' }).maxTimeMS(5000),
         Invoice.countDocuments({
           status: { $in: ['SENT', 'VIEWED', 'PARTIALLY_PAID'] },
           dueDate: { $lt: new Date() },
           balanceAmount: { $gt: 0 }
-        }).timeout(5000),
+        }).maxTimeMS(5000),
         Invoice.aggregate([
           { $group: { _id: null, total: { $sum: '$balanceAmount' } } }
-        ]).timeout(5000)
+        ]).option({ maxTimeMS: 5000 })
       ]);
 
       const totalOutstanding = outstandingResult[0]?.total || 0;

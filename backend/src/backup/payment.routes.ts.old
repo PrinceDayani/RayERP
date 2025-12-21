@@ -15,7 +15,11 @@ import {
   createJournalEntry,
   getPaymentAnalytics,
   batchPayments,
-  sendReminder
+  sendReminder,
+  reversePayment,
+  getPaymentAging,
+  detectDuplicates,
+  getCashFlow
 } from '../controllers/paymentController';
 
 const router = express.Router();
@@ -26,6 +30,9 @@ router.post('/', requireFinanceAccess('payments.create'), createPayment);
 router.post('/batch', requireFinanceAccess('payments.create'), batchPayments);
 router.get('/', requireFinanceAccess('payments.view'), getPayments);
 router.get('/analytics', requireFinanceAccess('payments.view'), getPaymentAnalytics);
+router.get('/aging', requireFinanceAccess('payments.view'), getPaymentAging);
+router.get('/duplicates', requireFinanceAccess('payments.view'), detectDuplicates);
+router.get('/cash-flow', requireFinanceAccess('payments.view'), getCashFlow);
 router.get('/:id', requireFinanceAccess('payments.view'), getPaymentById);
 router.put('/:id', requireFinanceAccess('payments.edit'), updatePayment);
 router.delete('/:id', requireFinanceAccess('payments.delete'), deletePayment);
@@ -36,5 +43,6 @@ router.post('/:id/dispute', requireFinanceAccess('payments.edit'), raiseDispute)
 router.post('/:id/reconcile', requireFinanceAccess('payments.edit'), reconcilePayment);
 router.post('/:id/journal-entry', requireFinanceAccess('payments.create'), createJournalEntry);
 router.post('/:id/reminder', requireFinanceAccess('payments.view'), sendReminder);
+router.post('/:id/reverse', requireFinanceAccess('payments.edit'), reversePayment);
 
 export default router;

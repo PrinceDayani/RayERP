@@ -591,7 +591,7 @@ const JournalEntry = () => {
                         const account = accounts.find(a => a._id === line.accountId);
                         return account ? (
                           <div className="text-xs text-muted-foreground mt-1">
-                            Balance: {formatAmount(account.balance || 0)}
+                            Balance: {formatAmount((account as any).balance || 0)}
                           </div>
                         ) : null;
                       })()}

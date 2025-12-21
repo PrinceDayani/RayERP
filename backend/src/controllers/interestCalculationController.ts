@@ -243,7 +243,7 @@ export const runScheduledCalculations = async (req: Request, res: Response) => {
       if (!account) continue;
 
       const days = Math.ceil((calc.toDate.getTime() - calc.fromDate.getTime()) / (1000 * 60 * 60 * 24));
-      const principal = ChartOfAccount.balance;
+      const principal = account.balance;
       
       let interestAmount = 0;
       if (calc.calculationType === 'simple') {

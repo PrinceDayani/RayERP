@@ -9,13 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useFinanceShortcuts } from '@/hooks/useFinanceShortcuts';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
 
 export default function FinancePage() {
   const router = useRouter();
   const { currency, symbol, formatAmount, formatCompact } = useCurrency();
   const [stats, setStats] = useState({ accounts: 0, entries: 0, vouchers: 0 });
-  
+
   useFinanceShortcuts();
 
   useEffect(() => {
@@ -69,8 +69,7 @@ export default function FinancePage() {
     { title: 'GL Budgets', description: 'Budget tracking & variance analysis', icon: TrendingUp, path: '/dashboard/finance/gl-budgets', color: 'from-teal-500 to-teal-600', badge: 'Available' },
     { title: 'Interest Calculations', description: 'Calculate & post interest entries', icon: Coins, path: '/dashboard/finance/interest', color: 'from-rose-500 to-rose-600', badge: 'Available' },
     { title: 'Project Ledger', description: 'Project-wise financial tracking', icon: Briefcase, path: '/dashboard/finance/project-ledger', color: 'from-purple-500 to-purple-600', badge: 'Available' },
-    { title: 'Payments', description: 'Payment processing & tracking', icon: Wallet, path: '/dashboard/finance/payments', color: 'from-green-500 to-green-600', badge: 'Available' },
-    { title: 'Invoices', description: 'Invoice management', icon: Receipt, path: '/dashboard/finance/invoices', color: 'from-cyan-500 to-cyan-600', badge: 'Available' }
+    { title: 'Finance Management', description: 'Invoices, Payments & Receipts unified', icon: Wallet, path: '/dashboard/finance/invoices', color: 'from-green-500 to-cyan-600', badge: 'Unified', stat: 'All-in-One' }
   ];
 
   const advancedModules = [
@@ -90,7 +89,7 @@ export default function FinancePage() {
   const ModuleCard = ({ module, size = 'normal' }: any) => {
     const Icon = module.icon;
     return (
-      <Card 
+      <Card
         className="group cursor-pointer hover:shadow-xl transition-all duration-300 bg-card border-border overflow-hidden"
         onClick={() => {
           console.log('Navigating to:', module.path);

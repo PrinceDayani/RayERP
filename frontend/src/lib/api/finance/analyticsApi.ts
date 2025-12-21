@@ -4,5 +4,6 @@ export const analyticsApi = {
   getKPIs: () => fetch(`${API_BASE}/api/analytics/kpis`),
   getRevenueTrends: () => fetch(`${API_BASE}/api/analytics/revenue-trends`),
   getProfitability: () => fetch(`${API_BASE}/api/analytics/profitability`),
-  getFinancialHealth: () => fetch(`${API_BASE}/api/analytics/financial-health`)
+  getFinancialHealth: () => fetch(`${API_BASE}/api/analytics/financial-health`),
+  getInvoiceAnalytics: () => fetch(`${API_BASE}/api/finance/invoices/analytics`)
 };

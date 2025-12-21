@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Invoice from '../models/Invoice';
+import { Invoice } from '../models/Finance';
 import { validationResult } from 'express-validator';
 
 interface InvoiceFilter {

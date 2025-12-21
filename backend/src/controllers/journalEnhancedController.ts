@@ -4,6 +4,7 @@ import { generateJournalEntryNumber } from '../utils/journalNumberGenerator';
 import JournalTemplate from '../models/JournalTemplate';
 import AllocationRule from '../models/AllocationRule';
 import Account from '../models/ChartOfAccount';
+import ChartOfAccount from '../models/ChartOfAccount';
 import DepartmentBudget from '../models/DepartmentBudget';
 
 // Recurring Journal Entries

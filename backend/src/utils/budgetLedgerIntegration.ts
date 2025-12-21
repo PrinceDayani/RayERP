@@ -217,8 +217,8 @@ export class BudgetLedgerIntegration {
       if (!account) continue;
 
       // Calculate new balance
-      let newBalance = ChartOfAccount.balance;
-      if (['ASSET', 'EXPENSE'].includes(ChartOfAccount.type)) {
+      let newBalance = account.balance;
+      if (['ASSET', 'EXPENSE'].includes(account.type)) {
         newBalance += line.debit - line.credit;
       } else {
         newBalance += line.credit - line.debit;
@@ -421,7 +421,7 @@ export class BudgetLedgerIntegration {
 
   private static async getAccountName(accountCode: string): Promise<string> {
     const account = await ChartOfAccount.findOne({ code: accountCode });
-    return account ? ChartOfAccount.name : 'Unknown Account';
+    return account ? account.name : 'Unknown Account';
   }
 
   private static async getAccountId(accountCode: string): Promise<mongoose.Types.ObjectId> {
@@ -429,7 +429,7 @@ export class BudgetLedgerIntegration {
     if (!account) {
       throw new Error(`Account with code ${accountCode} not found`);
     }
-    return ChartOfAccount._id;
+    return account._id;
   }
 
   // Generate comprehensive financial report
