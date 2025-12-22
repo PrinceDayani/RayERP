@@ -1199,7 +1199,7 @@ const BalanceSheetPage = () => {
       </Dialog>
 
       <Dialog open={!!selectedJournalEntry} onOpenChange={() => setSelectedJournalEntry(null)}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Journal Entry: {selectedJournalEntry?.entryNumber}</DialogTitle>
           </DialogHeader>
@@ -1210,6 +1210,27 @@ const BalanceSheetPage = () => {
                 <div><span className="font-semibold">Reference:</span> {selectedJournalEntry.reference || 'N/A'}</div>
                 <div className="col-span-2"><span className="font-semibold">Description:</span> {selectedJournalEntry.description}</div>
               </div>
+              
+              {selectedJournalEntry.attachments && selectedJournalEntry.attachments.length > 0 && (
+                <div className="border-t pt-3">
+                  <p className="font-semibold text-sm mb-2">Attachments ({selectedJournalEntry.attachments.length})</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedJournalEntry.attachments.map((attachment: string, idx: number) => (
+                      <a
+                        key={idx}
+                        href={attachment}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 text-sm text-blue-700"
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>Attachment {idx + 1}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <Table>
                 <TableHeader>
                   <TableRow>

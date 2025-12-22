@@ -938,6 +938,7 @@ export const getAccountTransactions = async (req: Request, res: Response) => {
                   entryDate: (entry as any).entryDate,
                   description: (entry as any).description,
                   reference: (entry as any).reference,
+                  attachments: (entry as any).attachments || [],
                   lines: (entry as any).lines.map((line: any) => ({
                     account: accountMap.get(line.account.toString()),
                     debit: line.debit,
