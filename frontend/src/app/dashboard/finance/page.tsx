@@ -69,6 +69,7 @@ function FinancePageContent() {
     ],
     transactions: [
       { title: 'Invoices & Payments', description: 'Unified invoice & payment management', icon: Wallet, path: '/dashboard/finance/invoices', color: 'green', badge: 'Unified' },
+      { title: 'Reference Payments', description: 'Pay against JE references (Tally-style)', icon: FileText, path: '/dashboard/finance/references', color: 'blue', badge: 'New' },
       { title: 'Invoice Analytics', description: 'Invoice performance insights', icon: TrendingUp, path: '/dashboard/finance/invoices/analytics', color: 'blue' },
       { title: 'Bank Reconciliation', description: 'Match bank statements with books', icon: Banknote, path: '/dashboard/finance/bank-reconciliation', color: 'emerald' },
       { title: 'Recurring Entries', description: 'Automate repetitive journal entries', icon: Repeat, path: '/dashboard/finance/recurring-entries', color: 'violet' },

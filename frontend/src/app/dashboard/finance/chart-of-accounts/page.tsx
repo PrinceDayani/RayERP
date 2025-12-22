@@ -19,6 +19,9 @@ import FinanceAccountCreationForm from '@/components/finance/AccountCreationForm
 
 export default function ChartOfAccountsPage() {
   const router = useRouter();
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const editAccountId = searchParams.get('edit');
+  
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -33,6 +36,16 @@ export default function ChartOfAccountsPage() {
     fetchAccounts();
     fetchTemplates();
   }, []);
+
+  useEffect(() => {
+    if (editAccountId && accounts.length > 0) {
+      const account = accounts.find(a => a._id === editAccountId);
+      if (account) {
+        setSelectedAccount(account);
+        setShowEditDialog(true);
+      }
+    }
+  }, [editAccountId, accounts]);
 
   const fetchTemplates = async () => {
     try {

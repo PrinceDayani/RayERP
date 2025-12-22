@@ -1028,21 +1028,20 @@ export const getAccountLedger = async (req: Request, res: Response) => {
     console.log('Query:', JSON.stringify(journalQuery));
 
     const journalEntries = await JournalEntry.find(journalQuery)
+      .populate('lines.account', 'code name type')
+      .populate('createdBy', 'name email')
       .sort({ entryDate: 1, createdAt: 1 })
       .limit(Number(limit))
       .skip((Number(page) - 1) * Number(limit))
       .lean();
       
     console.log('Found', journalEntries.length, 'journal entries');
-    journalEntries.forEach(e => {
-      console.log('Entry:', e.entryNumber, 'Posted:', e.isPosted, 'Date:', e.entryDate);
-    });
 
     // Transform to ledger format with auto-calculated running balance
     let runningBalance = 0;
     const entries = journalEntries.flatMap(entry => {
       return entry.lines
-        .filter((line: any) => line.account.toString() === accountId)
+        .filter((line: any) => line.account._id.toString() === accountId)
         .map((line: any) => {
           // Auto-calculate running balance based on account type
           if (['ASSET', 'EXPENSE'].includes(account.type)) {
@@ -1056,8 +1055,14 @@ export const getAccountLedger = async (req: Request, res: Response) => {
             description: line.description || entry.description,
             reference: entry.reference || entry.entryNumber,
             journalEntryId: {
+              _id: entry._id,
               entryNumber: entry.entryNumber,
-              reference: entry.reference
+              reference: entry.reference,
+              description: entry.description,
+              date: entry.entryDate || entry.date,
+              entries: entry.lines,
+              createdBy: entry.createdBy,
+              status: entry.status
             },
             debit: line.debit,
             credit: line.credit,

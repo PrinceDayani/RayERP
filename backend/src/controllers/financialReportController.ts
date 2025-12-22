@@ -302,16 +302,21 @@ export const getProfitLoss = async (req: Request, res: Response) => {
 
 export const getBalanceSheet = async (req: Request, res: Response) => {
   try {
-    const { asOfDate, compareDate, includeBudget, includeNotes, companyIds } = req.query;
+    const { asOfDate, compareDate, includeBudget, includeNotes, companyIds, accountCodeFrom, accountCodeTo } = req.query;
     const asOf = asOfDate ? new Date(asOfDate as string) : new Date();
 
     // Check cache
-    const cacheKey = getCacheKey('bs', { asOfDate, compareDate, companyIds });
+    const cacheKey = getCacheKey('bs', { asOfDate, compareDate, companyIds, accountCodeFrom, accountCodeTo });
     const cached = getFromCache(cacheKey);
     if (cached) return res.json({ success: true, data: cached, cached: true });
 
     // Multi-company consolidation
     const companyFilter = companyIds ? { companyId: { $in: (companyIds as string).split(',') } } : {};
+    
+    // Account code range filter
+    const accountCodeFilter: any = {};
+    if (accountCodeFrom) accountCodeFilter.$gte = accountCodeFrom;
+    if (accountCodeTo) accountCodeFilter.$lte = accountCodeTo;
 
     // Single aggregation query for current period
     const accountBalances = await Ledger.aggregate([
@@ -332,7 +337,12 @@ export const getBalanceSheet = async (req: Request, res: Response) => {
         }
       },
       { $unwind: '$account' },
-      { $match: { 'account.isActive': true } },
+      { 
+        $match: { 
+          'account.isActive': true,
+          ...(accountCodeFrom || accountCodeTo ? { 'account.code': accountCodeFilter } : {})
+        } 
+      },
       {
         $project: {
           accountId: '$_id',
@@ -900,10 +910,52 @@ export const getAccountTransactions = async (req: Request, res: Response) => {
       query.date = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
     }
     
-    const transactions = await Ledger.find(query).sort({ date: -1 }).limit(100);
+    const transactions = await Ledger.find(query)
+      .sort({ date: -1 })
+      .limit(100)
+      .lean();
     const account = await ChartOfAccount.findById(accountId);
     
-    res.json({ success: true, data: { account, transactions } });
+    // Enrich transactions with journal entry details
+    const JournalEntry = mongoose.model('JournalEntry');
+    const enrichedTransactions = await Promise.all(
+      transactions.map(async (txn: any) => {
+        if (txn.journalEntryId) {
+          try {
+            const entry = await JournalEntry.findById(txn.journalEntryId).lean();
+            if (entry) {
+              const lineAccounts = await ChartOfAccount.find({
+                _id: { $in: (entry as any).lines.map((l: any) => l.account) }
+              }).lean();
+              
+              const accountMap = new Map(lineAccounts.map(a => [a._id.toString(), a]));
+              
+              return {
+                ...txn,
+                journalEntry: {
+                  _id: entry._id,
+                  entryNumber: (entry as any).entryNumber,
+                  entryDate: (entry as any).entryDate,
+                  description: (entry as any).description,
+                  reference: (entry as any).reference,
+                  lines: (entry as any).lines.map((line: any) => ({
+                    account: accountMap.get(line.account.toString()),
+                    debit: line.debit,
+                    credit: line.credit,
+                    description: line.description
+                  }))
+                }
+              };
+            }
+          } catch (err) {
+            logger.warn('Error fetching journal entry:', err);
+          }
+        }
+        return txn;
+      })
+    );
+    
+    res.json({ success: true, data: { account, transactions: enrichedTransactions } });
   } catch (error: any) {
     logger.error('Account transactions error:', error);
     res.status(500).json({ success: false, message: 'Error fetching transactions', error: error.message });

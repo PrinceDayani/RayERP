@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, Filter, Plus, TrendingUp, TrendingDown, ArrowLeft, RefreshCw, Edit, FileText, Image } from 'lucide-react';
+import { Calendar, Download, Filter, Plus, TrendingUp, TrendingDown, ArrowLeft, RefreshCw, Edit, FileText, Image, Paperclip, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
@@ -23,7 +23,7 @@ interface LedgerEntry {
   credit: number;
   balance: number;
   reference: string;
-  journalEntryId: {
+  journalEntryId: string | {
     _id: string;
     entryNumber: string;
     reference: string;
@@ -37,6 +37,7 @@ interface LedgerEntry {
     }>;
     createdBy: { name: string };
     status: string;
+    attachments?: string[];
   };
 }
 
@@ -77,7 +78,6 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
   const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
   const [showViewDialog, setShowViewDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   const { getRowProps, selectedIndex } = useKeyboardNavigation({
@@ -231,17 +231,21 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowViewDialog(false);
-        setShowEditDialog(false);
         setShowExportMenu(false);
-      } else if (e.key === 'Enter' && showViewDialog) {
+      } else if (e.key === 'Enter' && showViewDialog && selectedEntry) {
         e.preventDefault();
-        setShowViewDialog(false);
-        setShowEditDialog(true);
+        const jeId = typeof selectedEntry.journalEntryId === 'string' 
+          ? selectedEntry.journalEntryId 
+          : selectedEntry.journalEntryId?._id;
+        if (jeId) {
+          setShowViewDialog(false);
+          router.push(`/dashboard/finance/journal-entry?edit=${jeId}`);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showViewDialog, showEditDialog, showExportMenu]);
+  }, [showViewDialog, showExportMenu, selectedEntry, router]);
 
   if (loading && !account) {
     return (
@@ -444,6 +448,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Description</TableHead>
+                    <TableHead>From/To</TableHead>
                     <TableHead>Reference</TableHead>
                     <TableHead>Journal Entry</TableHead>
                     <TableHead className="text-right">Debit</TableHead>
@@ -452,7 +457,11 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {entries.map((entry, idx) => (
+                  {entries.map((entry, idx) => {
+                    const isDebit = entry.debit > 0;
+                    const direction = isDebit ? 'To' : 'From';
+                    const otherAccount = entry.journalEntryId?.entries?.find(e => e.account.code !== account?.code);
+                    return (
                     <TableRow 
                       key={entry._id}
                       {...getRowProps(idx)}
@@ -463,6 +472,15 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                         {format(new Date(entry.date), 'MMM dd, yyyy')}
                       </TableCell>
                       <TableCell className="max-w-xs truncate">{entry.description}</TableCell>
+                      <TableCell>
+                        {otherAccount && (
+                          <div className="flex items-center gap-1 text-xs">
+                            <Badge variant="outline" className="text-xs">{direction}</Badge>
+                            <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                            <span className="font-medium truncate max-w-[150px]">{otherAccount.account.name}</span>
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono text-sm text-gray-600">
                         {entry.reference}
                       </TableCell>
@@ -485,7 +503,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                         </span>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
               {entries.length > 0 && (
@@ -511,10 +529,12 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="text-xl">Complete Entry Details</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">Journal Entry: {selectedEntry.journalEntryId?.entryNumber}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Journal Entry: {typeof selectedEntry.journalEntryId === 'string' ? 'N/A' : selectedEntry.journalEntryId?.entryNumber}
+                  </p>
                 </div>
-                <Badge variant={selectedEntry.journalEntryId?.status === 'posted' ? 'default' : 'secondary'}>
-                  {selectedEntry.journalEntryId?.status || 'N/A'}
+                <Badge variant={typeof selectedEntry.journalEntryId === 'object' && selectedEntry.journalEntryId?.status === 'posted' ? 'default' : 'secondary'}>
+                  {typeof selectedEntry.journalEntryId === 'object' ? selectedEntry.journalEntryId?.status || 'N/A' : 'N/A'}
                 </Badge>
               </div>
             </CardHeader>
@@ -580,7 +600,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
               </div>
 
               {/* Full Double Entry */}
-              {selectedEntry.journalEntryId?.entries && selectedEntry.journalEntryId.entries.length > 0 && (
+              {typeof selectedEntry.journalEntryId === 'object' && selectedEntry.journalEntryId?.entries && selectedEntry.journalEntryId.entries.length > 0 && (
                 <div>
                   <h3 className="font-semibold text-sm mb-3">Complete Double Entry (All Accounts)</h3>
                   <div className="border rounded-lg overflow-hidden">
@@ -589,16 +609,23 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                         <TableRow className="bg-gray-50">
                           <TableHead className="font-semibold">Account Code</TableHead>
                           <TableHead className="font-semibold">Account Name</TableHead>
+                          <TableHead className="font-semibold">From/To</TableHead>
                           <TableHead className="font-semibold">Description</TableHead>
                           <TableHead className="text-right font-semibold">Debit</TableHead>
                           <TableHead className="text-right font-semibold">Credit</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {selectedEntry.journalEntryId.entries.map((entry, idx) => (
+                        {selectedEntry.journalEntryId.entries.map((entry, idx) => {
+                          const isDebit = entry.debit > 0;
+                          const direction = isDebit ? 'To' : 'From';
+                          return (
                           <TableRow key={idx} className={entry.account.code === account?.code ? 'bg-blue-50' : ''}>
                             <TableCell className="font-mono font-semibold">{entry.account.code}</TableCell>
                             <TableCell className="font-medium">{entry.account.name}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">{direction}</Badge>
+                            </TableCell>
                             <TableCell className="text-sm text-gray-600">{entry.description || '-'}</TableCell>
                             <TableCell className="text-right font-mono font-semibold text-red-600">
                               {entry.debit > 0 ? formatAmount(entry.debit) : '-'}
@@ -607,9 +634,9 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                               {entry.credit > 0 ? formatAmount(entry.credit) : '-'}
                             </TableCell>
                           </TableRow>
-                        ))}
+                        )})}
                         <TableRow className="bg-gray-100 font-bold">
-                          <TableCell colSpan={3} className="text-right">Total:</TableCell>
+                          <TableCell colSpan={4} className="text-right">Total:</TableCell>
                           <TableCell className="text-right font-mono text-red-600">
                             {formatAmount(selectedEntry.journalEntryId.entries.reduce((sum, e) => sum + e.debit, 0))}
                           </TableCell>
@@ -625,10 +652,33 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
               )}
 
               {/* Journal Entry Info */}
-              {selectedEntry.journalEntryId?.description && (
+              {typeof selectedEntry.journalEntryId === 'object' && selectedEntry.journalEntryId?.description && (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <Label className="text-xs">Journal Entry Description</Label>
                   <p className="text-sm font-medium mt-1">{selectedEntry.journalEntryId.description}</p>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {typeof selectedEntry.journalEntryId === 'object' && selectedEntry.journalEntryId?.attachments && Array.isArray(selectedEntry.journalEntryId.attachments) && selectedEntry.journalEntryId.attachments.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <Paperclip className="w-4 h-4" />
+                    Attachments ({selectedEntry.journalEntryId.attachments.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedEntry.journalEntryId.attachments.map((attachment: string, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded border">
+                        <div className="flex items-center gap-3">
+                          <Paperclip className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">{attachment.split('/').pop()}</span>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL}${attachment}`, '_blank')}>
+                          <Download className="w-4 h-4 mr-2" />Download
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -639,8 +689,27 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                 </Button>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setShowViewDialog(false)}>Close (Esc)</Button>
-                  <Button onClick={() => router.push(`/dashboard/finance/journal-entry/${selectedEntry.journalEntryId._id}`)}>
-                    <Edit className="w-4 h-4 mr-2" />View Full Entry
+                  <Button variant="outline" onClick={() => {
+                    const jeId = typeof selectedEntry.journalEntryId === 'string' 
+                      ? selectedEntry.journalEntryId 
+                      : selectedEntry.journalEntryId?._id;
+                    if (jeId) {
+                      setShowViewDialog(false);
+                      router.push(`/dashboard/finance/journal-entry/${jeId}`);
+                    }
+                  }}>
+                    <FileText className="w-4 h-4 mr-2" />View Full Entry
+                  </Button>
+                  <Button onClick={() => {
+                    const jeId = typeof selectedEntry.journalEntryId === 'string' 
+                      ? selectedEntry.journalEntryId 
+                      : selectedEntry.journalEntryId?._id;
+                    if (jeId) {
+                      setShowViewDialog(false);
+                      router.push(`/dashboard/finance/journal-entry?edit=${jeId}`);
+                    }
+                  }}>
+                    <Edit className="w-4 h-4 mr-2" />Edit Entry (Enter)
                   </Button>
                 </div>
               </div>
@@ -649,48 +718,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
         </div>
       )}
 
-      {selectedEntry && showEditDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEditDialog(false)}>
-          <Card className="w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
-            <CardHeader>
-              <CardTitle>Edit Ledger Entry</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Date</Label>
-                  <Input type="date" defaultValue={selectedEntry.date.split('T')[0]} />
-                </div>
-                <div>
-                  <Label>Reference</Label>
-                  <Input defaultValue={selectedEntry.reference} />
-                </div>
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Input defaultValue={selectedEntry.description} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Debit</Label>
-                  <Input type="number" step="0.01" defaultValue={selectedEntry.debit} />
-                </div>
-                <div>
-                  <Label>Credit</Label>
-                  <Input type="number" step="0.01" defaultValue={selectedEntry.credit} />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
-                <Button onClick={() => {
-                  // TODO: Implement save logic
-                  setShowEditDialog(false);
-                }}>Save Changes</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+
     </div>
   );
 };

@@ -14,9 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, FileText, Trash2, Upload, Download, Copy, AlertTriangle, CheckCircle, Paperclip, X, Save, Zap, FileSpreadsheet, Keyboard, Calculator, History, Eye } from 'lucide-react';
+import { Plus, FileText, Trash2, Upload, Download, Copy, AlertTriangle, CheckCircle, Paperclip, X, Save, Zap, FileSpreadsheet, Keyboard, Calculator, History, Eye, Link } from 'lucide-react';
 import axios from 'axios';
 import { AccountSelector } from './AccountSelector';
+import { ReferenceSelector } from './ReferenceSelector';
+import CreateReference from './CreateReference';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { toast } from '@/hooks/use-toast';
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
@@ -33,8 +35,8 @@ const JournalEntry = () => {
     reference: '',
     description: '',
     lines: [
-      { accountId: '', debit: 0, credit: 0, description: '' },
-      { accountId: '', debit: 0, credit: 0, description: '' }
+      { accountId: '', debit: 0, credit: 0, description: '', refType: 'on-account', refId: '', refAmount: 0 },
+      { accountId: '', debit: 0, credit: 0, description: '', refType: 'on-account', refId: '', refAmount: 0 }
     ]
   });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,6 +53,11 @@ const JournalEntry = () => {
   const [calcExpression, setCalcExpression] = useState('');
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [viewEntry, setViewEntry] = useState<any>(null);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showCreateRefDialog, setShowCreateRefDialog] = useState(false);
+  const [selectedEntryForRef, setSelectedEntryForRef] = useState<any>(null);
 
   // Auto-save draft
   useEffect(() => {
@@ -164,8 +171,8 @@ const JournalEntry = () => {
         const newData = {
           ...prev,
           lines: [
-            { accountId: prefilledAccountId, debit: 0, credit: 0, description: '' },
-            { accountId: '', debit: 0, credit: 0, description: '' }
+            { accountId: prefilledAccountId, debit: 0, credit: 0, description: '', refType: 'on-account', refId: '', refAmount: 0 },
+            { accountId: '', debit: 0, credit: 0, description: '', refType: 'on-account', refId: '', refAmount: 0 }
           ]
         };
         console.log('New form data:', newData);
@@ -189,7 +196,10 @@ const JournalEntry = () => {
           accountId: line.account?._id || line.accountId || '',
           debit: line.debit || 0,
           credit: line.credit || 0,
-          description: line.description || ''
+          description: line.description || '',
+          refType: line.refType || 'on-account',
+          refId: line.refId || '',
+          refAmount: line.refAmount || 0
         }))
       });
       setEditingId(id);
@@ -221,6 +231,7 @@ const JournalEntry = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       const entries = res.data.data || res.data || [];
+      console.log('Recent entries fetched:', entries);
       setRecentEntries(entries.slice(0, 5));
     } catch (error) {
       console.error('Failed to fetch recent entries:', error);
@@ -240,7 +251,7 @@ const JournalEntry = () => {
   };
 
   const addLine = () => {
-    const newLine = { accountId: '', debit: 0, credit: 0, description: '' };
+    const newLine = { accountId: '', debit: 0, credit: 0, description: '', refType: 'on-account', refId: '', refAmount: 0 };
     const newLines = [...formData.lines, newLine];
     setFormData({ ...formData, lines: newLines });
   };
@@ -262,7 +273,7 @@ const JournalEntry = () => {
   const removeLine = (index: number) => {
     const newLines = formData.lines.filter((_, i) => i !== index);
     if (newLines.length < 2) {
-      newLines.push({ accountId: '', debit: 0, credit: 0, description: '' });
+      newLines.push({ accountId: '', debit: 0, credit: 0, description: '', refType: 'on-account', refId: '', refAmount: 0 });
     }
     setFormData({ ...formData, lines: newLines });
   };
@@ -280,7 +291,7 @@ const JournalEntry = () => {
         const timer = setTimeout(() => {
           setFormData(prev => ({
             ...prev,
-            lines: [...prev.lines, { accountId: '', debit: 0, credit: 0, description: '' }]
+            lines: [...prev.lines, { accountId: '', debit: 0, credit: 0, description: '', refType: 'on-account', refId: '', refAmount: 0 }]
           }));
         }, 100);
         return () => clearTimeout(timer);
@@ -291,6 +302,67 @@ const JournalEntry = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) setAttachments([...attachments, ...Array.from(e.target.files)]);
   };
+
+  const handleDrop = (e: React.DragEvent | DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const validFiles = Array.from(files).filter(f => 
+        f.type.includes('pdf') || 
+        f.type.includes('image') || 
+        f.type.includes('document') || 
+        f.name.endsWith('.doc') || 
+        f.name.endsWith('.docx')
+      );
+      
+      if (validFiles.length > 0) {
+        setAttachments(prev => [...prev, ...validFiles]);
+        toast({ title: 'Success', description: `${validFiles.length} file(s) added` });
+      } else {
+        toast({ title: 'Error', description: 'Only PDF, images, and documents allowed', variant: 'destructive' });
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleWindowDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDragging(true);
+    };
+    const handleWindowDrop = (e: DragEvent) => {
+      handleDrop(e);
+    };
+    const handleWindowDragLeave = (e: DragEvent) => {
+      if (e.clientX === 0 && e.clientY === 0) {
+        setIsDragging(false);
+      }
+    };
+    window.addEventListener('dragover', handleWindowDragOver);
+    window.addEventListener('drop', handleWindowDrop);
+    window.addEventListener('dragleave', handleWindowDragLeave);
+    return () => {
+      window.removeEventListener('dragover', handleWindowDragOver);
+      window.removeEventListener('drop', handleWindowDrop);
+      window.removeEventListener('dragleave', handleWindowDragLeave);
+    };
+  }, [attachments]);
 
   const removeAttachment = (index: number) => {
     setAttachments(attachments.filter((_, i) => i !== index));
@@ -464,8 +536,8 @@ const JournalEntry = () => {
       reference: '',
       description: '',
       lines: [
-        { accountId: '', debit: 0, credit: 0, description: '' },
-        { accountId: '', debit: 0, credit: 0, description: '' }
+        { accountId: '', debit: 0, credit: 0, description: '', refType: 'on-account', refId: '', refAmount: 0 },
+        { accountId: '', debit: 0, credit: 0, description: '', refType: 'on-account', refId: '', refAmount: 0 }
       ]
     });
     setAttachments([]);
@@ -480,7 +552,22 @@ const JournalEntry = () => {
   ];
 
   return (
-    <div className="min-h-screen p-6 bg-background">
+    <div className="min-h-screen p-6 bg-background relative">
+      {isDragging && (
+        <div
+          className="fixed inset-0 z-[100] bg-primary/20 backdrop-blur-sm flex items-center justify-center"
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+        >
+          <div className="bg-card border-4 border-dashed border-primary rounded-2xl p-12 text-center shadow-2xl">
+            <Upload className="w-24 h-24 mx-auto mb-4 text-primary animate-bounce" />
+            <h3 className="text-3xl font-bold mb-2">Drop Files Here</h3>
+            <p className="text-muted-foreground text-lg">Release to attach files to journal entry</p>
+            <p className="text-sm text-muted-foreground mt-2">PDF, Images, Documents accepted</p>
+          </div>
+        </div>
+      )}
       <Card className="max-w-7xl mx-auto shadow-xl bg-card border-border">
         <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground">
           <div className="flex items-center justify-between">
@@ -594,14 +681,13 @@ const JournalEntry = () => {
               </div>
               <div>
                 <Label htmlFor="reference" className="font-medium text-foreground">Reference</Label>
-                <Input
-                  id="reference"
-                  value={formData.reference}
-                  onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
-                  placeholder="e.g., INV-001"
-                  className="mt-1"
-                  required
-                />
+                <div className="mt-1">
+                  <ReferenceSelector
+                    value={formData.reference}
+                    onValueChange={(value) => setFormData({ ...formData, reference: value })}
+                    placeholder="Select or enter reference (e.g., INV-001, PO-123)"
+                  />
+                </div>
               </div>
               <div>
                 <Label htmlFor="description" className="font-medium text-foreground">Description</Label>
@@ -634,10 +720,12 @@ const JournalEntry = () => {
                 <table className="w-full table-fixed">
                   <thead>
                     <tr className="border-b bg-muted/50 border-border">
-                      <th className="text-left p-3 font-medium text-foreground w-[35%]">Account</th>
-                      <th className="text-right p-3 font-medium text-foreground w-[15%]">Debit</th>
-                      <th className="text-right p-3 font-medium text-foreground w-[15%]">Credit</th>
-                      <th className="text-left p-3 font-medium text-foreground w-[25%]">Description</th>
+                      <th className="text-left p-3 font-medium text-foreground w-[25%]">Account</th>
+                      <th className="text-left p-3 font-medium text-foreground w-[12%]">Party</th>
+                      <th className="text-right p-3 font-medium text-foreground w-[10%]">Debit</th>
+                      <th className="text-right p-3 font-medium text-foreground w-[10%]">Credit</th>
+                      <th className="text-left p-3 font-medium text-foreground w-[15%]">Ref Type</th>
+                      <th className="text-left p-3 font-medium text-foreground w-[18%]">Description</th>
                       <th className="text-center p-3 font-medium text-foreground w-[10%]">Action</th>
                     </tr>
                   </thead>
@@ -658,6 +746,25 @@ const JournalEntry = () => {
                                 Balance: {formatAmount((account as any).balance || 0)}
                               </div>
                             ) : null;
+                          })()}
+                        </td>
+                        <td className="p-3">
+                          {line.accountId && (() => {
+                            const account = accounts.find(a => a._id === line.accountId);
+                            const party = (account as any)?.contactInfo;
+                            const isDebit = line.debit > 0;
+                            return (
+                              <div className="text-xs">
+                                {party ? (
+                                  <>
+                                    <p className="font-medium truncate">{party.primaryEmail || party.email || 'N/A'}</p>
+                                    <p className="text-muted-foreground truncate">{party.primaryPhone || party.phone || ''}</p>
+                                  </>
+                                ) : (
+                                  <span className="text-muted-foreground">{isDebit ? 'To' : 'From'}: {account?.name || '-'}</span>
+                                )}
+                              </div>
+                            );
                           })()}
                         </td>
                         <td className="p-3" data-field="debit" data-index={index}>
@@ -690,6 +797,40 @@ const JournalEntry = () => {
                             </Button>
                           </div>
                         </td>
+                        <td className="p-3">
+                          <Select
+                            value={line.refType || 'on-account'}
+                            onValueChange={(value) => updateLine(index, 'refType', value)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="on-account">On Account</SelectItem>
+                              <SelectItem value="agst-ref">Agst Ref</SelectItem>
+                              <SelectItem value="new-ref">New Ref</SelectItem>
+                              <SelectItem value="advance">Advance</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {line.refType === 'agst-ref' && line.accountId && (
+                            <div className="mt-1">
+                              <ReferenceSelector
+                                value={line.refId || ''}
+                                onValueChange={(value) => updateLine(index, 'refId', value)}
+                                placeholder="Select reference"
+                                accountId={line.accountId}
+                              />
+                            </div>
+                          )}
+                          {line.refType === 'new-ref' && (
+                            <Input
+                              placeholder="New ref number"
+                              value={line.refId || ''}
+                              onChange={(e) => updateLine(index, 'refId', e.target.value)}
+                              className="mt-1"
+                            />
+                          )}
+                        </td>
                         <td className="p-3" data-field="description" data-index={index}>
                           <Input
                             placeholder="Line description"
@@ -720,11 +861,22 @@ const JournalEntry = () => {
               <Label className="text-lg font-semibold flex items-center gap-2">
                 <Paperclip className="w-5 h-5" />Attachments
               </Label>
-              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center bg-muted/20">
+              <div
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                  isDragging ? 'border-primary bg-primary/10' : 'border-border bg-muted/20'
+                }`}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+              >
                 <input type="file" multiple onChange={handleFileUpload} className="hidden" id="file-upload" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
                 <label htmlFor="file-upload" className="cursor-pointer">
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Click to upload or drag and drop</p>
+                  <Upload className={`w-8 h-8 mx-auto mb-2 transition-colors ${
+                    isDragging ? 'text-primary' : 'text-muted-foreground'
+                  }`} />
+                  <p className="text-sm text-muted-foreground">
+                    {isDragging ? 'Drop files here' : 'Click to upload or drag and drop'}
+                  </p>
                   <p className="text-xs text-muted-foreground/70 mt-1">PDF, Images, Documents (Max 10MB)</p>
                 </label>
               </div>
@@ -829,9 +981,27 @@ const JournalEntry = () => {
                       Credit: {formatAmount(entry.totalCredit || 0)}
                     </div>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => duplicateEntry(entry)}>
-                    <Copy className="w-4 h-4 mr-2" />Duplicate
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { setViewEntry(entry); setShowViewDialog(true); }}>
+                      <Eye className="w-4 h-4 mr-2" />View
+                    </Button>
+                    {entry.reference && entry.status === 'POSTED' && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="text-blue-600 hover:text-blue-700"
+                        onClick={() => {
+                          setSelectedEntryForRef(entry);
+                          setShowCreateRefDialog(true);
+                        }}
+                      >
+                        <Link className="w-4 h-4 mr-2" />Create Ref
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => duplicateEntry(entry)}>
+                      <Copy className="w-4 h-4 mr-2" />Duplicate
+                    </Button>
+                  </div>
                 </div>
               </Card>
               ))}
@@ -869,37 +1039,219 @@ const JournalEntry = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!showCalculator} onOpenChange={() => setShowCalculator(null)}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader><DialogTitle>Calculator</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Journal Entry Details
+            </DialogTitle>
+          </DialogHeader>
+          {viewEntry && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                <div>
+                  <span className="text-sm text-muted-foreground">Entry Number:</span>
+                  <p className="font-semibold">{viewEntry.entryNumber}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Date:</span>
+                  <p className="font-semibold">{new Date(viewEntry.entryDate || viewEntry.date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Reference:</span>
+                  <p className="font-semibold">{viewEntry.reference || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Status:</span>
+                  <Badge>{viewEntry.status}</Badge>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-sm text-muted-foreground">Description:</span>
+                  <p className="font-semibold">{viewEntry.description}</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-3">Transaction Lines</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3 text-sm font-medium">Account</th>
+                        <th className="text-left p-3 text-sm font-medium">From/To Party</th>
+                        <th className="text-right p-3 text-sm font-medium">Debit</th>
+                        <th className="text-right p-3 text-sm font-medium">Credit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewEntry.lines?.map((line: any, idx: number) => {
+                        const account = line.account;
+                        const party = account?.contactInfo;
+                        const isDebit = line.debit > 0;
+                        const direction = isDebit ? 'To' : 'From';
+                        return (
+                          <tr key={idx} className="border-t">
+                            <td className="p-3">
+                              <div>
+                                <p className="font-medium">{account?.name || 'Unknown'}</p>
+                                <p className="text-xs text-muted-foreground">{account?.code}</p>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              {party ? (
+                                <div className="text-sm">
+                                  <Badge variant="outline" className="mb-1">{direction}</Badge>
+                                  <p className="font-medium">{party.primaryEmail || party.email || 'N/A'}</p>
+                                  <p className="text-xs text-muted-foreground">{party.primaryPhone || party.phone || ''}</p>
+                                </div>
+                              ) : (
+                                <div className="text-sm">
+                                  <Badge variant="outline">{direction}</Badge>
+                                  <p className="text-muted-foreground mt-1">{account?.name || 'N/A'}</p>
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-3 text-right font-medium">
+                              {line.debit > 0 ? formatAmount(line.debit) : '-'}
+                            </td>
+                            <td className="p-3 text-right font-medium">
+                              {line.credit > 0 ? formatAmount(line.credit) : '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="border-t-2 bg-muted/30 font-bold">
+                        <td className="p-3" colSpan={2}>Total</td>
+                        <td className="p-3 text-right">{formatAmount(viewEntry.totalDebit || 0)}</td>
+                        <td className="p-3 text-right">{formatAmount(viewEntry.totalCredit || 0)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {viewEntry.attachments && viewEntry.attachments.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <Paperclip className="w-4 h-4" />
+                    Attachments ({viewEntry.attachments.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {viewEntry.attachments.map((attachment: string, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded border">
+                        <div className="flex items-center gap-3">
+                          <Paperclip className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">{attachment.split('/').pop()}</span>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => window.open(`${API_URL}${attachment}`, '_blank')}>
+                          <Download className="w-4 h-4 mr-2" />Download
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {showCalculator && (
+        <div className="fixed bottom-4 right-4 z-50 w-80 bg-card border-2 border-border rounded-lg shadow-2xl">
+          <div className="flex items-center justify-between p-3 border-b bg-muted/50">
+            <div className="flex items-center gap-2">
+              <Calculator className="w-4 h-4" />
+              <span className="font-semibold text-sm">Calculator</span>
+            </div>
+            <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowCalculator(null)}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="p-4 space-y-3">
             <Input
               value={calcExpression}
               onChange={(e) => setCalcExpression(e.target.value)}
-              placeholder="e.g., 100+50*2"
-              className="text-right text-lg"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  try {
+                    const result = eval(calcExpression);
+                    if (showCalculator) {
+                      updateLine(showCalculator.index, showCalculator.field, parseFloat(result));
+                      setShowCalculator(null);
+                    }
+                  } catch { toast({ title: 'Error', description: 'Invalid expression', variant: 'destructive' }); }
+                } else if (e.key === 'Escape') {
+                  setShowCalculator(null);
+                }
+              }}
+              placeholder="Enter expression"
+              className="text-right text-2xl font-mono h-12"
+              autoFocus
             />
+            <div className="text-xs text-muted-foreground text-center">Press Enter to apply, Esc to close</div>
             <div className="grid grid-cols-4 gap-2">
-              {['7','8','9','/','4','5','6','*','1','2','3','-','0','.','=','+'].map(btn => (
-                <Button key={btn} variant="outline" onClick={() => {
-                  if (btn === '=') {
-                    try {
-                      const result = eval(calcExpression);
-                      if (showCalculator) {
-                        updateLine(showCalculator.index, showCalculator.field, parseFloat(result));
-                        setShowCalculator(null);
-                      }
-                    } catch { toast({ title: 'Error', description: 'Invalid expression', variant: 'destructive' }); }
-                  } else {
-                    setCalcExpression(prev => prev + btn);
-                  }
-                }}>{btn}</Button>
+              {['7','8','9','/','4','5','6','*','1','2','3','-','C','0','.','+'].map(btn => (
+                <Button
+                  key={btn}
+                  type="button"
+                  variant={btn === 'C' ? 'destructive' : 'outline'}
+                  className="h-12 text-lg font-semibold"
+                  onClick={() => {
+                    if (btn === 'C') {
+                      setCalcExpression('');
+                    } else {
+                      setCalcExpression(prev => prev + btn);
+                    }
+                  }}
+                >{btn}</Button>
               ))}
             </div>
-            <Button variant="outline" className="w-full" onClick={() => setCalcExpression('')}>Clear</Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12"
+                onClick={() => setCalcExpression(prev => prev.slice(0, -1))}
+              >← Backspace</Button>
+              <Button
+                type="button"
+                variant="default"
+                className="h-12 bg-primary"
+                onClick={() => {
+                  try {
+                    const result = eval(calcExpression);
+                    if (showCalculator) {
+                      updateLine(showCalculator.index, showCalculator.field, parseFloat(result));
+                      setShowCalculator(null);
+                    }
+                  } catch { toast({ title: 'Error', description: 'Invalid expression', variant: 'destructive' }); }
+                }}
+              >= Apply</Button>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
+      {/* Create Reference Dialog */}
+      {selectedEntryForRef && (
+        <CreateReference
+          open={showCreateRefDialog}
+          onClose={() => {
+            setShowCreateRefDialog(false);
+            setSelectedEntryForRef(null);
+          }}
+          journalEntryId={selectedEntryForRef._id}
+          entryNumber={selectedEntryForRef.entryNumber}
+          reference={selectedEntryForRef.reference}
+          description={selectedEntryForRef.description}
+          onSuccess={() => {
+            toast({ title: 'Success', description: 'Reference created successfully' });
+            setShowCreateRefDialog(false);
+            setSelectedEntryForRef(null);
+          }}
+        />
+      )}
     </div>
   );
 };

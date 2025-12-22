@@ -4,6 +4,7 @@ import JournalEntryTemplate from '../models/JournalEntryTemplate';
 import ChartOfAccount from '../models/ChartOfAccount';
 import { GLBudget } from '../models/GLBudget';
 import AllocationRule from '../models/AllocationRule';
+import ReferenceBalance from '../models/ReferenceBalance';
 import { protect } from '../middleware/auth.middleware';
 import { requireFinanceAccess } from '../middleware/financePermission.middleware';
 import multer from 'multer';
@@ -145,7 +146,10 @@ router.get('/', requireFinanceAccess('journal.view'), async (req, res) => {
     if (fromDate) filter.entryDate.$gte = new Date(fromDate as string);
     if (toDate) filter.entryDate.$lte = new Date(toDate as string);
     
-    const entries = await JournalEntry.find(filter).sort({ entryDate: -1 }).lean();
+    const entries = await JournalEntry.find(filter)
+      .populate('lines.account', 'code name type contactInfo')
+      .sort({ entryDate: -1 })
+      .lean();
     res.json({ success: true, data: entries });
   } catch (error: any) {
     console.error('Journal entries fetch error:', error);
@@ -235,7 +239,48 @@ router.post('/:id/post', requireFinanceAccess('journal.post'), async (req, res) 
       });
     }
     
-    res.json({ success: true, data: entry, message: 'Entry posted successfully' });
+    // Auto-create references if JE has reference field (Tally-style)
+    let referencesCreated = 0;
+    if (entry.reference && req.body.createReferences !== false) {
+      try {
+        for (const line of entry.lines) {
+          if (line.debit > 0 || line.credit > 0) {
+            const existing = await ReferenceBalance.findOne({ 
+              journalEntryId: entry._id, 
+              accountId: line.account 
+            });
+            
+            if (!existing) {
+              const amount = line.debit > 0 ? line.debit : line.credit;
+              const refBalance = new ReferenceBalance({
+                journalEntryId: entry._id,
+                entryNumber: entry.entryNumber,
+                reference: entry.reference,
+                date: entry.entryDate,
+                description: line.description || entry.description,
+                accountId: line.account,
+                totalAmount: amount,
+                paidAmount: 0,
+                outstandingAmount: amount
+              });
+              
+              await refBalance.save();
+              referencesCreated++;
+            }
+          }
+        }
+      } catch (refError) {
+        console.error('Error creating references:', refError);
+        // Don't fail the posting if reference creation fails
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      data: entry, 
+      message: 'Entry posted successfully',
+      referencesCreated
+    });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -534,7 +579,7 @@ router.post('/:id/attachment', upload.single('file'), async (req, res) => {
 router.get('/:id', requireFinanceAccess('journal.view'), async (req, res) => {
   try {
     const entry = await JournalEntry.findById(req.params.id)
-      .populate('lines.account', 'code name type')
+      .populate('lines.account', 'code name type contactInfo')
       .populate('createdBy', 'firstName lastName name email')
       .populate('postedBy', 'firstName lastName name email')
       .lean();

@@ -74,6 +74,7 @@ import dataExportRoutes from './dataExport.routes';
 import permissionManagementRoutes from './permissionManagement.routes';
 import salesReportRoutes from './salesReport.routes';
 import approvalRoutes from './approval.routes';
+import referencePaymentRoutes from './referencePayment.routes';
 
 const router = express.Router();
 
@@ -118,6 +119,7 @@ router.use('/data-export', dataExportRoutes);
 router.use('/permission-management', permissionManagementRoutes);
 router.use('/sales-reports', salesReportRoutes);
 router.use('/approvals', approvalRoutes);
+router.use('/reference-payments', referencePaymentRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);

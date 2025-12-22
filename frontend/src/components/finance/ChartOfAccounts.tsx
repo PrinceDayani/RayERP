@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -18,11 +19,12 @@ interface Account {
 }
 
 const ChartOfAccounts = () => {
+  const router = useRouter();
   const [accounts, setAccounts] = useState<Account[]>([]);
 
   const { getRowProps } = useKeyboardNavigation({
     items: accounts,
-    onSelect: (account) => console.log('Selected account:', account),
+    onSelect: (account) => router.push(`/dashboard/finance/account-ledger/${account._id}`),
     enabled: true
   });
 
@@ -98,13 +100,33 @@ const ChartOfAccounts = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="bg-gray-700 border-gray-600 hover:bg-gray-600">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-gray-700 border-gray-600 hover:bg-gray-600"
+                        onClick={() => router.push(`/dashboard/finance/account-ledger/${account._id}`)}
+                      >
                         <Eye className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-gray-700 border-gray-600 hover:bg-gray-600">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-gray-700 border-gray-600 hover:bg-gray-600"
+                        onClick={() => router.push(`/dashboard/finance/chart-of-accounts?edit=${account._id}`)}
+                      >
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-gray-700 border-gray-600 hover:bg-gray-600 text-red-400">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-gray-700 border-gray-600 hover:bg-gray-600 text-red-400"
+                        onClick={() => {
+                          if (confirm(`Delete account "${account.name}"?`)) {
+                            // Handle delete
+                            console.log('Delete account:', account._id);
+                          }
+                        }}
+                      >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>

@@ -8,6 +8,15 @@ export interface IPaymentAllocation {
   accountId?: mongoose.Types.ObjectId;
 }
 
+export interface IReferenceAllocation {
+  journalEntryId: mongoose.Types.ObjectId;
+  entryNumber: string;
+  reference: string;
+  amount: number;
+  allocationDate: Date;
+  description?: string;
+}
+
 export interface IPayment extends Document {
   paymentNumber: string;
   paymentType: 'invoice-based' | 'independent' | 'advance';
@@ -24,6 +33,7 @@ export interface IPayment extends Document {
   bankAccount?: string;
   reference?: string;
   allocations: IPaymentAllocation[];
+  referenceAllocations: IReferenceAllocation[];
   purpose?: string;
   category?: 'advance' | 'deposit' | 'miscellaneous' | 'refund';
   projectId?: mongoose.Types.ObjectId;
@@ -90,6 +100,14 @@ const paymentSchema = new Schema<IPayment>({
     allocationDate: { type: Date, default: Date.now },
     accountId: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' }
   }],
+  referenceAllocations: [{
+    journalEntryId: { type: Schema.Types.ObjectId, ref: 'JournalEntry', required: true },
+    entryNumber: { type: String, required: true },
+    reference: { type: String, required: true },
+    amount: { type: Number, required: true, min: 0 },
+    allocationDate: { type: Date, default: Date.now },
+    description: String
+  }],
   purpose: String,
   category: { type: String, enum: ['advance', 'deposit', 'miscellaneous', 'refund'] },
   projectId: { type: Schema.Types.ObjectId, ref: 'Project' },
@@ -137,6 +155,7 @@ paymentSchema.index({ paymentType: 1, status: 1 });
 paymentSchema.index({ customerId: 1, paymentDate: -1 });
 paymentSchema.index({ status: 1, paymentDate: -1 });
 paymentSchema.index({ 'allocations.invoiceId': 1 });
+paymentSchema.index({ 'referenceAllocations.journalEntryId': 1 });
 paymentSchema.index({ 'reconciliation.status': 1 });
 paymentSchema.index({ unappliedAmount: 1 }, { partialFilterExpression: { unappliedAmount: { $gt: 0 } } });
 
@@ -149,11 +168,9 @@ paymentSchema.pre('save', function(next) {
     this.paymentNumber = `PAY-${year}${month}-${random}`;
   }
   if (!this.baseAmount) this.baseAmount = this.totalAmount * this.exchangeRate;
-  if (this.allocations && this.allocations.length > 0) {
-    this.allocatedAmount = this.allocations.reduce((sum, alloc) => sum + alloc.amount, 0);
-  } else {
-    this.allocatedAmount = 0;
-  }
+  const invoiceAllocated = this.allocations?.reduce((sum, alloc) => sum + alloc.amount, 0) || 0;
+  const refAllocated = this.referenceAllocations?.reduce((sum, alloc) => sum + alloc.amount, 0) || 0;
+  this.allocatedAmount = invoiceAllocated + refAllocated;
   this.unappliedAmount = this.totalAmount - this.allocatedAmount;
   if (this.allocatedAmount > this.totalAmount) {
     return next(new Error('Allocated amount cannot exceed total payment amount'));
@@ -185,6 +202,14 @@ paymentSchema.methods.canAllocate = function(amount: number): boolean {
 paymentSchema.methods.addAllocation = async function(invoiceId: mongoose.Types.ObjectId, invoiceNumber: string, amount: number) {
   if (!this.canAllocate(amount)) throw new Error('Insufficient unapplied balance');
   this.allocations.push({ invoiceId, invoiceNumber, amount, allocationDate: new Date() });
+  await this.save();
+  return this;
+};
+
+paymentSchema.methods.addReferenceAllocation = async function(journalEntryId: mongoose.Types.ObjectId, entryNumber: string, reference: string, amount: number, description?: string) {
+  if (!this.canAllocate(amount)) throw new Error('Insufficient unapplied balance');
+  if (!this.referenceAllocations) this.referenceAllocations = [];
+  this.referenceAllocations.push({ journalEntryId, entryNumber, reference, amount, allocationDate: new Date(), description });
   await this.save();
   return this;
 };

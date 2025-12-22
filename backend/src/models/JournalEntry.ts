@@ -15,6 +15,9 @@ export interface IJournalEntryLine {
   foreignCredit?: number;
   quantity?: number; // For statistical entries
   unit?: string; // For statistical entries
+  refType?: 'on-account' | 'agst-ref' | 'new-ref' | 'advance';
+  refId?: string;
+  refAmount?: number;
 }
 
 export interface IJournalEntry extends Document {
@@ -148,7 +151,10 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
     foreignDebit: Number,
     foreignCredit: Number,
     quantity: Number,
-    unit: String
+    unit: String,
+    refType: { type: String, enum: ['on-account', 'agst-ref', 'new-ref', 'advance'], default: 'on-account' },
+    refId: String,
+    refAmount: Number
   }],
   totalDebit: { type: Number, required: true },
   totalCredit: { type: Number, required: true },
