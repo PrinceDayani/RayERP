@@ -5,7 +5,8 @@ import {
   hasAllPermissions, 
   hasMinimumLevel,
   getUserLevel,
-  getUserPermissions
+  getUserPermissions,
+  isRootUser
 } from '@/lib/permissions';
 
 export const usePermissions = () => {
@@ -18,5 +19,6 @@ export const usePermissions = () => {
     hasMinimumLevel: (minLevel: number) => hasMinimumLevel(user, minLevel),
     userLevel: getUserLevel(user),
     userPermissions: getUserPermissions(user),
+    isRoot: isRootUser(user),
   };
 };

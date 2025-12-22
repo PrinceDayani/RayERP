@@ -73,15 +73,15 @@ export default function Layout({ children }: LayoutProps) {
   const isAdmin = roleName.toLowerCase() === "admin";
   const isManager = roleName.toLowerCase() === "manager" || isAdmin || isSuperAdmin || isRoot;
   
-  // Module access checks
-  const hasFinanceAccess = hasAnyPermission(['finance.view', 'finance.manage']);
-  const hasEmployeeAccess = hasAnyPermission(['employees.view', 'employees.manage']);
-  const hasDepartmentAccess = hasAnyPermission(['departments.view', 'departments.manage']);
-  const hasProjectAccess = hasAnyPermission(['projects.view', 'projects.manage']);
-  const hasTaskAccess = hasAnyPermission(['tasks.view', 'tasks.manage']);
-  const hasResourceAccess = hasAnyPermission(['resources.view', 'resources.manage']);
-  const hasBudgetAccess = hasAnyPermission(['budgets.view', 'budgets.manage']);
-  const hasReportAccess = hasAnyPermission(['reports.view', 'reports.manage']);
+  // Module access checks (Root has access to everything)
+  const hasFinanceAccess = isRoot || hasAnyPermission(['finance.view', 'finance.manage']);
+  const hasEmployeeAccess = isRoot || hasAnyPermission(['employees.view', 'employees.manage']);
+  const hasDepartmentAccess = isRoot || hasAnyPermission(['departments.view', 'departments.manage']);
+  const hasProjectAccess = isRoot || hasAnyPermission(['projects.view', 'projects.manage']);
+  const hasTaskAccess = isRoot || hasAnyPermission(['tasks.view', 'tasks.manage']);
+  const hasResourceAccess = isRoot || hasAnyPermission(['resources.view', 'resources.manage']);
+  const hasBudgetAccess = isRoot || hasAnyPermission(['budgets.view', 'budgets.manage']);
+  const hasReportAccess = isRoot || hasAnyPermission(['reports.view', 'reports.manage']);
 
   const menuSections = useMemo(() => [
     {

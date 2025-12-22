@@ -21,8 +21,12 @@ export default function FinancePermissionGuard({
   const { user, loading } = useAuth();
   const { hasPermission, hasAnyPermission } = usePermissions();
 
+  // Root has access to everything
+  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
+  const isRoot = roleName.toLowerCase() === 'root';
+  
   // Check if user has finance module access
-  const hasFinanceAccess = hasAnyPermission(['finance.view', 'finance.manage']);
+  const hasFinanceAccess = isRoot || hasAnyPermission(['finance.view', 'finance.manage']);
   
   // Check specific permission if provided
   const hasSpecificPermission = requiredPermission 
@@ -89,7 +93,7 @@ export default function FinancePermissionGuard({
   }
 
   // Check specific permission if required
-  if (requiredPermission && !hasSpecificPermission) {
+  if (requiredPermission && !isRoot && !hasSpecificPermission) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted/20 p-6">
         <Card className="max-w-md w-full border-yellow-500/50">

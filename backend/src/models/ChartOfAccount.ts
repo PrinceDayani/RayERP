@@ -8,6 +8,8 @@ export interface IChartOfAccount extends Document {
   category: string;
   level: number;
   parentId?: mongoose.Types.ObjectId;
+  groupId?: mongoose.Types.ObjectId;
+  subGroupId?: mongoose.Types.ObjectId;
   balance: number;
   openingBalance: number;
   currency: string;
@@ -84,6 +86,14 @@ const ChartOfAccountSchema = new Schema<IChartOfAccount>({
   parentId: {
     type: Schema.Types.ObjectId,
     ref: 'ChartOfAccount'
+  },
+  groupId: {
+    type: Schema.Types.ObjectId,
+    ref: 'AccountGroup'
+  },
+  subGroupId: {
+    type: Schema.Types.ObjectId,
+    ref: 'AccountSubGroup'
   },
   balance: {
     type: Number,

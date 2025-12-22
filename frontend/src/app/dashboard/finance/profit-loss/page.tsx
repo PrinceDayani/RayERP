@@ -231,18 +231,66 @@ const ProfitLossPage = () => {
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* COGS Section */}
+            {profitLossData.cogs && profitLossData.cogs.accounts && profitLossData.cogs.accounts.length > 0 && (
               <Card>
-                <CardHeader><CardTitle className="text-green-600">Revenue</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  {profitLossData.revenue?.accounts?.map((item: any, index: number) => (
-                    <div key={index} className="flex justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer" onClick={() => drillDown(item._id, item.name, item.code)}>
-                      <span>{item.name} ({item.code})</span>
-                      <span className="font-medium">₹{item.balance?.toLocaleString()}</span>
+                <CardHeader><CardTitle className="text-orange-600">Cost of Goods Sold (COGS)</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="grid grid-cols-4 gap-2 p-2 bg-gray-100 rounded font-semibold text-xs">
+                    <span>Account Code</span>
+                    <span>Account Name</span>
+                    <span className="text-right">Amount</span>
+                    <span className="text-right">Actions</span>
+                  </div>
+                  {profitLossData.cogs.accounts.map((item: any, index: number) => (
+                    <div key={index} className="grid grid-cols-4 gap-2 p-2 hover:bg-orange-50 rounded border-b text-sm">
+                      <span className="font-mono text-blue-600">{item.code}</span>
+                      <span className="font-medium">{item.name}</span>
+                      <span className="text-right font-semibold text-orange-600">₹{item.balance?.toLocaleString()}</span>
+                      <div className="text-right">
+                        <Button size="sm" variant="ghost" onClick={() => drillDown(item._id, item.name, item.code)} className="h-6 px-2 text-xs">
+                          View Entries
+                        </Button>
+                      </div>
                     </div>
                   ))}
-                  <hr />
-                  <div className="flex justify-between font-bold">
+                  <hr className="my-2" />
+                  <div className="flex justify-between font-bold p-2 bg-orange-50 rounded">
+                    <span>Total COGS</span>
+                    <span className="text-orange-600">₹{profitLossData.cogs.total?.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-lg p-2 bg-blue-50 rounded">
+                    <span>Gross Profit</span>
+                    <span className="text-blue-600">₹{profitLossData.grossProfit?.toLocaleString()}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader><CardTitle className="text-green-600">Revenue Breakdown</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="grid grid-cols-4 gap-2 p-2 bg-gray-100 rounded font-semibold text-xs">
+                    <span>Account Code</span>
+                    <span>Account Name</span>
+                    <span className="text-right">Amount</span>
+                    <span className="text-right">Actions</span>
+                  </div>
+                  {profitLossData.revenue?.accounts?.map((item: any, index: number) => (
+                    <div key={index} className="grid grid-cols-4 gap-2 p-2 hover:bg-blue-50 rounded border-b text-sm">
+                      <span className="font-mono text-blue-600">{item.code}</span>
+                      <span className="font-medium">{item.name}</span>
+                      <span className="text-right font-semibold text-green-600">₹{item.balance?.toLocaleString()}</span>
+                      <div className="text-right">
+                        <Button size="sm" variant="ghost" onClick={() => drillDown(item._id, item.name, item.code)} className="h-6 px-2 text-xs">
+                          View Entries
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  <hr className="my-2" />
+                  <div className="flex justify-between font-bold text-lg p-2 bg-green-50 rounded">
                     <span>Total Revenue</span>
                     <span className="text-green-600">₹{profitLossData.revenue?.total?.toLocaleString()}</span>
                   </div>
@@ -250,22 +298,181 @@ const ProfitLossPage = () => {
               </Card>
 
               <Card>
-                <CardHeader><CardTitle className="text-red-600">Expenses</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
+                <CardHeader><CardTitle className="text-red-600">Expenses Breakdown</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="grid grid-cols-4 gap-2 p-2 bg-gray-100 rounded font-semibold text-xs">
+                    <span>Account Code</span>
+                    <span>Account Name</span>
+                    <span className="text-right">Amount</span>
+                    <span className="text-right">Actions</span>
+                  </div>
                   {profitLossData.expenses?.accounts?.map((item: any, index: number) => (
-                    <div key={index} className="flex justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer" onClick={() => drillDown(item._id, item.name, item.code)}>
-                      <span>{item.name} ({item.code})</span>
-                      <span className="font-medium">₹{item.balance?.toLocaleString()}</span>
+                    <div key={index} className="grid grid-cols-4 gap-2 p-2 hover:bg-red-50 rounded border-b text-sm">
+                      <span className="font-mono text-blue-600">{item.code}</span>
+                      <span className="font-medium">{item.name}</span>
+                      <span className="text-right font-semibold text-red-600">₹{item.balance?.toLocaleString()}</span>
+                      <div className="text-right">
+                        <Button size="sm" variant="ghost" onClick={() => drillDown(item._id, item.name, item.code)} className="h-6 px-2 text-xs">
+                          View Entries
+                        </Button>
+                      </div>
                     </div>
                   ))}
-                  <hr />
-                  <div className="flex justify-between font-bold">
+                  <hr className="my-2" />
+                  <div className="flex justify-between font-bold text-lg p-2 bg-red-50 rounded">
                     <span>Total Operating Expenses</span>
                     <span className="text-red-600">₹{profitLossData.expenses?.total?.toLocaleString()}</span>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Comprehensive P&L Statement */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="text-xl">Complete Profit & Loss Statement</CardTitle>
+                <p className="text-sm text-muted-foreground">Detailed line-by-line breakdown with account codes</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Revenue */}
+                <div className="p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-lg text-green-700">REVENUE</span>
+                    <span className="font-bold text-xl text-green-600">₹{profitLossData.revenue?.total?.toLocaleString()}</span>
+                  </div>
+                </div>
+                {profitLossData.revenue?.accounts?.map((item: any, idx: number) => (
+                  <div key={idx} className="flex justify-between items-center pl-8 pr-3 py-2 hover:bg-green-50 rounded border-b">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="font-mono text-xs">{item.code}</Badge>
+                      <span className="text-sm font-medium">{item.name}</span>
+                    </div>
+                    <span className="font-semibold text-green-600">₹{item.balance?.toLocaleString()}</span>
+                  </div>
+                ))}
+
+                {/* COGS */}
+                {profitLossData.cogs && profitLossData.cogs.total > 0 && (
+                  <>
+                    <div className="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500 mt-4">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-orange-700">Less: COST OF GOODS SOLD</span>
+                        <span className="font-bold text-orange-600">(₹{profitLossData.cogs.total?.toLocaleString()})</span>
+                      </div>
+                    </div>
+                    {profitLossData.cogs.accounts?.map((item: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center pl-8 pr-3 py-2 hover:bg-orange-50 rounded border-b">
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="font-mono text-xs">{item.code}</Badge>
+                          <span className="text-sm font-medium">{item.name}</span>
+                        </div>
+                        <span className="font-semibold text-orange-600">₹{item.balance?.toLocaleString()}</span>
+                      </div>
+                    ))}
+                    <div className="p-4 bg-blue-100 rounded-lg border-2 border-blue-400 mt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-lg text-blue-800">GROSS PROFIT</span>
+                        <span className="font-bold text-2xl text-blue-600">₹{profitLossData.grossProfit?.toLocaleString()}</span>
+                      </div>
+                      <p className="text-xs text-blue-600 mt-1">Margin: {profitLossData.margins?.gross?.toFixed(2)}%</p>
+                    </div>
+                  </>
+                )}
+
+                {/* Operating Expenses */}
+                <div className="p-3 bg-red-50 rounded-lg border-l-4 border-red-500 mt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-red-700">Less: OPERATING EXPENSES</span>
+                    <span className="font-bold text-red-600">(₹{profitLossData.expenses?.total?.toLocaleString()})</span>
+                  </div>
+                </div>
+                {profitLossData.expenses?.accounts?.map((item: any, idx: number) => (
+                  <div key={idx} className="flex justify-between items-center pl-8 pr-3 py-2 hover:bg-red-50 rounded border-b">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="font-mono text-xs">{item.code}</Badge>
+                      <span className="text-sm font-medium">{item.name}</span>
+                    </div>
+                    <span className="font-semibold text-red-600">₹{item.balance?.toLocaleString()}</span>
+                  </div>
+                ))}
+
+                {/* EBITDA */}
+                {profitLossData.ebitda !== undefined && (
+                  <div className="p-4 bg-purple-100 rounded-lg border-2 border-purple-400 mt-2">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-bold text-lg text-purple-800">EBITDA</span>
+                        <p className="text-xs text-purple-600">Earnings Before Interest, Tax, Depreciation & Amortization</p>
+                      </div>
+                      <span className="font-bold text-2xl text-purple-600">₹{profitLossData.ebitda?.toLocaleString()}</span>
+                    </div>
+                    <p className="text-xs text-purple-600 mt-1">Margin: {profitLossData.margins?.ebitda?.toFixed(2)}%</p>
+                  </div>
+                )}
+
+                {/* Depreciation */}
+                {profitLossData.depreciation && profitLossData.depreciation.total > 0 && (
+                  <div className="flex justify-between items-center pl-8 pr-3 py-2 bg-gray-50 rounded mt-2">
+                    <span className="font-semibold text-gray-700">Less: Depreciation & Amortization</span>
+                    <span className="font-semibold text-gray-600">(₹{profitLossData.depreciation.total?.toLocaleString()})</span>
+                  </div>
+                )}
+
+                {/* EBIT */}
+                {profitLossData.ebit !== undefined && (
+                  <div className="p-4 bg-indigo-100 rounded-lg border-2 border-indigo-400 mt-2">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-bold text-lg text-indigo-800">EBIT (Operating Profit)</span>
+                        <p className="text-xs text-indigo-600">Earnings Before Interest & Tax</p>
+                      </div>
+                      <span className="font-bold text-2xl text-indigo-600">₹{profitLossData.ebit?.toLocaleString()}</span>
+                    </div>
+                    <p className="text-xs text-indigo-600 mt-1">Margin: {profitLossData.margins?.operating?.toFixed(2)}%</p>
+                  </div>
+                )}
+
+                {/* Interest */}
+                {profitLossData.interestExpense && profitLossData.interestExpense.total > 0 && (
+                  <div className="flex justify-between items-center pl-8 pr-3 py-2 bg-gray-50 rounded mt-2">
+                    <span className="font-semibold text-gray-700">Less: Interest Expense</span>
+                    <span className="font-semibold text-gray-600">(₹{profitLossData.interestExpense.total?.toLocaleString()})</span>
+                  </div>
+                )}
+
+                {/* EBT */}
+                {profitLossData.ebt !== undefined && (
+                  <div className="p-3 bg-yellow-100 rounded-lg border border-yellow-400 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-yellow-800">EBT (Profit Before Tax)</span>
+                      <span className="font-bold text-xl text-yellow-600">₹{profitLossData.ebt?.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tax */}
+                {profitLossData.taxExpense && profitLossData.taxExpense.total > 0 && (
+                  <div className="flex justify-between items-center pl-8 pr-3 py-2 bg-gray-50 rounded mt-2">
+                    <span className="font-semibold text-gray-700">Less: Tax Expense</span>
+                    <span className="font-semibold text-gray-600">(₹{profitLossData.taxExpense.total?.toLocaleString()})</span>
+                  </div>
+                )}
+
+                {/* Net Income */}
+                <div className="p-5 bg-gradient-to-r from-green-100 to-blue-100 rounded-lg border-4 border-green-500 mt-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-bold text-2xl text-green-800">NET INCOME (PAT)</span>
+                      <p className="text-sm text-green-600">Profit After Tax - Bottom Line</p>
+                    </div>
+                    <span className={`font-bold text-3xl ${profitLossData.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ₹{profitLossData.netIncome?.toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-600 mt-2">Net Margin: {profitLossData.margins?.net?.toFixed(2)}%</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
             ) : <Card><CardContent className="p-6"><div className="text-center py-8"><TrendingUp className="h-16 w-16 mx-auto text-muted-foreground mb-4" /><h3 className="text-lg font-medium mb-2">No Data</h3></div></CardContent></Card>}
           </TabsContent>

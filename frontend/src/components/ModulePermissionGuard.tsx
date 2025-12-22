@@ -25,8 +25,12 @@ export default function ModulePermissionGuard({
   const { user, loading } = useAuth();
   const { hasAnyPermission, hasMinimumLevel } = usePermissions();
 
-  // Check if user has required permissions
-  const hasAccess = hasMinimumLevel(80) || hasAnyPermission(requiredPermissions);
+  // Root has access to everything
+  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
+  const isRoot = roleName.toLowerCase() === 'root';
+  
+  // Check if user has required permissions (Root bypasses all checks)
+  const hasAccess = isRoot || hasMinimumLevel(80) || hasAnyPermission(requiredPermissions);
 
   useEffect(() => {
     if (!loading && !user) {

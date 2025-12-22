@@ -15,44 +15,105 @@ import mongoose from 'mongoose';
 
 // Groups
 export const getGroups = async (req: Request, res: Response) => {
-  res.json({ success: true, data: [] });
+  try {
+    const groups = await AccountGroup.find({ isActive: true }).sort({ code: 1 });
+    res.json({ success: true, data: groups });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 export const getGroupById = async (req: Request, res: Response) => {
-  res.json({ success: true, data: null });
+  try {
+    const group = await AccountGroup.findById(req.params.id);
+    if (!group) return res.status(404).json({ success: false, message: 'Group not found' });
+    res.json({ success: true, data: group });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 export const createGroup = async (req: Request, res: Response) => {
-  res.json({ success: true, data: req.body });
+  try {
+    const userId = (req as any).user?.id || (req as any).user?._id;
+    const group = await AccountGroup.create({ ...req.body, createdBy: userId });
+    res.status(201).json({ success: true, data: group });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
 };
 
 export const updateGroup = async (req: Request, res: Response) => {
-  res.json({ success: true, data: req.body });
+  try {
+    const group = await AccountGroup.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!group) return res.status(404).json({ success: false, message: 'Group not found' });
+    res.json({ success: true, data: group });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
 };
 
 export const deleteGroup = async (req: Request, res: Response) => {
-  res.json({ success: true, message: 'Group deleted' });
+  try {
+    const group = await AccountGroup.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    if (!group) return res.status(404).json({ success: false, message: 'Group not found' });
+    res.json({ success: true, message: 'Group deleted' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 // Sub-Groups
 export const getSubGroups = async (req: Request, res: Response) => {
-  res.json({ success: true, data: [] });
+  try {
+    const { groupId } = req.query;
+    const filter: any = { isActive: true };
+    if (groupId) filter.groupId = groupId;
+    const subGroups = await AccountSubGroup.find(filter).sort({ code: 1 });
+    res.json({ success: true, data: subGroups });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 export const getSubGroupById = async (req: Request, res: Response) => {
-  res.json({ success: true, data: null });
+  try {
+    const subGroup = await AccountSubGroup.findById(req.params.id);
+    if (!subGroup) return res.status(404).json({ success: false, message: 'Sub-group not found' });
+    res.json({ success: true, data: subGroup });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 export const createSubGroup = async (req: Request, res: Response) => {
-  res.json({ success: true, data: req.body });
+  try {
+    const userId = (req as any).user?.id || (req as any).user?._id;
+    const subGroup = await AccountSubGroup.create({ ...req.body, createdBy: userId });
+    res.status(201).json({ success: true, data: subGroup });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
 };
 
 export const updateSubGroup = async (req: Request, res: Response) => {
-  res.json({ success: true, data: req.body });
+  try {
+    const subGroup = await AccountSubGroup.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!subGroup) return res.status(404).json({ success: false, message: 'Sub-group not found' });
+    res.json({ success: true, data: subGroup });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
 };
 
 export const deleteSubGroup = async (req: Request, res: Response) => {
-  res.json({ success: true, message: 'Sub-group deleted' });
+  try {
+    const subGroup = await AccountSubGroup.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    if (!subGroup) return res.status(404).json({ success: false, message: 'Sub-group not found' });
+    res.json({ success: true, message: 'Sub-group deleted' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 // Ledgers

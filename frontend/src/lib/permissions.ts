@@ -178,10 +178,20 @@ export const ROLE_LEVELS = {
 } as const;
 
 /**
- * Check if user has a specific permission
+ * Check if user is Root (has all permissions)
+ */
+export const isRootUser = (user: User | null): boolean => {
+  if (!user || !user.role) return false;
+  const role = typeof user.role === 'string' ? user.role : user.role?.name || '';
+  return role.toLowerCase() === 'root';
+};
+
+/**
+ * Check if user has a specific permission (Root bypasses)
  */
 export const hasPermission = (user: User | null, permission: string): boolean => {
   if (!user || !user.role) return false;
+  if (isRootUser(user)) return true; // Root has all permissions
   
   const role = typeof user.role === 'string' ? null : user.role;
   if (!role) return false;
@@ -236,9 +246,9 @@ export const getUserPermissions = (user: User | null): string[] => {
 };
 
 /**
- * Check if user has finance module access
- * Requires either finance.view or finance.manage permission
+ * Check if user has finance module access (Root bypasses)
  */
 export const hasFinanceAccess = (user: User | null): boolean => {
+  if (isRootUser(user)) return true;
   return hasAnyPermission(user, ['finance.view', 'finance.manage']);
 };

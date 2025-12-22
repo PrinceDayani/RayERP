@@ -39,6 +39,14 @@ interface Account {
   balance: number;
   currency: string;
   isActive: boolean;
+  groupId?: {
+    _id: string;
+    name: string;
+  };
+  subGroupId?: {
+    _id: string;
+    name: string;
+  };
   contactId?: {
     _id: string;
     name: string;
@@ -116,17 +124,17 @@ export default function AccountsPage() {
         ...(typeFilter && typeFilter !== 'all' && { type: typeFilter })
       });
 
-      const response = await fetch(`${API_URL}/api/general-ledger/accounts?${params}`, {
+      const response = await fetch(`${API_URL}/api/accounts?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       const data = await response.json();
-      if (data.accounts) {
-        setAccounts(data.accounts);
+      if (data.success && data.data) {
+        setAccounts(data.data);
         setPagination(prev => ({ 
           ...prev, 
-          total: data.total || data.accounts.length,
-          pages: Math.ceil((data.total || data.accounts.length) / prev.limit)
+          total: data.pagination?.total || data.data.length,
+          pages: data.pagination?.pages || Math.ceil(data.data.length / prev.limit)
         }));
       }
     } catch (error) {
@@ -146,7 +154,10 @@ export default function AccountsPage() {
       const token = localStorage.getItem('auth-token');
       const response = await fetch(`${API_URL}/api/accounts/${account._id}/duplicate`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       const data = await response.json();
@@ -156,11 +167,13 @@ export default function AccountsPage() {
           description: "Account duplicated successfully"
         });
         fetchAccounts();
+      } else {
+        throw new Error(data.message || 'Failed to duplicate account');
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to duplicate account",
+        description: error.message || "Failed to duplicate account",
         variant: "destructive"
       });
     }
@@ -173,7 +186,10 @@ export default function AccountsPage() {
       const token = localStorage.getItem('auth-token');
       const response = await fetch(`${API_URL}/api/accounts/${accountId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       const data = await response.json();
@@ -183,17 +199,20 @@ export default function AccountsPage() {
           description: "Account deactivated successfully"
         });
         fetchAccounts();
+      } else {
+        throw new Error(data.message || 'Failed to deactivate account');
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to deactivate account",
+        description: error.message || "Failed to deactivate account",
         variant: "destructive"
       });
     }
   };
 
   const getAccountTypeColor = (type: string) => {
+    const normalizedType = type.toLowerCase();
     const colors = {
       asset: 'bg-blue-100 text-blue-800',
       liability: 'bg-red-100 text-red-800',
@@ -201,7 +220,7 @@ export default function AccountsPage() {
       revenue: 'bg-purple-100 text-purple-800',
       expense: 'bg-orange-100 text-orange-800'
     };
-    return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    return colors[normalizedType as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
   const formatCurrency = (amount: number, currency: string = 'INR') => {
@@ -272,9 +291,9 @@ export default function AccountsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {accountTypes.map((type) => {
-          const count = accounts.filter(acc => acc.type === type.value).length;
+          const count = accounts.filter(acc => acc.type.toLowerCase() === type.value).length;
           const totalBalance = accounts
-            .filter(acc => acc.type === type.value)
+            .filter(acc => acc.type.toLowerCase() === type.value)
             .reduce((sum, acc) => sum + acc.balance, 0);
           
           return (
@@ -360,6 +379,7 @@ export default function AccountsPage() {
                     <TableHead>Code</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Group</TableHead>
                     <TableHead>Sub Type</TableHead>
                     <TableHead>Balance</TableHead>
                     <TableHead>Customer/Vendor</TableHead>
@@ -385,8 +405,18 @@ export default function AccountsPage() {
                       </TableCell>
                       <TableCell>
                         <Badge className={getAccountTypeColor(account.type)}>
-                          {account.type}
+                          {account.type.toUpperCase()}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {account.groupId ? (
+                          <div className="space-y-1">
+                            <div className="font-medium">{account.groupId.name}</div>
+                            {account.subGroupId && (
+                              <div className="text-xs text-muted-foreground">{account.subGroupId.name}</div>
+                            )}
+                          </div>
+                        ) : '-'}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {account.subType || '-'}

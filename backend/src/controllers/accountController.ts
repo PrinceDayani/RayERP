@@ -64,6 +64,9 @@ export const createAccount = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
     
+    console.log('=== CREATE ACCOUNT REQUEST ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     // Validate required fields
     if (!req.body.name || !req.body.type) {
       return res.status(400).json({ 
@@ -71,6 +74,9 @@ export const createAccount = async (req: Request, res: Response) => {
         message: 'Account name and type are required' 
       });
     }
+
+    // Normalize type to uppercase
+    req.body.type = req.body.type.toUpperCase();
 
     // Auto-generate account code if not provided
     if (!req.body.code) {
@@ -92,8 +98,11 @@ export const createAccount = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Invalid IFSC code format' });
     }
     
+    console.log('Creating account with data:', JSON.stringify(req.body, null, 2));
     const account = new ChartOfAccount({ ...req.body, createdBy: req.user.id });
+    console.log('Account instance created, validating...');
     await account.save();
+    console.log('Account saved successfully:', account._id);
     
     // Auto-create contact if requested and account is customer/vendor type
     if (req.body.createContact) {
@@ -109,8 +118,17 @@ export const createAccount = async (req: Request, res: Response) => {
     
     res.status(201).json({ success: true, data: account, message: 'Account created successfully' });
   } catch (error: any) {
+    console.error('=== CREATE ACCOUNT ERROR ===');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error details:', error);
+    
     if (error.code === 11000) {
       res.status(400).json({ success: false, message: 'Account code already exists' });
+    } else if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors || {}).map((e: any) => e.message).join(', ');
+      console.error('Validation errors:', validationErrors);
+      res.status(400).json({ success: false, message: `Validation failed: ${validationErrors}` });
     } else {
       res.status(400).json({ success: false, message: error.message });
     }
@@ -120,10 +138,15 @@ export const createAccount = async (req: Request, res: Response) => {
 // Generate unique account code based on type
 const generateAccountCode = async (type: string): Promise<string> => {
   const prefixMap: { [key: string]: string } = {
+    'ASSET': 'AST',
     'asset': 'AST',
+    'LIABILITY': 'LIB',
     'liability': 'LIB', 
+    'EQUITY': 'EQT',
     'equity': 'EQT',
+    'REVENUE': 'REV',
     'revenue': 'REV',
+    'EXPENSE': 'EXP',
     'expense': 'EXP'
   };
   
@@ -153,7 +176,11 @@ export const getAccounts = async (req: Request, res: Response) => {
     const filter: any = includeInactive === 'true' ? {} : { isActive: true };
     
     if (projectId) filter.projectId = projectId;
-    if (type) filter.type = type;
+    if (type) {
+      // Normalize type to uppercase for comparison
+      const normalizedType = (type as string).toUpperCase();
+      filter.type = normalizedType;
+    }
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -174,6 +201,8 @@ export const getAccounts = async (req: Request, res: Response) => {
     const skip = (Number(page) - 1) * Number(limit);
     const accounts = await ChartOfAccount.find(filter)
       .populate('parentId', 'name code')
+      .populate('groupId', 'name code')
+      .populate('subGroupId', 'name code')
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -215,6 +244,8 @@ export const getAccountById = async (req: Request, res: Response) => {
   try {
     const account = await ChartOfAccount.findById(req.params.id)
       .populate('parentId', 'name code')
+      .populate('groupId', 'name code')
+      .populate('subGroupId', 'name code')
       .populate('createdBy', 'name email');
     if (!account) {
       return res.status(404).json({ success: false, message: 'Account not found' });
@@ -242,116 +273,86 @@ export const updateAccount = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Invalid IFSC code format' });
     }
 
-    // Prevent code changes if different
-    if (req.body.code && existingAccount.code !== req.body.code) {
-      console.warn(`Account code change attempted: ${existingAccount.code} to ${req.body.code}`);
-      delete req.body.code; // Remove code from update
-    }
-    
     const account = await ChartOfAccount.findByIdAndUpdate(
-      req.params.id, 
-      { ...req.body, updatedAt: new Date() }, 
+      req.params.id,
+      { ...req.body },
       { new: true, runValidators: true }
     );
-    
-    // Auto-create contact if requested and account doesn't have one
-    if (req.body.createContact && !account?.contactId && req.user) {
-      try {
-        await createContactFromAccount(account._id.toString(), req.body, req.user.id);
-      } catch (contactError) {
-        logger.warn('Failed to auto-create contact on update', { 
-          error: contactError instanceof Error ? contactError.message : 'Unknown',
-          accountId: account._id 
-        });
-      }
-    }
-    
+
     res.json({ success: true, data: account, message: 'Account updated successfully' });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    if (error.code === 11000) {
+      res.status(400).json({ success: false, message: 'Account code already exists' });
+    } else if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors || {}).map((e: any) => e.message).join(', ');
+      res.status(400).json({ success: false, message: `Validation failed: ${validationErrors}` });
+    } else {
+      res.status(400).json({ success: false, message: error.message });
+    }
   }
 };
 
 export const deleteAccount = async (req: Request, res: Response) => {
   try {
-    const account = await ChartOfAccount.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
+    const account = await ChartOfAccount.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
+
     if (!account) {
       return res.status(404).json({ success: false, message: 'Account not found' });
     }
-    res.json({ success: true, message: 'Account deactivated successfully' });
+
+    res.json({ success: true, data: account, message: 'Account deactivated successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Duplicate account entry (editable copy)
 export const duplicateAccount = async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
     const originalAccount = await ChartOfAccount.findById(req.params.id);
     if (!originalAccount) {
       return res.status(404).json({ success: false, message: 'Account not found' });
     }
 
-    // Create duplicate with new code and name suffix
     const duplicateData = originalAccount.toObject();
     delete duplicateData._id;
     delete duplicateData.createdAt;
     delete duplicateData.updatedAt;
-    delete duplicateData.__v;
     
     duplicateData.code = await generateAccountCode(duplicateData.type);
     duplicateData.name = `${duplicateData.name} (Copy)`;
-    duplicateData.balance = 0; // Reset balance for new account
+    duplicateData.balance = 0;
     duplicateData.openingBalance = 0;
-    duplicateData.createdBy = req.user.id;
-    
-    // Clear unique identifiers
-    if (duplicateData.taxInfo) {
-      duplicateData.taxInfo.gstNo = '';
-      duplicateData.taxInfo.panNo = '';
-    }
-    if (duplicateData.bankDetails) {
-      duplicateData.bankDetails.accountNumber = '';
-    }
-    
-    const duplicateAccount = new ChartOfAccount(duplicateData);
-    await duplicateAccount.save();
-    
-    res.status(201).json({ 
-      success: true, 
-      data: duplicateAccount,
-      message: 'Account duplicated successfully. Please update unique identifiers.' 
-    });
+
+    const newAccount = new ChartOfAccount({ ...duplicateData, createdBy: req.user?.id });
+    await newAccount.save();
+
+    res.status(201).json({ success: true, data: newAccount, message: 'Account duplicated successfully' });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Get account types for dropdown
 export const getAccountTypes = async (req: Request, res: Response) => {
   try {
-    // Get custom types from database
     const customTypes = await AccountType.find({ isActive: true }).sort({ name: 1 });
     
-    // Default system types
     const systemTypes = [
-      { value: 'asset', label: 'Asset', description: 'Resources owned by the business', nature: 'debit', isSystem: true },
-      { value: 'liability', label: 'Liability', description: 'Debts and obligations', nature: 'credit', isSystem: true },
-      { value: 'equity', label: 'Equity', description: 'Owner\'s equity and capital', nature: 'credit', isSystem: true },
-      { value: 'revenue', label: 'Revenue', description: 'Income and sales', nature: 'credit', isSystem: true },
-      { value: 'expense', label: 'Expense', description: 'Costs and expenses', nature: 'debit', isSystem: true }
+      { value: 'ASSET', label: 'Asset', description: 'Resources owned by the business', nature: 'debit', isSystem: true },
+      { value: 'LIABILITY', label: 'Liability', description: 'Debts and obligations', nature: 'credit', isSystem: true },
+      { value: 'EQUITY', label: 'Equity', description: 'Owner\'s equity and capital', nature: 'credit', isSystem: true },
+      { value: 'REVENUE', label: 'Revenue', description: 'Income and sales', nature: 'credit', isSystem: true },
+      { value: 'EXPENSE', label: 'Expense', description: 'Costs and expenses', nature: 'debit', isSystem: true }
     ];
     
-    // Combine system and custom types
     const allTypes = [
       ...systemTypes,
       ...customTypes.map(t => ({
         _id: t._id,
-        value: t.value,
+        value: t.value.toUpperCase(),
         label: t.name,
         description: t.description,
         nature: t.nature,
@@ -359,136 +360,49 @@ export const getAccountTypes = async (req: Request, res: Response) => {
       }))
     ];
     
-    // Get count for each type
-    const counts = await ChartOfAccount.aggregate([
-      { $group: { _id: '$type', count: { $sum: 1 } } }
-    ]);
-    
-    const typesWithCounts = allTypes.map(type => {
-      const count = counts.find(c => c._id === type.value)?.count || 0;
-      return { ...type, count };
-    });
-    
-    res.json({ success: true, data: typesWithCounts });
+    res.json({ success: true, data: allTypes });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Create custom account type
 export const createAccountType = async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
-    const { name, description, nature } = req.body;
-    
-    // Validation
-    if (!name || !nature) {
-      return res.status(400).json({ success: false, message: 'Name and nature are required' });
-    }
-
-    if (name.length < 2 || name.length > 50) {
-      return res.status(400).json({ success: false, message: 'Name must be between 2 and 50 characters' });
-    }
-
-    if (!['debit', 'credit'].includes(nature)) {
-      return res.status(400).json({ success: false, message: 'Nature must be debit or credit' });
-    }
-
-    if (description && description.length > 200) {
-      return res.status(400).json({ success: false, message: 'Description must be less than 200 characters' });
-    }
-
-    // Sanitize and generate value from name
-    const sanitizedName = name.trim();
-    const value = sanitizedName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-
-    if (!value) {
-      return res.status(400).json({ success: false, message: 'Invalid account type name' });
-    }
-
-    // Check if type already exists
-    const existing = await AccountType.findOne({ 
-      $or: [
-        { name: { $regex: new RegExp(`^${sanitizedName}$`, 'i') } }, 
-        { value }
-      ] 
-    });
-    
-    if (existing) {
-      return res.status(400).json({ success: false, message: 'Account type already exists' });
-    }
-
-    const accountType = new AccountType({
-      name: sanitizedName,
-      value,
-      description: description?.trim(),
-      nature,
-      createdBy: req.user.id
-    });
-
+    const accountType = new AccountType({ ...req.body, createdBy: req.user?.id });
     await accountType.save();
-    res.status(201).json({ success: true, data: accountType, message: 'Account type created successfully' });
+    res.status(201).json({ success: true, data: accountType });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Update account type
 export const updateAccountType = async (req: Request, res: Response) => {
   try {
-    const accountType = await AccountType.findById(req.params.id);
+    const accountType = await AccountType.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
     if (!accountType) {
       return res.status(404).json({ success: false, message: 'Account type not found' });
     }
-
-    if (accountType.isSystem) {
-      return res.status(403).json({ success: false, message: 'Cannot modify system account types' });
-    }
-
-    const { name, description, nature } = req.body;
-    
-    if (nature && !['debit', 'credit'].includes(nature)) {
-      return res.status(400).json({ success: false, message: 'Nature must be debit or credit' });
-    }
-
-    if (name) accountType.name = name;
-    if (description !== undefined) accountType.description = description;
-    if (nature) accountType.nature = nature;
-
-    await accountType.save();
-    res.json({ success: true, data: accountType, message: 'Account type updated successfully' });
+    res.json({ success: true, data: accountType });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Delete account type
 export const deleteAccountType = async (req: Request, res: Response) => {
   try {
-    const accountType = await AccountType.findById(req.params.id);
+    const accountType = await AccountType.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
     if (!accountType) {
       return res.status(404).json({ success: false, message: 'Account type not found' });
     }
-
-    if (accountType.isSystem) {
-      return res.status(403).json({ success: false, message: 'Cannot delete system account types' });
-    }
-
-    // Check if any accounts use this type
-    const accountsUsingType = await ChartOfAccount.countDocuments({ type: accountType.value });
-    if (accountsUsingType > 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `Cannot delete account type. ${accountsUsingType} accounts are using this type.` 
-      });
-    }
-
-    accountType.isActive = false;
-    await accountType.save();
-    res.json({ success: true, message: 'Account type deleted successfully' });
+    res.json({ success: true, data: accountType });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

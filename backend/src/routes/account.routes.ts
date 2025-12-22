@@ -19,7 +19,7 @@ const router = express.Router();
 
 router.use(authenticateToken);
 
-router.post('/', accountValidation, validate, createAccount);
+router.post('/', createAccount);
 router.post('/bulk', bulkCreateAccounts);
 router.post('/:id/duplicate', duplicateAccount);
 router.get('/', getAccounts);
@@ -29,7 +29,7 @@ router.put('/types/:id', updateAccountType);
 router.delete('/types/:id', deleteAccountType);
 router.get('/project/:projectId', getAccounts);
 router.get('/:id', getAccountById);
-router.put('/:id', accountValidation, validate, updateAccount);
+router.put('/:id', updateAccount);
 router.delete('/:id', deleteAccount);
 
 export default router;

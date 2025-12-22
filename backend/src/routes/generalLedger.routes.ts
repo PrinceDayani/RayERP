@@ -112,8 +112,8 @@ router.get('/hierarchy', requireFinanceAccess('accounts.view'), getAccountHierar
 
 // Legacy Account routes
 router.get('/accounts', requireFinanceAccess('accounts.view'), getAccounts);
-router.post('/accounts', requireFinanceAccess('accounts.create'), accountValidation, validate, createAccount);
-router.put('/accounts/:id', requireFinanceAccess('accounts.edit'), accountValidation, validate, updateAccount);
+router.post('/accounts', requireFinanceAccess('accounts.create'), createAccount);
+router.put('/accounts/:id', requireFinanceAccess('accounts.edit'), updateAccount);
 router.delete('/accounts/:id', requireFinanceAccess('accounts.delete'), deleteAccount);
 
 // Journal entry routes

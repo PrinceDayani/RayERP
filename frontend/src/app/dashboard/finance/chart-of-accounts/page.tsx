@@ -93,7 +93,7 @@ export default function ChartOfAccountsPage() {
     const [formData, setFormData] = useState({
       name: '',
       code: '',
-      type: 'asset',
+      type: 'ASSET',
       parentId: '',
       isGroup: false,
       description: ''
@@ -152,11 +152,11 @@ export default function ChartOfAccountsPage() {
             <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="asset">Asset</SelectItem>
-                <SelectItem value="liability">Liability</SelectItem>
-                <SelectItem value="equity">Equity</SelectItem>
-                <SelectItem value="revenue">Revenue</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="ASSET">Asset</SelectItem>
+                <SelectItem value="LIABILITY">Liability</SelectItem>
+                <SelectItem value="EQUITY">Equity</SelectItem>
+                <SelectItem value="REVENUE">Revenue</SelectItem>
+                <SelectItem value="EXPENSE">Expense</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -213,7 +213,7 @@ export default function ChartOfAccountsPage() {
     const [formData, setFormData] = useState({
       name: selectedAccount?.name || '',
       code: selectedAccount?.code || '',
-      type: selectedAccount?.type || 'asset',
+      type: selectedAccount?.type || 'ASSET',
       parentId: selectedAccount?.parentId || '',
       isGroup: selectedAccount?.isGroup || false,
       description: selectedAccount?.description || ''
@@ -225,7 +225,7 @@ export default function ChartOfAccountsPage() {
         setFormData({
           name: selectedAccount.name || '',
           code: selectedAccount.code || '',
-          type: selectedAccount.type || 'asset',
+          type: selectedAccount.type || 'ASSET',
           parentId: selectedAccount.parentId || '',
           isGroup: selectedAccount.isGroup || false,
           description: selectedAccount.description || ''
@@ -287,11 +287,11 @@ export default function ChartOfAccountsPage() {
             <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="asset">Asset</SelectItem>
-                <SelectItem value="liability">Liability</SelectItem>
-                <SelectItem value="equity">Equity</SelectItem>
-                <SelectItem value="revenue">Revenue</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="ASSET">Asset</SelectItem>
+                <SelectItem value="LIABILITY">Liability</SelectItem>
+                <SelectItem value="EQUITY">Equity</SelectItem>
+                <SelectItem value="REVENUE">Revenue</SelectItem>
+                <SelectItem value="EXPENSE">Expense</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -585,11 +585,11 @@ export default function ChartOfAccountsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="asset">Asset</SelectItem>
-                <SelectItem value="liability">Liability</SelectItem>
-                <SelectItem value="equity">Equity</SelectItem>
-                <SelectItem value="revenue">Revenue</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="ASSET">Asset</SelectItem>
+                <SelectItem value="LIABILITY">Liability</SelectItem>
+                <SelectItem value="EQUITY">Equity</SelectItem>
+                <SelectItem value="REVENUE">Revenue</SelectItem>
+                <SelectItem value="EXPENSE">Expense</SelectItem>
               </SelectContent>
             </Select>
           </div>

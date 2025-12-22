@@ -56,7 +56,7 @@ export const accountValidation = [
   body('name').trim().notEmpty().withMessage('Account name is required'),
   body('code').optional().trim(),
   body('type')
-    .isIn(['asset', 'liability', 'equity', 'revenue', 'expense'])
+    .isIn(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE', 'asset', 'liability', 'equity', 'revenue', 'expense'])
     .withMessage('Invalid account type'),
   body('taxInfo.gstNo')
     .optional()
