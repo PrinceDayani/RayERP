@@ -135,14 +135,26 @@ export default function CreateInvoicePage() {
       const { subtotal, totalTax, totalAmount } = calculateTotals();
       
       const invoiceData = {
-        ...formData,
+        partyName: formData.partyName,
+        partyEmail: formData.partyEmail,
+        ...(formData.customerId && { customerId: formData.customerId }),
+        invoiceDate: formData.invoiceDate,
+        dueDate: formData.dueDate,
+        paymentTerms: formData.paymentTerms,
+        notes: formData.notes,
         invoiceType: 'SALES',
         lineItems: lineItems.map(item => ({
-          ...item,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          taxRate: item.taxRate,
           taxAmount: (item.quantity * item.unitPrice * item.taxRate) / 100,
-          discount: 0
+          amount: item.amount,
+          discount: 0,
+          ...(item.account && { account: item.account })
         })),
         subtotal,
+        baseAmount: subtotal,
         totalTax,
         totalDiscount: 0,
         totalAmount,
@@ -151,7 +163,8 @@ export default function CreateInvoicePage() {
         balanceAmount: totalAmount,
         currency: 'INR',
         exchangeRate: 1,
-        baseCurrency: 'INR'
+        baseCurrency: 'INR',
+        status: 'DRAFT'
       };
 
       const response = await silentApiClient.post('/api/invoices', invoiceData);
@@ -160,8 +173,10 @@ export default function CreateInvoicePage() {
         toast.success('Invoice created successfully!');
         router.push('/dashboard/finance/invoices');
       } else {
-        toast.error('Failed to create invoice');
+        toast.error(response?.message || 'Failed to create invoice');
       }
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to create invoice');
     } finally {
       setLoading(false);
     }
