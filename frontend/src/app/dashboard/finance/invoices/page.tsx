@@ -389,7 +389,7 @@ export default function EnhancedFinancePage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Finance Management</h1>
+          <h1 className="text-3xl font-bold">Payment and Invoice</h1>
           <p className="text-muted-foreground">Unified invoices, payments, and receipts</p>
         </div>
         <div className="flex gap-2">

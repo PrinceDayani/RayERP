@@ -69,7 +69,7 @@ export default function FinancePage() {
     { title: 'GL Budgets', description: 'Budget tracking & variance analysis', icon: TrendingUp, path: '/dashboard/finance/gl-budgets', color: 'from-teal-500 to-teal-600', badge: 'Available' },
     { title: 'Interest Calculations', description: 'Calculate & post interest entries', icon: Coins, path: '/dashboard/finance/interest', color: 'from-rose-500 to-rose-600', badge: 'Available' },
     { title: 'Project Ledger', description: 'Project-wise financial tracking', icon: Briefcase, path: '/dashboard/finance/project-ledger', color: 'from-purple-500 to-purple-600', badge: 'Available' },
-    { title: 'Finance Management', description: 'Invoices, Payments & Receipts unified', icon: Wallet, path: '/dashboard/finance/invoices', color: 'from-green-500 to-cyan-600', badge: 'Unified', stat: 'All-in-One' }
+    { title: 'Payment and Invoices', description: 'Invoices, Payments & Receipts unified', icon: Wallet, path: '/dashboard/finance/invoices', color: 'from-green-500 to-cyan-600', badge: 'Unified', stat: 'All-in-One' }
   ];
 
   const advancedModules = [
@@ -139,7 +139,7 @@ export default function FinancePage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <h2 className="text-2xl font-bold">🚀 Finance Management Hub</h2>
+                <h2 className="text-2xl font-bold"> Finance Management Hub</h2>
                 <Badge className="bg-background text-foreground">Recommended</Badge>
               </div>
               <p className="text-primary-foreground/90">All accounting features in ONE place - Superior UX, Faster workflow</p>
