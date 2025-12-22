@@ -14,10 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, FileText, Trash2, Upload, Download, Copy, AlertTriangle, CheckCircle, Paperclip, X, Save, Zap, FileSpreadsheet } from 'lucide-react';
+import { Plus, FileText, Trash2, Upload, Download, Copy, AlertTriangle, CheckCircle, Paperclip, X, Save, Zap, FileSpreadsheet, Keyboard, Calculator, History, Eye } from 'lucide-react';
 import axios from 'axios';
 import { AccountSelector } from './AccountSelector';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { toast } from '@/hooks/use-toast';
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 const JournalEntry = () => {
@@ -45,7 +46,33 @@ const JournalEntry = () => {
   const [duplicateWarning, setDuplicateWarning] = useState('');
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [showBatchDialog, setShowBatchDialog] = useState(false);
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+  const [showCalculator, setShowCalculator] = useState<{index: number, field: 'debit' | 'credit'} | null>(null);
+  const [calcExpression, setCalcExpression] = useState('');
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Auto-save draft
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (formData.lines.some(l => l.accountId || l.debit || l.credit)) {
+        localStorage.setItem('journal-draft', JSON.stringify(formData));
+      }
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [formData]);
+
+  // Load draft on mount
+  useEffect(() => {
+    const draft = localStorage.getItem('journal-draft');
+    if (draft && !editId) {
+      const parsed = JSON.parse(draft);
+      if (parsed.lines.some((l: any) => l.accountId)) {
+        toast({ title: 'Draft Loaded', description: 'Your previous draft has been restored' });
+        setFormData(parsed);
+      }
+    }
+  }, []);
 
   useCreateEntryShortcut(() => {
     resetForm();
@@ -222,6 +249,14 @@ const JournalEntry = () => {
     const newLines = [...formData.lines];
     newLines[index] = { ...newLines[index], [field]: value };
     setFormData({ ...formData, lines: newLines });
+    
+    // Real-time validation
+    if (field === 'accountId' && value) {
+      const account = accounts.find(a => a._id === value);
+      if (account && (account as any).balance < 0) {
+        toast({ title: 'Warning', description: `${account.name} has negative balance`, variant: 'destructive' });
+      }
+    }
   };
 
   const removeLine = (index: number) => {
@@ -266,7 +301,10 @@ const JournalEntry = () => {
     if (!templateName) return;
     try {
       const token = localStorage.getItem('auth-token');
-      if (!token) return alert('Authentication required');
+      if (!token) {
+        toast({ title: 'Error', description: 'Authentication required', variant: 'destructive' });
+        return;
+      }
       await axios.post(`${API_URL}/api/journal-entry-templates`, {
         name: templateName,
         description: formData.description,
@@ -274,9 +312,11 @@ const JournalEntry = () => {
         lines: formData.lines.map(l => ({ account: l.accountId, description: l.description })),
         variables: []
       }, { headers: { Authorization: `Bearer ${token}` } });
-      alert('Template saved!');
+      toast({ title: 'Success', description: 'Template saved successfully' });
       fetchTemplates();
-    } catch (error) { alert('Failed to save template'); }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to save template', variant: 'destructive' });
+    }
   };
 
   const loadTemplate = (templateId: string) => {
@@ -310,21 +350,27 @@ const JournalEntry = () => {
   };
 
   const handleBatchImport = async () => {
-    if (!csvFile) return alert('Please select a CSV file');
+    if (!csvFile) {
+      toast({ title: 'Error', description: 'Please select a CSV file', variant: 'destructive' });
+      return;
+    }
     try {
       const token = localStorage.getItem('auth-token');
-      if (!token) return alert('Authentication required. Please login.');
+      if (!token) {
+        toast({ title: 'Error', description: 'Authentication required', variant: 'destructive' });
+        return;
+      }
       const formData = new FormData();
       formData.append('file', csvFile);
       const res = await axios.post(`${API_URL}/api/journal-entries/bulk-import`, formData, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
       });
-      alert(`${res.data.data.length} entries imported!`);
+      toast({ title: 'Success', description: `${res.data.data.length} entries imported successfully` });
       setShowBatchDialog(false);
       setCsvFile(null);
       fetchRecentEntries();
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Failed to import');
+      toast({ title: 'Error', description: error?.response?.data?.message || 'Failed to import', variant: 'destructive' });
     }
   };
 
@@ -341,17 +387,27 @@ const JournalEntry = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isBalanced) return alert('Debits must equal credits');
+    if (!isBalanced) {
+      toast({ title: 'Error', description: 'Debits must equal credits', variant: 'destructive' });
+      return;
+    }
 
     const validLines = formData.lines.filter(line => 
       line.accountId && (line.debit > 0 || line.credit > 0)
     );
 
-    if (validLines.length < 2) return alert('At least 2 valid lines required');
+    if (validLines.length < 2) {
+      toast({ title: 'Error', description: 'At least 2 valid lines required', variant: 'destructive' });
+      return;
+    }
 
+    setSubmitting(true);
     try {
       const token = localStorage.getItem('auth-token');
-      if (!token) return alert('Authentication required. Please login.');
+      if (!token) {
+        toast({ title: 'Error', description: 'Authentication required', variant: 'destructive' });
+        return;
+      }
       
       const method = editingId ? 'put' : 'post';
       const url = editingId ? `${API_URL}/api/journal-entries/${editingId}` : `${API_URL}/api/journal-entries`;
@@ -371,14 +427,12 @@ const JournalEntry = () => {
 
       const entryId = res.data.data?._id || res.data._id;
       
-      // Post the entry immediately
       try {
         await axios.post(`${API_URL}/api/general-ledger/journal-entries/${entryId}/post`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
       } catch (postError: any) {
-        console.error('Error posting entry:', postError);
-        alert('Entry created but failed to post: ' + (postError?.response?.data?.message || postError.message));
+        toast({ title: 'Warning', description: 'Entry created but failed to post', variant: 'destructive' });
       }
 
       if (attachments.length > 0) {
@@ -391,13 +445,16 @@ const JournalEntry = () => {
         }
       }
 
-      alert(editingId ? 'Journal entry updated successfully!' : 'Journal entry created and posted successfully!');
+      toast({ title: 'Success', description: editingId ? 'Journal entry updated successfully' : 'Journal entry created and posted successfully' });
+      localStorage.removeItem('journal-draft');
       await fetchRecentEntries();
       resetForm();
       setEditingId(null);
       window.history.replaceState({}, '', '/dashboard/finance/journal-entry');
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Failed to create journal entry');
+      toast({ title: 'Error', description: error?.response?.data?.message || 'Failed to create journal entry', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -484,6 +541,9 @@ const JournalEntry = () => {
               </Dialog>
               <Button variant="outline" size="sm" onClick={saveAsTemplate} className="bg-background text-foreground">
                 <Save className="w-4 h-4 mr-2" />Save as Template
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowShortcutsDialog(true)} className="bg-background text-foreground">
+                <Keyboard className="w-4 h-4 mr-2" />Shortcuts
               </Button>
             </div>
           </div>
@@ -601,24 +661,34 @@ const JournalEntry = () => {
                           })()}
                         </td>
                         <td className="p-3" data-field="debit" data-index={index}>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={line.debit || ''}
-                            onChange={(e) => updateLine(index, 'debit', parseFloat(e.target.value) || 0)}
-                            className="text-right"
-                          />
+                          <div className="flex gap-1">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={line.debit || ''}
+                              onChange={(e) => updateLine(index, 'debit', parseFloat(e.target.value) || 0)}
+                              className="text-right"
+                            />
+                            <Button type="button" size="icon" variant="ghost" className="h-9 w-9" onClick={() => { setShowCalculator({index, field: 'debit'}); setCalcExpression(''); }}>
+                              <Calculator className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </td>
                         <td className="p-3" data-field="credit" data-index={index}>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={line.credit || ''}
-                            onChange={(e) => updateLine(index, 'credit', parseFloat(e.target.value) || 0)}
-                            className="text-right"
-                          />
+                          <div className="flex gap-1">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={line.credit || ''}
+                              onChange={(e) => updateLine(index, 'credit', parseFloat(e.target.value) || 0)}
+                              className="text-right"
+                            />
+                            <Button type="button" size="icon" variant="ghost" className="h-9 w-9" onClick={() => { setShowCalculator({index, field: 'credit'}); setCalcExpression(''); }}>
+                              <Calculator className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </td>
                         <td className="p-3" data-field="description" data-index={index}>
                           <Input
@@ -697,12 +767,17 @@ const JournalEntry = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end space-x-4 pt-6 border-t">
-              <Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
-              <Button type="submit" disabled={loading || !isBalanced} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                {loading ? <Spinner className="w-4 h-4 mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-                Create Entry
+              <div className="flex justify-between items-center pt-6 border-t">
+                <Button type="button" variant="ghost" size="sm" onClick={() => localStorage.removeItem('journal-draft')}>
+                  <Trash2 className="w-4 h-4 mr-2" />Clear Draft
                 </Button>
+                <div className="flex gap-4">
+                  <Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
+                  <Button type="submit" disabled={loading || !isBalanced || submitting} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    {submitting ? <Spinner className="w-4 h-4 mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                    {submitting ? 'Creating...' : 'Create Entry'}
+                  </Button>
+                </div>
               </div>
             </form>
           </TabsContent>
@@ -765,6 +840,66 @@ const JournalEntry = () => {
         </Tabs>
         </CardContent>
       </Card>
+
+      <Dialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Keyboard Shortcuts</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-2 bg-muted/50 rounded">
+              <span className="text-sm">Save Entry</span>
+              <Badge variant="outline">Ctrl + S</Badge>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-muted/50 rounded">
+              <span className="text-sm">Add Line</span>
+              <Badge variant="outline">Ctrl + Enter</Badge>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-muted/50 rounded">
+              <span className="text-sm">Navigate Lines</span>
+              <Badge variant="outline">Ctrl + Arrows</Badge>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-muted/50 rounded">
+              <span className="text-sm">New Entry</span>
+              <Badge variant="outline">Ctrl + N</Badge>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-muted/50 rounded">
+              <span className="text-sm">Create Account</span>
+              <Badge variant="outline">Ctrl + Shift + A</Badge>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!showCalculator} onOpenChange={() => setShowCalculator(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader><DialogTitle>Calculator</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input
+              value={calcExpression}
+              onChange={(e) => setCalcExpression(e.target.value)}
+              placeholder="e.g., 100+50*2"
+              className="text-right text-lg"
+            />
+            <div className="grid grid-cols-4 gap-2">
+              {['7','8','9','/','4','5','6','*','1','2','3','-','0','.','=','+'].map(btn => (
+                <Button key={btn} variant="outline" onClick={() => {
+                  if (btn === '=') {
+                    try {
+                      const result = eval(calcExpression);
+                      if (showCalculator) {
+                        updateLine(showCalculator.index, showCalculator.field, parseFloat(result));
+                        setShowCalculator(null);
+                      }
+                    } catch { toast({ title: 'Error', description: 'Invalid expression', variant: 'destructive' }); }
+                  } else {
+                    setCalcExpression(prev => prev + btn);
+                  }
+                }}>{btn}</Button>
+              ))}
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => setCalcExpression('')}>Clear</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
