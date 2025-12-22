@@ -48,22 +48,22 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
-    return showSymbol ? `${currency} ${formatted}` : formatted;
+    return showSymbol ? `${symbol}${formatted}` : formatted;
   };
 
   const formatCompact = (amount: number) => {
     // Indian format (Lakhs/Crores) for INR
     if (currency === 'INR') {
-      if (amount >= 10000000) return `${currency} ${(amount / 10000000).toFixed(2)} Cr`;
-      if (amount >= 100000) return `${currency} ${(amount / 100000).toFixed(2)} L`;
-      if (amount >= 1000) return `${currency} ${(amount / 1000).toFixed(0)}K`;
-      return `${currency} ${amount.toFixed(0)}`;
+      if (amount >= 10000000) return `${symbol}${(amount / 10000000).toFixed(2)} Cr`;
+      if (amount >= 100000) return `${symbol}${(amount / 100000).toFixed(2)} L`;
+      if (amount >= 1000) return `${symbol}${(amount / 1000).toFixed(0)}K`;
+      return `${symbol}${amount.toFixed(0)}`;
     }
     // International format (Million/Billion) for others
-    if (amount >= 1000000000) return `${currency} ${(amount / 1000000000).toFixed(2)}B`;
-    if (amount >= 1000000) return `${currency} ${(amount / 1000000).toFixed(2)}M`;
-    if (amount >= 1000) return `${currency} ${(amount / 1000).toFixed(0)}K`;
-    return `${currency} ${amount.toFixed(0)}`;
+    if (amount >= 1000000000) return `${symbol}${(amount / 1000000000).toFixed(2)}B`;
+    if (amount >= 1000000) return `${symbol}${(amount / 1000000).toFixed(2)}M`;
+    if (amount >= 1000) return `${symbol}${(amount / 1000).toFixed(0)}K`;
+    return `${symbol}${amount.toFixed(0)}`;
   };
 
   return (

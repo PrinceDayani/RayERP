@@ -139,7 +139,7 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
   reference: String,
   
   lines: [{
-    account: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
+    account: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount', required: true },
     debit: { type: Number, default: 0 },
     credit: { type: Number, default: 0 },
     description: String,
@@ -191,7 +191,7 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
   
   budgetCheckPerformed: { type: Boolean, default: false },
   budgetWarnings: [{
-    account: { type: Schema.Types.ObjectId, ref: 'Account' },
+    account: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' },
     budgetAmount: Number,
     actualAmount: Number,
     variance: Number,
@@ -231,7 +231,7 @@ JournalEntrySchema.index({ isRecurring: 1, nextRecurringDate: 1 });
 JournalEntrySchema.post('save', async function(doc) {
   if (doc.isPosted && doc.status === 'POSTED') {
     const Ledger = mongoose.model('Ledger');
-    const Account = mongoose.model('Account');
+    const Account = mongoose.model('ChartOfAccount');
     
     // Check if ledger entries already exist
     const existingCount = await Ledger.countDocuments({ journalEntryId: doc._id });
