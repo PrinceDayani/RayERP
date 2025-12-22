@@ -47,7 +47,7 @@ export default function AgingAnalysisPage() {
     setLoading(true);
     setError(null);
     try {
-      const { agingAnalysisAPI } = await import('@/lib/api/financeAPI');
+      const { agingAnalysisAPI } = await import('@/lib/api/financeApi');
       // Use getReceivables or getPayables based on selectedType
       const dataMethod = selectedType === 'receivables'
         ? agingAnalysisAPI.getReceivables

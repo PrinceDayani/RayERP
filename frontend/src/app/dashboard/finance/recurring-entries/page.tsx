@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Play, Pause, Trash2, RefreshCw, CheckCircle, XCircle, Clock, AlertTriangle, Minus, Edit, History, Download, Search, Copy, Save, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import { recurringEntriesAPI, accountsAPI } from '@/lib/api/financeAPI';
+import { recurringEntriesAPI, accountsAPI } from '@/lib/api/financeApi';
 import { validateRecurringEntry } from '@/utils/validation';
 import { exportRecurringEntries } from '@/utils/exportUtils';
 
