@@ -416,9 +416,9 @@ export const getJournalEntries = async (req: Request, res: Response) => {
   try {
     const { page = 1, limit = 50, startDate, endDate } = req.query;
     
-    const query: any = {};
+    const matchStage: any = {};
     if (startDate && endDate) {
-      query.entryDate = {
+      matchStage.entryDate = {
         $gte: new Date(startDate as string),
         $lte: new Date(endDate as string)
       };
@@ -426,19 +426,70 @@ export const getJournalEntries = async (req: Request, res: Response) => {
 
     const skip = (Number(page) - 1) * Number(limit);
     
-    const journalEntries = await JournalEntry.find(query)
-      .populate({
-        path: 'lines.account',
-        select: 'code name type',
-        options: { strictPopulate: false }
-      })
-      .populate('createdBy', 'firstName lastName name email')
-      .sort({ entryDate: -1, entryNumber: -1 })
-      .limit(Number(limit))
-      .skip(skip)
-      .lean();
+    // Use aggregation pipeline for efficient single-query population
+    const journalEntries = await JournalEntry.aggregate([
+      { $match: matchStage },
+      { $sort: { entryDate: -1, entryNumber: -1 } },
+      { $skip: skip },
+      { $limit: Number(limit) },
+      {
+        $lookup: {
+          from: 'accounts',
+          localField: 'lines.account',
+          foreignField: '_id',
+          as: 'accountDetails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'createdBy',
+          foreignField: '_id',
+          as: 'createdByUser'
+        }
+      },
+      {
+        $addFields: {
+          lines: {
+            $map: {
+              input: '$lines',
+              as: 'line',
+              in: {
+                $mergeObjects: [
+                  '$$line',
+                  {
+                    account: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: '$accountDetails',
+                            as: 'acc',
+                            cond: { $eq: ['$$acc._id', '$$line.account'] }
+                          }
+                        },
+                        0
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          createdBy: { $arrayElemAt: ['$createdByUser', 0] }
+        }
+      },
+      {
+        $project: {
+          accountDetails: 0,
+          createdByUser: 0,
+          'createdBy.password': 0,
+          'lines.account.balance': 0,
+          'lines.account.openingBalance': 0
+        }
+      }
+    ]);
 
-    const total = await JournalEntry.countDocuments(query);
+    const total = await JournalEntry.countDocuments(matchStage);
 
     res.json({
       journalEntries,

@@ -45,16 +45,18 @@ app.set("trust proxy", 1);
 
 // Optimized rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 2000, // increased limit for better performance
+  windowMs: 10 * 1000, // 10 seconds
+  max: 100, // 100 requests per 10 seconds
   message: {
-    error: 'Too many requests from this IP, please try again later.'
+    error: 'Too many requests from this IP, please try again in 10 seconds.'
   },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for health checks and static files
-    return req.path === '/api/health' || req.path.startsWith('/uploads/');
+    // Skip rate limiting for health checks, static files, and in development
+    return req.path === '/api/health' || 
+           req.path.startsWith('/uploads/') || 
+           process.env.NODE_ENV === 'development';
   },
 });
 

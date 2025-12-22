@@ -16,9 +16,17 @@ const authLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting in development for easier testing
+    return process.env.NODE_ENV === 'development';
+  },
   keyGenerator: (req) => {
     // Use email from request body for login attempts, fallback to IP
-    return req.body?.email || req.ip || 'unknown';
+    const email = req.body?.email;
+    if (email && typeof email === 'string') {
+      return `auth:${email}`;
+    }
+    return `auth:${req.ip || 'unknown'}`;
   },
 });
 
