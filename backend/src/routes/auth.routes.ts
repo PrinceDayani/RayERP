@@ -8,23 +8,29 @@ import { updateUserRole, getAllUsers } from '../controllers/userController';
 const router = express.Router();
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
+  windowMs: 10 * 1000, // 10 seconds
+  max: 5, // 5 attempts per 10 seconds per user
   message: { 
     success: false,
-    message: 'Too many authentication attempts. Please try again in 15 minutes.' 
+    message: 'Too many authentication attempts. Please try again in 10 seconds.' 
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Use email from request body for login attempts, fallback to IP
+    return req.body?.email || req.ip || 'unknown';
+  },
 });
 
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 10 * 1000, // 10 seconds
+  max: 50, // 50 requests per 10 seconds
   message: { 
     success: false,
-    message: 'Too many requests. Please try again later.' 
-  }
+    message: 'Too many requests. Please try again in 10 seconds.' 
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 router.post('/login', authLimiter, login);
