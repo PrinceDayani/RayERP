@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, apiRequest } from '@/lib/api';
+import api from '@/lib/api/api';
 import { toast } from '@/components/ui/use-toast';
 import { departmentApi } from '@/lib/api/departments';
 
@@ -77,24 +77,13 @@ export default function CreateEmployeePage() {
     setLoading(true);
 
     try {
-      console.log('API object:', api);
-      console.log('API employees:', (api as any).employees);
-      
       const submitData = {
         ...formData,
         salary: parseFloat(formData.salary),
         skills: formData.skills.split(',').map(skill => skill.trim()).filter(Boolean)
       };
 
-      if ((api as any).employees && (api as any).employees.create) {
-        await (api as any).employees.create(submitData);
-      } else {
-        // Fallback to direct apiRequest
-        await apiRequest('/api/employees', {
-          method: 'POST',
-          body: JSON.stringify(submitData)
-        });
-      }
+      await api.post('/employees', submitData);
       
       toast({
         title: "Success",

@@ -113,8 +113,8 @@ export function AccountSelector({ value, onValueChange, accounts, onAccountCreat
           </Button>
           
           {open && (
-            <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg">
-              <div className="p-2 border-b">
+            <div className="absolute z-[100] w-full mt-1 bg-popover border rounded-md shadow-lg">
+              <div className="p-2 border-b sticky top-0 bg-popover">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -128,7 +128,7 @@ export function AccountSelector({ value, onValueChange, accounts, onAccountCreat
               </div>
               <div className="max-h-[300px] overflow-y-auto">
                 {filteredAccounts.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground">No accounts found</div>
+                  <div className="p-3 text-sm text-muted-foreground text-center">No accounts found</div>
                 ) : (
                   filteredAccounts.map((acc, idx) => (
                     <div
@@ -139,16 +139,16 @@ export function AccountSelector({ value, onValueChange, accounts, onAccountCreat
                         setSearchQuery('');
                       }}
                       className={cn(
-                        "flex items-center justify-between px-2 py-2 cursor-pointer hover:bg-accent",
+                        "flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-accent transition-colors",
                         idx === selectedIndex && "bg-accent",
-                        value === acc._id && "bg-primary/10"
+                        value === acc._id && "bg-primary/10 font-medium"
                       )}
                     >
-                      <div className="flex items-center gap-2">
-                        <Check className={cn("h-4 w-4", value === acc._id ? "opacity-100" : "opacity-0")} />
-                        <span className="text-sm">{acc.code} - {acc.name}</span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Check className={cn("h-4 w-4 shrink-0", value === acc._id ? "opacity-100 text-primary" : "opacity-0")} />
+                        <span className="text-sm truncate">{acc.code} - {acc.name}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">₹{acc.balance?.toLocaleString() || '0'}</span>
+                      <span className="text-xs text-muted-foreground ml-2 shrink-0">₹{acc.balance?.toLocaleString() || '0'}</span>
                     </div>
                   ))
                 )}
