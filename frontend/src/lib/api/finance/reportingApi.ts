@@ -10,10 +10,13 @@ const getAuthHeaders = (): HeadersInit => {
 };
 
 export const reportingApi = {
-  getBalanceSheet: async (asOfDate?: string, compareDate?: string) => {
+  getBalanceSheet: async (asOfDate?: string, compareDate?: string, additionalParams?: Record<string, string>) => {
     const params = new URLSearchParams();
     if (asOfDate) params.append('asOfDate', asOfDate);
     if (compareDate) params.append('compareDate', compareDate);
+    if (additionalParams) {
+      Object.entries(additionalParams).forEach(([key, value]) => params.append(key, value));
+    }
     const url = `${API_BASE}/api/financial-reports/balance-sheet${params.toString() ? '?' + params.toString() : ''}`;
     const res = await fetch(url, { headers: getAuthHeaders() });
     return res.json();

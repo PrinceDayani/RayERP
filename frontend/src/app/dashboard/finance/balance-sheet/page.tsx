@@ -93,7 +93,7 @@ const BalanceSheetPage = () => {
       if (accountCodeFrom) params.accountCodeFrom = accountCodeFrom;
       if (accountCodeTo) params.accountCodeTo = accountCodeTo;
       
-      const response = await reportingApi.getBalanceSheet(asOfDate, compareDate || undefined, params);
+      const response = await reportingApi.getBalanceSheet(asOfDate, compareDate || undefined, Object.keys(params).length > 1 ? params : undefined);
       if (response.success) {
         setBalanceSheetData(response.data);
         if (compareMode === 'multi') fetchMultiPeriodData();

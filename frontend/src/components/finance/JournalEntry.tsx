@@ -941,12 +941,7 @@ const JournalEntry = () => {
                 setFormData({
                   ...formData,
                   description: template.name,
-                  lines: template.lines.map(line => ({
-                    accountId: '',
-                    debit: 0,
-                    credit: 0,
-                    description: line.desc
-                  }))
+                  lines: template.lines.map(line => ({ accountId: '', debit: 0, credit: 0, description: line.desc, refType: 'on-account', refId: '', refAmount: 0 }))
                 });
               }}>
                 <div className="flex items-center gap-3 mb-3">
@@ -1257,3 +1252,4 @@ const JournalEntry = () => {
 };
 
 export default JournalEntry;
+

@@ -460,7 +460,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                   {entries.map((entry, idx) => {
                     const isDebit = entry.debit > 0;
                     const direction = isDebit ? 'To' : 'From';
-                    const otherAccount = entry.journalEntryId?.entries?.find(e => e.account.code !== account?.code);
+                    const otherAccount = typeof entry.journalEntryId === 'object' ? entry.journalEntryId?.entries?.find(e => e.account.code !== account?.code) : undefined;
                     return (
                     <TableRow 
                       key={entry._id}
@@ -485,7 +485,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                         {entry.reference}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        <Badge variant="outline">{entry.journalEntryId?.entryNumber}</Badge>
+                        <Badge variant="outline">{typeof entry.journalEntryId === 'object' ? entry.journalEntryId?.entryNumber : 'N/A'}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {entry.debit > 0 ? (
@@ -594,7 +594,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                   </div>
                   <div>
                     <Label className="text-xs">Created By</Label>
-                    <p className="text-sm font-medium mt-1">{selectedEntry.journalEntryId?.createdBy?.name || 'N/A'}</p>
+                    <p className="text-sm font-medium mt-1">{typeof selectedEntry.journalEntryId === 'object' ? selectedEntry.journalEntryId?.createdBy?.name || 'N/A' : 'N/A'}</p>
                   </div>
                 </div>
               </div>

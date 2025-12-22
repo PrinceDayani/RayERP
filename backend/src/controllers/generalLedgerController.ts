@@ -495,7 +495,7 @@ export const getJournalEntries = async (req: Request, res: Response) => {
       { $limit: Number(limit) },
       {
         $lookup: {
-          from: 'accounts',
+          from: 'chartofaccounts',
           localField: 'lines.account',
           foreignField: '_id',
           as: 'accountDetails'
@@ -1006,6 +1006,11 @@ export const getAccountLedger = async (req: Request, res: Response) => {
     console.log('Account ID:', accountId);
     console.log('Date range:', startDate, 'to', endDate);
     
+    // Validate accountId
+    if (!mongoose.Types.ObjectId.isValid(accountId)) {
+      return res.status(400).json({ message: 'Invalid account ID' });
+    }
+    
     const account = await ChartOfAccount.findById(accountId);
     if (!account) {
       console.log('Account not found');
@@ -1013,9 +1018,13 @@ export const getAccountLedger = async (req: Request, res: Response) => {
     }
     console.log('Account found:', account.code, account.name);
 
-    // Get journal entries that include this account
+    // Get journal entries that include this account - use $or to check both account and accountId
+    const accountObjectId = new mongoose.Types.ObjectId(accountId);
     const journalQuery: any = {
-      'lines.account': accountId,
+      $or: [
+        { 'lines.account': accountObjectId },
+        { 'lines.accountId': accountObjectId }
+      ],
       isPosted: true
     };
     if (startDate && endDate) {
@@ -1041,7 +1050,10 @@ export const getAccountLedger = async (req: Request, res: Response) => {
     let runningBalance = 0;
     const entries = journalEntries.flatMap(entry => {
       return entry.lines
-        .filter((line: any) => line.account._id.toString() === accountId)
+        .filter((line: any) => {
+          const lineAccountId = line.account?._id?.toString() || line.account?.toString() || line.accountId?.toString();
+          return lineAccountId === accountId;
+        })
         .map((line: any) => {
           // Auto-calculate running balance based on account type
           if (['ASSET', 'EXPENSE'].includes(account.type)) {
@@ -1096,7 +1108,10 @@ export const getAccountLedger = async (req: Request, res: Response) => {
     console.error('=== ERROR IN GET ACCOUNT LEDGER ===');
     console.error(error);
     logger.error('Error fetching account ledger:', error);
-    res.status(500).json({ message: 'Error fetching account ledger' });
+    res.status(500).json({ 
+      message: 'Error fetching account ledger',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
