@@ -73,8 +73,15 @@ export default function Layout({ children }: LayoutProps) {
   const isAdmin = roleName.toLowerCase() === "admin";
   const isManager = roleName.toLowerCase() === "manager" || isAdmin || isSuperAdmin || isRoot;
   
-  // Finance module access check
+  // Module access checks
   const hasFinanceAccess = hasAnyPermission(['finance.view', 'finance.manage']);
+  const hasEmployeeAccess = hasAnyPermission(['employees.view', 'employees.manage']);
+  const hasDepartmentAccess = hasAnyPermission(['departments.view', 'departments.manage']);
+  const hasProjectAccess = hasAnyPermission(['projects.view', 'projects.manage']);
+  const hasTaskAccess = hasAnyPermission(['tasks.view', 'tasks.manage']);
+  const hasResourceAccess = hasAnyPermission(['resources.view', 'resources.manage']);
+  const hasBudgetAccess = hasAnyPermission(['budgets.view', 'budgets.manage']);
+  const hasReportAccess = hasAnyPermission(['reports.view', 'reports.manage']);
 
   const menuSections = useMemo(() => [
     {
@@ -95,32 +102,32 @@ export default function Layout({ children }: LayoutProps) {
       title: "Human Resources",
       items: [
         { path: "/dashboard/users", name: "User Management", icon: UserCog, description: "System user administration", access: isAdmin || isSuperAdmin || isRoot } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/employees", name: "Employees", icon: UserCheck, description: "Employee management" } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/departments", name: "Departments", icon: Building, description: "Department management" } as MenuItem & { icon: any; description: string }
+        { path: "/dashboard/employees", name: "Employees", icon: UserCheck, description: "Employee management", access: hasEmployeeAccess } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/departments", name: "Departments", icon: Building, description: "Department management", access: hasDepartmentAccess } as MenuItem & { icon: any; description: string }
       ]
     },
     {
       title: "Project Management",
       items: [
-        { path: "/dashboard/projects", name: "Projects", icon: Briefcase, description: "Project tracking & management" } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/tasks", name: "Tasks", icon: CheckCircle, description: "Task management" } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/resources", name: "Resources", icon: Boxes, description: "Resource planning" } as MenuItem & { icon: any; description: string }
+        { path: "/dashboard/projects", name: "Projects", icon: Briefcase, description: "Project tracking & management", access: hasProjectAccess } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/tasks", name: "Tasks", icon: CheckCircle, description: "Task management", access: hasTaskAccess } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/resources", name: "Resources", icon: Boxes, description: "Resource planning", access: hasResourceAccess } as MenuItem & { icon: any; description: string }
       ]
     },
     {
       title: "Budget & Finance",
       items: [
-        { path: "/dashboard/budgets", name: "Budgets", icon: Calculator, description: "Budget planning & tracking" } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/budgets/templates", name: "Budget Templates", icon: ClipboardList, description: "Reusable budget templates" } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/budgets/approvals", name: "Approvals", icon: Target, description: "Budget approval workflow", access: isManager } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/budgets/analytics", name: "Budget Analytics", icon: PieChart, description: "Budget performance analysis", access: isManager } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/budgets", name: "Budgets", icon: Calculator, description: "Budget planning & tracking", access: hasBudgetAccess } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/budgets/templates", name: "Budget Templates", icon: ClipboardList, description: "Reusable budget templates", access: hasBudgetAccess } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/budgets/approvals", name: "Approvals", icon: Target, description: "Budget approval workflow", access: hasBudgetAccess && isManager } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/budgets/analytics", name: "Budget Analytics", icon: PieChart, description: "Budget performance analysis", access: hasBudgetAccess && isManager } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/finance", name: "Finance", icon: Wallet, description: "Financial accounting", access: hasFinanceAccess } as MenuItem & { icon: any; description: string },
       ]
     },
     {
       title: "Analytics & Reports",
       items: [
-        { path: "/dashboard/reports", name: "Reports", icon: BarChart3, description: "Business intelligence reports", access: isManager } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/reports", name: "Reports", icon: BarChart3, description: "Business intelligence reports", access: hasReportAccess || isManager } as MenuItem & { icon: any; description: string },
       ]
     },
     {
@@ -131,7 +138,7 @@ export default function Layout({ children }: LayoutProps) {
         { path: "/dashboard/admin", name: "Admin Panel", icon: Shield, description: "Advanced system controls", access: isAdmin || isSuperAdmin || isRoot } as MenuItem & { icon: any; description: string },
       ]
     }
-  ], [isAdmin, isSuperAdmin, isRoot, isManager]);
+  ], [isAdmin, isSuperAdmin, isRoot, isManager, hasFinanceAccess, hasEmployeeAccess, hasDepartmentAccess, hasProjectAccess, hasTaskAccess, hasResourceAccess, hasBudgetAccess, hasReportAccess]);
 
   useEffect(() => {
     setIsClient(true);

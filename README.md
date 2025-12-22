@@ -165,6 +165,8 @@ curl -X POST http://localhost:5000/api/auth/login \
 - Rate limiting
 - Security headers
 - XSS and injection protection
+- **Finance Module Permissions** - 3-layer protection (Backend API, Sidebar, Route Guards)
+  - See [FINANCE_PERMISSION_COMPLETE.md](./FINANCE_PERMISSION_COMPLETE.md) for details
 
 ## 🐛 Troubleshooting
 
