@@ -102,7 +102,7 @@ const adminAPI = {
   // Admin Stats
   getStats: async (): Promise<AdminStats> => {
     try {
-      return await apiClient.get('/api/admin/stats');
+      return await apiClient.get('/admin/stats');
     } catch (error) {
       console.error('Error fetching admin stats:', error);
       throw error;
@@ -121,7 +121,7 @@ const adminAPI = {
 
   createUser: async (userData: any): Promise<AdminUser> => {
     try {
-      return await apiClient.post('/api/auth/register', userData);
+      return await apiClient.post('/auth/register', userData);
     } catch (error) {
       console.error('Error creating user:', error);
       throw error;
@@ -130,7 +130,7 @@ const adminAPI = {
 
   updateUser: async (userId: string, userData: any): Promise<AdminUser> => {
     try {
-      return await apiClient.post(`/api/users/${userId}`, userData);
+      return await apiClient.put(`/users/${userId}`, userData);
     } catch (error) {
       console.error('Error updating user:', error);
       throw error;
@@ -139,7 +139,7 @@ const adminAPI = {
 
   deleteUser: async (userId: string): Promise<void> => {
     try {
-      await apiClient.post(`/api/users/${userId}`, {});
+      await apiClient.delete(`/users/${userId}`);
     } catch (error) {
       console.error('Error deleting user:', error);
       throw error;
@@ -150,7 +150,7 @@ const adminAPI = {
   getLogs: async (params?: any): Promise<ActivityLog[]> => {
     try {
       const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-      const response = await apiClient.get(`/api/activities${queryString}`);
+      const response = await apiClient.get(`/activities${queryString}`);
       return response.data || response;
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -161,7 +161,7 @@ const adminAPI = {
   // Settings
   getSettings: async (): Promise<AdminSettings> => {
     try {
-      return await apiClient.get('/api/admin/settings');
+      return await apiClient.get('/admin/settings');
     } catch (error) {
       console.error('Error fetching settings:', error);
       throw error;
@@ -170,7 +170,7 @@ const adminAPI = {
 
   updateGeneralSettings: async (settings: AdminGeneralSettings): Promise<AdminGeneralSettings> => {
     try {
-      return await apiClient.post('/api/admin/settings/general', settings);
+      return await apiClient.post('/admin/settings/general', settings);
     } catch (error) {
       console.error('Error updating general settings:', error);
       throw error;
@@ -179,7 +179,7 @@ const adminAPI = {
 
   updateSecuritySettings: async (settings: AdminSecuritySettings): Promise<AdminSecuritySettings> => {
     try {
-      return await apiClient.post('/api/admin/settings/security', settings);
+      return await apiClient.post('/admin/settings/security', settings);
     } catch (error) {
       console.error('Error updating security settings:', error);
       throw error;
@@ -188,7 +188,7 @@ const adminAPI = {
 
   updateNotificationSettings: async (settings: AdminNotificationSettings): Promise<AdminNotificationSettings> => {
     try {
-      return await apiClient.post('/api/admin/settings/notifications', settings);
+      return await apiClient.post('/admin/settings/notifications', settings);
     } catch (error) {
       console.error('Error updating notification settings:', error);
       throw error;
@@ -197,7 +197,7 @@ const adminAPI = {
 
   updateBackupSettings: async (settings: AdminBackupSettings): Promise<AdminBackupSettings> => {
     try {
-      return await apiClient.post('/api/admin/settings/backup', settings);
+      return await apiClient.post('/admin/settings/backup', settings);
     } catch (error) {
       console.error('Error updating backup settings:', error);
       throw error;
@@ -206,7 +206,7 @@ const adminAPI = {
 
   triggerManualBackup: async (): Promise<{ success: boolean; timestamp: string }> => {
     try {
-      return await apiClient.post('/api/admin/backup/manual', {});
+      return await apiClient.post('/admin/backup/manual', {});
     } catch (error) {
       console.error('Error triggering manual backup:', error);
       throw error;
@@ -236,7 +236,7 @@ const adminAPI = {
 
   assignRolesToUser: async (userId: string, roleIds: string[]): Promise<AdminUser> => {
     try {
-      const response = await apiClient.post(`/api/rbac/users/${userId}/roles`, { roleIds });
+      const response = await apiClient.put(`/rbac/users/${userId}/roles`, { roleIds });
       return response;
     } catch (error) {
       console.error('Error assigning roles to user:', error);
@@ -246,7 +246,7 @@ const adminAPI = {
 
   updateUserRole: async (userId: string, roleId: string): Promise<AdminUser> => {
     try {
-      const response = await apiClient.post(`/api/users/${userId}/role`, { roleId });
+      const response = await apiClient.put(`/users/${userId}/role`, { roleId });
       return response;
     } catch (error) {
       console.error('Error updating user role:', error);
@@ -256,7 +256,7 @@ const adminAPI = {
 
   bulkUpdateUserRoles: async (userIds: string[], roleId: string): Promise<{ success: boolean; updated: number }> => {
     try {
-      const response = await apiClient.post('/api/users/bulk/role', { userIds, roleId });
+      const response = await apiClient.put('/users/bulk/role', { userIds, roleId });
       return response;
     } catch (error) {
       console.error('Error bulk updating user roles:', error);
@@ -276,7 +276,7 @@ const adminAPI = {
 
   createRole: async (roleData: any): Promise<any> => {
     try {
-      return await apiClient.post('/api/rbac/roles', roleData);
+      return await apiClient.post('/rbac/roles', roleData);
     } catch (error) {
       console.error('Error creating role:', error);
       throw error;
@@ -285,7 +285,7 @@ const adminAPI = {
 
   updateRole: async (roleId: string, roleData: any): Promise<any> => {
     try {
-      return await apiClient.post(`/api/rbac/roles/${roleId}`, roleData);
+      return await apiClient.put(`/rbac/roles/${roleId}`, roleData);
     } catch (error) {
       console.error('Error updating role:', error);
       throw error;
@@ -294,7 +294,7 @@ const adminAPI = {
 
   deleteRole: async (roleId: string): Promise<void> => {
     try {
-      await apiClient.post(`/api/rbac/roles/${roleId}`, {});
+      await apiClient.delete(`/rbac/roles/${roleId}`);
     } catch (error) {
       console.error('Error deleting role:', error);
       throw error;
@@ -303,7 +303,7 @@ const adminAPI = {
 
   resetPassword: async (userId: string, newPassword: string): Promise<void> => {
     try {
-      const response = await apiClient.post(`/api/users/${userId}/reset-password`, { newPassword });
+      const response = await apiClient.put(`/users/${userId}/reset-password`, { newPassword });
       return response;
     } catch (error) {
       console.error('Error resetting password:', error);
@@ -313,7 +313,7 @@ const adminAPI = {
 
   changeUserPassword: async (userId: string, newPassword: string): Promise<void> => {
     try {
-      const response = await apiClient.post(`/api/users/${userId}/change-password`, { newPassword });
+      const response = await apiClient.put(`/users/${userId}/change-password`, { newPassword });
       return response;
     } catch (error) {
       console.error('Error changing user password:', error);
@@ -323,7 +323,7 @@ const adminAPI = {
 
   updateUserStatus: async (userId: string, status: 'active' | 'inactive' | 'disabled' | 'pending_approval', reason?: string): Promise<any> => {
     try {
-      const response = await apiClient.post(`/api/users/${userId}/status`, { status, reason });
+      const response = await apiClient.put(`/users/${userId}/status`, { status, reason });
       return response;
     } catch (error) {
       console.error('Error updating user status:', error);
@@ -343,7 +343,7 @@ const adminAPI = {
 
   approveStatusRequest: async (requestId: string): Promise<any> => {
     try {
-      const response = await apiClient.post(`/api/users/status-requests/${requestId}/approve`, {});
+      const response = await apiClient.put(`/users/status-requests/${requestId}/approve`, {});
       return response;
     } catch (error) {
       console.error('Error approving status request:', error);
@@ -353,7 +353,7 @@ const adminAPI = {
 
   rejectStatusRequest: async (requestId: string, reason: string): Promise<any> => {
     try {
-      const response = await apiClient.post(`/api/users/status-requests/${requestId}/reject`, { reason });
+      const response = await apiClient.put(`/users/status-requests/${requestId}/reject`, { reason });
       return response;
     } catch (error) {
       console.error('Error rejecting status request:', error);
@@ -417,7 +417,7 @@ const adminAPI = {
   // Alternative export method using text response
   exportLogsAsText: async (format: 'text' | 'pdf' | 'excel' | 'csv'): Promise<string> => {
     try {
-      const response = await apiClient.get(`/api/admin/export-logs?format=${format}`);
+      const response = await apiClient.get(`/admin/export-logs?format=${format}`);
       return response;
     } catch (error) {
       console.error('Export logs as text error:', error);
@@ -429,7 +429,7 @@ const adminAPI = {
   getAuditTrail: async (params?: any) => {
     try {
       const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-      return await apiClient.get(`/api/audit-trail${queryString}`);
+      return await apiClient.get(`/audit-trail${queryString}`);
     } catch (error) {
       console.error('Error fetching audit trail:', error);
       throw error;
@@ -438,7 +438,7 @@ const adminAPI = {
 
   exportAuditTrail: async (filters: any) => {
     try {
-      return await apiClient.post('/api/audit-trail/export', filters);
+      return await apiClient.post('/audit-trail/export', filters);
     } catch (error) {
       console.error('Error exporting audit trail:', error);
       throw error;
@@ -448,7 +448,7 @@ const adminAPI = {
   getSystemLogs: async (params?: any) => {
     try {
       const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-      return await apiClient.get(`/api/system-logs${queryString}`);
+      return await apiClient.get(`/system-logs${queryString}`);
     } catch (error) {
       console.error('Error fetching system logs:', error);
       throw error;
@@ -457,7 +457,7 @@ const adminAPI = {
 
   exportSystemLogs: async (filters: any) => {
     try {
-      return await apiClient.post('/api/system-logs/export', filters);
+      return await apiClient.post('/system-logs/export', filters);
     } catch (error) {
       console.error('Error exporting system logs:', error);
       throw error;
@@ -466,7 +466,7 @@ const adminAPI = {
 
   getNotificationSettings: async () => {
     try {
-      return await apiClient.get('/api/notification-settings');
+      return await apiClient.get('/notification-settings');
     } catch (error) {
       console.error('Error fetching notification settings:', error);
       throw error;
@@ -475,7 +475,7 @@ const adminAPI = {
 
   updateNotificationSettingsNew: async (settings: any) => {
     try {
-      return await apiClient.post('/api/notification-settings', settings);
+      return await apiClient.post('/notification-settings', settings);
     } catch (error) {
       console.error('Error updating notification settings:', error);
       throw error;
@@ -484,7 +484,7 @@ const adminAPI = {
 
   exportData: async (module: string, format: string, filters: any) => {
     try {
-      return await apiClient.post('/api/data-export', { module, format, filters });
+      return await apiClient.post('/data-export', { module, format, filters });
     } catch (error) {
       console.error('Error exporting data:', error);
       throw error;
@@ -493,7 +493,7 @@ const adminAPI = {
 
   getExportJobs: async () => {
     try {
-      return await apiClient.get('/api/data-export/jobs');
+      return await apiClient.get('/data-export/jobs');
     } catch (error) {
       console.error('Error fetching export jobs:', error);
       throw error;
@@ -502,7 +502,7 @@ const adminAPI = {
 
   getBackups: async () => {
     try {
-      return await apiClient.get('/api/backup/logs');
+      return await apiClient.get('/backup/logs');
     } catch (error) {
       console.error('Error fetching backups:', error);
       throw error;
@@ -511,7 +511,7 @@ const adminAPI = {
 
   createBackup: async () => {
     try {
-      return await apiClient.get('/api/backup/download');
+      return await apiClient.get('/backup/download');
     } catch (error) {
       console.error('Error creating backup:', error);
       throw error;
@@ -520,7 +520,7 @@ const adminAPI = {
 
   restoreBackup: async (backupId: string) => {
     try {
-      return await apiClient.post('/api/backup/restore', { backupId });
+      return await apiClient.post('/backup/restore', { backupId });
     } catch (error) {
       console.error('Error restoring backup:', error);
       throw error;
