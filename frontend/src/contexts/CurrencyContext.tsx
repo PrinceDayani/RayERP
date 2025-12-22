@@ -31,15 +31,18 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem('preferredCurrency') || 'INR';
-    setCurrencyState(saved);
-    setSymbol(symbols[saved] || '₹');
+    // Always force INR as the currency
+    setCurrencyState('INR');
+    setSymbol('₹');
+    localStorage.setItem('preferredCurrency', 'INR');
   }, []);
 
   const setCurrency = (newCurrency: string) => {
-    setCurrencyState(newCurrency);
-    setSymbol(symbols[newCurrency] || '₹');
-    localStorage.setItem('preferredCurrency', newCurrency);
+    // Only allow INR
+    if (newCurrency !== 'INR') return;
+    setCurrencyState('INR');
+    setSymbol('₹');
+    localStorage.setItem('preferredCurrency', 'INR');
   };
 
   const formatAmount = (amount: number, showSymbol = true) => {
