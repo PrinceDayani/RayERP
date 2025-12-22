@@ -344,7 +344,7 @@ const JournalEntry = () => {
     if (!isBalanced) return alert('Debits must equal credits');
 
     const validLines = formData.lines.filter(line => 
-      line.accountId && line.description && (line.debit > 0 || line.credit > 0)
+      line.accountId && (line.debit > 0 || line.credit > 0)
     );
 
     if (validLines.length < 2) return alert('At least 2 valid lines required');
@@ -518,8 +518,9 @@ const JournalEntry = () => {
                     ))}
                   </div>
                 )}
-            {/* Header Information */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 rounded-lg border bg-muted/50 border-border">
+
+                {/* Header Information */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 rounded-lg border bg-muted/50 border-border">
               <div>
                 <Label htmlFor="date" className="font-medium text-foreground">Date</Label>
                 <Input
@@ -552,11 +553,11 @@ const JournalEntry = () => {
                   className="mt-1"
                   required
                 />
+                </div>
               </div>
-            </div>
 
-            {/* Journal Lines */}
-            <div className="space-y-4">
+              {/* Journal Lines */}
+              <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-lg font-semibold text-foreground">Journal Lines</Label>
                 <Button 
@@ -569,78 +570,83 @@ const JournalEntry = () => {
                 </Button>
               </div>
               
-              <div className="border rounded-lg overflow-hidden bg-card border-border">
-                <div className="grid grid-cols-12 gap-4 p-4 border-b font-medium bg-muted/50 border-border text-foreground">
-                  <div className="col-span-4">Account</div>
-                  <div className="col-span-2 text-center">Debit</div>
-                  <div className="col-span-2 text-center">Credit</div>
-                  <div className="col-span-3 text-center">Description</div>
-                  <div className="col-span-1 text-center">Action</div>
+              <div className="border rounded-lg overflow-visible bg-card border-border">
+                <table className="w-full table-fixed">
+                  <thead>
+                    <tr className="border-b bg-muted/50 border-border">
+                      <th className="text-left p-3 font-medium text-foreground w-[35%]">Account</th>
+                      <th className="text-right p-3 font-medium text-foreground w-[15%]">Debit</th>
+                      <th className="text-right p-3 font-medium text-foreground w-[15%]">Credit</th>
+                      <th className="text-left p-3 font-medium text-foreground w-[25%]">Description</th>
+                      <th className="text-center p-3 font-medium text-foreground w-[10%]">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formData.lines.map((line, index) => (
+                      <tr key={index} className="border-b last:border-b-0 border-border">
+                        <td className="p-3" data-field="account" data-index={index}>
+                          <AccountSelector
+                            value={line.accountId}
+                            onValueChange={(value) => updateLine(index, 'accountId', value)}
+                            accounts={accounts}
+                            onAccountCreated={fetchAccounts}
+                          />
+                          {line.accountId && (() => {
+                            const account = accounts.find(a => a._id === line.accountId);
+                            return account ? (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Balance: {formatAmount((account as any).balance || 0)}
+                              </div>
+                            ) : null;
+                          })()}
+                        </td>
+                        <td className="p-3" data-field="debit" data-index={index}>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={line.debit || ''}
+                            onChange={(e) => updateLine(index, 'debit', parseFloat(e.target.value) || 0)}
+                            className="text-right"
+                          />
+                        </td>
+                        <td className="p-3" data-field="credit" data-index={index}>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={line.credit || ''}
+                            onChange={(e) => updateLine(index, 'credit', parseFloat(e.target.value) || 0)}
+                            className="text-right"
+                          />
+                        </td>
+                        <td className="p-3" data-field="description" data-index={index}>
+                          <Input
+                            placeholder="Line description"
+                            value={line.description}
+                            onChange={(e) => updateLine(index, 'description', e.target.value)}
+                          />
+                        </td>
+                        <td className="p-3 text-center">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeLine(index)}
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
                 </div>
-                
-                {formData.lines.map((line, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-4 p-4 border-b last:border-b-0 border-border bg-card">
-                    <div className="col-span-4" data-field="account" data-index={index}>
-                      <AccountSelector
-                        value={line.accountId}
-                        onValueChange={(value) => updateLine(index, 'accountId', value)}
-                        accounts={accounts}
-                        onAccountCreated={fetchAccounts}
-                      />
-                      {line.accountId && (() => {
-                        const account = accounts.find(a => a._id === line.accountId);
-                        return account ? (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Balance: {formatAmount((account as any).balance || 0)}
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
-                    <div className="col-span-2" data-field="debit" data-index={index}>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={line.debit || ''}
-                        onChange={(e) => updateLine(index, 'debit', parseFloat(e.target.value) || 0)}
-                        className="text-right"
-                      />
-                    </div>
-                    <div className="col-span-2" data-field="credit" data-index={index}>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={line.credit || ''}
-                        onChange={(e) => updateLine(index, 'credit', parseFloat(e.target.value) || 0)}
-                        className="text-right"
-                      />
-                    </div>
-                    <div className="col-span-3" data-field="description" data-index={index}>
-                      <Input
-                        placeholder="Line description"
-                        value={line.description}
-                        onChange={(e) => updateLine(index, 'description', e.target.value)}
-                      />
-                    </div>
-                    <div className="col-span-1 flex justify-center">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeLine(index)}
-                        className="text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
               </div>
-            </div>
 
-            {/* Attachments */}
-            <div className="space-y-3">
+              {/* Attachments */}
+              <div className="space-y-3">
               <Label className="text-lg font-semibold flex items-center gap-2">
                 <Paperclip className="w-5 h-5" />Attachments
               </Label>
@@ -667,11 +673,11 @@ const JournalEntry = () => {
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* Totals and Balance Check */}
-            <div className="bg-muted/30 p-6 rounded-lg border border-border">
+              {/* Totals and Balance Check */}
+              <div className="bg-muted/30 p-6 rounded-lg border border-border">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div className="text-center">
                   <div className="text-sm text-muted-foreground mb-1">Total Debits</div>
@@ -687,22 +693,22 @@ const JournalEntry = () => {
                     {isBalanced ? <><CheckCircle className="w-4 h-4 mr-2 inline" />Balanced</> : <><AlertTriangle className="w-4 h-4 mr-2 inline" />Not Balanced</>}
                   </Badge>
                 </div>
+                </div>
               </div>
-            </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-4 pt-6 border-t">
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-4 pt-6 border-t">
               <Button type="button" variant="outline" onClick={resetForm}>Reset</Button>
               <Button type="submit" disabled={loading || !isBalanced} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 {loading ? <Spinner className="w-4 h-4 mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
                 Create Entry
-              </Button>
-            </div>
-          </form>
-        </TabsContent>
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
 
-        <TabsContent value="quick">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <TabsContent value="quick">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {quickTemplates.map((template, idx) => (
               <Card key={idx} className="p-6 hover:shadow-lg transition-shadow cursor-pointer bg-card border-border" onClick={() => {
                 setFormData({
@@ -722,11 +728,11 @@ const JournalEntry = () => {
                 </div>
                 <p className="text-sm text-muted-foreground">Quick entry for {template.name.toLowerCase()}</p>
               </Card>
-            ))}
-          </div>
-        </TabsContent>
+              ))}
+            </div>
+          </TabsContent>
 
-        <TabsContent value="recent">
+          <TabsContent value="recent">
           <div className="space-y-3">
             {recentEntries.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
@@ -753,10 +759,10 @@ const JournalEntry = () => {
                   </Button>
                 </div>
               </Card>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
         </CardContent>
       </Card>
     </div>

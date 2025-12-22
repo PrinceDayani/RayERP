@@ -98,8 +98,8 @@ export function AccountSelector({ value, onValueChange, accounts, onAccountCreat
 
   return (
     <>
-      <div className="flex gap-2" ref={dropdownRef}>
-        <div className="relative w-full">
+      <div className="flex gap-2">
+        <div className="relative w-full" ref={dropdownRef}>
           <Button
             type="button"
             variant="outline"
@@ -113,7 +113,7 @@ export function AccountSelector({ value, onValueChange, accounts, onAccountCreat
           </Button>
           
           {open && (
-            <div className="absolute z-[100] w-full mt-1 bg-popover border rounded-md shadow-lg">
+            <div className="absolute z-[9999] w-full mt-1 bg-popover border rounded-md shadow-lg">
               <div className="p-2 border-b sticky top-0 bg-popover">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -156,7 +156,7 @@ export function AccountSelector({ value, onValueChange, accounts, onAccountCreat
             </div>
           )}
         </div>
-        <Button type="button" size="icon" variant="outline" onClick={() => setShowDialog(true)}>
+        <Button type="button" size="icon" variant="outline" onClick={() => setShowDialog(true)} className="shrink-0">
           <Plus className="w-4 h-4" />
         </Button>
       </div>
