@@ -1,17 +1,17 @@
 // path: frontend/src/lib/api.ts
 import axios from "axios";
 
-// Use environment variable for API URL - no defaults
+// Use environment variable for API URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Validate API_URL is set
-if (!API_URL) {
-  throw new Error("NEXT_PUBLIC_API_URL environment variable is not set");
+// Validate API_URL is set (only in browser)
+if (typeof window !== 'undefined' && !API_URL) {
+  console.error('NEXT_PUBLIC_API_URL environment variable is not set');
 }
 
 // Create an Axios instance with proper baseURL
 const api = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: API_URL ? `${API_URL}/api` : '/api',
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
