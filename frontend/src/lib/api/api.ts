@@ -21,11 +21,14 @@ const api = axios.create({
 // Request interceptor to attach auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("auth-token");
-    
-    // Add auth token if available and valid
-    if (token && token !== 'null' && token !== 'undefined') {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Only access localStorage in browser environment
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem("auth-token");
+      
+      // Add auth token if available and valid
+      if (token && token !== 'null' && token !== 'undefined') {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     
     // Fix for URL path handling
@@ -79,11 +82,11 @@ api.interceptors.response.use(
         message: 'Request blocked by CORS policy',
         url: error.config?.url,
         method: error.config?.method,
-        origin: window.location.origin
+        origin: typeof window !== 'undefined' ? window.location.origin : 'server'
       });
     }
     
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem("auth-token");
       window.location.href = "/login";
     }
