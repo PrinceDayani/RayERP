@@ -61,7 +61,6 @@ export default function FinancePage() {
     ],
     reports: [
       { title: 'Advanced Reports', description: 'P&L, Balance Sheet, Cash Flow + 6 more', icon: FileSpreadsheet, path: '/dashboard/finance/reports', color: 'sky', badge: 'Enterprise' },
-      { title: 'Reports Enhanced', description: 'Enhanced reporting interface', icon: BarChart3, path: '/dashboard/finance/reports-enhanced', color: 'violet' },
       { title: 'Trial Balance', description: 'Verify account balances', icon: BarChart3, path: '/dashboard/finance/trial-balance', color: 'orange' },
       { title: 'Profit & Loss', description: 'Income statement analysis', icon: PieChart, path: '/dashboard/finance/profit-loss', color: 'indigo' },
       { title: 'Balance Sheet', description: 'Financial position statement', icon: FileText, path: '/dashboard/finance/balance-sheet', color: 'teal' },
