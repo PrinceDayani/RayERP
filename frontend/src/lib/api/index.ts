@@ -13,9 +13,6 @@ import activityAPIModule from './activityAPI';
 import usersAPIModule from './usersAPI';
 import adminAPIModule from './adminAPI';
 
-// Re-export financeAPI module
-export * from './financeAPI';
-
 // Default export
 export default apiInstance;
 
