@@ -1000,11 +1000,12 @@ export const getTrialBalance = async (req: Request, res: Response) => {
 export const getAccountLedger = async (req: Request, res: Response) => {
   try {
     const { accountId } = req.params;
-    const { startDate, endDate, page = 1, limit = 50 } = req.query;
+    const { startDate, endDate, from, to, page = 1, limit = 50 } = req.query;
     
     console.log('=== GET ACCOUNT LEDGER ===');
     console.log('Account ID:', accountId);
     console.log('Date range:', startDate, 'to', endDate);
+    console.log('From/To filter:', from, '/', to);
     
     // Validate accountId
     if (!mongoose.Types.ObjectId.isValid(accountId)) {
@@ -1043,12 +1044,32 @@ export const getAccountLedger = async (req: Request, res: Response) => {
       .limit(Number(limit))
       .skip((Number(page) - 1) * Number(limit))
       .lean();
+
+    let filteredEntries = journalEntries;
+    if (from || to) {
+      filteredEntries = journalEntries.filter(entry => {
+        const otherAccounts = entry.lines
+          .filter((line: any) => {
+            const lineAccountId = line.account?._id?.toString() || line.account?.toString() || line.accountId?.toString();
+            return lineAccountId !== accountId;
+          })
+          .map((line: any) => ({
+            code: line.account?.code || '',
+            name: line.account?.name || ''
+          }));
+        return otherAccounts.some(acc => {
+          const matchFrom = !from || acc.code.toLowerCase().includes(from.toString().toLowerCase()) || acc.name.toLowerCase().includes(from.toString().toLowerCase());
+          const matchTo = !to || acc.code.toLowerCase().includes(to.toString().toLowerCase()) || acc.name.toLowerCase().includes(to.toString().toLowerCase());
+          return matchFrom && matchTo;
+        });
+      });
+    }
       
-    console.log('Found', journalEntries.length, 'journal entries');
+    console.log('Found', filteredEntries.length, 'journal entries');
 
     // Transform to ledger format with auto-calculated running balance
     let runningBalance = 0;
-    const entries = journalEntries.flatMap(entry => {
+    const entries = filteredEntries.flatMap(entry => {
       return entry.lines
         .filter((line: any) => {
           const lineAccountId = line.account?._id?.toString() || line.account?.toString() || line.accountId?.toString();
@@ -1762,7 +1783,7 @@ export const recalculateBalances = async (req: Request, res: Response) => {
 
 export const exportInvoice = async (req: Request, res: Response) => {
   try {
-    const { entryIds, format, accountId } = req.body;
+    const { entryIds, format, accountId, from, to } = req.body;
     
     if (!entryIds || !Array.isArray(entryIds) || entryIds.length === 0) {
       return res.status(400).json({ message: 'Entry IDs are required' });
@@ -1776,18 +1797,20 @@ export const exportInvoice = async (req: Request, res: Response) => {
     // Get journal entries for selected IDs
     const entries = await JournalEntry.find({
       _id: { $in: entryIds }
-    }).sort({ entryDate: 1 });
+    }).populate('lines.account', 'code name').sort({ entryDate: 1 });
 
     // Generate simple text invoice
     let content = `INVOICE\n\n`;
     content += `Account: ${account.code} - ${account.name}\n`;
+    if (from) content += `From Filter: ${from}\n`;
+    if (to) content += `To Filter: ${to}\n`;
     content += `Generated: ${new Date().toLocaleDateString()}\n\n`;
     content += `${'='.repeat(80)}\n\n`;
     
     let totalDebit = 0, totalCredit = 0;
     
     for (const entry of entries) {
-      const line = entry.lines.find((l: any) => l.account?.toString() === accountId);
+      const line = entry.lines.find((l: any) => l.account?._id?.toString() === accountId || l.account?.toString() === accountId);
       if (line) {
         content += `Date: ${entry.entryDate?.toLocaleDateString() || entry.date?.toLocaleDateString()}\n`;
         content += `Entry: ${entry.entryNumber}\n`;

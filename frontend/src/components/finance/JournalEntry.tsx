@@ -473,6 +473,18 @@ const JournalEntry = () => {
       return;
     }
 
+    // Validate reference fields
+    for (const line of validLines) {
+      if (line.refType === 'agst-ref' && !line.refId) {
+        toast({ title: 'Error', description: 'Please select a reference for "Agst Ref" lines', variant: 'destructive' });
+        return;
+      }
+      if (line.refType === 'new-ref' && !line.refId) {
+        toast({ title: 'Error', description: 'Please enter a reference number for "New Ref" lines', variant: 'destructive' });
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const token = localStorage.getItem('auth-token');
@@ -491,7 +503,10 @@ const JournalEntry = () => {
           account: line.accountId,
           debit: line.debit,
           credit: line.credit,
-          description: line.description
+          description: line.description,
+          refType: line.refType || 'on-account',
+          refId: line.refId || '',
+          refAmount: line.refAmount || 0
         })),
         totalDebit: totalDebits,
         totalCredit: totalCredits
@@ -503,6 +518,16 @@ const JournalEntry = () => {
         await axios.post(`${API_URL}/api/general-ledger/journal-entries/${entryId}/post`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        
+        // Auto-create/allocate references
+        try {
+          await axios.post(`${API_URL}/api/reference-payments/auto-create-from-je/${entryId}`, {}, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        } catch (refError: any) {
+          console.error('Reference creation warning:', refError);
+          toast({ title: 'Warning', description: 'Entry posted but reference processing had issues', variant: 'destructive' });
+        }
       } catch (postError: any) {
         toast({ title: 'Warning', description: 'Entry created but failed to post', variant: 'destructive' });
       }

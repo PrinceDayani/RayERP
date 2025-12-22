@@ -72,11 +72,14 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
+    from: '',
+    to: '',
     page: 1,
     limit: 50
   });
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
   const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -107,6 +110,8 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
       const queryParams = new URLSearchParams();
       if (filters.startDate) queryParams.append('startDate', filters.startDate);
       if (filters.endDate) queryParams.append('endDate', filters.endDate);
+      if (filters.from) queryParams.append('from', filters.from);
+      if (filters.to) queryParams.append('to', filters.to);
       queryParams.append('page', filters.page.toString());
       queryParams.append('limit', filters.limit.toString());
 
@@ -154,25 +159,58 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
     setFilters(prev => ({ ...prev, [field]: value, page: 1 }));
   };
 
-  const exportLedger = async () => {
+  const exportWhole = async () => {
     try {
       const queryParams = new URLSearchParams();
       if (filters.startDate) queryParams.append('startDate', filters.startDate);
       if (filters.endDate) queryParams.append('endDate', filters.endDate);
-      queryParams.append('export', 'true');
+      if (filters.from) queryParams.append('from', filters.from);
+      if (filters.to) queryParams.append('to', filters.to);
+      queryParams.append('format', 'csv');
 
       const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/export?${queryParams}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (!response.ok) throw new Error('Failed to export ledger');
+      if (!response.ok) throw new Error('Failed to export');
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${account?.code}-${account?.name}-ledger.csv`;
+      a.download = `${account?.code}-ledger-full.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
+  };
+
+  const exportSelected = async () => {
+    const entryIds = Array.from(selectedEntries);
+    if (entryIds.length === 0) return;
+
+    try {
+      const token = localStorage.getItem('auth-token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/export-selected`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ entryIds, from: filters.from, to: filters.to })
+      });
+
+      if (!response.ok) throw new Error('Failed to export');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${account?.code}-ledger-selected.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -194,7 +232,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}` 
         },
-        body: JSON.stringify({ entryIds, format, accountId })
+        body: JSON.stringify({ entryIds, format, accountId, from: filters.from, to: filters.to })
       });
 
       if (!response.ok) throw new Error('Failed to export invoice');
@@ -209,6 +247,26 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
     } catch (err) {
       console.error('Export invoice failed:', err);
     }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedEntries(new Set());
+      setSelectAll(false);
+    } else {
+      setSelectedEntries(new Set(entries.map(e => e._id)));
+      setSelectAll(true);
+    }
+  };
+
+  const toggleEntryCheckbox = (entryId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    setSelectedEntries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(entryId)) newSet.delete(entryId);
+      else newSet.add(entryId);
+      return newSet;
+    });
   };
 
   const toggleEntrySelection = (entryId: string, e: React.MouseEvent) => {
@@ -309,32 +367,31 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                   <Button onClick={fetchAccountLedger} variant="outline" size="sm">
                     <RefreshCw className="w-4 h-4" />
                   </Button>
-                  {selectedEntries.size > 0 && (
-                    <div className="relative">
-                      <Button onClick={() => setShowExportMenu(!showExportMenu)} size="sm" variant="default">
-                        <FileText className="w-4 h-4 mr-2" />
-                        Export Invoice ({selectedEntries.size})
-                      </Button>
-                      {showExportMenu && (
-                        <div className="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow-lg z-50">
-                          <button onClick={() => exportInvoice('pdf')} className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                            <FileText className="w-4 h-4" /> PDF
-                          </button>
-                          <button onClick={() => exportInvoice('jpg')} className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
-                            <Image className="w-4 h-4" /> JPG
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
                   <Button onClick={() => router.push(`/dashboard/finance/journal-entry?accountId=${accountId}`)} size="sm">
                     <Plus className="w-4 h-4 mr-2" />
                     New Entry
                   </Button>
-                  <Button onClick={exportLedger} variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                  <div className="relative">
+                    <Button onClick={() => setShowExportMenu(!showExportMenu)} variant="outline" size="sm">
+                      <Download className="w-4 h-4 mr-2" />
+                      Export {selectedEntries.size > 0 && `(${selectedEntries.size})`}
+                    </Button>
+                    {showExportMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-50">
+                        <button onClick={() => { exportWhole(); setShowExportMenu(false); }} className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                          <Download className="w-4 h-4" /> Export All
+                        </button>
+                        {selectedEntries.size > 0 && (
+                          <button onClick={() => { exportSelected(); setShowExportMenu(false); }} className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                            <Download className="w-4 h-4" /> Export Selected ({selectedEntries.size})
+                          </button>
+                        )}
+                        <button onClick={() => { exportInvoice('pdf'); setShowExportMenu(false); }} className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2">
+                          <FileText className="w-4 h-4" /> Invoice PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -397,7 +454,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <Label htmlFor="startDate">Start Date</Label>
               <Input
@@ -416,9 +473,29 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                 onChange={(e) => handleFilterChange('endDate', e.target.value)}
               />
             </div>
+            <div>
+              <Label htmlFor="from">From Account</Label>
+              <Input
+                id="from"
+                type="text"
+                placeholder="Account code/name"
+                value={filters.from}
+                onChange={(e) => handleFilterChange('from', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="to">To Account</Label>
+              <Input
+                id="to"
+                type="text"
+                placeholder="Account code/name"
+                value={filters.to}
+                onChange={(e) => handleFilterChange('to', e.target.value)}
+              />
+            </div>
             <div className="flex items-end">
               <Button 
-                onClick={() => setFilters({ startDate: '', endDate: '', page: 1, limit: 50 })}
+                onClick={() => setFilters({ startDate: '', endDate: '', from: '', to: '', page: 1, limit: 50 })}
                 variant="outline"
               >
                 Clear Filters
@@ -446,6 +523,14 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectAll}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                    </TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>From/To</TableHead>
@@ -466,8 +551,16 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
                       key={entry._id}
                       {...getRowProps(idx)}
                       onClick={(e) => toggleEntrySelection(entry._id, e)}
-                      className={entry.reference === highlightId ? 'bg-yellow-100 border-2 border-yellow-400' : ''}
+                      className={`cursor-pointer ${selectedEntries.has(entry._id) ? 'bg-blue-50' : ''} ${entry.reference === highlightId ? 'bg-yellow-100 border-2 border-yellow-400' : ''}`}
                     >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedEntries.has(entry._id)}
+                          onChange={(e) => toggleEntryCheckbox(entry._id, e)}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
                         {format(new Date(entry.date), 'MMM dd, yyyy')}
                       </TableCell>
