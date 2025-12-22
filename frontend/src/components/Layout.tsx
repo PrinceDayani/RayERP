@@ -32,6 +32,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -64,12 +65,16 @@ export default function Layout({ children }: LayoutProps) {
   const [isClient, setIsClient] = useState(false);
   const pathname = usePathname();
   const { user } = useAuth();
+  const { hasPermission, hasAnyPermission } = usePermissions();
 
   const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
   const isRoot = roleName.toLowerCase() === "root";
   const isSuperAdmin = roleName.toLowerCase() === "super_admin" || roleName.toLowerCase() === "superadmin";
   const isAdmin = roleName.toLowerCase() === "admin";
   const isManager = roleName.toLowerCase() === "manager" || isAdmin || isSuperAdmin || isRoot;
+  
+  // Finance module access check
+  const hasFinanceAccess = hasAnyPermission(['finance.view', 'finance.manage']);
 
   const menuSections = useMemo(() => [
     {
@@ -109,7 +114,7 @@ export default function Layout({ children }: LayoutProps) {
         { path: "/dashboard/budgets/templates", name: "Budget Templates", icon: ClipboardList, description: "Reusable budget templates" } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/budgets/approvals", name: "Approvals", icon: Target, description: "Budget approval workflow", access: isManager } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/budgets/analytics", name: "Budget Analytics", icon: PieChart, description: "Budget performance analysis", access: isManager } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/finance", name: "Finance", icon: Wallet, description: "Financial accounting" } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/finance", name: "Finance", icon: Wallet, description: "Financial accounting", access: hasFinanceAccess } as MenuItem & { icon: any; description: string },
       ]
     },
     {

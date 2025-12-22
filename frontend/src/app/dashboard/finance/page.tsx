@@ -8,10 +8,11 @@ import { Briefcase, Calculator, FileText, TrendingUp, BarChart3, Coins, Receipt,
 import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useFinanceShortcuts } from '@/hooks/useFinanceShortcuts';
+import FinancePermissionGuard from '@/components/FinancePermissionGuard';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
 
-export default function FinancePage() {
+function FinancePageContent() {
   const router = useRouter();
   const { currency, symbol } = useCurrency();
   const [stats, setStats] = useState({ accounts: 0, entries: 0 });
@@ -278,5 +279,13 @@ export default function FinancePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function FinancePage() {
+  return (
+    <FinancePermissionGuard>
+      <FinancePageContent />
+    </FinancePermissionGuard>
   );
 }

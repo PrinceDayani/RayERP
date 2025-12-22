@@ -234,3 +234,11 @@ export const getUserPermissions = (user: User | null): string[] => {
   const role = typeof user.role === 'string' ? null : user.role;
   return role?.permissions || [];
 };
+
+/**
+ * Check if user has finance module access
+ * Requires either finance.view or finance.manage permission
+ */
+export const hasFinanceAccess = (user: User | null): boolean => {
+  return hasAnyPermission(user, ['finance.view', 'finance.manage']);
+};
