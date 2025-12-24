@@ -11,6 +11,8 @@ import { Budget } from "@/types/budget";
 import BudgetDialog from "@/components/budget/BudgetDialog";
 import ProjectBudgetAnalytics from "@/components/budget/ProjectBudgetAnalytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CurrencyConverter from "@/components/budget/CurrencyConverter";
+import { formatCurrency } from "@/utils/currency";
 
 export default function ProjectBudgetPage() {
   const params = useParams();
@@ -325,6 +327,7 @@ export default function ProjectBudgetPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="converter">Currency Converter</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
           </TabsList>
@@ -337,7 +340,7 @@ export default function ProjectBudgetPage() {
                 <Coins className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{budget.currency} {budget.totalBudget?.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{formatCurrency(budget.totalBudget, budget.currency)}</div>
               </CardContent>
             </Card>
 
@@ -347,7 +350,7 @@ export default function ProjectBudgetPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{budget.currency} {totalSpent?.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{formatCurrency(totalSpent, budget.currency)}</div>
                 <p className="text-xs text-muted-foreground">{(spentPercentage || 0).toFixed(1)}% of budget</p>
               </CardContent>
             </Card>
@@ -358,7 +361,7 @@ export default function ProjectBudgetPage() {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{budget.currency} {remainingBudget?.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{formatCurrency(remainingBudget, budget.currency)}</div>
               </CardContent>
             </Card>
 
@@ -507,6 +510,12 @@ export default function ProjectBudgetPage() {
           </div>
           </TabsContent>
 
+          <TabsContent value="converter" className="space-y-6">
+            <div className="flex justify-center">
+              <CurrencyConverter />
+            </div>
+          </TabsContent>
+
           <TabsContent value="analytics" className="space-y-6">
             {budget.approvals && budget.approvals.length > 0 && (
               <Card>
@@ -583,11 +592,11 @@ export default function ProjectBudgetPage() {
                     <CardContent className="space-y-4">
                       <div className="flex justify-between text-sm">
                         <span>Allocated</span>
-                        <span className="font-semibold">{budget.currency} {category.allocatedAmount?.toLocaleString()}</span>
+                        <span className="font-semibold">{formatCurrency(category.allocatedAmount, budget.currency)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Spent</span>
-                        <span className="font-semibold">{budget.currency} {category.spentAmount?.toLocaleString()}</span>
+                        <span className="font-semibold">{formatCurrency(category.spentAmount, budget.currency)}</span>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
@@ -604,10 +613,10 @@ export default function ProjectBudgetPage() {
                             <div>
                               <p className="font-medium">{item.name}</p>
                               <p className="text-muted-foreground">{item.description}</p>
-                              <p className="text-muted-foreground/70">{item.quantity} × {budget.currency}{item.unitCost}</p>
+                              <p className="text-muted-foreground/70">{item.quantity} × {formatCurrency(item.unitCost, budget.currency)}</p>
                             </div>
                             <div className="text-right">
-                              <p className="font-medium">{budget.currency} {item.totalCost?.toLocaleString()}</p>
+                              <p className="font-medium">{formatCurrency(item.totalCost, budget.currency)}</p>
                             </div>
                           </div>
                         ))}

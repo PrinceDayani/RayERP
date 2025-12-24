@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -73,7 +74,7 @@ const formatTimeAgo = (date: Date) => {
   return new Date(date).toLocaleDateString();
 };
 
-export default function ActivityPage() {
+function ActivityPageContent() {
   const { token } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -647,5 +648,13 @@ export default function ActivityPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ActivityPage() {
+  return (
+    <ProtectedRoute requiredPermissions={['view_activity', 'view_audit_logs']}>
+      <ActivityPageContent />
+    </ProtectedRoute>
   );
 }

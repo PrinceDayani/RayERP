@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { Search, FileText, DollarSign, TrendingUp, RefreshCw, Plus, Edit, Trash2, Eye, Download, Filter, X, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Search, FileText, Banknote, TrendingUp, RefreshCw, Plus, Edit, Trash2, Eye, Download, Filter, X, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useToast } from '@/hooks/use-toast';

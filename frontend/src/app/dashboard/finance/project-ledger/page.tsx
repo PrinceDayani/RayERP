@@ -32,6 +32,8 @@ import { projectFinanceApi } from "@/lib/api/projectFinanceApi";
 import { getAllProjects, type Project } from "@/lib/api/projectsAPI";
 import { ProjectLedgerEntry, ProjectJournalEntry } from "@/types/project-finance.types";
 import { toast } from "@/components/ui/use-toast";
+import CurrencyConverter from "@/components/budget/CurrencyConverter";
+import { formatCurrency } from "@/utils/currency";
 
 interface JournalEntryLine {
   accountCode: string;
@@ -462,12 +464,12 @@ const ProjectLedgerPage = () => {
                         <div className="flex items-center gap-2">
                           <Calculator className="h-4 w-4 text-green-600" />
                           <span className="text-sm font-medium">Total Debits: </span>
-                          <span className="font-bold text-green-600">${getTotalDebits().toLocaleString()}</span>
+                          <span className="font-bold text-green-600">{formatCurrency(getTotalDebits())}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Calculator className="h-4 w-4 text-red-600" />
                           <span className="text-sm font-medium">Total Credits: </span>
-                          <span className="font-bold text-red-600">${getTotalCredits().toLocaleString()}</span>
+                          <span className="font-bold text-red-600">{formatCurrency(getTotalCredits())}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           {isBalanced() ? (
@@ -477,7 +479,7 @@ const ProjectLedgerPage = () => {
                           )}
                           <span className="text-sm font-medium">Difference: </span>
                           <span className={`font-bold ${isBalanced() ? 'text-green-600' : 'text-red-600'}`}>
-                            ${Math.abs(getTotalDebits() - getTotalCredits()).toLocaleString()}
+                            {formatCurrency(Math.abs(getTotalDebits() - getTotalCredits()))}
                           </span>
                         </div>
                       </div>
@@ -524,7 +526,7 @@ const ProjectLedgerPage = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Debits</p>
                   <p className="text-2xl font-bold text-green-600">
-                    ${ledgerEntries.reduce((sum, entry) => sum + entry.debit, 0).toLocaleString()}
+                    {formatCurrency(ledgerEntries.reduce((sum, entry) => sum + entry.debit, 0))}
                   </p>
                   <p className="text-xs text-muted-foreground">Money in</p>
                 </div>
@@ -539,7 +541,7 @@ const ProjectLedgerPage = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Credits</p>
                   <p className="text-2xl font-bold text-red-600">
-                    ${ledgerEntries.reduce((sum, entry) => sum + entry.credit, 0).toLocaleString()}
+                    {formatCurrency(ledgerEntries.reduce((sum, entry) => sum + entry.credit, 0))}
                   </p>
                   <p className="text-xs text-muted-foreground">Money out</p>
                 </div>
@@ -554,7 +556,7 @@ const ProjectLedgerPage = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Net Balance</p>
                   <p className="text-2xl font-bold text-purple-600">
-                    ${(ledgerEntries.reduce((sum, entry) => sum + entry.debit - entry.credit, 0)).toLocaleString()}
+                    {formatCurrency(ledgerEntries.reduce((sum, entry) => sum + entry.debit - entry.credit, 0))}
                   </p>
                   <p className="text-xs text-muted-foreground">Current position</p>
                 </div>
@@ -572,9 +574,10 @@ const ProjectLedgerPage = () => {
           </Card>
         ) : selectedProject ? (
           <Tabs defaultValue="ledger" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="ledger">Ledger</TabsTrigger>
               <TabsTrigger value="journal">Journal</TabsTrigger>
+              <TabsTrigger value="converter">Converter</TabsTrigger>
               <TabsTrigger value="budget">Budget</TabsTrigger>
               <TabsTrigger value="profitability">Profit</TabsTrigger>
               <TabsTrigger value="time">Time</TabsTrigger>
@@ -625,20 +628,20 @@ const ProjectLedgerPage = () => {
                           <TableCell className="text-right">
                             {entry.debit > 0 ? (
                               <span className="text-green-600 font-medium">
-                                ${entry.debit.toLocaleString()}
+                                {formatCurrency(entry.debit)}
                               </span>
                             ) : '-'}
                           </TableCell>
                           <TableCell className="text-right">
                             {entry.credit > 0 ? (
                               <span className="text-red-600 font-medium">
-                                ${entry.credit.toLocaleString()}
+                                {formatCurrency(entry.credit)}
                               </span>
                             ) : '-'}
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             <span className={entry.balance >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              ${Math.abs(entry.balance).toLocaleString()}
+                              {formatCurrency(Math.abs(entry.balance))}
                             </span>
                           </TableCell>
                           <TableCell className="text-center">
@@ -694,10 +697,10 @@ const ProjectLedgerPage = () => {
                           </TableCell>
                           <TableCell>{entry.description}</TableCell>
                           <TableCell className="text-right text-green-600 font-medium">
-                            ${entry.totalDebit.toLocaleString()}
+                            {formatCurrency(entry.totalDebit)}
                           </TableCell>
                           <TableCell className="text-right text-red-600 font-medium">
-                            ${entry.totalCredit.toLocaleString()}
+                            {formatCurrency(entry.totalCredit)}
                           </TableCell>
                           <TableCell>
                             {getStatusBadge(entry.status)}
@@ -738,6 +741,12 @@ const ProjectLedgerPage = () => {
                   </Table>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="converter">
+              <div className="flex justify-center">
+                <CurrencyConverter />
+              </div>
             </TabsContent>
 
             <TabsContent value="budget">
@@ -1055,14 +1064,14 @@ const ProjectLedgerPage = () => {
                           <TableCell className="text-right">
                             {line.debit > 0 ? (
                               <span className="text-green-600 font-medium">
-                                ${line.debit.toLocaleString()}
+                                {formatCurrency(line.debit)}
                               </span>
                             ) : '-'}
                           </TableCell>
                           <TableCell className="text-right">
                             {line.credit > 0 ? (
                               <span className="text-red-600 font-medium">
-                                ${line.credit.toLocaleString()}
+                                {formatCurrency(line.credit)}
                               </span>
                             ) : '-'}
                           </TableCell>
@@ -1076,11 +1085,11 @@ const ProjectLedgerPage = () => {
                   <div className="flex gap-6">
                     <div>
                       <span className="text-sm font-medium">Total Debits: </span>
-                      <span className="font-bold text-green-600">${selectedEntry.totalDebit.toLocaleString()}</span>
+                      <span className="font-bold text-green-600">{formatCurrency(selectedEntry.totalDebit)}</span>
                     </div>
                     <div>
                       <span className="text-sm font-medium">Total Credits: </span>
-                      <span className="font-bold text-red-600">${selectedEntry.totalCredit.toLocaleString()}</span>
+                      <span className="font-bold text-red-600">{formatCurrency(selectedEntry.totalCredit)}</span>
                     </div>
                   </div>
                 </div>

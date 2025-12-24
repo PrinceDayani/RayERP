@@ -25,6 +25,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ProjectViews from "@/components/projects/ProjectViews";
+import CurrencyConverter from "@/components/budget/CurrencyConverter";
+import { formatCurrency, getCurrencySymbol } from "@/utils/currency";
 
 interface ProjectStats {
   totalProjects: number;
@@ -460,7 +462,10 @@ const ProjectManagementDashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="budgets">
-          <BudgetOverview projects={projects} />
+          <div className="space-y-6">
+            <CurrencyConverter />
+            <BudgetOverview projects={projects} />
+          </div>
         </TabsContent>
 
         <TabsContent value="tasks">
@@ -898,9 +903,9 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span>Budget: {budget.currency} {budget.totalBudget.toLocaleString()}</span>
-                          <span>Spent: {budget.currency} {budget.actualSpent?.toLocaleString() || 0}</span>
-                          <span>Remaining: {budget.currency} {budget.remainingBudget?.toLocaleString() || budget.totalBudget}</span>
+                          <span>Budget: {formatCurrency(budget.totalBudget, budget.currency)}</span>
+                          <span>Spent: {formatCurrency(budget.actualSpent || 0, budget.currency)}</span>
+                          <span>Remaining: {formatCurrency(budget.remainingBudget || budget.totalBudget, budget.currency)}</span>
                         </div>
                       </div>
                       <div className="text-right">

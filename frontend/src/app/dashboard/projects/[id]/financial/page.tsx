@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, TrendingDown, Coins, AlertTriangle, RefreshCw } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
@@ -135,7 +136,7 @@ export default function ProjectFinancialPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${Math.abs(dashboard?.summary?.variance || 0).toLocaleString()}
+              {formatCurrency(Math.abs(dashboard?.summary?.variance || 0))}
             </div>
             <div className={`flex items-center text-sm ${dashboard?.summary?.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {dashboard?.summary?.variance >= 0 ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}
@@ -183,16 +184,16 @@ export default function ProjectFinancialPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <div className="text-sm text-gray-600">Budgeted Revenue</div>
-                    <div className="text-xl font-bold">${budgetActual?.budgetedRevenue?.toLocaleString() || 0}</div>
+                    <div className="text-xl font-bold">{formatCurrency(budgetActual?.budgetedRevenue || 0)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">Actual Revenue</div>
-                    <div className="text-xl font-bold text-green-600">${budgetActual?.actualRevenue?.toLocaleString() || 0}</div>
+                    <div className="text-xl font-bold text-green-600">{formatCurrency(budgetActual?.actualRevenue || 0)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">Variance</div>
                     <div className={`text-xl font-bold ${(budgetActual?.actualRevenue - budgetActual?.budgetedRevenue) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      ${Math.abs((budgetActual?.actualRevenue || 0) - (budgetActual?.budgetedRevenue || 0)).toLocaleString()}
+                      {formatCurrency(Math.abs((budgetActual?.actualRevenue || 0) - (budgetActual?.budgetedRevenue || 0)))}
                     </div>
                   </div>
                 </div>
@@ -200,11 +201,11 @@ export default function ProjectFinancialPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <div className="text-sm text-gray-600">Budgeted Cost</div>
-                    <div className="text-xl font-bold">${budgetActual?.budgetedCost?.toLocaleString() || 0}</div>
+                    <div className="text-xl font-bold">{formatCurrency(budgetActual?.budgetedCost || 0)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">Actual Cost</div>
-                    <div className="text-xl font-bold text-red-600">${budgetActual?.actualCost?.toLocaleString() || 0}</div>
+                    <div className="text-xl font-bold text-red-600">{formatCurrency(budgetActual?.actualCost || 0)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">Utilization</div>
@@ -215,11 +216,11 @@ export default function ProjectFinancialPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <div className="text-sm text-gray-600">Budgeted Profit</div>
-                    <div className="text-xl font-bold">${budgetActual?.budgetedProfit?.toLocaleString() || 0}</div>
+                    <div className="text-xl font-bold">{formatCurrency(budgetActual?.budgetedProfit || 0)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">Actual Profit</div>
-                    <div className="text-xl font-bold text-blue-600">${budgetActual?.actualProfit?.toLocaleString() || 0}</div>
+                    <div className="text-xl font-bold text-blue-600">{formatCurrency(budgetActual?.actualProfit || 0)}</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">Variance %</div>
@@ -242,19 +243,19 @@ export default function ProjectFinancialPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Total Revenue</span>
-                  <span className="font-bold text-green-600">${profitability?.revenue?.toLocaleString() || 0}</span>
+                  <span className="font-bold text-green-600">{formatCurrency(profitability?.revenue || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Direct Costs</span>
-                  <span className="font-bold text-red-600">${profitability?.directCosts?.toLocaleString() || 0}</span>
+                  <span className="font-bold text-red-600">{formatCurrency(profitability?.directCosts || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Indirect Costs</span>
-                  <span className="font-bold text-orange-600">${profitability?.indirectCosts?.toLocaleString() || 0}</span>
+                  <span className="font-bold text-orange-600">{formatCurrency(profitability?.indirectCosts || 0)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-2">
                   <span className="text-gray-600 font-medium">Total Costs</span>
-                  <span className="font-bold">${profitability?.totalCosts?.toLocaleString() || 0}</span>
+                  <span className="font-bold">{formatCurrency(profitability?.totalCosts || 0)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -266,7 +267,7 @@ export default function ProjectFinancialPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Gross Profit</span>
-                  <span className="font-bold">${profitability?.grossProfit?.toLocaleString() || 0}</span>
+                  <span className="font-bold">{formatCurrency(profitability?.grossProfit || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Gross Margin</span>
@@ -274,7 +275,7 @@ export default function ProjectFinancialPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Net Profit</span>
-                  <span className="font-bold text-green-600">${profitability?.netProfit?.toLocaleString() || 0}</span>
+                  <span className="font-bold text-green-600">{formatCurrency(profitability?.netProfit || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Net Margin</span>
@@ -296,7 +297,7 @@ export default function ProjectFinancialPage() {
               <div className="text-center">
                 <div className="text-sm text-gray-600">Break-Even Point</div>
                 <div className="text-3xl font-bold text-blue-600">
-                  ${profitability?.breakEvenPoint?.toLocaleString() || 0}
+                  {formatCurrency(profitability?.breakEvenPoint || 0)}
                 </div>
                 <div className="text-sm text-gray-600 mt-2">
                   Revenue needed to cover all costs
@@ -324,9 +325,9 @@ export default function ProjectFinancialPage() {
                   {profitability.profitTrend.map((point: any, idx: number) => (
                     <div key={idx} className="grid grid-cols-5 gap-4 p-2 border-b">
                       <div className="font-medium">{point.month}</div>
-                      <div className="text-green-600">${point.revenue.toLocaleString()}</div>
-                      <div className="text-red-600">${point.cost.toLocaleString()}</div>
-                      <div className="font-bold">${point.profit.toLocaleString()}</div>
+                      <div className="text-green-600">{formatCurrency(point.revenue)}</div>
+                      <div className="text-red-600">{formatCurrency(point.cost)}</div>
+                      <div className="font-bold">{formatCurrency(point.profit)}</div>
                       <div className={point.margin >= 0 ? 'text-green-600' : 'text-red-600'}>
                         {point.margin.toFixed(1)}%
                       </div>

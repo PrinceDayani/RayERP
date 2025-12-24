@@ -13,6 +13,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { getAllProjects, type Project } from "@/lib/api/projectsAPI";
+import { formatCurrency } from "@/utils/currency";
 
 const ProjectFinancePage = () => {
   const { isAuthenticated } = useAuth();
@@ -94,7 +95,7 @@ const ProjectFinancePage = () => {
                         <h3 className="font-medium">{project.name}</h3>
                         <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          Budget: ${project.budget?.toLocaleString() || 0}
+                          Budget: {formatCurrency(project.budget || 0)}
                         </p>
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
