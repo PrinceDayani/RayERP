@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, DollarSign, ShoppingCart, Calendar, Download, Search, AlertCircle } from 'lucide-react';
+import { TrendingUp, Banknote, ShoppingCart, Calendar, Download, Search, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { apiClient } from '@/lib/api';
@@ -284,7 +284,7 @@ export default function SalesReportsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Amount Received</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
+            <Banknote className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">₹{totalPaid.toLocaleString()}</div>

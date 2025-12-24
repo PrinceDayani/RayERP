@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, Clock, Eye, ThumbsUp, ThumbsDown, Loader2, AlertCircle, Download, TrendingUp, DollarSign, BarChart3, Bell, Search } from 'lucide-react';
+import { CheckCircle, Clock, Eye, ThumbsUp, ThumbsDown, Loader2, AlertCircle, Download, TrendingUp, Banknote, BarChart3, Bell, Search } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import DataTable, { Column } from '@/components/DataTable';
 import { approvalsAPI, ApprovalRequest as ApiApprovalRequest, ApprovalStats } from '@/lib/api/approvalsAPI';
@@ -504,7 +504,7 @@ export default function ApprovalsPage() {
                 <p className="text-xs font-medium text-muted-foreground">Total Amount</p>
                 <p className="text-xl font-bold">₹{((stats?.totalAmount || 0) / 100000).toFixed(1)}L</p>
               </div>
-              <DollarSign className="h-6 w-6 text-purple-500" />
+              <Banknote className="h-6 w-6 text-purple-500" />
             </div>
           </CardContent>
         </Card>

@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { createBudget } from '@/lib/api/budgetAPI';
 import { toast } from '@/components/ui/use-toast';
-import { Plus, Trash2, Info, DollarSign, Calendar, FileText } from 'lucide-react';
+import { Plus, Trash2, Info, Banknote, Calendar, FileText } from 'lucide-react';
 
 interface BudgetCreateDialogProps {
   open: boolean;
@@ -204,7 +204,7 @@ export default function BudgetCreateDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+            <Banknote className="h-5 w-5" />
             Create New Budget
           </DialogTitle>
           <DialogDescription>

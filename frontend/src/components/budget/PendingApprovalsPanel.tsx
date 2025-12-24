@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, DollarSign, FileText } from 'lucide-react';
+import { Clock, Banknote, FileText } from 'lucide-react';
 import { budgetApprovalAPI, type BudgetApprovalWorkflow } from '@/lib/api/budgetApprovalAPI';
 import { ApprovalWorkflowCard } from './ApprovalWorkflowCard';
 import { useToast } from '@/hooks/use-toast';
@@ -104,7 +104,7 @@ export function PendingApprovalsPanel() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium flex items-center">
-                      <DollarSign className="h-4 w-4" />
+                      <Banknote className="h-4 w-4" />
                       {workflow.levels[workflow.currentLevel - 1]?.amountThreshold.toLocaleString()}
                     </p>
                     <p className="text-xs text-muted-foreground">Threshold</p>

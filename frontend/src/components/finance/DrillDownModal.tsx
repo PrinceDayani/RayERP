@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, FileText, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { Calendar, FileText, TrendingUp, TrendingDown, Banknote } from "lucide-react";
 
 interface Transaction {
   _id?: string;
@@ -76,7 +76,7 @@ export function DrillDownModal({ open, onOpenChange, accountName, accountCode, t
                     ₹{Math.abs(netBalance).toLocaleString()}
                   </p>
                 </div>
-                <DollarSign className="h-8 w-8 text-blue-600" />
+                <Banknote className="h-8 w-8 text-blue-600" />
               </div>
             </CardContent>
           </Card>

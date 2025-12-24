@@ -264,7 +264,7 @@ export default function ReferenceManagement() {
         <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <DollarSign className="w-4 h-4" />
+              <Banknote className="w-4 h-4" />
               Total Amount
             </CardTitle>
           </CardHeader>

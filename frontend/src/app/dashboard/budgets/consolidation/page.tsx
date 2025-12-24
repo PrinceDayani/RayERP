@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, TrendingUp, AlertTriangle, Download, RefreshCw, Building2, Briefcase, DollarSign, PieChart, BarChart3 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, AlertTriangle, Download, RefreshCw, Building2, Briefcase, Banknote, PieChart, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Progress } from '@/components/ui/progress';
@@ -140,7 +140,7 @@ export default function BudgetConsolidationPage() {
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Allocated</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
+            <Banknote className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">{currency} {consolidation.summary.totalAllocated.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>

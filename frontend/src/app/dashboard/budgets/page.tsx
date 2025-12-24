@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Search, Eye, Edit, Trash2, Coins, TrendingUp, Clock, CheckCircle, XCircle, Send, RefreshCw, Download, Filter, BarChart3, Copy, Star, Command, TrendingDown, AlertTriangle, Activity, DollarSign, PieChart, FileText, Users, Calendar, Target } from 'lucide-react';
+import { Plus, Search, Eye, Edit, Trash2, Coins, TrendingUp, Clock, CheckCircle, XCircle, Send, RefreshCw, Download, Filter, BarChart3, Copy, Star, Command, TrendingDown, AlertTriangle, Activity, Banknote, PieChart, FileText, Users, Calendar, Target } from 'lucide-react';
 import { getAllBudgets, createBudget, requestBudgetDeletion, approveBudgetDeletion, submitForApproval, sendToReview, getBudgetAnalytics, getPendingApprovals, syncProjectBudgets } from '@/lib/api/budgetAPI';
 import BudgetCreateDialog from '@/components/budget/BudgetCreateDialog';
 import api from '@/lib/api';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, DollarSign, AlertCircle, Receipt, TrendingUp, Clock, FileText, Search, Filter, X, Download } from 'lucide-react';
+import { Plus, Banknote, AlertCircle, Receipt, TrendingUp, Clock, FileText, Search, Filter, X, Download } from 'lucide-react';
 import { exportBills } from '@/utils/exportUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -126,7 +126,7 @@ export default function BillsPage() {
                 <p className="text-3xl font-bold mt-2">₹{stats.totalAmount.toLocaleString()}</p>
                 <p className="text-xs text-green-600 mt-1">₹{stats.paidAmount.toLocaleString()} paid</p>
               </div>
-              <DollarSign className="w-10 h-10 text-purple-500 opacity-20" />
+              <Banknote className="w-10 h-10 text-purple-500 opacity-20" />
             </div>
           </CardContent>
         </Card>

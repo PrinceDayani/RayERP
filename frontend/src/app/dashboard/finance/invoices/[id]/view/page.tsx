@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { silentApiClient } from '@/lib/silentApi';
 import { formatCurrency } from '@/lib/currency';
-import { ArrowLeft, Edit, DollarSign, FileText, BookOpen, FileBarChart, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Banknote, FileText, BookOpen, FileBarChart, Trash2 } from 'lucide-react';
 
 interface Invoice {
   _id: string;
@@ -279,7 +279,7 @@ export default function ViewInvoicePage() {
                     }
                   }}
                 >
-                  <DollarSign className="h-4 w-4 mr-2" />
+                  <Banknote className="h-4 w-4 mr-2" />
                   Record Payment
                 </Button>
               )}

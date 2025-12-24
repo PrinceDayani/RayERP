@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, DollarSign, Loader2 } from 'lucide-react';
+import { X, Banknote, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -259,7 +259,7 @@ export default function PaymentDialog({ bill, onClose, onSuccess }: PaymentDialo
                 Cancel
               </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <DollarSign className="w-4 h-4 mr-2" />}
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Banknote className="w-4 h-4 mr-2" />}
                 {loading ? 'Processing...' : 'Make Payment'}
               </Button>
             </div>

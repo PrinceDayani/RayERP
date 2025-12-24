@@ -3,7 +3,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Banknote, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface AnalyticsData {
     revenueData: Array<{ month: string; revenue: number; payments: number }>;
@@ -37,7 +37,7 @@ export default function FinanceAnalyticsDashboard({ data }: { data: AnalyticsDat
                 <Card>
                     <CardHeader className="pb-2">
                         <CardDescription className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4" />
+                            <Banknote className="h-4 w-4" />
                             Total Revenue
                         </CardDescription>
                         <CardTitle className="text-2xl">{formatCurrency(data.metrics.totalRevenue)}</CardTitle>
