@@ -2,7 +2,6 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IJournalEntryLine {
   account: mongoose.Types.ObjectId;
-  accountId: mongoose.Types.ObjectId; // Alias for account
   debit: number;
   credit: number;
   description?: string;
@@ -26,7 +25,6 @@ export interface IJournalEntry extends Document {
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'POSTED' | 'REVERSED' | 'CANCELLED';
   
   // Dates
-  date: Date; // Alias for entryDate
   entryDate: Date;
   postingDate?: Date;
   reversalDate?: Date;
@@ -126,7 +124,6 @@ const JournalEntrySchema = new Schema<IJournalEntry>({
   entryType: { type: String, enum: ['MANUAL', 'RECURRING', 'REVERSING', 'TEMPLATE', 'INTER_COMPANY', 'CONSOLIDATION', 'TAX', 'STATISTICAL'], default: 'MANUAL' },
   status: { type: String, enum: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'POSTED', 'REVERSED', 'CANCELLED'], default: 'DRAFT' },
   
-  date: { type: Date },
   entryDate: { type: Date, required: true },
   postingDate: Date,
   reversalDate: Date,
@@ -228,7 +225,7 @@ JournalEntrySchema.index({ periodYear: 1, periodMonth: 1 });
 JournalEntrySchema.index({ isRecurring: 1, nextRecurringDate: 1 });
 
 // Auto-create Ledger entries when JournalEntry is posted
-JournalEntrySchema.post('save', async function(doc) {
+JournalEntrySchema.post('save', async function(doc: IJournalEntry) {
   if (doc.isPosted && doc.status === 'POSTED') {
     const Ledger = mongoose.model('Ledger');
     const Account = mongoose.model('ChartOfAccount');

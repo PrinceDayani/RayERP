@@ -21,7 +21,7 @@ export interface IVoucher extends Document {
   lines: IVoucherLine[];
   totalAmount: number;
   isPosted: boolean;
-  status: 'draft' | 'posted' | 'cancelled';
+  status: 'DRAFT' | 'POSTED' | 'CANCELLED';
   partyId?: mongoose.Types.ObjectId;
   partyName?: string;
   paymentMode?: 'cash' | 'bank' | 'cheque' | 'upi' | 'card' | 'neft' | 'rtgs';
@@ -68,7 +68,7 @@ const VoucherSchema = new Schema<IVoucher>({
   lines: { type: [VoucherLineSchema], required: true, validate: [arr => arr.length > 0, 'At least one line required'] },
   totalAmount: { type: Number, required: true, min: 0 },
   isPosted: { type: Boolean, default: false, index: true },
-  status: { type: String, enum: ['draft', 'posted', 'cancelled'], default: 'draft', index: true },
+  status: { type: String, enum: ['DRAFT', 'POSTED', 'CANCELLED'], default: 'DRAFT', index: true },
   partyId: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' },
   partyName: { type: String, trim: true },
   paymentMode: { type: String, enum: ['cash', 'bank', 'cheque', 'upi', 'card', 'neft', 'rtgs'] },
@@ -98,7 +98,7 @@ VoucherSchema.pre('save', function(next) {
   }
   
   if (this.isPosted) {
-    this.status = 'posted';
+    this.status = 'POSTED';
   }
   
   next();

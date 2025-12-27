@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect as auth } from '../middleware/auth.middleware';
-import Payment from '../models/Payment';
+import { Payment } from '../models/Finance';
 import ReferenceBalance from '../models/ReferenceBalance';
 import JournalEntry from '../models/JournalEntry';
 import ChartOfAccount from '../models/ChartOfAccount';

@@ -37,6 +37,24 @@ export interface IPayment extends IFinanceBase {
         allocationDate: Date;
         accountId?: mongoose.Types.ObjectId;
     }>;
+    referenceAllocations?: Array<{
+        journalEntryId: mongoose.Types.ObjectId;
+        entryNumber: string;
+        reference: string;
+        amount: number;
+        allocationDate: Date;
+        description?: string;
+    }>;
+    purpose?: string;
+    category?: 'advance' | 'deposit' | 'miscellaneous' | 'refund';
+    projectId?: mongoose.Types.ObjectId;
+    invoiceIds?: mongoose.Types.ObjectId[];
+    schedules?: Array<{
+        dueDate: Date;
+        amount: number;
+        status: 'PENDING' | 'PAID' | 'OVERDUE';
+        paidDate?: Date;
+    }>;
     status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'REFUNDED' | 'DISPUTED';
     approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
     approvedBy?: mongoose.Types.ObjectId;
@@ -79,6 +97,7 @@ export interface IInvoice extends IFinanceBase {
     sentDate?: Date;
     viewedDate?: Date;
     paidDate?: Date;
+    baseCurrency?: string;
     lineItems: Array<{
         description: string;
         quantity: number;
@@ -148,6 +167,10 @@ export interface IInvoice extends IFinanceBase {
     notes?: string;
     internalNotes?: string;
     attachments: string[];
+    updatedBy?: mongoose.Types.ObjectId;
+    cancelledBy?: mongoose.Types.ObjectId;
+    cancellationReason?: string;
+    cancellationDate?: Date;
 }
 
 const FinanceSchemaFields: any = {
@@ -183,6 +206,24 @@ const PaymentSchema = new Schema({
         amount: { type: Number, required: true },
         allocationDate: { type: Date, default: Date.now },
         accountId: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' },
+    }],
+    referenceAllocations: [{
+        journalEntryId: { type: Schema.Types.ObjectId, ref: 'JournalEntry', required: true },
+        entryNumber: { type: String, required: true },
+        reference: { type: String, required: true },
+        amount: { type: Number, required: true, min: 0 },
+        allocationDate: { type: Date, default: Date.now },
+        description: String
+    }],
+    purpose: String,
+    category: { type: String, enum: ['advance', 'deposit', 'miscellaneous', 'refund'] },
+    projectId: { type: Schema.Types.ObjectId, ref: 'Project' },
+    invoiceIds: [{ type: Schema.Types.ObjectId, ref: 'Finance' }],
+    schedules: [{
+        dueDate: Date,
+        amount: Number,
+        status: { type: String, enum: ['PENDING', 'PAID', 'OVERDUE'], default: 'PENDING' },
+        paidDate: Date
     }],
     status: { type: String, enum: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'COMPLETED', 'FAILED', 'CANCELLED', 'REFUNDED', 'DISPUTED'], default: 'DRAFT' },
     approvalStatus: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
@@ -225,6 +266,7 @@ const InvoiceSchema = new Schema({
     sentDate: Date,
     viewedDate: Date,
     paidDate: Date,
+    baseCurrency: { type: String, default: 'INR' },
     lineItems: [{
         description: { type: String, required: true },
         quantity: { type: Number, required: true },
@@ -294,6 +336,10 @@ const InvoiceSchema = new Schema({
     notes: String,
     internalNotes: String,
     attachments: [String],
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    cancelledBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    cancellationReason: String,
+    cancellationDate: Date,
 });
 
 // Indexes for performance

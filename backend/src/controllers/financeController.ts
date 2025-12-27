@@ -2,8 +2,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import Finance, { Payment as PaymentModel, Invoice as InvoiceModel } from '../models/Finance';
-import Invoice from '../models/Invoice';
-import Payment from '../models/Payment';
 import JournalEntry from '../models/JournalEntry';
 import Account from '../models/ChartOfAccount';
 

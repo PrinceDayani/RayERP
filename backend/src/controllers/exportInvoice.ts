@@ -33,11 +33,11 @@ export const exportInvoice = async (req: Request, res: Response) => {
         });
         
         const isDebit = line.debit > 0;
-        const accountName = otherAccount?.account?.name || '-';
+        const accountName = (otherAccount?.account as any)?.name || '-';
         const fromTo = isDebit ? `Fr: ${accountName}` : `To: ${accountName}`;
         
         invoiceData.push({
-          date: entry.entryDate || entry.date,
+          date: entry.entryDate,
           entryNumber: entry.entryNumber,
           fromTo,
           description: line.description || entry.description,

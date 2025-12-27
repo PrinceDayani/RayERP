@@ -71,7 +71,7 @@ export const generateInvoiceNumber = async (type: InvoiceType = 'SALES'): Promis
   const typeCode = type === 'SALES' ? 'INV' : 'PINV';
   const prefix = `${typeCode}-${dateStr}-${timeStr}`;
 
-  const Invoice = (await import('../models/Invoice')).default;
+  const { Invoice } = await import('../models/Finance');
   const lastInvoice = await Invoice.findOne({
     invoiceNumber: { $regex: `^${prefix.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}` }
   })

@@ -30,7 +30,7 @@ export const createInvoiceWithApproval = async (invoice: any, userId: string, se
 
 export const handleInvoiceApprovalComplete = async (approvalId: any, status: string, userId: any, reason?: string) => {
   const ApprovalRequest = require('../models/ApprovalRequest').default;
-  const Invoice = require('../models/Invoice').default;
+  const { Invoice } = require('../models/Finance');
 
   const approval = await ApprovalRequest.findById(approvalId);
   if (!approval || approval.entityType !== 'INVOICE') return;

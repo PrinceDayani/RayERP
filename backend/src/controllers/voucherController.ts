@@ -94,7 +94,7 @@ export const createVoucher = async (req: Request, res: Response) => {
       taxAmount: taxAmount || 0,
       discountAmount: discountAmount || 0,
       attachments: attachments || [],
-      status: 'draft',
+      status: 'DRAFT',
       createdBy: userId
     }], { session });
 
@@ -214,12 +214,12 @@ export const updateVoucher = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Voucher not found' });
     }
 
-    if (voucher.status === 'posted') {
+    if (voucher.status === 'POSTED') {
       await session.abortTransaction();
       return res.status(400).json({ message: 'Cannot update posted voucher' });
     }
 
-    if (voucher.status === 'cancelled') {
+    if (voucher.status === 'CANCELLED') {
       await session.abortTransaction();
       return res.status(400).json({ message: 'Cannot update cancelled voucher' });
     }
@@ -275,12 +275,12 @@ export const postVoucher = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Voucher not found' });
     }
 
-    if (voucher.status === 'posted') {
+    if (voucher.status === 'POSTED') {
       await session.abortTransaction();
       return res.status(400).json({ message: 'Voucher already posted' });
     }
 
-    if (voucher.status === 'cancelled') {
+    if (voucher.status === 'CANCELLED') {
       await session.abortTransaction();
       return res.status(400).json({ message: 'Cannot post cancelled voucher' });
     }
@@ -328,7 +328,7 @@ export const postVoucher = async (req: Request, res: Response) => {
     }], { session });
 
     voucher.isPosted = true;
-    voucher.status = 'posted';
+    voucher.status = 'POSTED';
     voucher.approvedBy = userId;
     voucher.approvedAt = new Date();
     await voucher.save({ session });
@@ -361,12 +361,12 @@ export const cancelVoucher = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Voucher not found' });
     }
 
-    if (voucher.status === 'cancelled') {
+    if (voucher.status === 'CANCELLED') {
       await session.abortTransaction();
       return res.status(400).json({ message: 'Voucher already cancelled' });
     }
 
-    if (voucher.status === 'posted') {
+    if (voucher.status === 'POSTED') {
       for (const line of voucher.lines) {
         const account = await ChartOfAccount.findById(line.accountId).session(session);
         if (account) {
@@ -382,7 +382,7 @@ export const cancelVoucher = async (req: Request, res: Response) => {
       }
     }
 
-    voucher.status = 'cancelled';
+    voucher.status = 'CANCELLED';
     voucher.cancelledBy = userId;
     voucher.cancelledAt = new Date();
     voucher.cancellationReason = reason || 'No reason provided';
@@ -409,7 +409,7 @@ export const deleteVoucher = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Voucher not found' });
     }
 
-    if (voucher.status === 'posted') {
+    if (voucher.status === 'POSTED') {
       return res.status(400).json({ message: 'Cannot delete posted voucher. Cancel it first.' });
     }
 
@@ -439,9 +439,9 @@ export const getVoucherStats = async (req: Request, res: Response) => {
           _id: '$voucherType',
           count: { $sum: 1 },
           totalAmount: { $sum: '$totalAmount' },
-          posted: { $sum: { $cond: [{ $eq: ['$status', 'posted'] }, 1, 0] } },
-          draft: { $sum: { $cond: [{ $eq: ['$status', 'draft'] }, 1, 0] } },
-          cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } }
+          posted: { $sum: { $cond: [{ $eq: ['$status', 'POSTED'] }, 1, 0] } },
+          draft: { $sum: { $cond: [{ $eq: ['$status', 'DRAFT'] }, 1, 0] } },
+          cancelled: { $sum: { $cond: [{ $eq: ['$status', 'CANCELLED'] }, 1, 0] } }
         }
       }
     ]);

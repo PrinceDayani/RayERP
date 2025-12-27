@@ -30,7 +30,7 @@ export const createPaymentWithApproval = async (payment: any, userId: string, se
 
 export const handlePaymentApprovalComplete = async (approvalId: any, status: string, userId: any, reason?: string) => {
   const ApprovalRequest = require('../models/ApprovalRequest').default;
-  const Payment = require('../models/Payment').default;
+  const { Payment } = require('../models/Finance');
 
   const approval = await ApprovalRequest.findById(approvalId);
   if (!approval || approval.entityType !== 'PAYMENT') return;
