@@ -5,6 +5,39 @@ import Finance, { Payment as PaymentModel, Invoice as InvoiceModel } from '../mo
 import JournalEntry from '../models/JournalEntry';
 import Account from '../models/ChartOfAccount';
 
+// Cache implementation
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const cache = new Map<string, CacheEntry<any>>();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+const getFromCache = <T>(key: string): T | null => {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data;
+};
+
+const setCache = <T>(key: string, data: T): void => {
+  cache.set(key, { data, timestamp: Date.now() });
+};
+
+const clearCache = (pattern?: string): void => {
+  if (!pattern) {
+    cache.clear();
+    return;
+  }
+  for (const key of cache.keys()) {
+    if (key.includes(pattern)) cache.delete(key);
+  }
+};
+
 /**
  * Create a new Payment record with full validation and journal entry creation
  */
@@ -37,6 +70,9 @@ export const createPayment = async (req: Request, res: Response) => {
     }
 
     const payment = await PaymentModel.create([paymentData], { session });
+
+    clearCache('finance');
+    clearCache('analytics');
 
     // Update invoice paid amounts
     if (paymentData.allocations?.length) {
@@ -115,6 +151,10 @@ export const createInvoice = async (req: Request, res: Response) => {
     };
 
     const invoice = await InvoiceModel.create([invoiceData], { session });
+    
+    clearCache('finance');
+    clearCache('analytics');
+    
     await session.commitTransaction();
     res.status(201).json({ success: true, data: invoice[0] });
   } catch (error: any) {
@@ -130,10 +170,16 @@ export const createInvoice = async (req: Request, res: Response) => {
  */
 export const getFinanceById = async (req: Request, res: Response) => {
   try {
+    const cacheKey = `finance:${req.params.id}`;
+    const cached = getFromCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const finance = await Finance.findById(req.params.id)
       .populate('customerId vendorId createdBy')
       .lean();
     if (!finance) return res.status(404).json({ success: false, message: 'Record not found' });
+    
+    setCache(cacheKey, finance);
     res.json({ success: true, data: finance });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -146,6 +192,10 @@ export const getFinanceById = async (req: Request, res: Response) => {
 export const getFinances = async (req: Request, res: Response) => {
   try {
     const { page = 1, limit = 10, type, status, search } = req.query as any;
+    const cacheKey = `finances:${page}:${limit}:${type}:${status}:${search}`;
+    const cached = getFromCache(cacheKey);
+    if (cached) return res.json({ ...cached, cached: true });
+
     const filter: any = {};
     if (type) filter.type = type;
     if (status) filter.status = status;
@@ -164,7 +214,10 @@ export const getFinances = async (req: Request, res: Response) => {
       .limit(Number(limit))
       .lean();
     const total = await Finance.countDocuments(filter);
-    res.json({ success: true, data: records, pagination: { page: Number(page), limit: Number(limit), total } });
+    
+    const result = { success: true, data: records, pagination: { page: Number(page), limit: Number(limit), total } };
+    setCache(cacheKey, result);
+    res.json(result);
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -177,6 +230,10 @@ export const updateFinance = async (req: Request, res: Response) => {
   try {
     const updated = await Finance.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true }).lean();
     if (!updated) return res.status(404).json({ success: false, message: 'Record not found' });
+    
+    clearCache('finance');
+    clearCache('analytics');
+    
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -190,6 +247,10 @@ export const deleteFinance = async (req: Request, res: Response) => {
   try {
     const deleted = await Finance.findByIdAndDelete(req.params.id).lean();
     if (!deleted) return res.status(404).json({ success: false, message: 'Record not found' });
+    
+    clearCache('finance');
+    clearCache('analytics');
+    
     res.json({ success: true, message: 'Record deleted' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -399,6 +460,10 @@ export const markInvoicePaid = async (req: Request, res: Response) => {
  */
 export const getFinanceAnalytics = async (req: Request, res: Response) => {
   try {
+    const cacheKey = 'analytics:finance';
+    const cached = getFromCache(cacheKey);
+    if (cached) return res.json({ ...cached, cached: true });
+
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
@@ -441,7 +506,7 @@ export const getFinanceAnalytics = async (req: Request, res: Response) => {
     ]);
 
     const result = metrics[0] || { total: [], overdue: [], avgPaymentTime: [] };
-    res.json({
+    const response = {
       success: true,
       data: {
         metrics: {
@@ -456,7 +521,10 @@ export const getFinanceAnalytics = async (req: Request, res: Response) => {
         statusBreakdown: statusBreakdown || [],
         paymentMethods: paymentMethods || []
       }
-    });
+    };
+    
+    setCache(cacheKey, response);
+    res.json(response);
   } catch (error: any) {
     console.error('Finance analytics error:', error);
     res.json({

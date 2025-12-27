@@ -2,11 +2,17 @@ import { Request, Response } from 'express';
 import ChartOfAccount from '../models/ChartOfAccount';
 import { AccountTemplate, AccountMapping, OpeningBalance } from '../models/AccountTemplate';
 import JournalEntry from '../models/JournalEntry';
+import { financeCache } from '../utils/financeCache';
 
 // Account Templates
 export const getTemplates = async (req: Request, res: Response) => {
   try {
+    const cacheKey = 'accounts:templates';
+    const cached = financeCache.get(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const templates = await AccountTemplate.find({ isActive: true });
+    financeCache.set(cacheKey, templates);
     res.json({ success: true, data: templates });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -34,6 +40,7 @@ export const applyTemplate = async (req: Request, res: Response) => {
       }
     }
 
+    financeCache.clear('accounts');
     res.json({ success: true, data: createdAccounts, count: createdAccounts.length });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
@@ -53,10 +60,15 @@ export const createMapping = async (req: Request, res: Response) => {
 export const getMappings = async (req: Request, res: Response) => {
   try {
     const { externalSystem } = req.query;
+    const cacheKey = `accounts:mappings:${externalSystem}`;
+    const cached = financeCache.get(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const filter: any = { isActive: true };
     if (externalSystem) filter.externalSystem = externalSystem;
 
     const mappings = await AccountMapping.find(filter).populate('internalAccountId', 'code name');
+    financeCache.set(cacheKey, mappings);
     res.json({ success: true, data: mappings });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -93,6 +105,7 @@ export const setOpeningBalance = async (req: Request, res: Response) => {
       await account.save();
     }
 
+    financeCache.clear('accounts');
     res.status(201).json({ success: true, data: opening });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
@@ -102,10 +115,15 @@ export const setOpeningBalance = async (req: Request, res: Response) => {
 export const getOpeningBalances = async (req: Request, res: Response) => {
   try {
     const { fiscalYear } = req.query;
+    const cacheKey = `accounts:opening:${fiscalYear}`;
+    const cached = financeCache.get(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const filter: any = {};
     if (fiscalYear) filter.fiscalYear = fiscalYear;
 
     const balances = await OpeningBalance.find(filter).populate('accountId', 'code name type');
+    financeCache.set(cacheKey, balances);
     res.json({ success: true, data: balances });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -134,6 +152,7 @@ export const bulkImportAccounts = async (req: Request, res: Response) => {
       }
     }
 
+    financeCache.clear('accounts');
     res.json({ success: true, data: results, errors, imported: results.length, failed: errors.length });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
@@ -178,6 +197,7 @@ export const setAccountRestriction = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Account not found' });
     }
 
+    financeCache.clear('accounts');
     res.json({ success: true, data: account });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
@@ -237,6 +257,7 @@ export const updateReconciliationStatus = async (req: Request, res: Response) =>
       return res.status(404).json({ success: false, message: 'Account not found' });
     }
 
+    financeCache.clear('accounts');
     res.json({ success: true, data: account });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

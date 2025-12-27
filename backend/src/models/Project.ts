@@ -51,6 +51,7 @@ export interface IProject extends Document {
   autoCalculateProgress: boolean;
 
   manager: mongoose.Types.ObjectId;
+  managers: mongoose.Types.ObjectId[];
   team: mongoose.Types.ObjectId[];
   owner: mongoose.Types.ObjectId;
   members: mongoose.Types.ObjectId[];
@@ -143,6 +144,7 @@ const projectSchema = new Schema<IProject>({
   progress: { type: Number, min: 0, max: 100, default: 0 },
   autoCalculateProgress: { type: Boolean, default: true },
   manager: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+  managers: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
   team: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
   owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
