@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SectionLoader } from '@/components/PageLoader';
 import { ArrowLeft, Download, Filter } from "lucide-react";
 import { GanttChart } from "@/components/GanttChart";
 import { getProjectById, type Project } from "@/lib/api/projectsAPI";
@@ -50,11 +51,7 @@ const ProjectTimelinePage: React.FC = () => {
   }));
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-      </div>
-    );
+    return <SectionLoader />;
   }
 
   return (

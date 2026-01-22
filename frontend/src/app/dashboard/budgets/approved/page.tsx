@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Eye, CheckCircle, XCircle, RotateCcw, Search } from 'lucide-react';
 import { getBudgetsByStatus, unapproveBudget, unrejectBudget } from '@/lib/api/budgetAPI';
 import { Budget } from '@/types/budget';
+import { PageLoader } from '@/components/PageLoader';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -138,7 +139,7 @@ export default function ApprovedBudgetsPage() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return <PageLoader text="Loading approved budgets..." />;
   }
 
   return (

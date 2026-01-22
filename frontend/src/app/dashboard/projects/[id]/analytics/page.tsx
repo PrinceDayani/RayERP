@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { PageLoader } from '@/components/PageLoader';
 import ProjectAnalyticsFiltered from "@/components/ProjectAnalyticsFiltered";
 import ProjectCurrencySwitcher from "@/components/projects/ProjectCurrencySwitcher";
 
@@ -38,7 +39,7 @@ export default function ProjectAnalyticsPage() {
         }
 
         const headers = { Authorization: `Bearer ${token}` };
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
         console.log('Fetching analytics for project:', projectId);
         console.log('Base URL:', baseUrl);
@@ -109,11 +110,7 @@ export default function ProjectAnalyticsPage() {
   }, [projectId]);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (error) {

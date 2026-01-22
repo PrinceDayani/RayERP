@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';import { SectionLoader } from '@/components/PageLoader';import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -171,7 +170,7 @@ export default function EnhancedFinancePage() {
   const handleViewLedger = async (recordId: string, recordType: string) => {
     try {
       const token = localStorage.getItem('auth-token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const endpoint = recordType === 'invoice' ? 'invoices' : 'payments';
       const response = await fetch(`${API_URL}/api/finance/${endpoint}/${recordId}`, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -196,7 +195,7 @@ export default function EnhancedFinancePage() {
     if (!confirm('Approve this record?')) return;
     try {
       const token = localStorage.getItem('auth-token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const endpoint = recordType === 'invoice' ? 'invoices' : 'payments';
       const response = await fetch(`${API_URL}/api/finance/${endpoint}/${recordId}/approve`, {
         method: 'PATCH',
@@ -223,7 +222,7 @@ export default function EnhancedFinancePage() {
     if (!confirm('Mark this invoice as paid?')) return;
     try {
       const token = localStorage.getItem('auth-token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const response = await fetch(`${API_URL}/api/finance/invoices/${invoiceId}/mark-paid`, {
         method: 'PATCH',
         headers: { 
@@ -248,7 +247,7 @@ export default function EnhancedFinancePage() {
   const handleSendEmail = async (recordId: string, recordType: string) => {
     try {
       const token = localStorage.getItem('auth-token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const endpoint = recordType === 'invoice' ? 'invoices' : 'payments';
       const response = await fetch(`${API_URL}/api/finance/${endpoint}/${recordId}/send`, {
         method: 'POST',
@@ -274,7 +273,7 @@ export default function EnhancedFinancePage() {
     if (!confirm('Delete this record? This action cannot be undone.')) return;
     try {
       const token = localStorage.getItem('auth-token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const endpoint = recordType === 'invoice' ? 'invoices' : 'payments';
       const response = await fetch(`${API_URL}/api/finance/${endpoint}/${recordId}`, {
         method: 'DELETE',
@@ -300,7 +299,7 @@ export default function EnhancedFinancePage() {
     try {
       setSubmitting(true);
       const token = localStorage.getItem('auth-token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const response = await fetch(`${API_URL}/api/finance/invoices`, {
         method: 'POST',
         headers: { 
@@ -329,7 +328,7 @@ export default function EnhancedFinancePage() {
     try {
       setSubmitting(true);
       const token = localStorage.getItem('auth-token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
       const response = await fetch(`${API_URL}/api/finance/payments`, {
         method: 'POST',
         headers: { 
@@ -514,7 +513,7 @@ export default function EnhancedFinancePage() {
 
             <TabsContent value={activeTab} className="mt-0">
               {loading ? (
-                <div className="text-center py-8">Loading...</div>
+                <SectionLoader text="Loading invoices..." />
               ) : records.length === 0 ? (
                 <EmptyState type={activeTab} onCreateNew={() => setShowInvoiceForm(true)} />
               ) : (

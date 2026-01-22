@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getContact, deleteContact, Contact } from '@/lib/api/index';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SectionLoader } from '@/components/PageLoader';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -78,14 +79,7 @@ export default function ContactDetailPage() {
   };
 
   if (isFetching) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">Loading contact details...</p>
-        </div>
-      </div>
-    );
+    return <SectionLoader text="Loading contact details..." />;
   }
 
   if (error && !contact) {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, TrendingUp, AlertCircle } from 'lucide-react';
+import { SectionLoader } from '@/components/PageLoader';
 import FinanceAnalyticsDashboard from '../components/FinanceAnalyticsDashboard';
 import { analyticsApi } from '@/lib/api/finance/analyticsApi';
 
@@ -27,11 +28,7 @@ export default function InvoiceAnalyticsPage() {
   useEffect(() => { fetchAnalytics(); }, []);
 
   if (loading) {
-    return (
-      <div className="p-6 flex justify-center items-center h-64">
-        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <SectionLoader />;
   }
 
   return (

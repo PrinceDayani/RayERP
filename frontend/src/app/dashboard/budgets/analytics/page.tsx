@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Budget } from "@/types/budget";
+import { Button } from "@/components/ui/button";import { PageLoader } from '@/components/PageLoader';import { Budget } from "@/types/budget";
 import BudgetAnalytics from "@/components/budget/BudgetAnalytics";
 import { RefreshCw, TrendingUp, Calendar, Coins, Target, ExternalLink } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -180,12 +179,7 @@ export default function BudgetAnalyticsPage() {
   }));
 
   if (loading) {
-    return (
-      <div className="flex flex-col justify-center items-center h-64 space-y-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p>Loading budget analytics...</p>
-      </div>
-    );
+    return <PageLoader text="Loading budget analytics..." />;
   }
 
   return (

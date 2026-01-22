@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SectionLoader } from '@/components/PageLoader';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, GitCompare, TrendingUp, TrendingDown, Minus, Download, RefreshCw, AlertTriangle } from 'lucide-react';
@@ -109,10 +110,7 @@ export default function BudgetComparisonPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {loadingBudgets ? (
-            <div className="text-center py-4">
-              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Loading budgets...</p>
-            </div>
+            <SectionLoader text="Loading budgets..." />
           ) : budgets.length === 0 ? (
             <div className="text-center py-4 border rounded-lg bg-muted/50">
               <p className="text-sm text-muted-foreground">No budgets available for comparison</p>

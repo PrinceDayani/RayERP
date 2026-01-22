@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { Suspense } from 'react';
 import Layout from '@/components/Layout';
+import { SectionLoader } from '@/components/PageLoader';
 
 // Define types
 interface ContactData {
@@ -17,9 +18,7 @@ interface ContactData {
 function ContactEditLoading() {
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8 flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
+      <SectionLoader />
     </Layout>
   );
 }
@@ -86,11 +85,7 @@ function ContactEditContent() {
   };
 
   if (isFetching) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <SectionLoader />;
   }
 
   if (error && !contact) {

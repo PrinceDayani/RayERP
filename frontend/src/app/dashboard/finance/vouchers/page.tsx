@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SectionLoader, InlineLoader } from '@/components/PageLoader';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -787,10 +788,7 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-8">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                      <span>Loading vouchers...</span>
-                    </div>
+                    <SectionLoader text="Loading vouchers..." />
                   </TableCell>
                 </TableRow>
               ) : vouchers.length === 0 ? (
@@ -1098,8 +1096,8 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
               >
                 {submitting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Creating...
+                    <InlineLoader />
+                    <span className="ml-2">Creating...</span>
                   </>
                 ) : (
                   'Create Voucher'

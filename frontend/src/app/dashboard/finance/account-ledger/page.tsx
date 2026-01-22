@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SectionLoader } from '@/components/PageLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -271,12 +272,7 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">
-              <div className="flex items-center justify-center gap-2">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                <span>Loading accounts...</span>
-              </div>
-            </div>
+            <SectionLoader text="Loading accounts..." />
           ) : filteredAccounts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No accounts found

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { employeesAPI } from '@/lib/api';
@@ -161,10 +162,26 @@ export default function EditEmployeePage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">Loading...</h1>
-              <p className="text-gray-600">Fetching employee details</p>
+              <Skeleton className="h-9 w-64" />
+              <Skeleton className="h-5 w-48 mt-2" />
             </div>
           </div>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
     );
   }

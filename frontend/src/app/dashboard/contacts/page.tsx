@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation';
 import { useSocketContext } from '@/contexts/socket/SocketContext';
 import { getContacts, searchContacts, deleteContact, createContact, Contact, filterContacts, getContactStats, ContactFilterOptions, ContactStats, ContactFilterParams } from '@/lib/api/index';
+import { SectionLoader } from '@/components/PageLoader';
 import {
   Plus,
   Search,
@@ -1053,13 +1054,7 @@ export default function ContactsPage() {
 
       {/* Loading State */}
       {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Loading contacts...</p>
-            <p className="text-xs text-muted-foreground mt-2">This may take a few moments</p>
-          </div>
-        </div>
+        <SectionLoader text="Loading contacts..." />
       ) : error ? (
         <Card className="card-modern">
           <CardContent className="py-16">

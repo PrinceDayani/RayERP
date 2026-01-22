@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import ContactForm from '@/components/Forms/ContactForm';
 import { getContact, updateContact, Contact } from '@/lib/api/index';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SectionLoader } from '@/components/PageLoader';
 import { AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
@@ -65,14 +66,7 @@ export default function EditContactPage() {
   };
 
   if (isFetching) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground">Loading contact details...</p>
-        </div>
-      </div>
-    );
+    return <SectionLoader text="Loading contact details..." />;
   }
 
   if (error && !contact) {

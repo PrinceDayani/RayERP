@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SectionLoader } from '@/components/PageLoader';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -801,10 +802,7 @@ const BalanceSheetPage = () => {
               {[1, 2, 3, 4].map((i) => (
                 <Card key={i}>
                   <CardContent className="p-6 h-80 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-                      <p className="text-gray-500">Loading chart...</p>
-                    </div>
+                    <SectionLoader text="Loading chart..." />
                   </CardContent>
                 </Card>
               ))}
@@ -1008,10 +1006,7 @@ const BalanceSheetPage = () => {
           {loading ? (
             <Card>
               <CardContent className="p-12 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-                  <p className="text-gray-500">Loading trend data...</p>
-                </div>
+                <SectionLoader text="Loading trend data..." />
               </CardContent>
             </Card>
           ) : !balanceSheetData ? (

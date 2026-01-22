@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Repeat, Edit, Trash2 } from 'lucide-react';
 import tasksAPI from '@/lib/api/tasksAPI';
+import { PageLoader } from '@/components/PageLoader';
 
 export default function RecurringTasksPage() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function RecurringTasksPage() {
     }
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <PageLoader text="Loading recurring tasks..." />;
 
   return (
     <div className="p-6 space-y-6">

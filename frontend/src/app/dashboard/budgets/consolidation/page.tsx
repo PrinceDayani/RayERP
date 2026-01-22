@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/components/ui/use-toast';
+import { PageLoader } from '@/components/PageLoader';
 
 export default function BudgetConsolidationPage() {
   const router = useRouter();
@@ -56,14 +57,7 @@ export default function BudgetConsolidationPage() {
     toast({ title: 'Success', description: 'Data exported successfully' });
   };
 
-  if (loading) return (
-    <div className="flex justify-center items-center h-screen">
-      <div className="text-center">
-        <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-        <p>Loading consolidation data...</p>
-      </div>
-    </div>
-  );
+  if (loading) {\n    return <PageLoader text=\"Loading consolidation data...\" />;\n  }
   
   if (!consolidation) return (
     <div className="p-6">

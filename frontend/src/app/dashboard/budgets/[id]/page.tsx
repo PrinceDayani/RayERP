@@ -11,6 +11,7 @@ import { getBudget, submitForApproval } from '@/lib/api/budgetAPI';
 import { Budget } from '@/types/budget';
 import { formatCurrency, formatCurrencySmart } from '@/utils/currency';
 import { useCurrency } from '@/hooks/useCurrency';
+import { PageLoader } from '@/components/PageLoader';
 
 export default function BudgetDetailPage() {
   const { displayCurrency } = useCurrency();
@@ -74,7 +75,7 @@ export default function BudgetDetailPage() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return <PageLoader text="Loading budget details..." />;
   }
 
   if (!budget) {

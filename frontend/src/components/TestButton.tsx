@@ -14,7 +14,7 @@ export default function TestButton() {
     console.log('Auth token:', token ? 'Present' : 'Missing');
     
     // Test basic fetch
-    fetch('http://localhost:5000/api/health')
+    fetch('http://localhost:5001/api/health')
       .then(res => res.json())
       .then(data => console.log('Health check:', data))
       .catch(err => console.error('Health check error:', err));

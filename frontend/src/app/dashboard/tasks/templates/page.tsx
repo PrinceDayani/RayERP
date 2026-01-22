@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { PageLoader } from '@/components/PageLoader';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,7 +72,7 @@ export default function TaskTemplatesPage() {
     router.push(`/dashboard/tasks/create?templateId=${templateId}`);
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <PageLoader text="Loading task templates..." />;
 
   return (
     <div className="p-6 space-y-6">

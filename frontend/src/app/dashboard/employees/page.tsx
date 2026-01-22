@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SectionLoader } from '@/components/PageLoader';
 import { 
   Plus, 
   Users, 
@@ -997,10 +998,7 @@ const TodayAttendance = () => {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="text-center py-8">
-            <Clock className="h-8 w-8 mx-auto text-muted-foreground mb-2 animate-spin" />
-            <p className="text-muted-foreground">Loading attendance...</p>
-          </div>
+          <SectionLoader text="Loading attendance..." />
         ) : todayAttendance.length === 0 ? (
           <div className="text-center py-8">
             <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />

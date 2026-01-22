@@ -10,6 +10,7 @@ import CommentInput from '@/components/budget/CommentInput';
 import ActivityFeed from '@/components/budget/ActivityFeed';
 import { MessageSquare, Activity, ThumbsUp, CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
 import api from '@/lib/api/axios';
+import { SectionLoader } from '@/components/PageLoader';
 
 export default function BudgetCommentsPage() {
   const [budgetId, setBudgetId] = useState('');
@@ -189,7 +190,7 @@ export default function BudgetCommentsPage() {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8">Loading...</div>
+                <SectionLoader />
               ) : activeTab === 'comments' ? (
                 <div className="space-y-4">
                   {topLevelComments.length > 0 ? (

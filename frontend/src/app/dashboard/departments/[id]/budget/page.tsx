@@ -8,6 +8,7 @@ import {
     TrendingUp,
     TrendingDown,
     Plus,
+import { SectionLoader } from '@/components/PageLoader';
     Minus,
     Loader2,
     Save,
@@ -168,11 +169,7 @@ export default function DepartmentBudgetPage() {
     };
 
     if (loading || !department) {
-        return (
-            <div className="flex justify-center items-center min-h-[400px]">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-        );
+        return <SectionLoader />;
     }
 
     const currentUtilization = (Array.isArray(budgetHistory) && budgetHistory.length > 0)

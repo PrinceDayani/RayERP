@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageLoader } from '@/components/PageLoader';
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -277,12 +278,7 @@ export default function BudgetApprovalsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col justify-center items-center h-64 space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <p className="text-gray-600">Loading budget approvals...</p>
-      </div>
-    );
+    return <PageLoader text="Loading budget approvals..." />;
   }
 
   return (

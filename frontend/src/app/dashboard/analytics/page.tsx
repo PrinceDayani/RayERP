@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -83,12 +84,52 @@ export default function AnalyticsPage() {
 
   const projectDues = projectProgress;
 
-  const getStatusColor = (status: string) => {
-
   if (loading) {
     return (
-      <div className="p-6 space-y-6 bg-gray-900 min-h-screen flex items-center justify-center">
-        <div className="text-white text-xl">Loading analytics...</div>
+      <div className="p-6 space-y-6 bg-gray-900 min-h-screen">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <Skeleton className="h-9 w-72 bg-gray-800" />
+            <Skeleton className="h-5 w-96 bg-gray-800 mt-2" />
+          </div>
+          <div className="flex gap-3">
+            <Skeleton className="h-10 w-32 bg-gray-800" />
+            <Skeleton className="h-10 w-32 bg-gray-800" />
+            <Skeleton className="h-10 w-32 bg-gray-800" />
+          </div>
+        </div>
+
+        {/* Real-time metrics skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="bg-gray-800 border-gray-700">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24 bg-gray-700" />
+                    <Skeleton className="h-8 w-16 bg-gray-700" />
+                    <Skeleton className="h-3 w-32 bg-gray-700" />
+                  </div>
+                  <Skeleton className="h-10 w-10 rounded-full bg-gray-700" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Charts skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <Skeleton className="h-6 w-48 bg-gray-700" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-64 w-full bg-gray-700" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { PageLoader } from '@/components/PageLoader';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,7 +74,7 @@ export default function ProjectFinancialPage() {
   };
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <PageLoader text="Loading financial data..." />;
   }
 
   return (
