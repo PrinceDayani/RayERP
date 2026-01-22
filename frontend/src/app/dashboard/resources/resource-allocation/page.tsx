@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { PageLoader } from '@/components/PageLoader';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Users, Clock, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
@@ -171,13 +172,7 @@ export default function ResourceAllocationPage() {
   const months = getTimeRangeMonths();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Loading resource allocation...</p>
-        </div>
-      </div>
+    return <PageLoader text="Loading resource allocation..." />;
     );
   }
 

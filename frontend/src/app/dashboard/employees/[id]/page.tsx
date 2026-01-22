@@ -15,6 +15,7 @@ import {
 import Link from 'next/link';
 import { ResourceAllocation, Task, TaskStats, SkillMatrixData, Skill, LeaveBalance, LeaveBalanceType, Achievement, WorkSummary, CareerEvent } from '@/types/employee-profile';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageLoader } from '@/components/PageLoader';
 import { employeesAPI } from '@/lib/api/employeesAPI';
 import { getAllProjects } from '@/lib/api/projectsAPI';
 import attendanceAPI from '@/lib/api/attendanceAPI';
@@ -359,14 +360,7 @@ export default function EmployeeDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Loading employee details...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader text=\"Loading employee details...\" />;
   }
 
   if (!employee) {

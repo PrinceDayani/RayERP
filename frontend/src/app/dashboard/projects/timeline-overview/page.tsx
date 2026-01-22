@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SectionLoader } from '@/components/PageLoader';
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -131,12 +132,7 @@ const TimelineOverviewPage: React.FC = () => {
   const hasActiveFilters = searchQuery || statusFilter !== 'all' || priorityFilter !== 'all';
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-        <p className="text-muted-foreground">Loading timeline data...</p>
-      </div>
-    );
+    return <SectionLoader text="Loading timeline data..." />;
   }
 
   if (error) {

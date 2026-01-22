@@ -8,6 +8,7 @@ import {
     UserMinus,
     Search,
     Filter,
+import { SectionLoader } from '@/components/PageLoader';
     Loader2,
     Mail,
     Phone,
@@ -122,11 +123,7 @@ export default function DepartmentMembersPage() {
     );
 
     if (loading) {
-        return (
-            <div className="flex justify-center items-center min-h-[400px]">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-        );
+        return <SectionLoader />;
     }
 
     return (

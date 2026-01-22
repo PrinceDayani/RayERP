@@ -11,6 +11,7 @@ import ForecastHistoryPanel from '@/components/budget/ForecastHistoryPanel';
 import { TrendingUp, Brain, BarChart3, Zap, ArrowLeft } from 'lucide-react';
 import api from '@/lib/api/axios';
 import Link from 'next/link';
+import { SectionLoader } from '@/components/PageLoader';
 
 export default function BudgetForecastsPage() {
   const params = useParams();
@@ -127,7 +128,7 @@ export default function BudgetForecastsPage() {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="text-center py-12">Loading forecasts...</div>
+                  <SectionLoader text="Loading forecasts..." />
                 ) : selectedForecast ? (
                   <ForecastChart forecast={selectedForecast} />
                 ) : (

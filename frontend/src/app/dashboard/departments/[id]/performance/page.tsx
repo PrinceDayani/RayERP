@@ -8,6 +8,7 @@ import {
     TrendingDown,
     Users,
     Target,
+import { SectionLoader } from '@/components/PageLoader';
     Award,
     Activity,
     Loader2,
@@ -89,11 +90,7 @@ export default function DepartmentPerformancePage() {
     };
 
     if (loading || !department) {
-        return (
-            <div className="flex justify-center items-center min-h-[400px]">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-        );
+        return <SectionLoader />;
     }
 
     return (

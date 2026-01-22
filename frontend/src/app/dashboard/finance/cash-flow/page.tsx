@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { InlineLoader } from '@/components/PageLoader';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -513,7 +514,7 @@ const CashFlowPageContent = () => {
           </DialogHeader>
           {transactionsLoading ? (
             <div className="flex justify-center p-6">
-              <Loader2 className="h-6 w-6 animate-spin" />
+              <InlineLoader />
             </div>
           ) : (
             <Table>

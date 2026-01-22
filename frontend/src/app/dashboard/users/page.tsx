@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import RoleGuard from '@/components/RoleGuard';
+import { SectionLoader } from '@/components/PageLoader';
 import {
   Card,
   CardContent,
@@ -700,14 +701,8 @@ const UserManagement = () => {
                       )}
                     </div>
                   </div>
-                  
                   {loading ? (
-                    <div className="flex justify-center py-16">
-                      <div className="relative">
-                        <div className="animate-spin rounded-full h-16 w-16 border-4 border-muted border-t-primary"></div>
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary/20 to-transparent animate-pulse"></div>
-                      </div>
-                    </div>
+                    <SectionLoader text="Loading users..." />
                   ) : filteredUsers.length === 0 ? (
                     <div className="text-center py-16 bg-muted/20 rounded-2xl border border-border/50 backdrop-blur-sm">
                       <div className="bg-muted/50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
@@ -958,7 +953,7 @@ const UserManagement = () => {
 
                           {/* Employee Info */}
                           {loadingEmployee ? (
-                            <div className="p-3 bg-muted/50 rounded text-center text-xs text-muted-foreground">Loading...</div>
+                            <SectionLoader />
                           ) : employeeDetails ? (
                             <div className="mt-5">
                               <h4 className="text-xs font-semibold mb-2.5 flex items-center gap-1"><Briefcase className="h-3 w-3"/>Employee</h4>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SectionLoader } from '@/components/PageLoader';
 import { useToast } from "@/hooks/use-toast";
 import { departmentApi } from "@/lib/api/departments";
 import { Department } from "@/types/department";
@@ -53,14 +54,7 @@ export default function DepartmentLayout({ children }: { children: React.ReactNo
     };
 
     if (loading) {
-        return (
-            <div className="flex justify-center items-center min-h-[400px]">
-                <div className="text-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-                    <p className="text-muted-foreground">Loading department...</p>
-                </div>
-            </div>
-        );
+        return <SectionLoader text="Loading department..." />;
     }
 
     if (!department) {

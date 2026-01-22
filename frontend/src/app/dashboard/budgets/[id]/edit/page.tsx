@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
 import { getBudget, updateBudget } from '@/lib/api/budgetAPI';
 import { Budget, BudgetCategory, BudgetItem } from '@/types/budget';
+import { PageLoader } from '@/components/PageLoader';
 
 export default function EditBudgetPage() {
   const [budget, setBudget] = useState<Budget | null>(null);
@@ -151,7 +152,7 @@ export default function EditBudgetPage() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return <PageLoader text="Loading budget for editing..." />;
   }
 
   if (!budget) {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { SectionLoader } from '@/components/PageLoader';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -299,10 +300,7 @@ export default function TrialBalancePage() {
             </div>
           )}
           {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <span className="ml-3">Loading trial balance...</span>
-            </div>
+            <SectionLoader text="Loading trial balance..." />
           ) : filteredAccounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <FileSpreadsheet className="w-16 h-16 mb-4 opacity-20" />

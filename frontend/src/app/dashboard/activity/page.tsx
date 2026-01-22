@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SectionLoader } from '@/components/PageLoader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -123,7 +124,7 @@ function ActivityPageContent() {
       }
     } catch (error) {
       console.error('Error fetching activities:', error);
-      setError('Cannot connect to backend server. Please ensure the backend is running on http://localhost:5000');
+      setError('Cannot connect to backend server. Please ensure the backend is running on http://localhost:5001');
     } finally {
       setLoading(false);
     }
@@ -386,10 +387,7 @@ function ActivityPageContent() {
       ) : loading ? (
         <Card>
           <CardContent className="flex justify-center items-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading activities...</p>
-            </div>
+            <SectionLoader text="Loading activities..." />
           </CardContent>
         </Card>
       ) : activities.length === 0 ? (

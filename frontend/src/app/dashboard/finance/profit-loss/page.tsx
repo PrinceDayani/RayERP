@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SectionLoader } from '@/components/PageLoader';
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -196,7 +197,7 @@ const ProfitLossPage = () => {
 
           <TabsContent value="current">
             {loading ? (
-              <Card><CardContent className="p-6"><div className="text-center">Loading...</div></CardContent></Card>
+              <Card><CardContent className="p-6"><SectionLoader /></CardContent></Card>
             ) : profitLossData ? (
           <div className="grid gap-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

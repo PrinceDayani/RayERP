@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageLoader } from '@/components/PageLoader';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -94,14 +95,7 @@ const ProjectAnalyticsDashboard = () => {
   }
 
   if (loading) {
-    return (
-        <div className="flex justify-center items-center h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p>Loading analytics...</p>
-          </div>
-        </div>
-    );
+    return <PageLoader text="Loading analytics..." />;
   }
 
   return (

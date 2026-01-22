@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { Download, FileText, Users, Target, MessageSquare, Phone, Calendar, TrendingUp, TrendingDown, Clock, AlertCircle, CheckCircle, Star, ChevronDown, FileSpreadsheet, File } from 'lucide-react';
 import { exportToPDF, exportToExcel, exportToCSV, exportToText, ExportData } from '@/lib/exportUtils';
@@ -772,9 +773,47 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-screen space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <p className="text-muted-foreground">Loading reports...</p>
+      <div className="p-6 space-y-6 min-h-screen">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-5 w-96 mt-2" />
+          </div>
+          <div className="flex gap-3">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-40" />
+          </div>
+        </div>
+
+        {/* Stats Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Charts Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-64 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }

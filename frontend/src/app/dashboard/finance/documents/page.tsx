@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { SectionLoader } from '@/components/PageLoader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,7 @@ interface Document {
   mimeType?: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -494,7 +495,7 @@ export default function DocumentsPage() {
 
         <TabsContent value="all">
           {loading ? (
-            <div className="text-center py-8">Loading...</div>
+            <SectionLoader text="Loading documents..." />
           ) : (
             <DataTable
               data={filteredDocuments}

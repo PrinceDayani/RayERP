@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { budgetReportAPI, BudgetReport } from '@/lib/api/budgetReportAPI';
 import GenerateReportDialog from '@/components/budget/GenerateReportDialog';
 import { FileText, Download, Trash2, FileSpreadsheet, FileJson } from 'lucide-react';
+import { SectionLoader } from '@/components/PageLoader';
 
 export default function BudgetReportsPage() {
   const [reports, setReports] = useState<BudgetReport[]>([]);
@@ -124,7 +125,7 @@ export default function BudgetReportsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">Loading reports...</div>
+            <SectionLoader text="Loading reports..." />
           ) : reports.length > 0 ? (
             <div className="space-y-3">
               {reports.map((report) => (

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { SectionLoader } from '@/components/PageLoader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle, Clock, Eye, ThumbsUp, ThumbsDown, Loader2, AlertCircle, Download, TrendingUp, Banknote, BarChart3, Bell, Search } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
@@ -315,11 +316,7 @@ export default function ApprovalsPage() {
   const underReviewApprovals = approvals.filter(a => a.status === 'PENDING' && a.currentLevel > 1);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
+    return <SectionLoader />;
   }
 
   return (

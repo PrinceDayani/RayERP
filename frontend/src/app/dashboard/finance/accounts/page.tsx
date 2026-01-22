@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useCreateAccountShortcut } from '@/hooks/useKeyboardShortcuts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SectionLoader } from '@/components/PageLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -367,10 +368,7 @@ export default function AccountsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <RefreshCw className="w-6 h-6 animate-spin" />
-              <span className="ml-2">Loading accounts...</span>
-            </div>
+            <SectionLoader text="Loading accounts..." />
           ) : (
             <div className="overflow-x-auto">
               <Table>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Building, Users, MapPin, Wallet, Activity, FolderOpen, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SectionLoader } from '@/components/PageLoader';
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -71,11 +72,7 @@ export default function DepartmentOverviewPage() {
   };
 
   if (loading && !department) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <SectionLoader />;
   }
 
   if (!department) {

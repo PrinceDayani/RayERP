@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { PageLoader } from '@/components/PageLoader';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
@@ -79,7 +80,7 @@ export default function DepartmentBudgetsPage() {
     }
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <PageLoader text="Loading department budgets..." />;
 
   return (
     <div className="p-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, eff ect } from 'react';
+import React, { useState, useEffect } from 'react';
 import sessionAPI, { SessionInfo } from '@/lib/api/sessionAPI';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

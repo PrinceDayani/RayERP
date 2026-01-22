@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Building, Search, Filter, Loader2, Users, MapPin, X, Download, FileText, Clock, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SectionLoader } from '@/components/PageLoader';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -261,9 +262,7 @@ export default function DepartmentsPage() {
 
           <TabsContent value="all">
             {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
+              <SectionLoader />
             ) : filteredDepartments.length === 0 ? (
               <Card className="card-modern">
                 <CardContent className="py-12 text-center">
