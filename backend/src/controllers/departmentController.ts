@@ -5,10 +5,31 @@ import DepartmentBudget from '../models/DepartmentBudget';
 import { logActivity } from '../utils/activityLogger';
 import Project from '../models/Project';
 import ActivityLog from '../models/ActivityLog';
+import { registerCacheInvalidator } from '../utils/dashboardCache';
+
+// Department cache with 5min TTL
+let departmentsCache: { data: any; timestamp: number } | null = null;
+let departmentDetailsCache: Map<string, { data: any; timestamp: number }> = new Map();
+let statsCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL = 300000; // 5 minutes
+
+const clearDepartmentCache = () => {
+  departmentsCache = null;
+  departmentDetailsCache.clear();
+  statsCache = null;
+};
+
+registerCacheInvalidator(clearDepartmentCache);
 
 export const getDepartments = async (req: Request, res: Response) => {
   try {
     const { search, status } = req.query;
+    const cacheKey = JSON.stringify({ search, status });
+    
+    if (!search && !status && departmentsCache && Date.now() - departmentsCache.timestamp < CACHE_TTL) {
+      return res.json({ success: true, data: departmentsCache.data, cached: true });
+    }
+
     const filter: any = {};
 
     if (status && status !== 'all') {
@@ -24,7 +45,7 @@ export const getDepartments = async (req: Request, res: Response) => {
     }
 
     const departments = await Department.find(filter).sort({ createdAt: -1 });
-    
+
     // Update employee counts for all departments
     for (const dept of departments) {
       const count = await Employee.countDocuments({ departments: dept.name });
@@ -33,7 +54,11 @@ export const getDepartments = async (req: Request, res: Response) => {
         await dept.save();
       }
     }
-    
+
+    if (!search && !status) {
+      departmentsCache = { data: departments, timestamp: Date.now() };
+    }
+
     res.json({ success: true, data: departments });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -42,19 +67,29 @@ export const getDepartments = async (req: Request, res: Response) => {
 
 export const getDepartmentById = async (req: Request, res: Response) => {
   try {
+    const cacheKey = req.params.id;
+    const cached = departmentDetailsCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return res.json({ success: true, data: cached.data, cached: true });
+    }
+
     const department = await Department.findById(req.params.id);
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
-    
+
     const budgets = await DepartmentBudget.find({ departmentId: req.params.id });
     const budgetSummary = {
       totalAllocated: budgets.reduce((sum, b) => sum + b.totalBudget, 0),
       totalSpent: budgets.reduce((sum, b) => sum + b.spentBudget, 0),
       budgetCount: budgets.length
     };
-    
-    res.json({ success: true, data: { ...department.toObject(), budgetSummary } });
+
+    const result = { ...department.toObject(), budgetSummary };
+    departmentDetailsCache.set(cacheKey, { data: result, timestamp: Date.now() });
+
+    res.json({ success: true, data: result });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -142,6 +177,7 @@ export const createDepartment = async (req: Request, res: Response) => {
     });
 
     console.log('Department created successfully:', department);
+    clearDepartmentCache();
     res.status(201).json({ success: true, data: department, message: 'Department created successfully' });
   } catch (error: any) {
     console.error('Error creating department:', error);
@@ -241,14 +277,15 @@ export const updateDepartment = async (req: Request, res: Response) => {
       resourceType: 'department',
       resourceId: updated!._id,
       details: `Updated department "${updated!.name}" - Employee count: ${count}, Budget: ${budget}`,
-      metadata: { 
-        departmentId: updated!._id, 
+      metadata: {
+        departmentId: updated!._id,
         changes: { name: oldName !== newName, employeeCount: count, budget },
         oldName: oldName !== newName ? oldName : undefined
       },
       ipAddress: req.ip
     });
 
+    clearDepartmentCache();
     res.json({ success: true, data: updated, message: 'Department updated successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -259,7 +296,7 @@ export const deleteDepartment = async (req: Request, res: Response) => {
   try {
     const { confirmText } = req.body;
     const user = (req as any).user;
-    
+
     const department = await Department.findById(req.params.id);
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
@@ -267,16 +304,16 @@ export const deleteDepartment = async (req: Request, res: Response) => {
 
     // Validate confirmation text
     if (confirmText !== department.name) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Confirmation text does not match department name' 
+      return res.status(400).json({
+        success: false,
+        message: 'Confirmation text does not match department name'
       });
     }
 
     if (department.employeeCount > 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Cannot delete department with employees. Please reassign employees first.' 
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete department with employees. Please reassign employees first.'
       });
     }
 
@@ -301,7 +338,7 @@ export const deleteDepartment = async (req: Request, res: Response) => {
       resourceType: 'department',
       resourceId: department._id,
       details: `Deleted department "${department.name}" with budget ${department.budget}`,
-      metadata: { 
+      metadata: {
         departmentName: department.name,
         budget: department.budget,
         location: department.location,
@@ -311,6 +348,7 @@ export const deleteDepartment = async (req: Request, res: Response) => {
       severity: 'medium'
     });
 
+    clearDepartmentCache();
     res.json({ success: true, message: 'Department deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -319,6 +357,10 @@ export const deleteDepartment = async (req: Request, res: Response) => {
 
 export const getDepartmentStats = async (req: Request, res: Response) => {
   try {
+    if (statsCache && Date.now() - statsCache.timestamp < CACHE_TTL) {
+      return res.json({ success: true, data: statsCache.data, cached: true });
+    }
+
     const total = await Department.countDocuments();
     const active = await Department.countDocuments({ status: 'active' });
     const inactive = await Department.countDocuments({ status: 'inactive' });
@@ -327,17 +369,18 @@ export const getDepartmentStats = async (req: Request, res: Response) => {
     const totalEmployees = departments.reduce((sum, dept) => sum + dept.employeeCount, 0);
     const totalBudget = departments.reduce((sum, dept) => sum + dept.budget, 0);
 
-    res.json({
-      success: true,
-      data: {
-        total,
-        active,
-        inactive,
-        totalEmployees,
-        totalBudget,
-        avgTeamSize: total > 0 ? (totalEmployees / total).toFixed(1) : 0
-      }
-    });
+    const statsData = {
+      total,
+      active,
+      inactive,
+      totalEmployees,
+      totalBudget,
+      avgTeamSize: total > 0 ? (totalEmployees / total).toFixed(1) : 0
+    };
+
+    statsCache = { data: statsData, timestamp: Date.now() };
+
+    res.json({ success: true, data: statsData });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -350,9 +393,9 @@ export const updateEmployeeCount = async (req: Request, res: Response) => {
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
-    
+
     const employees = await Employee.countDocuments({ departments: department.name });
-    
+
     department.employeeCount = employees;
     await department.save();
 
@@ -419,7 +462,7 @@ export const assignEmployees = async (req: Request, res: Response) => {
       resourceType: 'department',
       resourceId: department._id,
       details: `Assigned ${employeeIds.length} employee(s) to department "${department.name}"`,
-      metadata: { 
+      metadata: {
         departmentId: department._id,
         employeeIds,
         employeeNames: employees.map(e => `${e.firstName} ${e.lastName}`)
@@ -455,8 +498,8 @@ export const unassignEmployee = async (req: Request, res: Response) => {
     // Update primary department if it was this one
     const updatedEmployee = await Employee.findById(employeeId);
     if (updatedEmployee && updatedEmployee.department === department.name) {
-      const newPrimaryDept = updatedEmployee.departments && updatedEmployee.departments.length > 0 
-        ? updatedEmployee.departments[0] 
+      const newPrimaryDept = updatedEmployee.departments && updatedEmployee.departments.length > 0
+        ? updatedEmployee.departments[0]
         : '';
       await Employee.findByIdAndUpdate(employeeId, { department: newPrimaryDept });
     }
@@ -580,17 +623,17 @@ export const getDepartmentAnalytics = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const department = await Department.findById(id);
-    
+
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
 
     // Get department employees
     const employees = await Employee.find({ departments: department.name });
-    
+
     // Get department projects
     const projects = await Project.find({ departments: department._id });
-    
+
     // Get activity logs for this department
     const activityLogs = await ActivityLog.find({
       resourceType: 'department',
@@ -634,9 +677,9 @@ export const getDepartmentAnalytics = async (req: Request, res: Response) => {
       },
       performance: {
         employeeGrowth: 0, // Calculate month-over-month growth
-        projectCompletionRate: projects.length > 0 ? 
+        projectCompletionRate: projects.length > 0 ?
           (projects.filter(p => p.status === 'completed').length / projects.length * 100).toFixed(1) : 0,
-        budgetEfficiency: department.budget > 0 ? 
+        budgetEfficiency: department.budget > 0 ?
           ((department.budget - (projects.reduce((sum, p) => sum + (p.budget || 0), 0))) / department.budget * 100).toFixed(1) : 0
       }
     };
@@ -651,7 +694,7 @@ export const getDepartmentProjects = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const department = await Department.findById(id);
-    
+
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
@@ -671,7 +714,7 @@ export const getDepartmentNotifications = async (req: Request, res: Response) =>
   try {
     const { id } = req.params;
     const department = await Department.findById(id);
-    
+
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
@@ -694,7 +737,7 @@ export const getDepartmentActivityLogs = async (req: Request, res: Response) => 
   try {
     const { id } = req.params;
     const { page = 1, limit = 20, action, dateFrom, dateTo } = req.query;
-    
+
     const department = await Department.findById(id);
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
@@ -722,8 +765,8 @@ export const getDepartmentActivityLogs = async (req: Request, res: Response) => 
 
     const total = await ActivityLog.countDocuments(filter);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: {
         logs,
         pagination: {
@@ -738,3 +781,272 @@ export const getDepartmentActivityLogs = async (req: Request, res: Response) => 
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Budget History Endpoint
+export const getDepartmentBudgetHistory = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const department = await Department.findById(id);
+
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    // Get budget records for this department
+    const budgetRecords = await DepartmentBudget.find({ departmentId: id })
+      .sort({ fiscalYear: -1, month: -1 })
+      .limit(12);
+
+    // Transform to monthly history format
+    const history = budgetRecords.map(record => ({
+      month: `${record.month}/${record.fiscalYear}`,
+      allocated: record.totalBudget,
+      spent: record.spentBudget,
+      remaining: record.totalBudget - record.spentBudget,
+      utilization: record.totalBudget > 0 ? Math.round((record.spentBudget / record.totalBudget) * 100) : 0
+    }));
+
+    res.json({ success: true, data: history });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Expenses Breakdown Endpoint
+export const getDepartmentExpenses = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const department = await Department.findById(id);
+
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    // Get latest budget record
+    const latestBudget = await DepartmentBudget.findOne({ departmentId: id })
+      .sort({ fiscalYear: -1, month: -1 });
+
+    if (!latestBudget || !latestBudget.categories) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // Transform categories to expense breakdown
+    const expenses = latestBudget.categories.map((cat: any) => {
+      const trend = cat.spent > cat.allocated * 0.9 ? 'up' : cat.spent < cat.allocated * 0.5 ? 'down' : 'stable';
+      return {
+        category: cat.name,
+        amount: cat.spent,
+        percentage: latestBudget.totalBudget > 0 ? Math.round((cat.spent / latestBudget.totalBudget) * 100) : 0,
+        trend
+      };
+    });
+
+    res.json({ success: true, data: expenses });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Performance Metrics Endpoint
+export const getDepartmentPerformanceMetrics = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const department = await Department.findById(id);
+
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    const employees = await Employee.find({ departments: department.name });
+    const projects = await Project.find({ departments: department._id });
+
+    // Calculate metrics
+    const totalProjects = projects.length;
+    const completedProjects = projects.filter(p => p.status === 'completed').length;
+    const activeEmployees = employees.filter(e => e.status === 'active').length;
+
+    const metrics = {
+      productivity: Math.min(100, Math.round(60 + (completedProjects / Math.max(totalProjects, 1)) * 40)),
+      satisfaction: Math.min(100, Math.round(70 + (activeEmployees / Math.max(employees.length, 1)) * 30)),
+      retention: Math.min(100, Math.round(75 + (activeEmployees / Math.max(employees.length, 1)) * 25)),
+      growth: Math.round(((employees.length - 10) / Math.max(10, 1)) * 100), // Compare to baseline of 10
+      efficiency: Math.min(100, Math.round(65 + (completedProjects / Math.max(totalProjects, 1)) * 35)),
+      qualityScore: Math.min(100, Math.round(70 + (completedProjects / Math.max(totalProjects, 1)) * 30))
+    };
+
+    res.json({ success: true, data: metrics });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Goals Endpoint
+export const getDepartmentGoals = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const department = await Department.findById(id);
+
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    // Sample goals based on department data
+    const employees = await Employee.find({ departments: department.name });
+    const projects = await Project.find({ departments: department._id });
+
+    const goals = [
+      {
+        id: '1',
+        title: 'Team Expansion',
+        description: `Grow team to ${employees.length + 5} members`,
+        target: employees.length + 5,
+        current: employees.length,
+        unit: 'people',
+        deadline: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 90 days from now
+        priority: 'high',
+        status: 'active'
+      },
+      {
+        id: '2',
+        title: 'Project Completion',
+        description: 'Complete all ongoing projects',
+        target: projects.length,
+        current: projects.filter(p => p.status === 'completed').length,
+        unit: 'projects',
+        deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 60 days from now
+        priority: 'high',
+        status: 'active'
+      }
+    ];
+
+    res.json({ success: true, data: goals });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Resource Utilization Endpoint
+export const getDepartmentResourceUtilization = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const department = await Department.findById(id);
+
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    const employees = await Employee.find({ departments: department.name });
+    const projects = await Project.find({ departments: department._id });
+
+    // Calculate utilization metrics
+    const activeProjects = projects.filter(p => p.status === 'active').length;
+    const totalProjects = projects.length;
+
+    const utilization = {
+      capacity: Math.min(100, Math.round(65 + (employees.length / 50) * 35)), // Assumes 50 as full capacity 
+      workload: Math.min(100, Math.round(50 + (activeProjects / Math.max(employees.length, 1)) * 50)),
+      availability: Math.min(100, Math.round(80 + (employees.filter(e => e.status === 'active').length / Math.max(employees.length, 1)) * 20)),
+      efficiency: Math.min(100, Math.round(60 + (projects.filter(p => p.status === 'completed').length / Math.max(totalProjects, 1)) * 40)),
+      allocation: {
+        Development: 60,
+        Testing: 25,
+        Management: 15
+      }
+    };
+
+    res.json({ success: true, data: utilization });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Compliance Status Endpoint  
+export const getDepartmentComplianceStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const department = await Department.findById(id);
+
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    const employees = await Employee.find({ departments: department.name });
+
+    // Calculate compliance metrics
+    const compliance = {
+      training: Math.min(100, Math.round(80 + Math.random() * 20)), // Random for demo
+      certifications: Math.min(100, Math.round(75 + Math.random() * 20)),
+      policies: Math.min(100, Math.round(85 + Math.random() * 15)),
+      security: Math.min(100, Math.round(80 + Math.random() * 20)),
+      overall: 0,
+      lastAudit: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 30 days ago
+    };
+
+    compliance.overall = Math.round((compliance.training + compliance.certifications + compliance.policies + compliance.security) / 4);
+
+    res.json({ success: true, data: compliance });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Budget Adjustment Endpoint
+export const adjustDepartmentBudget = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { amount, reason, type } = req.body;
+    const user = (req as any).user;
+
+    if (!amount || !reason || !type) {
+      return res.status(400).json({
+        success: false,
+        message: 'Amount, reason, and type are required'
+      });
+    }
+
+    if (type !== 'increase' && type !== 'decrease') {
+      return res.status(400).json({
+        success: false,
+        message: 'Type must be either "increase" or "decrease"'
+      });
+    }
+
+    const department = await Department.findById(id);
+    if (!department) {
+      return res.status(404).json({ success: false, message: 'Department not found' });
+    }
+
+    const adjustment = type === 'increase' ? amount : -amount;
+    department.budget += adjustment;
+    await department.save();
+
+    // Log the adjustment
+    await logActivity({
+      userId: user._id,
+      userName: user.name || user.email,
+      action: 'update',
+      resource: `Department: ${department.name}`,
+      resourceType: 'department',
+      resourceId: department._id,
+      details: `${type === 'increase' ? 'Increased' : 'Decreased'} budget by ${Math.abs(amount)}. Reason: ${reason}`,
+      metadata: {
+        departmentId: department._id,
+        adjustmentType: type,
+        amount,
+        newBudget: department.budget,
+        reason
+      },
+      ipAddress: req.ip,
+      severity: 'medium'
+    });
+
+    res.json({
+      success: true,
+      data: department,
+      message: `Budget ${type}d successfully`
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

@@ -1,8 +1,23 @@
 import { Request, Response } from 'express';
 import ApprovalRequest from '../models/ApprovalRequest';
+import ApprovalConfig from '../models/ApprovalConfig';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 import { handleApprovalCompletion } from '../integrations/approvalCompletionHandler';
+
+const determineApprovalLevels = async (amount: number, entityType: string) => {
+  const config = await ApprovalConfig.findOne({ entityType, isActive: true });
+  if (!config) throw new Error('Approval configuration not found');
+  return config.levels
+    .filter(level => amount >= level.amountThreshold || level.level === 1)
+    .map(level => ({
+      level: level.level,
+      approverRole: level.approverRole,
+      approverIds: [],
+      amountThreshold: level.amountThreshold,
+      status: 'PENDING'
+    }));
+};
 
 // Create approval request
 export const createApprovalRequest = async (req: Request, res: Response) => {
@@ -13,22 +28,7 @@ export const createApprovalRequest = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    // Determine approval levels based on amount
-    const levels = [];
-    if (amount < 50000) {
-      levels.push({ level: 1, approverRole: 'Manager', approverIds: [], amountThreshold: 50000, status: 'PENDING' });
-    } else if (amount < 200000) {
-      levels.push(
-        { level: 1, approverRole: 'Manager', approverIds: [], amountThreshold: 50000, status: 'PENDING' },
-        { level: 2, approverRole: 'Finance Manager', approverIds: [], amountThreshold: 200000, status: 'PENDING' }
-      );
-    } else {
-      levels.push(
-        { level: 1, approverRole: 'Manager', approverIds: [], amountThreshold: 50000, status: 'PENDING' },
-        { level: 2, approverRole: 'Finance Manager', approverIds: [], amountThreshold: 200000, status: 'PENDING' },
-        { level: 3, approverRole: 'CFO', approverIds: [], amountThreshold: 1000000, status: 'PENDING' }
-      );
-    }
+    const levels = await determineApprovalLevels(amount, entityType);
 
     const priority = amount > 200000 ? 'HIGH' : amount > 50000 ? 'MEDIUM' : 'LOW';
 

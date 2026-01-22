@@ -1,102 +1,100 @@
 import { Request, Response, NextFunction } from 'express';
-import User from '../models/User';
+import ProjectPermission from '../models/ProjectPermission';
 import Employee from '../models/Employee';
-import Department from '../models/Department';
-import Project from '../models/Project';
 
-const getUserPermissions = async (userId: string): Promise<Set<string>> => {
-  const user = await User.findById(userId).populate('role');
-  if (!user) return new Set();
-  
-  const userRole = user.role as any;
-  const roleName = userRole?.name;
-  
-  // Root gets full access
-  if (roleName === 'Root') return new Set(['*']);
-  
-  const permissions = new Set<string>();
-  
-  // Add role permissions
-  if (userRole?.permissions) {
-    userRole.permissions.forEach((perm: string) => permissions.add(perm));
-  }
-  
-  // Add department permissions
-  const employee = await Employee.findOne({ email: user.email });
-  if (employee) {
-    const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
-    if (departmentNames.length > 0) {
-      const departments = await Department.find({ name: { $in: departmentNames }, status: 'active' });
-      departments.forEach(dept => {
-        if (dept.permissions) dept.permissions.forEach((perm: string) => permissions.add(perm));
-      });
-    }
-  }
-  
-  return permissions;
-};
-
-const isProjectLead = async (userId: string, projectId: string): Promise<boolean> => {
-  const project = await Project.findById(projectId);
-  return project?.manager?.toString() === userId;
-};
-
-const isProjectMember = async (userId: string, projectId: string): Promise<boolean> => {
-  const project = await Project.findById(projectId);
-  return project?.members?.some(m => m.toString() === userId) || 
-         project?.team?.some(t => t.toString() === userId);
-};
-
-export const requireProjectPermission = (permission: string, requiresAssignment = false) => {
+export const requireProjectPermission = (permission: string, managerOverride: boolean = false) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.user) return res.status(401).json({ message: 'Authentication required' });
-
-      const userId = req.user.id;
+      const user = (req as any).user;
       const projectId = req.params.id;
-      
-      const user = await User.findById(userId).populate('role');
-      if (!user) return res.status(401).json({ message: 'User not found' });
-      
-      const userRole = user.role as any;
-      const roleName = userRole?.name;
-      
-      // Root bypasses all checks
-      if (roleName === 'Root') return next();
 
-      // Get all permissions (role + department)
-      const permissions = await getUserPermissions(userId);
+      if (!user) {
+        return res.status(401).json({ success: false, message: 'Authentication required' });
+      }
+
+      // Root users always have access
+      const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+      const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
       
-      // Check for wildcard or specific permission
-      if (permissions.has('*') || permissions.has(permission)) {
-        // If user has the permission, check if assignment is required
-        if (requiresAssignment && projectId) {
-          const isMember = await isProjectMember(userId, projectId);
-          const isLead = await isProjectLead(userId, projectId);
-          if (!isMember && !isLead) {
-            return res.status(403).json({ 
-              message: 'Assignment required for this operation',
-              required: 'Project assignment'
-            });
-          }
-        }
+      if (roleName === 'Root' || rolePermissions.includes('projects.manage_all')) {
         return next();
       }
 
-      // Check if assigned to project (full access for assigned users)
-      if (projectId) {
-        const isMember = await isProjectMember(userId, projectId);
-        const isLead = await isProjectLead(userId, projectId);
-        if (isMember || isLead) return next();
+      // Check if user is project owner
+      const Project = (await import('../models/Project')).default;
+      const project = await Project.findById(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ success: false, message: 'Project not found' });
+      }
+
+      if (project.owner.toString() === user._id.toString()) {
+        return next();
+      }
+
+      // Check if user is project manager (if manager override is enabled)
+      if (managerOverride) {
+        const employee = await Employee.findOne({ user: user._id });
+        if (employee && project.manager && project.manager.toString() === employee._id.toString()) {
+          return next();
+        }
+      }
+
+      // Check project-specific permissions
+      const employee = await Employee.findOne({ user: user._id });
+      if (!employee) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Access denied: Employee record not found' 
+        });
+      }
+
+      const projectPermission = await ProjectPermission.findOne({
+        project: projectId,
+        employee: employee._id
+      });
+
+      if (projectPermission && projectPermission.permissions.includes(permission)) {
+        return next();
+      }
+
+      // Check if user has general permission through role
+      if (rolePermissions.includes(permission)) {
+        return next();
       }
 
       return res.status(403).json({ 
-        message: 'Permission denied',
-        required: permission
+        success: false, 
+        message: `Access denied: Missing permission '${permission}' for this project` 
       });
+
     } catch (error) {
-      console.error('Project permission error:', error);
-      res.status(500).json({ message: 'Internal server error' });
+      console.error('Error checking project permission:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Error checking permissions' 
+      });
     }
   };
+};
+
+export const checkProjectPermissions = async (userId: string, projectId: string, requiredPermissions: string[]): Promise<boolean> => {
+  try {
+    const employee = await Employee.findOne({ user: userId });
+    if (!employee) return false;
+
+    const projectPermission = await ProjectPermission.findOne({
+      project: projectId,
+      employee: employee._id
+    });
+
+    if (!projectPermission) return false;
+
+    return requiredPermissions.every(permission => 
+      projectPermission.permissions.includes(permission)
+    );
+  } catch (error) {
+    console.error('Error checking project permissions:', error);
+    return false;
+  }
 };

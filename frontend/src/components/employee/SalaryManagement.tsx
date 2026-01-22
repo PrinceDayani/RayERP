@@ -21,13 +21,13 @@ interface SalaryManagementProps {
   onSalaryUpdate?: (newSalary: number) => void;
 }
 
-export default function SalaryManagement({ 
-  employeeId, 
-  employeeName, 
+export default function SalaryManagement({
+  employeeId,
+  employeeName,
   currentSalary,
-  onSalaryUpdate 
+  onSalaryUpdate
 }: SalaryManagementProps) {
-  const { formatAmount } = useCurrency();
+  const { formatCurrency } = useCurrency();
   const { hasPermission } = useAuth();
   const [salary, setSalary] = useState<number | null>(currentSalary || null);
   const [loading, setLoading] = useState(false);
@@ -105,7 +105,7 @@ export default function SalaryManagement({
           title: "Success",
           description: `Salary updated successfully for ${employeeName}`,
         });
-        
+
         if (onSalaryUpdate) {
           onSalaryUpdate(response.data.newSalary);
         }
@@ -153,8 +153,8 @@ export default function SalaryManagement({
               Salary Information
             </div>
             {canEditSalary && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={handleEditSalary}
                 disabled={loading}
@@ -208,11 +208,11 @@ export default function SalaryManagement({
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 rounded-lg bg-muted/50">
                     <p className="text-xs text-muted-foreground mb-1">Monthly</p>
-                    <p className="font-semibold">{formatAmount(salary / 12)}</p>
+                    <p className="font-semibold">{formatCurrency(salary / 12)}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/50">
                     <p className="text-xs text-muted-foreground mb-1">Daily (approx)</p>
-                    <p className="font-semibold">{formatAmount(salary / 365)}</p>
+                    <p className="font-semibold">{formatCurrency(salary / 365)}</p>
                   </div>
                 </div>
               )}
@@ -239,7 +239,7 @@ export default function SalaryManagement({
               Update Salary - {employeeName}
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div>
               <Label htmlFor="salary" className="flex items-center gap-2">
@@ -299,17 +299,17 @@ export default function SalaryManagement({
                 </p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Current:</span>
-                  <span className="font-semibold">{formatAmount(salary)}</span>
+                  <span className="font-semibold">{formatCurrency(salary)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">New:</span>
-                  <span className="font-semibold text-green-600">{formatAmount(parseFloat(editForm.salary))}</span>
+                  <span className="font-semibold text-green-600">{formatCurrency(parseFloat(editForm.salary))}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-1 pt-1 border-t">
                   <span className="text-muted-foreground">Difference:</span>
                   <span className={`font-semibold ${parseFloat(editForm.salary) > salary ? 'text-green-600' : 'text-red-600'}`}>
                     {parseFloat(editForm.salary) > salary ? '+' : ''}
-                    {formatAmount(parseFloat(editForm.salary) - salary)}
+                    {formatCurrency(parseFloat(editForm.salary) - salary)}
                   </span>
                 </div>
               </div>
@@ -317,14 +317,14 @@ export default function SalaryManagement({
           </div>
 
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsEditDialogOpen(false)}
               disabled={loading}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleSalaryUpdate}
               disabled={loading || !editForm.salary || parseFloat(editForm.salary) <= 0}
               className="bg-green-600 hover:bg-green-700"

@@ -1,23 +1,27 @@
+// Enhanced Department API Client - Enterprise Grade
 import api from './api';
 
-export interface Department {
-  _id: string;
-  name: string;
-  description: string;
-  manager: {
-    name: string;
-    email: string;
-    phone: string;
-  };
-  location: string;
-  budget: number;
-  status: 'active' | 'inactive';
-  employeeCount: number;
-  permissions?: string[];
-  createdAt: string;
-  updatedAt: string;
-}
+import {
+  Department,
+  Employee,
+  DepartmentAnalytics,
+  DepartmentProject,
+  ActivityLog,
+  DepartmentNotification,
+  BudgetHistory,
+  PerformanceMetrics,
+  TeamStructure,
+  UpcomingDeadline,
+  ResourceUtilization,
+  ComplianceStatus,
+  DepartmentGoal,
+  BudgetAdjustment,
+  DepartmentFormData,
+  DepartmentExportOptions,
+  DepartmentReport
+} from '@/types/department';
 
+// Additional types for the API
 export interface DepartmentStats {
   total: number;
   active: number;
@@ -27,178 +31,216 @@ export interface DepartmentStats {
   avgTeamSize: string;
 }
 
-export interface Employee {
-  _id: string;
-  firstName: string;
-  lastName: string;
+export interface DepartmentManager {
+  name: string;
   email: string;
   phone?: string;
-  position: string;
-  status: string;
-  department?: string;
-  departments?: string[];
 }
 
-export interface DepartmentAnalytics {
-  overview: {
-    totalEmployees: number;
-    totalProjects: number;
-    budget: number;
-    budgetUtilization: number;
-    activeProjects: number;
-    completedProjects: number;
-  };
-  employeeStats: {
-    byPosition: Record<string, number>;
-    byStatus: Record<string, number>;
-  };
-  projectStats: {
-    byStatus: Record<string, number>;
-    totalBudget: number;
-  };
-  activityTrends: {
-    totalActivities: number;
-    recentActivities: any[];
-    activityByType: Record<string, number>;
-  };
-  performance: {
-    employeeGrowth: number;
-    projectCompletionRate: string;
-    budgetEfficiency: string;
-  };
-}
+export class DepartmentApiClient {
+  private baseUrl = '/departments';
 
-export interface ActivityLog {
-  _id: string;
-  timestamp: string;
-  userName: string;
-  action: string;
-  resource: string;
-  resourceType: string;
-  details: string;
-  status: 'success' | 'error' | 'warning';
-}
+  async getPerformanceMetrics(departmentId: string, period?: string) {
+    const params = period ? `?period=${period}` : '';
+    return api.get(`${this.baseUrl}/${departmentId}/performance${params}`);
+  }
 
-export const departmentApi = {
-  getAll: async (search?: string, status?: string) => {
-    const params = new URLSearchParams();
-    if (search) params.append('search', search);
-    if (status) params.append('status', status);
-    const { data } = await api.get(`/departments?${params.toString()}`);
-    return data;
-  },
+  async getTeamStructure(departmentId: string) {
+    return api.get(`${this.baseUrl}/${departmentId}/team-structure`);
+  }
 
-  getAllEmployees: async () => {
-    const { data } = await api.get('/departments/all-employees');
-    return data;
-  },
+  async getResourceUtilization(departmentId: string, period?: string) {
+    const params = period ? `?period=${period}` : '';
+    return api.get(`${this.baseUrl}/${departmentId}/resource-utilization${params}`);
+  }
 
-  getById: async (id: string) => {
-    const { data } = await api.get(`/departments/${id}`);
-    return data;
-  },
-
-  create: async (department: Omit<Department, '_id' | 'employeeCount' | 'createdAt' | 'updatedAt'>) => {
-    const { data } = await api.post('/departments', department);
-    return data;
-  },
-
-  update: async (id: string, department: Partial<Department>) => {
-    const { data } = await api.put(`/departments/${id}`, department);
-    return data;
-  },
-
-  delete: async (id: string) => {
-    const { data } = await api.delete(`/departments/${id}`);
-    return data;
-  },
-
-  getStats: async () => {
-    const { data } = await api.get('/departments/stats');
-    return data;
-  },
-
-  updateEmployeeCount: async (id: string) => {
-    const { data } = await api.patch(`/departments/${id}/employee-count`);
-    return data;
-  },
-
-  getEmployees: async (id: string) => {
-    const { data } = await api.get(`/departments/${id}/employees`);
-    return data;
-  },
-
-  assignEmployees: async (id: string, employeeIds: string[]) => {
-    const { data } = await api.post(`/departments/${id}/assign-employees`, { employeeIds });
-    return data;
-  },
-
-  unassignEmployee: async (id: string, employeeId: string) => {
-    const { data } = await api.delete(`/departments/${id}/employees/${employeeId}`);
-    return data;
-  },
-
-  getPermissions: async (id: string) => {
-    const { data } = await api.get(`/departments/${id}/permissions`);
-    return data;
-  },
-
-  updatePermissions: async (id: string, permissions: string[]) => {
-    const { data } = await api.put(`/departments/${id}/permissions`, { permissions });
-    return data;
-  },
-
-  addPermission: async (id: string, permission: string) => {
-    const { data } = await api.post(`/departments/${id}/permissions/add`, { permission });
-    return data;
-  },
-
-  removePermission: async (id: string, permission: string) => {
-    const { data } = await api.post(`/departments/${id}/permissions/remove`, { permission });
-    return data;
-  },
-
-  deleteWithConfirmation: async (id: string, confirmText: string) => {
-    const { data } = await api.delete(`/departments/${id}`, { data: { confirmText } });
-    return data;
-  },
-
-  getAnalytics: async (id: string) => {
-    const { data } = await api.get(`/departments/${id}/analytics`);
-    return data;
-  },
-
-  getProjects: async (id: string) => {
-    const { data } = await api.get(`/departments/${id}/projects`);
-    return data;
-  },
-
-  getNotifications: async (id: string) => {
-    const { data } = await api.get(`/departments/${id}/notifications`);
-    return data;
-  },
-
-  getActivityLogs: async (id: string, params?: { page?: number; limit?: number; action?: string; dateFrom?: string; dateTo?: string }) => {
+  async getBudgetHistory(departmentId: string, params?: any) {
     const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.action) queryParams.append('action', params.action);
-    if (params?.dateFrom) queryParams.append('dateFrom', params.dateFrom);
-    if (params?.dateTo) queryParams.append('dateTo', params.dateTo);
-    const { data } = await api.get(`/departments/${id}/activity-logs?${queryParams.toString()}`);
-    return data;
-  },
-};
-
-export const employeeApi = {
-  getAll: async () => {
-    try {
-      const { data } = await api.get('/employees');
-      console.log('Employee API response:', data);
-      return data;
-    } catch (error: any) {
-      console.error('Employee API error:', error.response?.data || error.message);
-      throw error;
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
     }
-  },
-};
+    return api.get(`${this.baseUrl}/${departmentId}/budget-history?${queryParams}`);
+  }
+
+  async getExpenses(departmentId: string, params?: any) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return api.get(`${this.baseUrl}/${departmentId}/expenses?${queryParams}`);
+  }
+
+  async getGoals(departmentId: string, params?: any) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return api.get(`${this.baseUrl}/${departmentId}/goals?${queryParams}`);
+  }
+
+  async getComplianceStatus(departmentId: string) {
+    return api.get(`${this.baseUrl}/${departmentId}/compliance`);
+  }
+
+  async getUpcomingDeadlines(departmentId: string, params?: any) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return api.get(`${this.baseUrl}/${departmentId}/deadlines?${queryParams}`);
+  }
+
+  async adjustBudget(departmentId: string, adjustment: BudgetAdjustment) {
+    return api.post(`${this.baseUrl}/${departmentId}/adjust-budget`, adjustment);
+  }
+
+  async createGoal(departmentId: string, goalData: Omit<DepartmentGoal, "id">) {
+    return api.post(`${this.baseUrl}/${departmentId}/goals`, goalData);
+  }
+
+  async updateGoal(departmentId: string, goalId: string, goalData: Partial<DepartmentGoal>) {
+    return api.put(`${this.baseUrl}/${departmentId}/goals/${goalId}`, goalData);
+  }
+
+  async deleteGoal(departmentId: string, goalId: string) {
+    return api.delete(`${this.baseUrl}/${departmentId}/goals/${goalId}`);
+  }
+
+  async getAll(search?: string, status?: string) {
+    const params: any = {};
+    if (search) params.search = search;
+    if (status && status !== 'all') params.status = status;
+    
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) queryParams.append(key, value.toString());
+    });
+    
+    return api.get(`${this.baseUrl}?${queryParams}`);
+  }
+
+  async getStats() {
+    return api.get(`${this.baseUrl}/stats`);
+  }
+
+  async getById(id: string) {
+    return api.get(`${this.baseUrl}/${id}`);
+  }
+
+  async create(data: any) {
+    return api.post(this.baseUrl, data);
+  }
+
+  async update(id: string, data: any) {
+    return api.put(`${this.baseUrl}/${id}`, data);
+  }
+
+  async delete(id: string) {
+    return api.delete(`${this.baseUrl}/${id}`);
+  }
+
+  async deleteWithConfirmation(id: string, confirmText: string) {
+    return api.delete(`${this.baseUrl}/${id}`, {
+      data: { confirmText }
+    });
+  }
+
+  async getEmployees(departmentId: string, params?: any) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return api.get(`${this.baseUrl}/${departmentId}/employees?${queryParams}`);
+  }
+
+  async getAllEmployees(params?: any) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return api.get(`/employees?${queryParams}`);
+  }
+
+  async assignEmployees(departmentId: string, employeeIds: string[]) {
+    return api.post(`${this.baseUrl}/${departmentId}/assign-employees`, {
+      employeeIds
+    });
+  }
+
+  async unassignEmployee(departmentId: string, employeeId: string) {
+    return api.delete(`${this.baseUrl}/${departmentId}/employees/${employeeId}`);
+  }
+
+  async getPermissions(id: string) {
+    return api.get(`${this.baseUrl}/${id}/permissions`);
+  }
+
+  async addPermission(id: string, permission: string) {
+    return api.post(`${this.baseUrl}/${id}/permissions/add`, { permission });
+  }
+
+  async removePermission(id: string, permission: string) {
+    return api.post(`${this.baseUrl}/${id}/permissions/remove`, { permission });
+  }
+
+  async getAnalytics(departmentId: string, params?: any) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return api.get(`${this.baseUrl}/${departmentId}/analytics?${queryParams}`);
+  }
+
+  async getProjects(departmentId: string, params?: any) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return api.get(`${this.baseUrl}/${departmentId}/projects?${queryParams}`);
+  }
+
+  async getNotifications(departmentId: string, params?: any) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return api.get(`${this.baseUrl}/${departmentId}/notifications?${queryParams}`);
+  }
+
+  async getActivityLogs(departmentId: string, params?: any) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return api.get(`${this.baseUrl}/${departmentId}/activity-logs?${queryParams}`);
+  }
+}
+
+// Create and export the API client instance
+export const departmentApi = new DepartmentApiClient();
+
+// Re-export types from department types file
+export type { Department, Employee } from '@/types/department';
+
+// Create default export
+export default departmentApi;

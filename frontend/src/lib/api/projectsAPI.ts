@@ -31,6 +31,7 @@ export interface Project {
   priority: 'low' | 'medium' | 'high' | 'critical';
   budget: number;
   spentBudget?: number;
+  currency?: string;
   progress: number;
   autoCalculateProgress?: boolean;
   manager: string;
@@ -179,6 +180,17 @@ export const projectsAPI = {
   // Templates
   getTemplates: async () => {
     const response = await api.get("/projects/templates/list");
+    return response.data;
+  },
+
+  // Optimized data loading
+  getEmployeesMinimal: async () => {
+    const response = await api.get("/projects/employees/minimal");
+    return response.data;
+  },
+
+  getDepartmentsMinimal: async () => {
+    const response = await api.get("/projects/departments/minimal");
     return response.data;
   },
 };

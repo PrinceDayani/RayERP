@@ -18,32 +18,84 @@ import {
   getDepartmentAnalytics,
   getDepartmentProjects,
   getDepartmentNotifications,
-  getDepartmentActivityLogs
+  getDepartmentActivityLogs,
+  // Production endpoints
+  getDepartmentBudgetHistory,
+  getDepartmentExpenses,
+  getDepartmentPerformanceMetrics,
+  getDepartmentGoals,
+  getDepartmentResourceUtilization,
+  getDepartmentComplianceStatus,
+  adjustDepartmentBudget
 } from '../controllers/departmentController';
 import { protect } from '../middleware/auth.middleware';
+import { requirePermission, requireAnyPermission } from '../middleware/rbac.middleware';
 
 const router = express.Router();
 
+// All routes require authentication
 router.use(protect);
 
-router.get('/stats', getDepartmentStats);
-router.get('/all-employees', getAllEmployeesForDepartment);
-router.get('/', getDepartments);
-router.get('/:id', getDepartmentById);
-router.get('/:id/employees', getDepartmentEmployees);
-router.get('/:id/permissions', getDepartmentPermissions);
-router.get('/:id/analytics', getDepartmentAnalytics);
-router.get('/:id/projects', getDepartmentProjects);
-router.get('/:id/notifications', getDepartmentNotifications);
-router.get('/:id/activity-logs', getDepartmentActivityLogs);
-router.post('/', createDepartment);
-router.post('/:id/assign-employees', assignEmployees);
-router.post('/:id/permissions/add', addDepartmentPermission);
-router.post('/:id/permissions/remove', removeDepartmentPermission);
-router.put('/:id', updateDepartment);
-router.put('/:id/permissions', updateDepartmentPermissions);
-router.delete('/:id', deleteDepartment);
-router.delete('/:id/employees/:employeeId', unassignEmployee);
-router.patch('/:id/employee-count', updateEmployeeCount);
+// ==================== VIEW ROUTES ====================
+// Department List & Stats (departments.view)
+router.get('/stats', requirePermission('departments.view'), getDepartmentStats);
+router.get('/', requirePermission('departments.view'), getDepartments);
+
+// Department Details (departments.details)
+router.get('/:id', requirePermission('departments.details'), getDepartmentById);
+router.get('/:id/analytics', requirePermission('departments.details'), getDepartmentAnalytics);
+router.get('/:id/notifications', requirePermission('departments.details'), getDepartmentNotifications);
+router.get('/:id/activity-logs', requireAnyPermission(['departments.view_history', 'departments.details']), getDepartmentActivityLogs);
+
+// ==================== MEMBER ROUTES ====================
+// View Members (departments.view_members)
+router.get('/:id/employees', requirePermission('departments.view_members'), getDepartmentEmployees);
+router.get('/all-employees', requirePermission('departments.view_members'), getAllEmployeesForDepartment);
+router.get('/:id/projects', requirePermission('departments.view_members'), getDepartmentProjects);
+
+// Assign/Unassign Members (departments.assign_members)
+router.post('/:id/assign-employees', requirePermission('departments.assign_members'), assignEmployees);
+router.delete('/:id/employees/:employeeId', requirePermission('departments.assign_members'), unassignEmployee);
+
+// ==================== BUDGET ROUTES ====================
+// View Budget (departments.view_budget)
+router.get('/:id/budget-history', requirePermission('departments.view_budget'), getDepartmentBudgetHistory);
+
+// View Expenses (departments.view_expenses)
+router.get('/:id/expenses', requirePermission('departments.view_expenses'), getDepartmentExpenses);
+
+// Adjust Budget (departments.adjust_budget)
+router.post('/:id/adjust-budget', requirePermission('departments.adjust_budget'), adjustDepartmentBudget);
+
+// ==================== PERFORMANCE & REPORTS ====================
+// View Performance (departments.view_performance)
+router.get('/:id/performance-metrics', requirePermission('departments.view_performance'), getDepartmentPerformanceMetrics);
+router.get('/:id/resource-utilization', requirePermission('departments.view_performance'), getDepartmentResourceUtilization);
+
+// View Goals (departments.view_goals)
+router.get('/:id/goals', requirePermission('departments.view_goals'), getDepartmentGoals);
+
+// Compliance Status
+router.get('/:id/compliance-status', requireAnyPermission(['departments.view_settings', 'departments.details']), getDepartmentComplianceStatus);
+
+// ==================== MANAGEMENT ROUTES ====================
+// Create Department (departments.create)
+router.post('/', requirePermission('departments.create'), createDepartment);
+
+// Edit Department (departments.edit)
+router.put('/:id', requirePermission('departments.edit'), updateDepartment);
+router.patch('/:id/employee-count', requirePermission('departments.edit'), updateEmployeeCount);
+
+// Delete Department (departments.delete)
+router.delete('/:id', requirePermission('departments.delete'), deleteDepartment);
+
+// ==================== PERMISSION ROUTES ====================
+// View Settings/Permissions (departments.view_settings)
+router.get('/:id/permissions', requirePermission('departments.view_settings'), getDepartmentPermissions);
+
+// Manage Permissions (departments.manage_permissions)
+router.post('/:id/permissions/add', requirePermission('departments.manage_permissions'), addDepartmentPermission);
+router.post('/:id/permissions/remove', requirePermission('departments.manage_permissions'), removeDepartmentPermission);
+router.put('/:id/permissions', requirePermission('departments.manage_permissions'), updateDepartmentPermissions);
 
 export default router;

@@ -29,7 +29,10 @@ import {
   updateProjectInstruction,
   deleteProjectInstruction,
   reorderTasks,
-  getProjectsByView
+  getProjectsByView,
+  createProjectFast,
+  getEmployeesMinimal,
+  getDepartmentsMinimal
 } from '../controllers/projectController';
 import {
   getProjectFiles,
@@ -47,6 +50,12 @@ import {
   getPerformanceIndices,
   getRiskAssessment
 } from '../controllers/projectAnalyticsController';
+import {
+  getProjectPermissions,
+  setProjectPermissions,
+  removeProjectPermissions,
+  getEmployeeProjectPermissions
+} from '../controllers/projectPermissionController';
 import { cloneProject, exportProjectAsTemplate } from '../controllers/projectTemplateController';
 import budgetRoutes from './budgetRoutes';
 import { authenticateToken } from '../middleware/auth.middleware';
@@ -65,6 +74,10 @@ const router = Router();
 // Apply authentication middleware to all project routes
 router.use(authenticateToken);
 
+// --- Fast/Optimized Routes ---
+router.get('/employees/minimal', requirePermission('projects.view'), getEmployeesMinimal);
+router.get('/departments/minimal', requirePermission('projects.view'), getDepartmentsMinimal);
+
 // --- Core Project Routes ---
 router.get('/stats', requirePermission('projects.view'), getProjectStats);
 router.get('/timeline-data', requirePermission('projects.view'), getAllProjectsTimelineData);
@@ -73,7 +86,7 @@ router.get('/', requirePermission('projects.view'), getAllProjects);
 router.get('/:id', validateObjectId(), requirePermission('projects.view'), checkProjectAccess, getProjectById);
 router.post('/',
   requirePermission('projects.create'),
-  validateRequiredFields(['name', 'description', 'startDate', 'endDate', 'manager']),
+  validateRequiredFields(['name', 'description', 'startDate', 'endDate']),
   validateProjectStatus,
   validatePriority,
   validateDateRange,
@@ -205,6 +218,27 @@ router.delete('/:id/files/:fileId',
   validateObjectId('fileId'),
   checkProjectAccess,
   deleteProjectFile
+);
+
+// --- Project Permission Routes ---
+router.get('/:id/permissions', validateObjectId(), checkProjectAccess, getProjectPermissions);
+router.post('/:id/permissions',
+  validateObjectId(),
+  requireProjectPermission('projects.manage_team', true),
+  validateRequiredFields(['employeeId', 'permissions']),
+  setProjectPermissions
+);
+router.get('/:id/permissions/:employeeId',
+  validateObjectId('id'),
+  validateObjectId('employeeId'),
+  checkProjectAccess,
+  getEmployeeProjectPermissions
+);
+router.delete('/:id/permissions/:employeeId',
+  validateObjectId('id'),
+  validateObjectId('employeeId'),
+  requireProjectPermission('projects.manage_team', true),
+  removeProjectPermissions
 );
 
 // --- Shared Files Route ---

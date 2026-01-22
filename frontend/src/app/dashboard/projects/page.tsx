@@ -26,7 +26,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ProjectViews from "@/components/projects/ProjectViews";
 import CurrencyConverter from "@/components/budget/CurrencyConverter";
-import { formatCurrency, getCurrencySymbol } from "@/utils/currency";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import ProjectCurrencySwitcher from "@/components/projects/ProjectCurrencySwitcher";
+import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
 
 interface ProjectStats {
   totalProjects: number;
@@ -41,6 +43,8 @@ interface ProjectStats {
 
 const ProjectManagementDashboard: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
+  const { formatCurrency } = useCurrency();
+  const { formatAmount } = useGlobalCurrency();
   const router = useRouter();
   const [stats, setStats] = useState<ProjectStats>({
     totalProjects: 0, activeProjects: 0, completedProjects: 0,
@@ -208,7 +212,8 @@ const ProjectManagementDashboard: React.FC = () => {
         <div>
           <p className="text-muted-foreground mt-1">Manage projects, tasks, and team collaboration</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <ProjectCurrencySwitcher className="hidden sm:flex" />
           <Button variant="outline" onClick={() => router.push("/dashboard/projects/timeline-overview")}>
             <GanttChartSquare className="h-4 w-4 mr-2" />
             Timeline
@@ -308,51 +313,58 @@ const ProjectManagementDashboard: React.FC = () => {
           {/* Search and Filters */}
           <Card className="border-0 shadow-lg">
             <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search projects..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search projects..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <div className="flex gap-4 flex-wrap">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-full md:w-48">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="planning">Planning</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="on-hold">On Hold</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                      <SelectTrigger className="w-full md:w-48">
+                        <SelectValue placeholder="Priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Priority</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger className="w-full md:w-48">
+                        <SelectValue placeholder="Sort By" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="recent">Most Recent</SelectItem>
+                        <SelectItem value="name">Name</SelectItem>
+                        <SelectItem value="progress">Progress</SelectItem>
+                        <SelectItem value="dueDate">Due Date</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="planning">Planning</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="on-hold">On Hold</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Priority</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Sort By" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="recent">Most Recent</SelectItem>
-                    <SelectItem value="name">Name</SelectItem>
-                    <SelectItem value="progress">Progress</SelectItem>
-                    <SelectItem value="dueDate">Due Date</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="sm:hidden">
+                  <ProjectCurrencySwitcher />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -447,7 +459,7 @@ const ProjectManagementDashboard: React.FC = () => {
                       <Button size="sm" variant="outline" className="flex-1 hover:bg-primary hover:text-primary-foreground"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
                         <Coins className="h-3.5 w-3.5 mr-1.5" />
-                        Budget
+                        {formatAmount(project.budget || 0, (project as any).currency || 'INR')}
                       </Button>
                     </div>
                   </CardContent>
@@ -511,22 +523,129 @@ const MyTasksContent: React.FC = () => {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    project: '',
+    assignedTo: '',
+    priority: 'medium',
+    status: 'todo',
+    dueDate: ''
+  });
 
   useEffect(() => {
     fetchMyTasks();
+    fetchProjects();
+    fetchEmployees();
   }, [user]);
 
   const fetchMyTasks = async () => {
     try {
+      console.log('Fetching tasks for user:', user?._id);
       const allTasks = await tasksAPI.getAll();
+      console.log('All tasks received:', allTasks);
+      
       const myTasks = allTasks.filter((task: Task) => 
         task.assignedTo && (typeof task.assignedTo === 'object' ? task.assignedTo._id === user?._id : task.assignedTo === user?._id)
       );
+      console.log('Filtered my tasks:', myTasks);
       setTasks(myTasks);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error fetching tasks:', error);
       setTasks([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const projectsData = await getAllProjects();
+      setProjects(projectsData);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const employeesData = await employeesAPI.getAll();
+      setEmployees(Array.isArray(employeesData) ? employeesData : employeesData?.data || []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    try {
+      if (!taskForm.title || !taskForm.project || !taskForm.assignedTo || !taskForm.dueDate) {
+        toast({ title: "Please fill all required fields", variant: "destructive" });
+        return;
+      }
+      
+      const createData: CreateTaskData = {
+        title: taskForm.title,
+        description: taskForm.description,
+        project: taskForm.project,
+        assignedTo: taskForm.assignedTo,
+        assignedBy: user?._id || '',
+        priority: taskForm.priority as 'low' | 'medium' | 'high' | 'critical',
+        dueDate: taskForm.dueDate
+      };
+      
+      console.log('Creating task with data:', createData);
+      const newTask = await tasksAPI.create(createData);
+      console.log('Task created successfully:', newTask);
+      
+      setTasks(prev => [newTask, ...prev]);
+      setIsCreateModalOpen(false);
+      setTaskForm({ title: '', description: '', project: '', assignedTo: '', priority: 'medium', status: 'todo', dueDate: '' });
+      toast({ title: "Task created successfully" });
+    } catch (error: any) {
+      console.error('Error creating task:', error);
+      toast({ 
+        title: "Failed to create task", 
+        description: error?.response?.data?.message || error?.message || "Unknown error",
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleUpdateTaskStatus = async (taskId: string, newStatus: string) => {
+    try {
+      const validStatus = newStatus as 'todo' | 'in-progress' | 'review' | 'completed';
+      console.log('Updating task status:', { taskId, newStatus: validStatus });
+      
+      await tasksAPI.update(taskId, { status: validStatus });
+      setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: validStatus } : t));
+      toast({ title: "Task status updated" });
+    } catch (error: any) {
+      console.error('Error updating task status:', error);
+      toast({ 
+        title: "Failed to update task", 
+        description: error?.response?.data?.message || error?.message || "Unknown error",
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    try {
+      console.log('Deleting task:', taskId);
+      await tasksAPI.delete(taskId);
+      setTasks(prev => prev.filter(t => t._id !== taskId));
+      toast({ title: "Task deleted successfully" });
+    } catch (error: any) {
+      console.error('Error deleting task:', error);
+      toast({ 
+        title: "Failed to delete task", 
+        description: error?.response?.data?.message || error?.message || "Unknown error",
+        variant: "destructive" 
+      });
     }
   };
 
@@ -535,8 +654,7 @@ const MyTasksContent: React.FC = () => {
       'todo': 'bg-gray-100 text-gray-700',
       'in-progress': 'bg-blue-100 text-blue-700',
       'review': 'bg-yellow-100 text-yellow-700',
-      'completed': 'bg-green-100 text-green-700',
-      'blocked': 'bg-red-100 text-red-700'
+      'completed': 'bg-green-100 text-green-700'
     };
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-700';
   };
@@ -584,10 +702,16 @@ const MyTasksContent: React.FC = () => {
 
       <Card className="card-modern">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-primary" />
-            My Tasks
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              My Tasks
+            </CardTitle>
+            <Button onClick={() => setIsCreateModalOpen(true)} className="btn-primary-gradient">
+              <Plus className="h-4 w-4 mr-2" />
+              New Task
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {tasks.length === 0 ? (
@@ -628,6 +752,22 @@ const MyTasksContent: React.FC = () => {
                           )}
                         </div>
                       </div>
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Select value={task.status} onValueChange={(value) => handleUpdateTaskStatus(task._id, value)}>
+                          <SelectTrigger className="w-32 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todo">To Do</SelectItem>
+                            <SelectItem value="in-progress">In Progress</SelectItem>
+                            <SelectItem value="review">Review</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task._id)} className="hover:bg-red-100 hover:text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -636,6 +776,75 @@ const MyTasksContent: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Create Task Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Title</Label>
+              <Input value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} placeholder="Task title" />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} placeholder="Task description" />
+            </div>
+            <div>
+              <Label>Project</Label>
+              <Select value={taskForm.project} onValueChange={(value) => setTaskForm({...taskForm, project: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project._id} value={project._id}>{project.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Assign To</Label>
+              <Select value={taskForm.assignedTo} onValueChange={(value) => setTaskForm({...taskForm, assignedTo: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((employee) => (
+                    <SelectItem key={employee._id} value={employee._id}>{employee.firstName} {employee.lastName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Priority</Label>
+                <Select value={taskForm.priority} onValueChange={(value) => setTaskForm({...taskForm, priority: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Due Date</Label>
+                <Input type="date" value={taskForm.dueDate} onChange={(e) => setTaskForm({...taskForm, dueDate: e.target.value})} />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-4">
+              <Button variant="outline" onClick={() => setIsCreateModalOpen(false)} className="flex-1">Cancel</Button>
+              <Button onClick={handleCreateTask} className="flex-1">Create Task</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -673,8 +882,7 @@ const TaskManagementContent: React.FC = () => {
       'todo': 'bg-gray-100 text-gray-700',
       'in-progress': 'bg-blue-100 text-blue-700',
       'review': 'bg-yellow-100 text-yellow-700',
-      'completed': 'bg-green-100 text-green-700',
-      'blocked': 'bg-red-100 text-red-700'
+      'completed': 'bg-green-100 text-green-700'
     };
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-700';
   };
@@ -683,8 +891,8 @@ const TaskManagementContent: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {['todo', 'in-progress', 'review', 'completed', 'blocked'].map(status => (
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {['todo', 'in-progress', 'review', 'completed'].map(status => (
           <Card key={status} className="border-l-4 border-l-blue-500">
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground capitalize">{status.replace('-', ' ')}</p>
@@ -712,7 +920,6 @@ const TaskManagementContent: React.FC = () => {
                   <SelectItem value="in-progress">In Progress</SelectItem>
                   <SelectItem value="review">Review</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="blocked">Blocked</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -771,9 +978,20 @@ const TaskManagementContent: React.FC = () => {
 
 const BudgetOverview = ({ projects }: { projects: Project[] }) => {
   const router = useRouter();
+  const { formatAmount } = useGlobalCurrency();
   const [budgets, setBudgets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState<any>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [budgetForm, setBudgetForm] = useState({
+    projectName: '',
+    project: '',
+    totalBudget: '',
+    currency: 'INR',
+    description: '',
+    startDate: '',
+    endDate: ''
+  });
 
   useEffect(() => {
     fetchBudgetData();
@@ -781,20 +999,100 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
 
   const fetchBudgetData = async () => {
     try {
+      console.log('Fetching budget data...');
       const [budgetsData, analyticsData] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets/all`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('auth-token')}` }
-        }).then(r => r.json()).catch(() => []),
+        }).then(async r => {
+          if (!r.ok) throw new Error('Failed to fetch budgets');
+          return r.json();
+        }).catch(err => {
+          console.error('Error fetching budgets:', err);
+          return [];
+        }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets/analytics`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('auth-token')}` }
-        }).then(r => r.json()).catch(() => null)
+        }).then(async r => {
+          if (!r.ok) throw new Error('Failed to fetch analytics');
+          return r.json();
+        }).catch(err => {
+          console.error('Error fetching analytics:', err);
+          return null;
+        })
       ]);
+      
+      console.log('Budget data received:', { budgetsData, analyticsData });
       setBudgets(budgetsData);
       setAnalytics(analyticsData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching budget data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateBudget = async () => {
+    try {
+      if (!budgetForm.projectName || !budgetForm.totalBudget) {
+        toast({ title: "Please fill required fields", variant: "destructive" });
+        return;
+      }
+      
+      console.log('Creating budget with data:', budgetForm);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
+        },
+        body: JSON.stringify({
+          ...budgetForm,
+          totalBudget: parseFloat(budgetForm.totalBudget)
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create budget');
+      }
+      
+      toast({ title: "Budget created successfully" });
+      setIsCreateModalOpen(false);
+      setBudgetForm({ projectName: '', project: '', totalBudget: '', currency: 'INR', description: '', startDate: '', endDate: '' });
+      fetchBudgetData();
+    } catch (error: any) {
+      console.error('Error creating budget:', error);
+      toast({ 
+        title: "Failed to create budget", 
+        description: error?.message || "Unknown error",
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleDeleteBudget = async (budgetId: string) => {
+    if (!confirm('Are you sure you want to delete this budget?')) return;
+    try {
+      console.log('Deleting budget:', budgetId);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets/${budgetId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth-token')}` }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete budget');
+      }
+      
+      toast({ title: "Budget deleted successfully" });
+      fetchBudgetData();
+    } catch (error: any) {
+      console.error('Error deleting budget:', error);
+      toast({ 
+        title: "Failed to delete budget", 
+        description: error?.message || "Unknown error",
+        variant: "destructive" 
+      });
     }
   };
 
@@ -878,9 +1176,16 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
             <Coins className="h-5 w-5 text-primary" />
             Project Budgets
           </CardTitle>
-          <Button onClick={() => router.push('/dashboard/finance/budgets')} size="sm">
-            View All
-          </Button>
+          <div className="flex items-center gap-3">
+            <ProjectCurrencySwitcher />
+            <Button onClick={() => setIsCreateModalOpen(true)} size="sm" className="btn-primary-gradient">
+              <Plus className="h-4 w-4 mr-2" />
+              New Budget
+            </Button>
+            <Button onClick={() => router.push('/dashboard/finance/budgets')} size="sm" variant="outline">
+              View All
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {budgets.length === 0 ? (
@@ -903,16 +1208,21 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span>Budget: {formatCurrency(budget.totalBudget, budget.currency)}</span>
-                          <span>Spent: {formatCurrency(budget.actualSpent || 0, budget.currency)}</span>
-                          <span>Remaining: {formatCurrency(budget.remainingBudget || budget.totalBudget, budget.currency)}</span>
+                          <span>Budget: {formatAmount(budget.totalBudget, budget.currency || 'INR')}</span>
+                          <span>Spent: {formatAmount(budget.actualSpent || 0, budget.currency || 'INR')}</span>
+                          <span>Remaining: {formatAmount(budget.remainingBudget || budget.totalBudget, budget.currency || 'INR')}</span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium mb-1">
-                          {budget.utilizationPercentage?.toFixed(1) || 0}%
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <div className="text-sm font-medium mb-1">
+                            {budget.utilizationPercentage?.toFixed(1) || 0}%
+                          </div>
+                          <Progress value={budget.utilizationPercentage || 0} className="w-24 h-2" />
                         </div>
-                        <Progress value={budget.utilizationPercentage || 0} className="w-24 h-2" />
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteBudget(budget._id); }} className="hover:bg-red-100 hover:text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -922,6 +1232,80 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Create Budget Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Budget</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Project Name *</Label>
+              <Input 
+                value={budgetForm.projectName} 
+                onChange={(e) => setBudgetForm({...budgetForm, projectName: e.target.value})} 
+                placeholder="Project name" 
+              />
+            </div>
+            <div>
+              <Label>Total Budget *</Label>
+              <Input 
+                type="number" 
+                value={budgetForm.totalBudget} 
+                onChange={(e) => setBudgetForm({...budgetForm, totalBudget: e.target.value})} 
+                placeholder="0.00" 
+              />
+            </div>
+            <div>
+              <Label>Project</Label>
+              <Select value={budgetForm.project} onValueChange={(value) => {
+                setBudgetForm({...budgetForm, project: value});
+                const selectedProject = projects.find(p => p._id === value);
+                if (selectedProject && !budgetForm.projectName) {
+                  setBudgetForm(prev => ({...prev, project: value, projectName: selectedProject.name}));
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Link to existing project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project._id} value={project._id}>{project.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Currency</Label>
+                <Select value={budgetForm.currency} onValueChange={(value) => setBudgetForm({...budgetForm, currency: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INR">INR</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Input 
+                  value={budgetForm.description} 
+                  onChange={(e) => setBudgetForm({...budgetForm, description: e.target.value})} 
+                  placeholder="Budget description" 
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-4">
+              <Button variant="outline" onClick={() => setIsCreateModalOpen(false)} className="flex-1">Cancel</Button>
+              <Button onClick={handleCreateBudget} className="flex-1">Create Budget</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1,6 +1,26 @@
 import { Request, Response } from 'express';
 import DepartmentBudget from '../models/DepartmentBudget';
 import Department from '../models/Department';
+import ApprovalRequest from '../models/ApprovalRequest';
+import ApprovalConfig from '../models/ApprovalConfig';
+
+const determineApprovalLevels = async (amount: number, entityType: string) => {
+  const config = await ApprovalConfig.findOne({ entityType, isActive: true });
+  
+  if (!config) {
+    throw new Error('Approval configuration not found');
+  }
+
+  return config.levels
+    .filter(level => amount >= level.amountThreshold || level.level === 1)
+    .map(level => ({
+      level: level.level,
+      approverRole: level.approverRole,
+      approverIds: [],
+      amountThreshold: level.amountThreshold,
+      status: 'PENDING'
+    }));
+};
 
 export const getDepartmentBudgets = async (req: Request, res: Response) => {
   try {
@@ -70,10 +90,25 @@ export const createDepartmentBudget = async (req: Request, res: Response) => {
       totalBudget,
       allocatedBudget,
       categories: categories || [],
-      notes
+      notes,
+      status: 'draft'
     });
 
-    res.status(201).json({ success: true, data: budget, message: 'Budget created successfully' });
+    const levels = await determineApprovalLevels(totalBudget, 'DepartmentBudget');
+    await ApprovalRequest.create({
+      entityType: 'DepartmentBudget',
+      entityId: budget._id,
+      title: `Department Budget - ${department.name} FY ${fiscalYear}`,
+      description: `Department Budget for ${department.name} - FY ${fiscalYear}`,
+      amount: totalBudget,
+      requestedBy: (req as any).user.id,
+      approvalLevels: levels,
+      totalLevels: levels.length,
+      priority: totalBudget > 200000 ? 'HIGH' : totalBudget > 50000 ? 'MEDIUM' : 'LOW',
+      metadata: { departmentId, fiscalYear }
+    });
+
+    res.status(201).json({ success: true, data: budget, message: 'Budget created and sent for approval' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -97,6 +132,24 @@ export const updateDepartmentBudget = async (req: Request, res: Response) => {
     if (status) budget.status = status;
 
     await budget.save();
+
+    // If budget amount changed significantly, create new approval request
+    if (totalBudget && Math.abs(totalBudget - budget.totalBudget) > budget.totalBudget * 0.1) {
+      const department = await Department.findById(budget.departmentId);
+      const levels = await determineApprovalLevels(totalBudget, 'DepartmentBudget');
+      await ApprovalRequest.create({
+        entityType: 'DepartmentBudget',
+        entityId: budget._id,
+        title: `Budget Adjustment - ${department?.name} FY ${budget.fiscalYear}`,
+        description: `Budget Adjustment for ${department?.name} - FY ${budget.fiscalYear}`,
+        amount: totalBudget,
+        requestedBy: (req as any).user.id,
+        approvalLevels: levels,
+        totalLevels: levels.length,
+        priority: totalBudget > 200000 ? 'HIGH' : totalBudget > 50000 ? 'MEDIUM' : 'LOW',
+        metadata: { departmentId: budget.departmentId, fiscalYear: budget.fiscalYear }
+      });
+    }
 
     res.json({ success: true, data: budget, message: 'Budget updated successfully' });
   } catch (error: any) {
@@ -123,6 +176,20 @@ export const approveBudget = async (req: Request, res: Response) => {
     const budget = await DepartmentBudget.findById(req.params.id);
     if (!budget) {
       return res.status(404).json({ success: false, message: 'Budget not found' });
+    }
+
+    const ApprovalRequest = require('../models/ApprovalRequest').default;
+    const approval = await ApprovalRequest.findOne({
+      entityType: 'DepartmentBudget',
+      entityId: budget._id,
+      status: 'APPROVED'
+    });
+
+    if (!approval) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Budget must be approved through approval workflow first' 
+      });
     }
 
     budget.status = 'approved';

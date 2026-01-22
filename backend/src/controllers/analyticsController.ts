@@ -6,6 +6,17 @@ import Task from '../models/Task';
 import Attendance from '../models/Attendance';
 import DepartmentBudget from '../models/DepartmentBudget';
 import { GLBudget } from '../models/GLBudget';
+import Chat from '../models/Chat';
+import FileShare from '../models/FileShare';
+import Contact from '../models/Contact';
+import { registerCacheInvalidator } from '../utils/dashboardCache';
+
+let comprehensiveCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL = 120000; // 2 minutes
+
+registerCacheInvalidator(() => {
+  comprehensiveCache = null;
+});
 
 /**
  * Get dashboard analytics data
@@ -296,10 +307,171 @@ export const getBudgetAnalytics = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Get comprehensive analytics for analytics page
+ * @route GET /api/dashboard/comprehensive-analytics
+ * @access Private
+ */
+export const getComprehensiveAnalytics = async (req: Request, res: Response) => {
+  try {
+    if (comprehensiveCache && Date.now() - comprehensiveCache.timestamp < CACHE_TTL) {
+      return res.json({ success: true, data: comprehensiveCache.data, cached: true });
+    }
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      employees,
+      projects,
+      tasks,
+      attendance,
+      chats,
+      files,
+      contacts
+    ] = await Promise.all([
+      Employee.aggregate([{
+        $facet: {
+          total: [{ $count: 'count' }],
+          active: [{ $match: { status: 'active' } }, { $count: 'count' }],
+          byDept: [{ $group: { _id: '$department', count: { $sum: 1 } } }]
+        }
+      }]),
+      Project.aggregate([{
+        $facet: {
+          total: [{ $count: 'count' }],
+          recent: [{ $sort: { updatedAt: -1 } }, { $limit: 4 }, {
+            $project: { name: 1, progress: 1, status: 1, priority: 1, endDate: 1 }
+          }]
+        }
+      }]),
+      Task.aggregate([{
+        $facet: {
+          byStatus: [{ $group: { _id: '$status', count: { $sum: 1 } } }],
+          weekly: [{
+            $match: { createdAt: { $gte: new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000) } }
+          }, {
+            $group: {
+              _id: { $week: '$createdAt' },
+              tasks: { $sum: 1 },
+              completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } }
+            }
+          }, { $sort: { _id: 1 } }],
+          topPerformers: [{
+            $match: { status: 'completed', completedAt: { $gte: thirtyDaysAgo }, assignedTo: { $exists: true } }
+          }, {
+            $group: { _id: '$assignedTo', tasksCompleted: { $sum: 1 } }
+          }, { $sort: { tasksCompleted: -1 } }, { $limit: 4 }, {
+            $lookup: { from: 'employees', localField: '_id', foreignField: '_id', as: 'emp' }
+          }, { $unwind: '$emp' }, {
+            $project: { name: '$emp.name', tasksCompleted: 1, department: '$emp.department' }
+          }]
+        }
+      }]),
+      Attendance.aggregate([{
+        $match: { date: { $gte: sevenDaysAgo } }
+      }, {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+          present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+          total: { $sum: 1 }
+        }
+      }, { $sort: { _id: 1 } }]),
+      Chat.aggregate([{
+        $match: { lastMessageTime: { $gte: sevenDaysAgo } }
+      }, {
+        $project: {
+          day: { $dateToString: { format: '%Y-%m-%d', date: '$lastMessageTime' } },
+          messageCount: { $size: '$messages' }
+        }
+      }, {
+        $group: { _id: '$day', messages: { $sum: '$messageCount' } }
+      }, { $sort: { _id: 1 } }]),
+      FileShare.aggregate([{
+        $match: { createdAt: { $gte: thirtyDaysAgo } }
+      }, {
+        $group: { _id: '$fileType', shared: { $sum: 1 } }
+      }]),
+      Contact.countDocuments()
+    ]);
+
+    const taskStatusMap = tasks[0].byStatus.reduce((acc: any, t: any) => ({ ...acc, [t._id]: t.count }), {});
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const analyticsData = {
+      realTimeData: {
+        activeUsers: employees[0].active[0]?.count || 0,
+        onlineEmployees: employees[0].active[0]?.count || 0,
+        activeChats: chats.length,
+        pendingTasks: taskStatusMap['todo'] || 0
+      },
+      productivityData: tasks[0].weekly.slice(-4).map((w: any, i: number) => ({
+        week: `W${i + 1}`,
+        productivity: w.tasks > 0 ? Math.round((w.completed / w.tasks) * 100) : 0,
+        tasks: w.tasks
+      })),
+      taskDistribution: [
+        { name: 'Completed', value: taskStatusMap['completed'] || 0, color: '#10b981' },
+        { name: 'In Progress', value: taskStatusMap['in-progress'] || 0, color: '#3b82f6' },
+        { name: 'Pending', value: taskStatusMap['todo'] || 0, color: '#f59e0b' },
+        { name: 'Overdue', value: 0, color: '#ef4444' }
+      ],
+      chatMetrics: chats.map((c: any) => {
+        const date = new Date(c._id);
+        return { day: dayNames[date.getDay()], messages: c.messages };
+      }),
+      fileShareData: files.map((f: any) => ({ type: f._id || 'Other', shared: f.shared })),
+      departmentPerformance: employees[0].byDept.map((d: any) => ({
+        name: d._id || 'Unassigned',
+        employees: d.count
+      })),
+      projectProgress: projects[0].recent.map((p: any) => {
+        const days = p.endDate ? Math.ceil((new Date(p.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+        return {
+          name: p.name,
+          progress: p.progress || 0,
+          status: p.status === 'completed' ? 'On Track' : 'On Track',
+          priority: p.priority || 'Medium',
+          dueDate: p.endDate ? new Date(p.endDate).toISOString().split('T')[0] : 'N/A',
+          remainingDays: days > 0 ? days : 0
+        };
+      }),
+      topPerformers: tasks[0].topPerformers.map((p: any) => ({
+        name: p.name,
+        tasksCompleted: p.tasksCompleted,
+        department: p.department || 'Unassigned'
+      })),
+      attendanceData: attendance.map((a: any) => {
+        const date = new Date(a._id);
+        return { day: dayNames[date.getDay()], rate: a.total > 0 ? Math.round((a.present / a.total) * 100) : 0 };
+      }),
+
+      metrics: {
+        totalEmployees: employees[0].total[0]?.count || 0,
+        activeEmployees: employees[0].active[0]?.count || 0,
+        totalProjects: projects[0].total[0]?.count || 0,
+        totalTasks: Object.values(taskStatusMap).reduce((a: any, b: any) => a + b, 0),
+        completedTasks: taskStatusMap['completed'] || 0,
+        filesShared: files.reduce((sum: number, f: any) => sum + f.shared, 0),
+        totalContacts: contacts
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    comprehensiveCache = { data: analyticsData, timestamp: Date.now() };
+    res.json({ success: true, data: analyticsData });
+  } catch (error: any) {
+    console.error('Comprehensive analytics error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export default {
   getDashboardAnalytics,
   getProductivityTrends,
   getProjectDues,
   getTopPerformers,
-  getBudgetAnalytics
+  getBudgetAnalytics,
+  getComprehensiveAnalytics
 };

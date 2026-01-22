@@ -35,6 +35,13 @@ export interface IEmployee extends Document {
   };
   skills: string[]; // Legacy field for backward compatibility
   skillsEnhanced: ISkill[]; // New enhanced skills field
+  socialProfiles?: {
+    linkedin?: string;
+    github?: string;
+    twitter?: string;
+    portfolio?: string;
+    other?: string;
+  };
   avatarUrl?: string;
   manager?: mongoose.Types.ObjectId;
   user: mongoose.Types.ObjectId;
@@ -73,12 +80,19 @@ const employeeSchema = new Schema<IEmployee>({
     yearsOfExperience: { type: Number, min: 0 },
     lastUpdated: { type: Date, default: Date.now }
   }],
+  socialProfiles: {
+    linkedin: { type: String, trim: true },
+    github: { type: String, trim: true },
+    twitter: { type: String, trim: true },
+    portfolio: { type: String, trim: true },
+    other: { type: String, trim: true }
+  },
   avatarUrl: { type: String },
   manager: { type: Schema.Types.ObjectId, ref: 'Employee' },
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 
-employeeSchema.pre('save', async function(next) {
+employeeSchema.pre('save', async function (next) {
   if (this.isModified('user') || this.isNew) {
     const User = mongoose.model('User');
     const userExists = await User.findById(this.user);
@@ -87,7 +101,7 @@ employeeSchema.pre('save', async function(next) {
   next();
 });
 
-employeeSchema.pre('findOneAndUpdate', async function(next) {
+employeeSchema.pre('findOneAndUpdate', async function (next) {
   const update = this.getUpdate() as any;
   const userId = update.user || update.$set?.user;
   if (userId) {

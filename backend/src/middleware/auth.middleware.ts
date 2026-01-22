@@ -35,9 +35,9 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     // Check if token exists
     if (!token || token === 'undefined' || token === 'null') {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'Authentication required - no token provided' 
+        message: 'Authentication required - no token provided'
       });
     }
 
@@ -53,14 +53,40 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
 
+    // Check if session exists and is valid
+    const UserSession = (await import('../models/UserSession')).default;
+    const tokenHash = UserSession.hashToken(token);
+    const session = await UserSession.findOne({
+      tokenHash,
+      isActive: true,
+      expiresAt: { $gt: new Date() }
+    });
+
+    if (!session) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session expired or invalid. Please login again.',
+        code: 'SESSION_INVALID'
+      });
+    }
+
+    // Update last active time (asynchronously, don't wait)
+    UserSession.updateOne(
+      { _id: session._id },
+      { lastActive: new Date() }
+    ).catch(err => console.error('Failed to update session lastActive:', err));
+
+    // Store session token hash for session management endpoints
+    (req as any).sessionTokenHash = tokenHash;
+
     // Find user by id and populate role
     const user = await User.findById(decoded.id).populate('role').select('-password');
 
     // Check if user exists
     if (!user) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'User no longer exists' 
+        message: 'User no longer exists'
       });
     }
 
@@ -90,38 +116,38 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     // Attach user to request object with permissions flattened
     req.user = user;
-    
+
     // Flatten permissions from role to user object for easier access
     if (user.role && typeof user.role === 'object' && 'permissions' in user.role) {
       (req.user as any).permissions = (user.role as any).permissions;
     }
-    
+
     next();
   } catch (error: any) {
     console.error('Auth middleware error:', error.message);
-    
+
     if (error.name === 'JsonWebTokenError') {
       if (error.message === 'invalid signature') {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
           message: 'Invalid token - please login again',
           code: 'INVALID_TOKEN_SIGNATURE'
         });
       }
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
         message: 'Invalid token format',
         code: 'INVALID_TOKEN_FORMAT'
       });
     } else if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
         message: 'Token has expired - please login again',
         code: 'TOKEN_EXPIRED'
       });
     }
-    
-    return res.status(401).json({ 
+
+    return res.status(401).json({
       success: false,
       message: 'Authentication failed',
       code: 'AUTH_FAILED'
@@ -131,3 +157,20 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
 // Alias for consistency with admin routes
 export const authenticateToken = protect;
+
+// Fast auth for performance-critical routes
+export const fastAuth = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '') || req.cookies?.token;
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'No token' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    (req as any).user = { _id: decoded.id, role: decoded.role };
+    next();
+  } catch (error) {
+    res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+};

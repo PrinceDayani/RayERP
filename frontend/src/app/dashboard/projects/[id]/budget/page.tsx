@@ -13,10 +13,13 @@ import ProjectBudgetAnalytics from "@/components/budget/ProjectBudgetAnalytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CurrencyConverter from "@/components/budget/CurrencyConverter";
 import { formatCurrency } from "@/utils/currency";
+import ProjectCurrencySwitcher from "@/components/projects/ProjectCurrencySwitcher";
+import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
 
 export default function ProjectBudgetPage() {
   const params = useParams();
   const projectId = params.id as string;
+  const { formatAmount } = useGlobalCurrency();
   const [budget, setBudget] = useState<Budget | null>(null);
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -274,7 +277,8 @@ export default function ProjectBudgetPage() {
           </div>
           <p className="text-muted-foreground">{project?.name}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          <ProjectCurrencySwitcher className="hidden sm:flex" />
           {budget ? (
             <>
               {budget.status === 'draft' && (
@@ -323,6 +327,10 @@ export default function ProjectBudgetPage() {
         </div>
       </div>
 
+      <div className="sm:hidden">
+        <ProjectCurrencySwitcher />
+      </div>
+
       {budget ? (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
@@ -340,7 +348,7 @@ export default function ProjectBudgetPage() {
                 <Coins className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(budget.totalBudget, budget.currency)}</div>
+                <div className="text-2xl font-bold">{formatAmount(budget.totalBudget, budget.currency)}</div>
               </CardContent>
             </Card>
 
@@ -350,7 +358,7 @@ export default function ProjectBudgetPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(totalSpent, budget.currency)}</div>
+                <div className="text-2xl font-bold">{formatAmount(totalSpent, budget.currency)}</div>
                 <p className="text-xs text-muted-foreground">{(spentPercentage || 0).toFixed(1)}% of budget</p>
               </CardContent>
             </Card>
@@ -361,7 +369,7 @@ export default function ProjectBudgetPage() {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(remainingBudget, budget.currency)}</div>
+                <div className="text-2xl font-bold">{formatAmount(remainingBudget, budget.currency)}</div>
               </CardContent>
             </Card>
 

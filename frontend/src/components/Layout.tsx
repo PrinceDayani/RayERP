@@ -288,7 +288,7 @@ export default function Layout({ children }: LayoutProps) {
                     {section.items.map((item: any) => {
                       if (item.access === false) return null;
 
-                      const isActive = pathname === item.path || isSubItemActive(item);
+                      const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path + '/')) || isSubItemActive(item);
                       const hasSubItems = item.subItems && item.subItems.length > 0;
                       const isExpanded = isMenuExpanded(item.path);
                       const Icon = item.icon;

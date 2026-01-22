@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Users, 
   BarChart4, 
@@ -119,20 +120,30 @@ const Dashboard = () => {
     
     const fetchData = async () => {
       try {
-        const [analyticsData, trendsData] = await Promise.all([
-          analyticsAPI.getAnalytics(),
-          trendsAPI.getTrends()
+        const [analyticsData, trendsData] = await Promise.allSettled([
+          analyticsAPI.getAnalytics().catch(err => {
+            console.warn('Analytics API failed:', err.message);
+            return null;
+          }),
+          trendsAPI.getTrends().catch(err => {
+            console.warn('Trends API failed:', err.message);
+            return null;
+          })
         ]);
         
-        if (mounted && analyticsData) {
-          setAnalytics({
-            projectProgress: analyticsData.projectProgress || [],
-            taskDistribution: analyticsData.taskDistribution || [],
-            monthlyRevenue: analyticsData.monthlyRevenue || [],
-            teamProductivity: analyticsData.teamProductivity || [],
-            recentActivity: analyticsData.recentActivity || []
-          });
-          if (trendsData) setTrends(trendsData);
+        if (mounted) {
+          if (analyticsData.status === 'fulfilled' && analyticsData.value) {
+            setAnalytics({
+              projectProgress: analyticsData.value.projectProgress || [],
+              taskDistribution: analyticsData.value.taskDistribution || [],
+              monthlyRevenue: analyticsData.value.monthlyRevenue || [],
+              teamProductivity: analyticsData.value.teamProductivity || [],
+              recentActivity: analyticsData.value.recentActivity || []
+            });
+          }
+          if (trendsData.status === 'fulfilled' && trendsData.value) {
+            setTrends(trendsData.value);
+          }
         }
       } catch (error) {
         console.error("Error fetching analytics:", error);
@@ -141,10 +152,20 @@ const Dashboard = () => {
     
     fetchData();
     const interval = setInterval(fetchData, 30000); // Refresh every 30s
+
+    // Refetch on tab visibility
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        analyticsAPI.clearCache();
+        fetchData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => { 
       mounted = false;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isAuthenticated]);
 
@@ -485,46 +506,34 @@ const Dashboard = () => {
 
         {/* Main Dashboard Content */}
         <Tabs defaultValue="overview" className="space-y-6 theme-transition" onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-6 w-full theme-card theme-shadow gap-1">
-            <TabsTrigger 
-              value="overview" 
-              className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Overview
-            </TabsTrigger>
-            <TabsTrigger 
-              value="employees"
-              className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Employees
-            </TabsTrigger>
-            <TabsTrigger 
-              value="projects"
-              className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Projects
-            </TabsTrigger>
-            <TabsTrigger 
-              value="tasks"
-              className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Tasks
-            </TabsTrigger>
-            {checkMinimumLevel(ROLE_LEVELS.ADMIN) && (
+          <div className="overflow-x-auto pb-2">
+            <TabsList className="inline-flex w-full sm:w-auto min-w-full sm:min-w-0 theme-card theme-shadow gap-1">
               <TabsTrigger 
-                value="analytics"
-                className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                value="overview" 
+                className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 sm:flex-none"
               >
-                Analytics
+                Overview
               </TabsTrigger>
-            )}
-            <TabsTrigger 
-              value="roles"
-              className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              Roles
-            </TabsTrigger>
-          </TabsList>
+              <TabsTrigger 
+                value="employees"
+                className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 sm:flex-none"
+              >
+                Employees
+              </TabsTrigger>
+              <TabsTrigger 
+                value="projects"
+                className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 sm:flex-none"
+              >
+                Projects
+              </TabsTrigger>
+              <TabsTrigger 
+                value="tasks"
+                className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 sm:flex-none"
+              >
+                Tasks
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
@@ -676,7 +685,14 @@ const Dashboard = () => {
                           <Progress value={project.progress} className="h-1.5" />
                         </div>
                       )) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">No active projects</p>
+                        <div className="text-center py-8">
+                          <Briefcase className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                          <p className="text-sm font-medium text-muted-foreground mb-1">No Active Projects</p>
+                          <p className="text-xs text-muted-foreground mb-4">Create your first project to get started</p>
+                          <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/projects/create')}>
+                            Create Project
+                          </Button>
+                        </div>
                       )}
                     </CardContent>
                   </Card>
@@ -686,26 +702,39 @@ const Dashboard = () => {
                 {/* Recent Activity - Compact */}
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center"><Clock className="h-4 w-4 mr-2" />Recent Activity</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center"><Clock className="h-4 w-4 mr-2" />Recent Activity</CardTitle>
+                      <span className="text-xs text-muted-foreground">Live updates</span>
+                    </div>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="space-y-2">
-                      {analytics.recentActivity?.length > 0 ? analytics.recentActivity.map((activity) => (
-                        <div key={activity.id} className="flex items-center space-x-3 py-2 border-b last:border-0">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            {activity.type === 'project' && <Briefcase className="h-4 w-4 text-primary" />}
-                            {activity.type === 'task' && <CheckSquare className="h-4 w-4 text-primary" />}
-                            {activity.type === 'employee' && <Users className="h-4 w-4 text-primary" />}
+                    {analytics.recentActivity?.length > 0 ? (
+                      <div className="space-y-2">
+                        {analytics.recentActivity.map((activity) => (
+                          <div key={activity.id} className="flex items-center space-x-3 py-2 border-b last:border-0">
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              {activity.type === 'project' && <Briefcase className="h-4 w-4 text-primary" />}
+                              {activity.type === 'task' && <CheckSquare className="h-4 w-4 text-primary" />}
+                              {activity.type === 'employee' && <Users className="h-4 w-4 text-primary" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">{activity.description}</p>
+                              <p className="text-xs text-muted-foreground">{activity.time}</p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{activity.description}</p>
-                            <p className="text-xs text-muted-foreground">{activity.time}</p>
-                          </div>
-                        </div>
-                      )) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Activity className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                        <p className="text-sm font-medium text-muted-foreground mb-1">No Recent Activity</p>
+                        <p className="text-xs text-muted-foreground mb-4">Activity will appear here as it happens</p>
+                        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                          <RefreshCw className="h-3 w-3 mr-2" />
+                          Refresh
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </>
@@ -715,7 +744,8 @@ const Dashboard = () => {
               stats={stats}
               trends={trends ? { employees: trends.employees, projects: trends.projects } : undefined}
               isAuthenticated={isAuthenticated} 
-              loading={dataLoading} 
+              loading={dataLoading}
+              router={router}
             />
 
             {isAuthenticated && (
@@ -810,63 +840,6 @@ const Dashboard = () => {
             )}
           </TabsContent>
 
-          {/* Analytics Tab */}
-          {checkMinimumLevel(ROLE_LEVELS.ADMIN) && (
-            <TabsContent value="analytics" className="space-y-6">
-              {isAuthenticated ? (
-                <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin" /></div>}>
-                  <FinanceAnalyticsDashboard dateRange="30d" currency="INR" />
-                </Suspense>
-              ) : (
-                <Card className="theme-card theme-shadow theme-transition">
-                  <CardContent className="p-8 text-center theme-compact-padding">
-                    <BarChart4 className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                      Finance Analytics Dashboard
-                    </h3>
-                    <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                      Access comprehensive financial analytics and business intelligence reports.
-                    </p>
-                    <Button 
-                      onClick={() => router.push("/login")}
-                      size="lg"
-                      className="theme-button theme-touch-target theme-focusable theme-transition"
-                    >
-                      Login to View Finance Analytics
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-          )}
-
-          {/* Role Management Tab */}
-          <TabsContent value="roles" className="space-y-6">
-            {isAuthenticated ? (
-              <UserManagement isLoading={false} />
-            ) : (
-              <Card className="theme-card theme-shadow theme-transition">
-                <CardContent className="p-8 text-center theme-compact-padding">
-                  <Shield className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                    Role Management
-                  </h3>
-                  <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                    Login to manage roles and permissions.
-                  </p>
-                  <Button 
-                    onClick={() => router.push("/login")}
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
-                  >
-                    Login
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-          
-
         </Tabs>
     </div>
   );
@@ -893,12 +866,45 @@ const TaskSection = ({ router }: { router: any }) => {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
-          <p className="text-muted-foreground">Loading tasks...</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-3 py-2 border-b">
+                  <Skeleton className="h-10 w-10 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -991,12 +997,45 @@ const ProjectSection = ({ router }: { router: any }) => {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
-          <p className="text-muted-foreground">Loading projects...</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-3 py-2 border-b">
+                  <Skeleton className="h-10 w-10 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -1092,12 +1131,45 @@ const EmployeeSection = ({ router }: { router: any }) => {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
-          <p className="text-muted-foreground">Loading employees...</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-3 py-2 border-b">
+                  <Skeleton className="h-10 w-10 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 

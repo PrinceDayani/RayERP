@@ -16,6 +16,7 @@ import ProjectTrialBalance from "@/components/projects/finance/ProjectTrialBalan
 import ProjectBalanceSheet from "@/components/projects/finance/ProjectBalanceSheet";
 import ProjectCashFlow from "@/components/projects/finance/ProjectCashFlow";
 import ProjectLedger from "@/components/projects/finance/ProjectLedger";
+import ProjectPermissionsManager from "@/components/projects/ProjectPermissionsManager";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,10 +36,15 @@ import { getProjectById, updateProject, type Project } from "@/lib/api/projectsA
 import { toast } from "@/components/ui/use-toast";
 import { GanttChart } from "@/components/GanttChart";
 import tasksAPI, { type Task } from "@/lib/api/tasksAPI";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import ProjectCurrencySwitcher from "@/components/projects/ProjectCurrencySwitcher";
+import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
 
 
 const ProjectDetailPage = () => {
   const { isAuthenticated } = useAuth();
+  const { formatCurrency } = useCurrency();
+  const { formatAmount } = useGlobalCurrency();
   const router = useRouter();
   const params = useParams();
   const projectId = params?.id as string;
@@ -248,7 +254,8 @@ const ProjectDetailPage = () => {
               <p className="text-muted-foreground">{project.description}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center flex-wrap">
+            <ProjectCurrencySwitcher className="hidden sm:flex" />
             <Button 
               variant="outline"
               onClick={() => router.push(`/dashboard/projects/${projectId}/analytics`)}
@@ -268,6 +275,11 @@ const ProjectDetailPage = () => {
               Settings
             </Button>
           </div>
+        </div>
+
+        {/* Mobile Currency Switcher */}
+        <div className="sm:hidden">
+          <ProjectCurrencySwitcher />
         </div>
 
         {/* Project Overview Cards */}
@@ -314,10 +326,10 @@ const ProjectDetailPage = () => {
                 <div>
                   <p className="text-sm font-medium text-orange-700 dark:text-orange-300">Budget</p>
                   <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                    {budget?.totalBudget ? `${budget.currency || '₹'} ${budget.totalBudget.toLocaleString()}` : `₹${(project.budget || 0).toLocaleString()}`}
+                    {formatAmount(project.budget || 0, (project as any).currency || 'INR')}
                   </p>
                   <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                    {budget?.totalBudget ? `${budget.currency || '₹'} ${((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()} spent` : `₹${(project.spentBudget || 0).toLocaleString()} spent`}
+                    {formatAmount(project.spentBudget || 0, (project as any).currency || 'INR')} spent
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-orange-200 dark:bg-orange-800 rounded-full flex items-center justify-center">
@@ -391,7 +403,7 @@ const ProjectDetailPage = () => {
                   <div className="flex justify-between text-xs pt-1">
                     <span className="text-muted-foreground">Remaining</span>
                     <span className="font-medium text-green-600">
-                      {budget.currency || '₹'} {(budget.totalBudget - ((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0))).toLocaleString()}
+                      {formatAmount(budget.totalBudget - ((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)), budget.currency || 'INR')}
                     </span>
                   </div>
                 </div>
@@ -410,7 +422,7 @@ const ProjectDetailPage = () => {
                   <div className="flex justify-between text-xs pt-1">
                     <span className="text-muted-foreground">Remaining</span>
                     <span className="font-medium text-green-600">
-                      ₹{(project.budget - (project.spentBudget || 0)).toLocaleString()}
+                      {formatAmount(project.budget - (project.spentBudget || 0), (project as any).currency || 'INR')}
                     </span>
                   </div>
                 </div>
@@ -595,13 +607,14 @@ const ProjectDetailPage = () => {
 
         {/* Tabs for Tasks and Other Details */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="budget">Budget</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="finance">Finance</TabsTrigger>
+            <TabsTrigger value="permissions">Permissions</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
 
@@ -631,7 +644,7 @@ const ProjectDetailPage = () => {
                         <div className="text-center">
                           <Coins className="h-8 w-8 mx-auto text-blue-600 mb-2" />
                           <p className="text-sm text-muted-foreground">Total Budget</p>
-                          <p className="text-2xl font-bold">{budget.currency} {budget.totalBudget?.toLocaleString()}</p>
+                          <p className="text-2xl font-bold">{formatAmount(budget.totalBudget, budget.currency || 'INR')}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -640,7 +653,7 @@ const ProjectDetailPage = () => {
                         <div className="text-center">
                           <BarChart3 className="h-8 w-8 mx-auto text-green-600 mb-2" />
                           <p className="text-sm text-muted-foreground">Spent</p>
-                          <p className="text-2xl font-bold">{budget.currency} {((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)).toLocaleString()}</p>
+                          <p className="text-2xl font-bold">{formatAmount((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0), budget.currency || 'INR')}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -649,7 +662,7 @@ const ProjectDetailPage = () => {
                         <div className="text-center">
                           <Users className="h-8 w-8 mx-auto text-orange-600 mb-2" />
                           <p className="text-sm text-muted-foreground">Remaining</p>
-                          <p className="text-2xl font-bold">{budget.currency} {(budget.totalBudget - ((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0))).toLocaleString()}</p>
+                          <p className="text-2xl font-bold">{formatAmount(budget.totalBudget - ((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)), budget.currency || 'INR')}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -679,11 +692,11 @@ const ProjectDetailPage = () => {
                               <div className="space-y-1 text-sm">
                                 <div className="flex justify-between">
                                   <span>Allocated:</span>
-                                  <span>{budget.currency} {category.allocatedAmount?.toLocaleString()}</span>
+                                  <span>{formatAmount(category.allocatedAmount, budget.currency || 'INR')}</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span>Spent:</span>
-                                  <span>{budget.currency} {category.spentAmount?.toLocaleString()}</span>
+                                  <span>{formatAmount(category.spentAmount, budget.currency || 'INR')}</span>
                                 </div>
                               </div>
                             </CardContent>
@@ -770,6 +783,16 @@ const ProjectDetailPage = () => {
                 <ProjectLedger projectId={projectId} />
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          <TabsContent value="permissions">
+            <ProjectPermissionsManager
+              projectId={projectId}
+              employees={[]} // Will be loaded by the component
+              selectedTeam={project.team?.map((member: any) => 
+                typeof member === 'object' ? member._id : member
+              ) || []}
+            />
           </TabsContent>
 
           <TabsContent value="activity">

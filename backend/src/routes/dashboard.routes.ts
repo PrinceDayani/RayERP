@@ -6,12 +6,23 @@ import Project from '../models/Project';
 import Task from '../models/Task';
 import { Invoice } from '../models/Finance';
 import { io } from '../server';
+import { registerCacheInvalidator } from '../utils/dashboardCache';
 
 const router = express.Router();
 
-// In-memory cache with 30s TTL
+// In-memory cache with 5min TTL
 let statsCache: { data: any; timestamp: number } | null = null;
-const CACHE_TTL = 30000;
+let analyticsCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL = 300000; // 5 minutes
+
+// Cache invalidation helper
+const invalidateCache = () => {
+  statsCache = null;
+  analyticsCache = null;
+};
+
+// Register cache invalidator
+registerCacheInvalidator(invalidateCache);
 
 // Get real-time dashboard stats - OPTIMIZED
 router.get('/stats', protect, requirePermission('dashboard.view'), async (req, res) => {
@@ -143,6 +154,11 @@ router.get('/stats', protect, requirePermission('dashboard.view'), async (req, r
 // Get real-time analytics - OPTIMIZED
 router.get('/analytics', protect, requirePermission('analytics.view'), async (req, res) => {
   try {
+    // Return cached data if fresh
+    if (analyticsCache && Date.now() - analyticsCache.timestamp < CACHE_TTL) {
+      return res.json({ success: true, data: analyticsCache.data, cached: true });
+    }
+
     const currentYear = new Date().getFullYear();
     const [projects, taskDistribution, employees] = await Promise.all([
       Project.find().select('name progress status').lean().limit(5).sort({ updatedAt: -1 }),
@@ -223,17 +239,19 @@ router.get('/analytics', protect, requirePermission('analytics.view'), async (re
       { name: 'Sales', completed: 0, pending: 0 }
     ];
 
-    res.json({
-      success: true,
-      data: {
-        projectProgress,
-        taskDistribution: taskDist,
-        monthlyRevenue: monthlyRevenueData,
-        teamProductivity: teamProductivityData,
-        recentActivity: [],
-        timestamp: new Date().toISOString()
-      }
-    });
+    const analyticsData = {
+      projectProgress,
+      taskDistribution: taskDist,
+      monthlyRevenue: monthlyRevenueData,
+      teamProductivity: teamProductivityData,
+      recentActivity: [],
+      timestamp: new Date().toISOString()
+    };
+
+    // Cache the result
+    analyticsCache = { data: analyticsData, timestamp: Date.now() };
+
+    res.json({ success: true, data: analyticsData });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch analytics' });
   }
@@ -241,8 +259,8 @@ router.get('/analytics', protect, requirePermission('analytics.view'), async (re
 
 // Clear cache endpoint (for admin)
 router.post('/clear-cache', protect, requirePermission('system.manage'), (req, res) => {
-  statsCache = null;
-  res.json({ success: true, message: 'Cache cleared' });
+  invalidateCache();
+  res.json({ success: true, message: 'Dashboard cache cleared' });
 });
 
 export default router;

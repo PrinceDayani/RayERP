@@ -7,10 +7,21 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, ChevronLeft, ChevronRight, Users, Clock, AlertTriangle } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
+import { resourceApi } from '@/lib/api/resources';
+import { employeesAPI } from '@/lib/api/employeesAPI';
+import { getAllProjects } from '@/lib/api/projectsAPI';
+import { toast } from '@/hooks/use-toast';
 
 interface AllocationData {
   _id: string;
-  employee: { _id: string; firstName: string; lastName: string; position: string };
+  employee: { 
+    _id: string; 
+    firstName: string; 
+    lastName: string; 
+    position: string;
+    dailyCapacity?: number;
+    workingDays?: number[];
+  };
   project: { _id: string; name: string };
   allocatedHours: number;
   startDate: string;
@@ -19,20 +30,69 @@ interface AllocationData {
   status: 'available' | 'partial' | 'full' | 'over';
 }
 
-interface ResourceAllocationCalendarProps {
-  allocations: AllocationData[];
-  onDragDrop: (allocation: AllocationData, newDate: Date, newEmployee: string) => void;
-  onEditAllocation: (allocation: AllocationData) => void;
-}
-
-export default function ResourceAllocationCalendar({ 
-  allocations, 
-  onDragDrop, 
-  onEditAllocation 
-}: ResourceAllocationCalendarProps) {
+export default function ResourceAllocationCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<'week' | 'month'>('week');
   const [draggedItem, setDraggedItem] = useState<AllocationData | null>(null);
+  const [allocations, setAllocations] = useState<AllocationData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAllocationData();
+  }, []);
+
+  const fetchAllocationData = async () => {
+    try {
+      setLoading(true);
+      const response = await resourceApi.getResourceAllocations();
+      setAllocations(response.data || []);
+    } catch (error) {
+      console.error('Error fetching allocation data:', error);
+      setAllocations([]);
+      toast({
+        title: "Error",
+        description: "Failed to load allocation data",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDragDrop = async (allocation: AllocationData, newDate: Date, newEmployeeId: string) => {
+    try {
+      const updatedData = {
+        ...allocation,
+        employee: { ...allocation.employee, _id: newEmployeeId },
+        startDate: newDate.toISOString()
+      };
+      
+      await resourceApi.updateResourceAllocation(allocation._id, updatedData);
+      
+      setAllocations(prev => prev.map(alloc => 
+        alloc._id === allocation._id ? updatedData : alloc
+      ));
+      
+      toast({
+        title: "Success",
+        description: "Allocation updated successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update allocation",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEditAllocation = (allocation: AllocationData) => {
+    // Open edit modal (implement as needed)
+    toast({
+      title: "Edit Allocation",
+      description: `Editing ${allocation.project.name} for ${allocation.employee.firstName}`
+    });
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -51,8 +111,17 @@ export default function ResourceAllocationCalendar({
       new Date(alloc.endDate) >= date
     );
     
-    const totalHours = dayAllocations.reduce((sum, alloc) => sum + (alloc.allocatedHours / 5), 0); // Assuming 5-day work week
-    return Math.min(Math.round((totalHours / 8) * 100), 150); // Max 150% for over-allocation
+    // Get employee capacity from allocation data or use default
+    const employeeAllocation = allocations.find(alloc => alloc.employee._id === employeeId);
+    const employeeCapacity = employeeAllocation?.employee?.dailyCapacity || 8;
+    
+    const totalHours = dayAllocations.reduce((sum, alloc) => {
+      const weeklyHours = alloc.allocatedHours || 0;
+      const dailyHours = weeklyHours / 5; // Convert weekly to daily
+      return sum + dailyHours;
+    }, 0);
+    
+    return Math.min(Math.round((totalHours / employeeCapacity) * 100), 200);
   };
 
   const getStatusFromUtilization = (percentage: number) => {
@@ -70,6 +139,15 @@ export default function ResourceAllocationCalendar({
     const employees = [...new Set(allocations.map(a => a.employee._id))].map(id => 
       allocations.find(a => a.employee._id === id)?.employee
     ).filter(Boolean);
+
+    if (employees.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <Users className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+          <p className="text-muted-foreground">No resource allocations found</p>
+        </div>
+      );
+    }
 
     return (
       <div className="grid grid-cols-8 gap-1 text-sm">
@@ -104,7 +182,7 @@ export default function ResourceAllocationCalendar({
                   onDrop={(e) => {
                     e.preventDefault();
                     if (draggedItem && employee?._id) {
-                      onDragDrop(draggedItem, day, employee._id);
+                      handleDragDrop(draggedItem, day, employee._id);
                     }
                     setDraggedItem(null);
                   }}
@@ -115,7 +193,7 @@ export default function ResourceAllocationCalendar({
                       key={alloc._id}
                       draggable
                       onDragStart={() => setDraggedItem(alloc)}
-                      onClick={() => onEditAllocation(alloc)}
+                      onClick={() => handleEditAllocation(alloc)}
                       className="text-xs p-1 mb-1 bg-white/80 rounded cursor-move hover:bg-white"
                     >
                       <div className="font-medium truncate">{alloc.project.name}</div>
@@ -186,6 +264,17 @@ export default function ResourceAllocationCalendar({
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Loading allocation calendar...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Card>

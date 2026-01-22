@@ -47,6 +47,7 @@ export interface IProject extends Document {
   endDate: Date;
   budget: number;
   spentBudget: number;
+  currency: string;
   progress: number;
   autoCalculateProgress: boolean;
 
@@ -140,6 +141,7 @@ const projectSchema = new Schema<IProject>({
   endDate: { type: Date, required: true },
   budget: { type: Number, required: true, default: 0 },
   spentBudget: { type: Number, default: 0 },
+  currency: { type: String, default: 'USD', trim: true, uppercase: true },
 
   progress: { type: Number, min: 0, max: 100, default: 0 },
   autoCalculateProgress: { type: Boolean, default: true },
@@ -167,5 +169,16 @@ const projectSchema = new Schema<IProject>({
 
 projectSchema.index({ 'instructions.type': 1 });
 projectSchema.index({ 'instructions.priority': 1 });
+
+// Performance indexes
+projectSchema.index({ owner: 1, status: 1 });
+projectSchema.index({ manager: 1, status: 1 });
+projectSchema.index({ team: 1, status: 1 });
+projectSchema.index({ members: 1, status: 1 });
+projectSchema.index({ departments: 1, status: 1 });
+projectSchema.index({ status: 1, priority: 1 });
+projectSchema.index({ startDate: 1, endDate: 1 });
+projectSchema.index({ createdAt: -1 });
+projectSchema.index({ updatedAt: -1 });
 
 export default mongoose.model<IProject>('Project', projectSchema);

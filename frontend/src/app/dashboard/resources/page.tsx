@@ -1,536 +1,428 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { resourceApi } from '@/lib/api/resources';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Users, 
+  Target, 
+  TrendingUp, 
+  Calendar, 
+  Clock, 
+  AlertCircle,
+  CheckCircle,
+  BarChart3,
+  Settings,
+  UserCheck,
+  Briefcase,
+  Activity,
+  ArrowRight
+} from 'lucide-react';
 import { employeesAPI } from '@/lib/api/employeesAPI';
-import { projectsAPI } from '@/lib/api/projectsAPI';
-import { departmentApi } from '@/lib/api/departments';
-import ResourceAllocationForm from '@/components/resources/ResourceAllocationForm';
-import CapacityPlanningView from '@/components/resources/CapacityPlanningView';
+import { getAllProjects } from '@/lib/api/projectsAPI';
+import { resourceApi } from '@/lib/api/resources';
 import EnhancedSkillMatrix from '@/components/resources/EnhancedSkillMatrix';
 import ResourceAllocationCalendar from '@/components/resources/ResourceAllocationCalendar';
-import AllocationFilters from '@/components/resources/AllocationFilters';
-import AllocationSummaryPanel from '@/components/resources/AllocationSummaryPanel';
-import ConflictDetection from '@/components/resources/ConflictDetection';
-import ResourceGanttChart from '@/components/resources/ResourceGanttChart';
-import InlineAllocationEditor from '@/components/resources/InlineAllocationEditor';
-import ExportAllocationData from '@/components/resources/ExportAllocationData';
-import ProjectSkillMatchView from '@/components/resources/ProjectSkillMatchView';
-import { Plus, AlertTriangle, Calendar, BarChart3, Users } from 'lucide-react';
+import CapacityPlanningView from '@/components/resources/CapacityPlanningView';
 import { toast } from '@/hooks/use-toast';
 
-export default function ResourceManagementPage() {
-  const [showForm, setShowForm] = useState(false);
-  const [allocations, setAllocations] = useState<any[]>([]);
-  const [capacityData, setCapacityData] = useState<any[]>([]);
-  const [skillMatrix, setSkillMatrix] = useState<{ matrix: any[]; allSkills: any[] }>({ matrix: [], allSkills: [] });
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
-  const [conflicts, setConflicts] = useState<any[]>([]);
-  const [ganttTasks, setGanttTasks] = useState<any[]>([]);
-  const [employeeSummary, setEmployeeSummary] = useState<any[]>([]);
-  const [editingAllocation, setEditingAllocation] = useState<any>(null);
-  const [activeFilters, setActiveFilters] = useState<any>({});
+interface ResourceStats {
+  totalEmployees: number;
+  availableEmployees: number;
+  assignedEmployees: number;
+  overallocatedEmployees: number;
+  activeProjects: number;
+  avgUtilization: number;
+  skillGaps: number;
+  upcomingDeadlines: number;
+}
+
+interface SkillMatrix {
+  employee: {
+    _id: string;
+    name: string;
+    position: string;
+    department: string;
+  };
+  skills: Array<{
+    skill: string;
+    level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert' | null;
+    lastUpdated: string;
+  }>;
+}
+
+export default function ResourceDashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [selectedProject, setSelectedProject] = useState<string>('');
-  const [projectMatches, setProjectMatches] = useState<any[]>([]);
-  const [loadingMatches, setLoadingMatches] = useState(false);
+  const [stats, setStats] = useState<ResourceStats>({
+    totalEmployees: 0,
+    availableEmployees: 0,
+    assignedEmployees: 0,
+    overallocatedEmployees: 0,
+    activeProjects: 0,
+    avgUtilization: 0,
+    skillGaps: 0,
+    upcomingDeadlines: 0
+  });
+  const [skillMatrix, setSkillMatrix] = useState<SkillMatrix[]>([]);
+  const [allSkills, setAllSkills] = useState<string[]>([]);
+  const [recentAllocations, setRecentAllocations] = useState<any[]>([]);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState<any[]>([]);
 
   useEffect(() => {
-    loadData();
-    loadEmployeesAndProjects();
-    loadDepartments();
+    fetchDashboardData();
   }, []);
 
-  useEffect(() => {
-    if (allocations.length > 0) {
-      detectConflicts();
-      generateEmployeeSummary();
-      generateGanttData();
-    }
-  }, [allocations]);
-
-  const loadData = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [allocRes, capacityRes, skillRes] = await Promise.all([
-        resourceApi.getResourceAllocations(activeFilters),
-        resourceApi.getCapacityPlanning({ 
-          startDate: new Date().toISOString(), 
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() 
-        }),
-        resourceApi.getSkillMatrix()
+      
+      // Fetch employees and projects
+      const [employeesData, projectsData] = await Promise.all([
+        employeesAPI.getAll(),
+        getAllProjects()
       ]);
-      setAllocations(allocRes?.data || []);
-      setCapacityData(capacityRes?.data || []);
-      setSkillMatrix(skillRes?.data || { matrix: [], allSkills: [] });
+
+      const employees = Array.isArray(employeesData) ? employeesData : employeesData?.data || [];
+      const projects = projectsData || [];
+
+      // Calculate basic stats
+      const activeProjects = projects.filter(p => p.status === 'active');
+      const totalEmployees = employees.length;
+      
+      // Calculate real stats from actual data
+      setStats({
+        totalEmployees,
+        availableEmployees: employees.filter(emp => emp.status === 'active').length,
+        assignedEmployees: 0, // Will be calculated from actual allocations
+        overallocatedEmployees: 0, // Will be calculated from actual allocations
+        activeProjects: activeProjects.length,
+        avgUtilization: 0, // Will be calculated from actual data
+        skillGaps: 0, // Will be calculated from skill analysis
+        upcomingDeadlines: 0 // Will be calculated from project deadlines
+      });
+
+      // Try to fetch skill matrix
+      try {
+        const skillResponse = await resourceApi.getSkillMatrix();
+        if (skillResponse?.data) {
+          setSkillMatrix(skillResponse.data.matrix || []);
+          setAllSkills(skillResponse.data.allSkills || []);
+        }
+      } catch (error) {
+        console.log('Skill matrix API not available');
+        setSkillMatrix([]);
+        setAllSkills([]);
+      }
+
+      // Try to fetch actual allocations
+      try {
+        const allocationsResponse = await resourceApi.getResourceAllocations();
+        setRecentAllocations(allocationsResponse.data || []);
+      } catch (error) {
+        console.log('Resource allocations API not available');
+        setRecentAllocations([]);
+      }
+
+      // Calculate upcoming deadlines from projects
+      const now = new Date();
+      const upcomingProjectDeadlines = projects
+        .filter(project => {
+          if (!project.endDate) return false;
+          const endDate = new Date(project.endDate);
+          const daysUntilDeadline = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          return daysUntilDeadline > 0 && daysUntilDeadline <= 30; // Next 30 days
+        })
+        .map(project => {
+          const endDate = new Date(project.endDate);
+          const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          return {
+            id: project._id,
+            projectId: project._id,
+            project: project.name,
+            deadline: project.endDate,
+            daysLeft,
+            priority: daysLeft <= 7 ? 'high' : daysLeft <= 14 ? 'medium' : 'low'
+          };
+        })
+        .sort((a, b) => a.daysLeft - b.daysLeft)
+        .slice(0, 5); // Show top 5
+      
+      setUpcomingDeadlines(upcomingProjectDeadlines);
+
     } catch (error) {
-      console.error('Failed to load resource data:', error);
-      toast({ title: 'Error', description: 'Failed to load resource data', variant: 'destructive' });
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load resource dashboard data",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const loadEmployeesAndProjects = async () => {
-    try {
-      const [empRes, projRes] = await Promise.all([
-        employeesAPI.getAll({ status: 'active' }),
-        projectsAPI.getAll({ status: 'active' })
-      ]);
-      setEmployees(Array.isArray(empRes?.data) ? empRes.data : Array.isArray(empRes) ? empRes : []);
-      setProjects(Array.isArray(projRes?.data) ? projRes.data : Array.isArray(projRes) ? projRes : []);
-    } catch (error) {
-      console.error('Failed to load employees and projects:', error);
-      setEmployees([]);
-      setProjects([]);
-    }
-  };
-
-  const loadProjectMatches = async (projectId: string) => {
-    if (!projectId) {
-      setProjectMatches([]);
-      return;
-    }
-    
-    try {
-      setLoadingMatches(true);
-      const response = await resourceApi.getProjectSkillMatch(projectId);
-      setProjectMatches(response?.data || []);
-    } catch (error) {
-      console.error('Failed to load project matches:', error);
-      setProjectMatches([]);
-      toast({ title: 'Error', description: 'Failed to load project skill matches', variant: 'destructive' });
-    } finally {
-      setLoadingMatches(false);
-    }
-  };
-
-  const loadDepartments = async () => {
-    try {
-      const deptRes = await departmentApi.getAll();
-      setDepartments(Array.isArray(deptRes?.data) ? deptRes.data : []);
-    } catch (error) {
-      console.error('Failed to load departments:', error);
-      setDepartments([]);
-    }
-  };
-
-  const detectConflicts = async () => {
-    try {
-      const conflictPromises = employees.map(emp => 
-        resourceApi.detectResourceConflicts({
-          employeeId: emp._id,
-          startDate: new Date().toISOString(),
-          endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
-        })
-      );
-      const conflictResults = await Promise.all(conflictPromises);
-      const detectedConflicts = conflictResults
-        .map((result, index) => ({ ...result.data, employee: employees[index] }))
-        .filter(conflict => conflict.hasConflict);
-      setConflicts(detectedConflicts);
-    } catch (error) {
-      console.error('Failed to detect conflicts:', error);
-    }
-  };
-
-  const generateEmployeeSummary = () => {
-    const summary = employees.map(emp => {
-      const empAllocations = allocations.filter(alloc => alloc.employee._id === emp._id);
-      const totalHours = 40; // Standard work week
-      const bookedHours = empAllocations.reduce((sum, alloc) => sum + alloc.allocatedHours, 0);
-      const utilizationPercentage = Math.round((bookedHours / totalHours) * 100);
-      
-      let status = 'available';
-      if (utilizationPercentage > 100) status = 'over';
-      else if (utilizationPercentage >= 80) status = 'full';
-      else if (utilizationPercentage > 0) status = 'partial';
-
-      return {
-        _id: emp._id,
-        name: `${emp.firstName} ${emp.lastName}`,
-        position: emp.position,
-        department: emp.department?.name,
-        totalHours,
-        bookedHours,
-        freeHours: Math.max(0, totalHours - bookedHours),
-        utilizationPercentage,
-        allocations: empAllocations.map(alloc => ({
-          project: alloc.project.name,
-          hours: alloc.allocatedHours,
-          role: alloc.role
-        })),
-        conflicts: conflicts.filter(c => c.employee._id === emp._id).length,
-        status
-      };
-    });
-    setEmployeeSummary(summary);
-  };
-
-  const generateGanttData = () => {
-    const tasks = projects.map(project => {
-      const projectAllocations = allocations.filter(alloc => alloc.project._id === project._id);
-      return {
-        _id: project._id,
-        name: project.name,
-        startDate: project.startDate || new Date().toISOString(),
-        endDate: project.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        progress: project.progress || 0,
-        resources: projectAllocations.map(alloc => ({
-          employee: alloc.employee,
-          allocatedHours: alloc.allocatedHours,
-          role: alloc.role
-        })),
-        dependencies: [],
-        status: project.status || 'in_progress',
-        project: { _id: project._id, name: project.name, color: project.color }
-      };
-    });
-    setGanttTasks(tasks);
-  };
-
-  const handleAllocate = async (data: any) => {
-    try {
-      await resourceApi.allocateResource(data);
-      setShowForm(false);
-      loadData();
-      toast({ title: 'Success', description: 'Resource allocated successfully' });
-    } catch (error) {
-      console.error('Failed to allocate resource:', error);
-      toast({ title: 'Error', description: 'Failed to allocate resource', variant: 'destructive' });
-    }
-  };
-
-  const handleDragDrop = async (allocation: any, newDate: Date, newEmployeeId: string) => {
-    try {
-      await resourceApi.updateResourceAllocation(allocation._id, {
-        employee: newEmployeeId as any,
-        startDate: newDate.toISOString()
-      });
-      loadData();
-      toast({ title: 'Success', description: 'Allocation updated successfully' });
-    } catch (error) {
-      console.error('Failed to update allocation:', error);
-      toast({ title: 'Error', description: 'Failed to update allocation', variant: 'destructive' });
-    }
-  };
-
-  const handleEditAllocation = (allocation: any) => {
-    setEditingAllocation(allocation);
-  };
-
-  const handleSaveAllocation = async (updatedAllocation: any) => {
-    try {
-      await resourceApi.updateResourceAllocation(updatedAllocation._id, updatedAllocation);
-      setEditingAllocation(null);
-      loadData();
-      toast({ title: 'Success', description: 'Allocation updated successfully' });
-    } catch (error) {
-      console.error('Failed to update allocation:', error);
-      toast({ title: 'Error', description: 'Failed to update allocation', variant: 'destructive' });
-    }
-  };
-
-  const handleResolveConflict = async (conflictId: string, resolution: string) => {
-    // Implementation for conflict resolution
-    toast({ title: 'Info', description: `Conflict resolution: ${resolution}` });
-  };
-
-  const handleExport = async (options: any) => {
-    try {
-      // Implementation for export functionality
-      toast({ title: 'Success', description: `Data exported as ${options.format.toUpperCase()}` });
-    } catch (error) {
-      console.error('Export failed:', error);
-      toast({ title: 'Error', description: 'Export failed', variant: 'destructive' });
-    }
-  };
-
-  const filterOptions = {
-    projects,
-    employees,
-    departments,
-    roles: [...new Set(allocations.map(a => a.role))]
-  };
-
-  const conflictCount = conflicts.reduce((sum, c) => sum + c.totalConflicts, 0);
-  const overAllocatedCount = employeeSummary.filter(emp => emp.status === 'over').length;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Loading resource dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Resource Management</h1>
-          <div className="flex items-center gap-4 mt-2">
-            {conflictCount > 0 && (
-              <Badge variant="destructive" className="flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                {conflictCount} Conflicts
-              </Badge>
-            )}
-            {overAllocatedCount > 0 && (
-              <Badge variant="outline" className="text-orange-600">
-                {overAllocatedCount} Over-allocated
-              </Badge>
-            )}
-          </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Resource Management Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Comprehensive view of team resources, skills, and capacity planning
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <ExportAllocationData
-            onExport={handleExport}
-            departments={departments}
-            projects={projects}
-            employees={employees}
-          />
-          <Button onClick={() => setShowForm(!showForm)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Allocate Resource
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => router.push('/dashboard/resources/resource-allocation')}>
+            <Calendar className="w-4 h-4 mr-2" />
+            Allocation Calendar
+          </Button>
+          <Button onClick={() => fetchDashboardData()}>
+            <Activity className="w-4 h-4 mr-2" />
+            Refresh Data
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
-      <AllocationFilters
-        filters={filterOptions}
-        onFilterChange={(filters) => {
-          setActiveFilters(filters);
-          loadData();
-        }}
-        activeFilters={activeFilters}
-      />
-
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>New Resource Allocation</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResourceAllocationForm
-              employees={employees}
-              projects={projects}
-              onSubmit={handleAllocate}
-              onCancel={() => setShowForm(false)}
-            />
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Resources</p>
+                <p className="text-2xl font-bold">{stats.totalEmployees}</p>
+                <p className="text-xs text-muted-foreground">Active employees</p>
+              </div>
+              <Users className="h-8 w-8 text-blue-600" />
+            </div>
           </CardContent>
         </Card>
-      )}
 
-      {editingAllocation && (
-        <InlineAllocationEditor
-          allocation={editingAllocation}
-          employees={employees}
-          projects={projects}
-          onSave={handleSaveAllocation}
-          onCancel={() => setEditingAllocation(null)}
-          onDelete={async () => {
-            try {
-              await resourceApi.deleteResourceAllocation(editingAllocation._id);
-              setEditingAllocation(null);
-              loadData();
-              toast({ title: 'Success', description: 'Allocation deleted successfully' });
-            } catch (error) {
-              toast({ title: 'Error', description: 'Failed to delete allocation', variant: 'destructive' });
-            }
-          }}
-        />
-      )}
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Available</p>
+                <p className="text-2xl font-bold text-green-600">{stats.availableEmployees}</p>
+                <p className="text-xs text-muted-foreground">Ready for assignment</p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Conflicts Alert */}
-      {conflicts.length > 0 && (
-        <ConflictDetection
-          conflicts={conflicts}
-          onResolveConflict={handleResolveConflict}
-          onViewDetails={(employeeId) => {
-            // Navigate to employee details
-          }}
-        />
-      )}
+        <Card className="border-l-4 border-l-orange-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Utilization</p>
+                <p className="text-2xl font-bold text-orange-600">{stats.avgUtilization}%</p>
+                <p className="text-xs text-muted-foreground">Average capacity</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
 
-      <Tabs defaultValue="capacity" className="space-y-6">
+        <Card className="border-l-4 border-l-red-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Skill Gaps</p>
+                <p className="text-2xl font-bold text-red-600">{stats.skillGaps}</p>
+                <p className="text-xs text-muted-foreground">Need attention</p>
+              </div>
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" 
+              onClick={() => router.push('/dashboard/resources/resource-allocation')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-lg">Resource Allocation</h3>
+                <p className="text-sm text-muted-foreground">View and manage employee assignments</p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" 
+              onClick={() => router.push('/dashboard/employees')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-lg">Skill Matrix</h3>
+                <p className="text-sm text-muted-foreground">Manage team skills and competencies</p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" 
+              onClick={() => router.push('/dashboard/projects')}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-lg">Capacity Planning</h3>
+                <p className="text-sm text-muted-foreground">Plan future resource needs</p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="capacity" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Capacity
-          </TabsTrigger>
-          <TabsTrigger value="skills" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Skill Matrix
-          </TabsTrigger>
-          <TabsTrigger value="match" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Project Match
-          </TabsTrigger>
-          <TabsTrigger value="allocation" className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            Allocation
-          </TabsTrigger>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="skills">Skill Matrix</TabsTrigger>
+          <TabsTrigger value="allocation">Allocation</TabsTrigger>
+          <TabsTrigger value="capacity">Capacity</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="capacity">
-          <div className="space-y-6">
-            <CapacityPlanningView data={capacityData} />
-            <AllocationSummaryPanel
-              employees={employeeSummary}
-              onEmployeeClick={(employeeId) => {
-                // Navigate to employee details
-              }}
-              onReassign={(employeeId) => {
-                // Open reassignment dialog
-              }}
-            />
-          </div>
+        <TabsContent value="overview" className="space-y-6">
+          {/* Recent Allocations */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserCheck className="w-5 h-5" />
+                Recent Allocations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentAllocations.length > 0 ? (
+                <div className="space-y-3">
+                  {recentAllocations.slice(0, 5).map((allocation) => (
+                    <div key={allocation._id || allocation.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <Users className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p 
+                            className="font-medium cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => router.push(`/dashboard/employees/${allocation.employee?._id || allocation.employeeId}`)}
+                          >
+                            {allocation.employee?.firstName ? `${allocation.employee.firstName} ${allocation.employee.lastName}` : allocation.employee}
+                          </p>
+                          <p 
+                            className="text-sm text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => router.push(`/dashboard/projects/${allocation.project?._id || allocation.projectId}`)}
+                          >
+                            {allocation.project?.name || allocation.project}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={(allocation.utilizationRate || allocation.allocation || 0) > 80 ? "destructive" : "secondary"}>
+                          {allocation.utilizationRate || allocation.allocation || 0}%
+                        </Badge>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {allocation.startDate ? new Date(allocation.startDate).toLocaleDateString() : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <UserCheck className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">No recent allocations found</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Upcoming Deadlines */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Upcoming Deadlines
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {upcomingDeadlines.length > 0 ? (
+                <div className="space-y-3">
+                  {upcomingDeadlines.map((deadline) => (
+                    <div key={deadline.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                          <Briefcase className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <p 
+                            className="font-medium cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => router.push(`/dashboard/projects/${deadline.projectId}`)}
+                          >
+                            {deadline.project}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Due: {new Date(deadline.deadline).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={deadline.priority === 'high' ? "destructive" : deadline.priority === 'medium' ? "default" : "secondary"}>
+                          {deadline.daysLeft} days
+                        </Badge>
+                        <p className="text-xs text-muted-foreground mt-1 capitalize">{deadline.priority} priority</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">No upcoming deadlines in the next 30 days</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="skills">
-          <EnhancedSkillMatrix matrix={skillMatrix.matrix} allSkills={skillMatrix.allSkills} />
-        </TabsContent>
-
-        <TabsContent value="match">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Skill Matching</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <label className="text-sm font-medium">Select Project:</label>
-                    <Select 
-                      value={selectedProject} 
-                      onValueChange={(value) => {
-                        setSelectedProject(value);
-                        if (value) {
-                          setLoadingMatches(true);
-                          loadProjectMatches(value);
-                        } else {
-                          setProjectMatches([]);
-                        }
-                      }}
-                      disabled={projects.length === 0}
-                    >
-                      <SelectTrigger className="min-w-[200px]">
-                        <SelectValue placeholder={projects.length === 0 ? "No projects available" : "Choose a project..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projects.map((project) => (
-                          <SelectItem key={project._id} value={project._id}>
-                            {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {loadingMatches && (
-                    <div className="text-center py-4">
-                      <div className="text-sm text-muted-foreground">Loading project matches...</div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-            {selectedProject && projectMatches.length > 0 && (
-              <ProjectSkillMatchView matches={projectMatches} />
-            )}
-            {selectedProject && !loadingMatches && projectMatches.length === 0 && (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center py-8 text-muted-foreground">
-                    No skill matching data available for this project. The project may not have required skills defined.
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {!selectedProject && (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center py-8 text-muted-foreground">
-                    Select a project above to analyze skill matching for team members.
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          <Suspense fallback={<div className="h-96 flex items-center justify-center">Loading skill matrix...</div>}>
+            <EnhancedSkillMatrix matrix={skillMatrix} allSkills={allSkills} />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="allocation">
-          <div className="space-y-6">
-            <Tabs defaultValue="calendar" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="calendar">Calendar View</TabsTrigger>
-                <TabsTrigger value="gantt">Gantt Chart</TabsTrigger>
-                <TabsTrigger value="list">List View</TabsTrigger>
-              </TabsList>
+          <Suspense fallback={<div className="h-96 flex items-center justify-center">Loading allocation view...</div>}>
+            <ResourceAllocationCalendar />
+          </Suspense>
+        </TabsContent>
 
-              <TabsContent value="calendar">
-                <ResourceAllocationCalendar
-                  allocations={allocations}
-                  onDragDrop={handleDragDrop}
-                  onEditAllocation={handleEditAllocation}
-                />
-              </TabsContent>
-
-              <TabsContent value="gantt">
-                <ResourceGanttChart
-                  tasks={ganttTasks}
-                  onTaskClick={(taskId) => {
-                    // Navigate to task details
-                  }}
-                  onResourceClick={(employeeId) => {
-                    // Navigate to employee details
-                  }}
-                  onExport={() => handleExport({ format: 'pdf' })}
-                />
-              </TabsContent>
-
-              <TabsContent value="list">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Resource Allocations</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {allocations.map((alloc: any) => (
-                        <div 
-                          key={alloc._id} 
-                          className="p-4 border rounded hover:bg-muted/50 cursor-pointer transition-colors"
-                          onClick={() => handleEditAllocation(alloc)}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="font-medium">{alloc.employee?.firstName} {alloc.employee?.lastName}</div>
-                              <div className="text-sm text-muted-foreground">{alloc.project?.name}</div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {new Date(alloc.startDate).toLocaleDateString()} - {new Date(alloc.endDate).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-medium">{alloc.allocatedHours}h/week</div>
-                              <div className="text-sm text-muted-foreground">{alloc.role}</div>
-                              <Badge variant={alloc.allocatedHours > 40 ? 'destructive' : 'secondary'} className="mt-1">
-                                {Math.round((alloc.allocatedHours / 40) * 100)}%
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      {allocations.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                          No allocations found. Create your first allocation above.
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
+        <TabsContent value="capacity">
+          <Suspense fallback={<div className="h-96 flex items-center justify-center">Loading capacity planning...</div>}>
+            <CapacityPlanningView />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>

@@ -13,18 +13,18 @@ export const register = async (req: Request, res: Response) => {
 
     // Check if all fields are provided
     if (!name || !email || !password) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields' 
+        message: 'Please provide all required fields'
       });
     }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'User already exists with this email' 
+        message: 'User already exists with this email'
       });
     }
 
@@ -32,7 +32,7 @@ export const register = async (req: Request, res: Response) => {
 
     let assignedRoleId = roleId;
     const usersCount = await User.countDocuments();
-    
+
     if (usersCount === 0) {
       // First user is Root
       const rootRole = await ensureRootRole();
@@ -55,7 +55,7 @@ export const register = async (req: Request, res: Response) => {
           });
         }
       }
-      
+
       if (!assignedRoleId) {
         const defaultRole = await Role.findOne({ isDefault: true }).sort({ level: 1 });
         assignedRoleId = defaultRole?._id;
@@ -73,14 +73,14 @@ export const register = async (req: Request, res: Response) => {
 
     if (req.user) {
       const currentUserRole = await Role.findById((req.user as any).role);
-      
+
       if (role.name?.toLowerCase() === 'root') {
         return res.status(403).json({
           success: false,
           message: 'Cannot assign Root role. Only one Root user is allowed.'
         });
       }
-      
+
       if (currentUserRole && role.level >= currentUserRole.level) {
         return res.status(403).json({
           success: false,
@@ -109,16 +109,16 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error(`Registration error: ${error.message}`);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'An error occurred during registration',
-      });
-    }
-  };
-  
-  /**
- * Check if system requires initial setup (no users exist)
- */
+    res.status(500).json({
+      success: false,
+      message: error.message || 'An error occurred during registration',
+    });
+  }
+};
+
+/**
+* Check if system requires initial setup (no users exist)
+*/
 export const checkInitialSetup = async (req: Request, res: Response) => {
   try {
     // Check if any users exist in the system
@@ -148,9 +148,9 @@ export const login = async (req: Request, res: Response) => {
     // Check if email and password are provided
     if (!email || !password) {
       logger.warn('Login attempt without email or password');
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Please provide email and password' 
+        message: 'Please provide email and password'
       });
     }
 
@@ -160,9 +160,9 @@ export const login = async (req: Request, res: Response) => {
     // Check if user exists
     if (!user) {
       logger.warn(`Login attempt for non-existent user: ${email}`);
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'Invalid credentials' 
+        message: 'Invalid credentials'
       });
     }
 
@@ -170,9 +170,9 @@ export const login = async (req: Request, res: Response) => {
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) {
       logger.warn(`Invalid password for user: ${email}`);
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: 'Invalid credentials' 
+        message: 'Invalid credentials'
       });
     }
 
@@ -209,6 +209,51 @@ export const login = async (req: Request, res: Response) => {
 
     // Generate JWT token
     const token = user.generateAuthToken();
+
+    // Create session with 2-session limit
+    const UserSession = (await import('../models/UserSession')).default;
+    const tokenHash = UserSession.hashToken(token);
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    const deviceInfo = UserSession.parseUserAgent(userAgent);
+    const ipAddress = req.ip || req.socket.remoteAddress || 'Unknown';
+
+    // Get JWT expiration
+    const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '30d';
+    const expiresAt = new Date();
+    if (jwtExpiresIn.endsWith('d')) {
+      expiresAt.setDate(expiresAt.getDate() + parseInt(jwtExpiresIn));
+    } else if (jwtExpiresIn.endsWith('h')) {
+      expiresAt.setHours(expiresAt.getHours() + parseInt(jwtExpiresIn));
+    }
+
+    // Create new session
+    await UserSession.create({
+      user: user._id,
+      tokenHash,
+      deviceInfo: {
+        userAgent,
+        deviceType: deviceInfo.deviceType,
+        browser: deviceInfo.browser,
+        os: deviceInfo.os
+      },
+      ipAddress,
+      expiresAt
+    });
+
+    // Enforce 2-session limit: delete oldest sessions if more than 2
+    const userSessions = await UserSession.find({
+      user: user._id,
+      isActive: true,
+      expiresAt: { $gt: new Date() }
+    }).sort({ createdAt: 1 }); // Sort by oldest first
+
+    if (userSessions.length > 2) {
+      const sessionsToDelete = userSessions.slice(0, userSessions.length - 2);
+      await UserSession.deleteMany({
+        _id: { $in: sessionsToDelete.map(s => s._id) }
+      });
+      logger.info(`Revoked ${sessionsToDelete.length} old session(s) for user ${user.email}`);
+    }
 
     const nodeEnv = process.env.NODE_ENV;
     if (!nodeEnv) {
@@ -249,8 +294,8 @@ export const login = async (req: Request, res: Response) => {
       resource: 'User Session',
       resourceType: 'auth',
       details: `User ${user.name} logged in successfully`,
-      metadata: { 
-        email: user.email, 
+      metadata: {
+        email: user.email,
         role: (user.role as any)?.name,
         loginTime: new Date().toISOString()
       },
@@ -327,6 +372,15 @@ export const checkAuth = async (req: Request, res: Response) => {
 // Logout user
 export const logout = async (req: Request, res: Response) => {
   try {
+    // Delete the session from database
+    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
+    if (token) {
+      const UserSession = (await import('../models/UserSession')).default;
+      const tokenHash = UserSession.hashToken(token);
+      await UserSession.deleteOne({ tokenHash });
+      logger.info('Session deleted from database');
+    }
+
     res.cookie('token', 'none', {
       expires: new Date(Date.now() + 10 * 1000), // Expires in 10 seconds
       httpOnly: true,
@@ -344,7 +398,7 @@ export const logout = async (req: Request, res: Response) => {
         resource: 'User Session',
         resourceType: 'auth',
         details: `User ${req.user.name} logged out`,
-        metadata: { 
+        metadata: {
           email: req.user.email,
           logoutTime: new Date().toISOString()
         },

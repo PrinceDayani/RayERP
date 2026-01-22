@@ -17,12 +17,17 @@ export interface TrendsResponse {
 }
 
 const trendsAPI = {
-  getTrends: async (): Promise<TrendsResponse> => {
-    const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
-    const response = await axios.get(`${API_URL}/api/dashboard/trends`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    return response.data.data;
+  getTrends: async (): Promise<TrendsResponse | null> => {
+    try {
+      const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/dashboard/trends`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching trends:', error);
+      return null;
+    }
   }
 };
 

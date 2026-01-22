@@ -1,64 +1,22 @@
 import ApprovalRequest from '../models/ApprovalRequest';
+import ApprovalConfig from '../models/ApprovalConfig';
 import mongoose from 'mongoose';
 
 /**
  * Helper function to determine approval levels based on amount
  */
-export const determineApprovalLevels = (amount: number) => {
-  const levels = [];
-  
-  if (amount < 50000) {
-    levels.push({
-      level: 1,
-      approverRole: 'Manager',
+export const determineApprovalLevels = async (amount: number, entityType: string) => {
+  const config = await ApprovalConfig.findOne({ entityType, isActive: true });
+  if (!config) throw new Error('Approval configuration not found');
+  return config.levels
+    .filter(level => amount >= level.amountThreshold || level.level === 1)
+    .map(level => ({
+      level: level.level,
+      approverRole: level.approverRole,
       approverIds: [],
-      amountThreshold: 50000,
+      amountThreshold: level.amountThreshold,
       status: 'PENDING'
-    });
-  } else if (amount < 200000) {
-    levels.push(
-      {
-        level: 1,
-        approverRole: 'Manager',
-        approverIds: [],
-        amountThreshold: 50000,
-        status: 'PENDING'
-      },
-      {
-        level: 2,
-        approverRole: 'Finance Manager',
-        approverIds: [],
-        amountThreshold: 200000,
-        status: 'PENDING'
-      }
-    );
-  } else {
-    levels.push(
-      {
-        level: 1,
-        approverRole: 'Manager',
-        approverIds: [],
-        amountThreshold: 50000,
-        status: 'PENDING'
-      },
-      {
-        level: 2,
-        approverRole: 'Finance Manager',
-        approverIds: [],
-        amountThreshold: 200000,
-        status: 'PENDING'
-      },
-      {
-        level: 3,
-        approverRole: 'CFO',
-        approverIds: [],
-        amountThreshold: 1000000,
-        status: 'PENDING'
-      }
-    );
-  }
-  
-  return levels;
+    }));
 };
 
 /**
@@ -82,7 +40,7 @@ export const createApprovalRequest = async (
   description?: string,
   metadata?: any
 ) => {
-  const levels = determineApprovalLevels(amount);
+  const levels = await determineApprovalLevels(amount, entityType);
   const priority = determinePriority(amount);
 
   const approval = new ApprovalRequest({

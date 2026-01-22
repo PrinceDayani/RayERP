@@ -339,8 +339,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasPermission = (permission: string): boolean => {
     if (!user || !user.role) return false;
     
-    // Root and Super Admin have all permissions
+    // Root bypasses all permission checks (matches backend logic)
+    if (user.role.name === 'Root') return true;
+    
+    // Super Admin and high-level roles have all permissions
     if (user.role.level >= 80) return true;
+    
+    // Check for wildcard permission
+    if (user.role.permissions?.includes('*')) return true;
     
     // Check if user has the specific permission
     return user.role.permissions?.includes(permission) || false;

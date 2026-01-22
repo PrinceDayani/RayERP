@@ -55,9 +55,19 @@ export const employeesAPI = {
     const response = await api.delete(`/employees/${id}`);
     return response.data;
   },
-  
+
   getSalesReps: async () => {
     const response = await api.get('/employees/sales-reps');
+    return response.data;
+  },
+
+  getTasks: async (id: string, params = {}) => {
+    const response = await api.get(`/employees/${id}/tasks`, { params });
+    return response.data;
+  },
+
+  getTaskStats: async (id: string) => {
+    const response = await api.get(`/employees/${id}/tasks/stats`);
     return response.data;
   }
 };
@@ -70,5 +80,7 @@ export const editEmployee = employeesAPI.edit;
 export const updateEmployee = employeesAPI.update;
 export const deleteEmployee = employeesAPI.delete;
 export const getSalesReps = employeesAPI.getSalesReps;
+export const getTasks = employeesAPI.getTasks;
+export const getTaskStats = employeesAPI.getTaskStats;
 
 export default employeesAPI;

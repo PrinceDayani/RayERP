@@ -49,10 +49,18 @@ const ProtectedRoute = ({
 
         // Check permission-based access
         if (isAuthenticated && user && requiredPermissions.length > 0) {
-          const userPermissions = user.permissions || [];
-          const hasPermission = requiredPermissions.some(permission => 
-            userPermissions.includes(permission)
-          );
+          const hasPermission = requiredPermissions.some(permission => {
+            // Root bypasses all permission checks
+            if (user.role?.name === 'Root') return true;
+            
+            // Check for wildcard permission
+            if (user.role?.permissions?.includes('*')) return true;
+            
+            // Check user permissions
+            const userPermissions = user.permissions || user.role?.permissions || [];
+            return userPermissions.includes(permission);
+          });
+          
           if (!hasPermission) {
             setAuthError('Required permissions not found');
             return;

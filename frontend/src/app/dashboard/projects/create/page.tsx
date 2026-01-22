@@ -17,9 +17,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { CalendarIcon, ArrowLeft, Save, X, Users, Building2 } from "lucide-react";
-import { createProject, type Project } from "@/lib/api/projectsAPI";
+import { createProject, projectsAPI, type Project } from "@/lib/api/projectsAPI";
 import { getAllEmployees } from "@/lib/api/index";
 import { toast } from "@/components/ui/use-toast";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { CurrencySelector } from "@/components/ui/currency-selector";
 
 interface Employee {
   _id: string;
@@ -35,6 +37,7 @@ interface Department {
 
 const CreateProjectPage = () => {
   const { isAuthenticated } = useAuth();
+  const { currencies, baseCurrency, formatCurrency, getCurrencySymbol } = useCurrency();
   const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -48,6 +51,7 @@ const CreateProjectPage = () => {
     startDate: undefined as Date | undefined,
     endDate: undefined as Date | undefined,
     budget: 0,
+    currency: baseCurrency?.code || 'USD',
     manager: "",
     managers: [] as string[],
     team: [] as string[],
@@ -72,9 +76,15 @@ const CreateProjectPage = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await getAllEmployees();
-      const data = response?.data || response;
-      setEmployees(Array.isArray(data) ? data : []);
+      // Use optimized endpoint first, fallback to regular if needed
+      try {
+        const data = await projectsAPI.getEmployeesMinimal();
+        setEmployees(Array.isArray(data) ? data : []);
+      } catch {
+        const response = await getAllEmployees();
+        const data = response?.data || response;
+        setEmployees(Array.isArray(data) ? data : []);
+      }
     } catch (error) {
       console.error("Error fetching employees:", error);
       setEmployees([]);
@@ -83,12 +93,18 @@ const CreateProjectPage = () => {
 
   const fetchDepartments = async () => {
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/departments`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      setDepartments(Array.isArray(data) ? data : []);
+      // Use optimized endpoint first, fallback to regular if needed
+      try {
+        const data = await projectsAPI.getDepartmentsMinimal();
+        setDepartments(Array.isArray(data) ? data : []);
+      } catch {
+        const token = localStorage.getItem('auth-token');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/departments`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        setDepartments(Array.isArray(data) ? data : []);
+      }
     } catch (error) {
       console.error("Error fetching departments:", error);
       setDepartments([]);
@@ -98,7 +114,7 @@ const CreateProjectPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!projectForm.name || !projectForm.description || projectForm.managers.length === 0) {
+    if (!projectForm.name || !projectForm.description) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -119,11 +135,22 @@ const CreateProjectPage = () => {
     try {
       setLoading(true);
       const projectData = {
-        ...projectForm,
+        name: projectForm.name,
+        description: projectForm.description,
+        status: projectForm.status,
+        priority: projectForm.priority,
         startDate: projectForm.startDate.toISOString(),
         endDate: projectForm.endDate.toISOString(),
+        budget: projectForm.budget,
+        currency: projectForm.currency,
+        client: projectForm.client,
+        manager: projectForm.managers[0] || undefined, // Use first manager
+        team: projectForm.team,
+        departments: projectForm.departments,
+        tags: projectForm.tags
       };
 
+      // Use regular project creation API
       const newProject = await createProject(projectData);
       toast({
         title: "Success",
@@ -298,8 +325,14 @@ const CreateProjectPage = () => {
                   </Popover>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="budget">Budget ($)</Label>
-                  <Input id="budget" type="number" value={projectForm.budget} onChange={(e) => setProjectForm({ ...projectForm, budget: parseInt(e.target.value) || 0 })} placeholder="0" min="0" />
+                  <Label htmlFor="budget">Budget ({getCurrencySymbol(projectForm.currency)})</Label>
+                  <div className="flex gap-2">
+                    <CurrencySelector 
+                      value={projectForm.currency} 
+                      onValueChange={(value) => setProjectForm({ ...projectForm, currency: value })} 
+                    />
+                    <Input id="budget" type="number" value={projectForm.budget} onChange={(e) => setProjectForm({ ...projectForm, budget: parseInt(e.target.value) || 0 })} placeholder="0" min="0" className="flex-1" />
+                  </div>
                 </div>
               </div>
             </CardContent>

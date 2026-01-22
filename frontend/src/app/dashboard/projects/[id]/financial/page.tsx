@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, TrendingDown, Coins, AlertTriangle, RefreshCw } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
+import ProjectCurrencySwitcher from '@/components/projects/ProjectCurrencySwitcher';
+import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export default function ProjectFinancialPage() {
   const params = useParams();
   const projectId = params.id;
+  const { formatAmount } = useGlobalCurrency();
   const [loading, setLoading] = useState(true);
   const [dashboard, setDashboard] = useState<any>(null);
   const [budgetActual, setBudgetActual] = useState<any>(null);
@@ -77,7 +80,8 @@ export default function ProjectFinancialPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Project Financial Dashboard</h1>
-        <div className="space-x-2">
+        <div className="flex items-center gap-3">
+          <ProjectCurrencySwitcher />
           <Button onClick={recalculateActuals} variant="outline">
             <RefreshCw className="w-4 h-4 mr-2" />
             Recalculate
@@ -136,7 +140,7 @@ export default function ProjectFinancialPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(Math.abs(dashboard?.summary?.variance || 0))}
+              {formatAmount(Math.abs(dashboard?.summary?.variance || 0))}
             </div>
             <div className={`flex items-center text-sm ${dashboard?.summary?.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {dashboard?.summary?.variance >= 0 ? <TrendingUp className="w-4 h-4 mr-1" /> : <TrendingDown className="w-4 h-4 mr-1" />}

@@ -311,6 +311,10 @@ const EmployeeManagementDashboard = () => {
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-sm text-green-700 dark:text-green-400 font-medium">Live Data</span>
             </div>
+            <Button onClick={() => router.push("/dashboard/resources")} variant="outline">
+              <Calendar className="h-4 w-4 mr-2" />
+              Resource Allocation
+            </Button>
             <Button onClick={() => router.push("/dashboard/employees/create")} className="btn-primary-gradient">
               <Plus className="h-4 w-4 mr-2" />
               Add Employee
@@ -383,12 +387,12 @@ const EmployeeManagementDashboard = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-muted/50 p-1 rounded-xl">
-            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
-            <TabsTrigger value="employees" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Employees</TabsTrigger>
-            <TabsTrigger value="attendance" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Attendance</TabsTrigger>
-            <TabsTrigger value="leaves" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Leaves</TabsTrigger>
-            <TabsTrigger value="reports" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Reports</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5 h-12 bg-muted/80 p-1 rounded-xl border border-border/50">
+            <TabsTrigger value="overview" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Overview</TabsTrigger>
+            <TabsTrigger value="employees" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Employees</TabsTrigger>
+            <TabsTrigger value="attendance" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Attendance</TabsTrigger>
+            <TabsTrigger value="leaves" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Leaves</TabsTrigger>
+            <TabsTrigger value="reports" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">

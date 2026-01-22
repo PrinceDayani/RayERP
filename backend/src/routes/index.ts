@@ -1,6 +1,6 @@
-//project\backend\src\routes\index.ts
 import authRoutes from "./auth.routes";
 import userRoutes from "./user.routes";
+import sessionRoutes from "./session.routes";
 import employeeRoutes from "./employee.routes";
 import projectRoutes from "./project.routes";
 import taskRoutes from "./task.routes";
@@ -28,6 +28,7 @@ import chatRoutes from './chat.routes';
 import broadcastRoutes from './broadcast.routes';
 // --- Merged Financial & Ledger Routes ---
 import budgetRoutes from './budgetRoutes';
+import budgetForecastRoutes from './budgetForecast.routes';
 import budgetTemplateRoutes from './budgetTemplateRoutes';
 import accountRoutes from './account.routes';
 import transactionRoutes from './transaction.routes';
@@ -64,6 +65,7 @@ import financialReportsEnhanced from './financialReportsEnhanced';
 import trendsRoutes from './trends';
 import analyticsDataRoutes from './analytics';
 import taxManagementRoutes from './taxManagement.routes';
+import currencyRoutes from './currency.routes';
 
 import backupRoutes from './backupRoutes';
 import notificationRoutes from './notification.routes';
@@ -75,12 +77,17 @@ import permissionManagementRoutes from './permissionManagement.routes';
 import salesReportRoutes from './salesReport.routes';
 import approvalRoutes from './approval.routes';
 import referencePaymentRoutes from './referencePayment.routes';
+import { invalidateCacheOnMutation } from '../middleware/cacheInvalidation.middleware';
 
 const router = express.Router();
+
+// Apply cache invalidation middleware to all routes
+router.use(invalidateCacheOnMutation);
 
 // --- Core Application Routes ---
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
+router.use("/sessions", sessionRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/projects", projectRoutes);
 router.use("/tasks", taskRoutes);
@@ -123,6 +130,7 @@ router.use('/reference-payments', referencePaymentRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);
+router.use('/budget-forecasts', budgetForecastRoutes);
 router.use('/budget-templates', budgetTemplateRoutes);
 router.use('/accounts', accountRoutes);
 router.use('/transactions', transactionRoutes);
@@ -156,6 +164,7 @@ router.use('/project-finance', projectFinanceEnhanced);
 router.use('/financial-reports', financialReportRoutes);
 router.use('/financial-reports-enhanced', financialReportsEnhanced);
 router.use('/tax-management', taxManagementRoutes);
+router.use('/currencies', currencyRoutes);
 // Indian accounts merged into general-ledger
 
 // --- Health Check Endpoints ---

@@ -15,7 +15,7 @@ export const requirePermission = (permission: string) => {
         return res.status(401).json({ message: 'Authentication required' });
       }
 
-      const userId = req.user.id;
+      const userId = req.user._id || req.user.id;
       const user = await User.findById(userId).populate('role');
       
       if (!user) {
@@ -79,7 +79,7 @@ export const requireAnyPermission = (permissions: string[]) => {
         return res.status(401).json({ message: 'Authentication required' });
       }
 
-      const userId = req.user.id;
+      const userId = req.user._id || req.user.id;
       const user = await User.findById(userId).populate('role');
       
       if (!user) {

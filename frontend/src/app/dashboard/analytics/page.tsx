@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { TrendingUp, TrendingDown, Users, CheckCircle, Calendar, Download, Award, Target, MessageSquare, FileText, Phone, Package, ShoppingCart, Clock, AlertTriangle, Star, Activity } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const COLORS = {
   primary: '#3b82f6',
@@ -25,112 +26,72 @@ const COLORS = {
 export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState('30d');
   const [department, setDepartment] = useState('all');
+  const [loading, setLoading] = useState(true);
   const [realTimeData, setRealTimeData] = useState({
-    activeUsers: 24,
-    onlineEmployees: 18,
-    activeChats: 7,
-    pendingTasks: 12
+    activeUsers: 0,
+    onlineEmployees: 0,
+    activeChats: 0,
+    pendingTasks: 0
   });
+  const [productivityData, setProductivityData] = useState<any[]>([]);
+  const [taskDistribution, setTaskDistribution] = useState<any[]>([]);
+  const [chatMetrics, setChatMetrics] = useState<any[]>([]);
+  const [fileShareData, setFileShareData] = useState<any[]>([]);
+  const [departmentPerformance, setDepartmentPerformance] = useState<any[]>([]);
+  const [projectProgress, setProjectProgress] = useState<any[]>([]);
+  const [topPerformers, setTopPerformers] = useState<any[]>([]);
+  const [attendanceData, setAttendanceData] = useState<any[]>([]);
+  const [projectData, setProjectData] = useState<any[]>([]);
+  const [orderAnalytics, setOrderAnalytics] = useState<any[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setRealTimeData(prev => ({
-        activeUsers: prev.activeUsers + Math.floor(Math.random() * 3) - 1,
-        onlineEmployees: prev.onlineEmployees + Math.floor(Math.random() * 3) - 1,
-        activeChats: prev.activeChats + Math.floor(Math.random() * 2) - 1,
-        pendingTasks: prev.pendingTasks + Math.floor(Math.random() * 2) - 1
-      }));
-    }, 5000);
+    fetchAnalytics();
+    const interval = setInterval(fetchAnalytics, 120000);
     return () => clearInterval(interval);
   }, []);
 
-  const productivityData = [
-    { week: 'W1', productivity: 85, tasks: 24, hours: 40, attendance: 92 },
-    { week: 'W2', productivity: 78, tasks: 28, hours: 42, attendance: 88 },
-    { week: 'W3', productivity: 92, tasks: 31, hours: 38, attendance: 95 },
-    { week: 'W4', productivity: 88, tasks: 26, hours: 41, attendance: 91 }
-  ];
+  const fetchAnalytics = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/comprehensive-analytics`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
-  const taskDistribution = [
-    { name: 'Completed', value: 145, color: COLORS.success },
-    { name: 'In Progress', value: 32, color: COLORS.primary },
-    { name: 'Pending', value: 18, color: COLORS.warning },
-    { name: 'Overdue', value: 8, color: COLORS.danger }
-  ];
+      if (!response.ok) throw new Error('Failed to fetch analytics');
 
-  const chatMetrics = [
-    { day: 'Mon', messages: 245, files: 12, activeUsers: 18 },
-    { day: 'Tue', messages: 189, files: 8, activeUsers: 22 },
-    { day: 'Wed', messages: 312, files: 15, activeUsers: 20 },
-    { day: 'Thu', messages: 278, files: 11, activeUsers: 24 },
-    { day: 'Fri', messages: 156, files: 6, activeUsers: 16 }
-  ];
+      const result = await response.json();
+      if (result.success && result.data) {
+        setRealTimeData(result.data.realTimeData || realTimeData);
+        setProductivityData(result.data.productivityData || []);
+        setTaskDistribution(result.data.taskDistribution || []);
+        setChatMetrics(result.data.chatMetrics || []);
+        setFileShareData(result.data.fileShareData || []);
+        setDepartmentPerformance(result.data.departmentPerformance || []);
+        setProjectProgress(result.data.projectProgress || []);
+        setTopPerformers(result.data.topPerformers || []);
+        setAttendanceData(result.data.attendanceData || []);
+        setProjectData(result.data.projectData || []);
+        setOrderAnalytics(result.data.orderAnalytics || []);
+      }
+    } catch (error: any) {
+      console.error('Analytics fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const fileShareData = [
-    { type: 'Documents', shared: 45, downloads: 128 },
-    { type: 'Images', shared: 32, downloads: 89 },
-    { type: 'PDFs', shared: 28, downloads: 76 },
-    { type: 'Spreadsheets', shared: 15, downloads: 42 }
-  ];
+  const projectDues = projectProgress;
 
-  const departmentPerformance = [
-    { name: 'Development', productivity: 92, tasks: 45, employees: 8, color: COLORS.primary },
-    { name: 'Design', productivity: 88, tasks: 32, employees: 5, color: COLORS.purple },
-    { name: 'Marketing', productivity: 85, tasks: 28, employees: 6, color: COLORS.orange },
-    { name: 'HR', productivity: 90, tasks: 22, employees: 4, color: COLORS.pink },
-    { name: 'Finance', productivity: 87, tasks: 18, employees: 3, color: COLORS.info }
-  ];
+  const getStatusColor = (status: string) => {
 
-  const projectProgress = [
-    { name: 'ERP Module Update', progress: 85, status: 'On Track', priority: 'High', dueDate: '2025-11-15' },
-    { name: 'Mobile App Development', progress: 45, status: 'At Risk', priority: 'Medium', dueDate: '2025-11-20' },
-    { name: 'Database Migration', progress: 30, status: 'Delayed', priority: 'Critical', dueDate: '2025-11-12' },
-    { name: 'UI/UX Redesign', progress: 72, status: 'On Track', priority: 'Medium', dueDate: '2025-11-25' }
-  ];
-
-  const inventoryData = [
-    { category: 'Office Supplies', inStock: 245, lowStock: 12, outOfStock: 3 },
-    { category: 'IT Equipment', inStock: 89, lowStock: 5, outOfStock: 1 },
-    { category: 'Furniture', inStock: 156, lowStock: 8, outOfStock: 2 }
-  ];
-
-  const orderAnalytics = [
-    { month: 'Jul', orders: 45, revenue: 12500, completed: 42 },
-    { month: 'Aug', orders: 52, revenue: 15200, completed: 48 },
-    { month: 'Sep', orders: 38, revenue: 11800, completed: 35 },
-    { month: 'Oct', orders: 61, revenue: 18900, completed: 58 },
-    { month: 'Nov', orders: 29, revenue: 8700, completed: 25 }
-  ];
-
-  const topPerformers = [
-    { name: 'Sarah Johnson', tasksCompleted: 28, efficiency: 94, department: 'Development', rating: 4.9 },
-    { name: 'Mike Chen', tasksCompleted: 25, efficiency: 91, department: 'Design', rating: 4.8 },
-    { name: 'Emily Davis', tasksCompleted: 23, efficiency: 89, department: 'Marketing', rating: 4.7 },
-    { name: 'John Smith', tasksCompleted: 21, efficiency: 87, department: 'Development', rating: 4.6 }
-  ];
-
-  const projectDues = [
-    { name: 'ERP Module Update', progress: 85, status: 'On Track', priority: 'High', dueDate: '2025-11-15', remainingDays: 5 },
-    { name: 'Mobile App Development', progress: 45, status: 'At Risk', priority: 'Medium', dueDate: '2025-11-20', remainingDays: 10 },
-    { name: 'Database Migration', progress: 30, status: 'Delayed', priority: 'Critical', dueDate: '2025-11-12', remainingDays: 2 },
-    { name: 'UI/UX Redesign', progress: 72, status: 'On Track', priority: 'Medium', dueDate: '2025-11-25', remainingDays: 15 }
-  ];
-
-  const projectData = [
-    { month: 'Jul', rate: 78 },
-    { month: 'Aug', rate: 82 },
-    { month: 'Sep', rate: 85 },
-    { month: 'Oct', rate: 88 },
-    { month: 'Nov', rate: 84 }
-  ];
-
-  const attendanceData = [
-    { day: 'Mon', rate: 92 },
-    { day: 'Tue', rate: 88 },
-    { day: 'Wed', rate: 95 },
-    { day: 'Thu', rate: 91 },
-    { day: 'Fri', rate: 87 }
-  ];
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6 bg-gray-900 min-h-screen flex items-center justify-center">
+        <div className="text-white text-xl">Loading analytics...</div>
+      </div>
+    );
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {

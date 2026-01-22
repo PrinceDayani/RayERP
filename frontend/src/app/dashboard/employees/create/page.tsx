@@ -51,9 +51,10 @@ export default function CreateEmployeePage() {
   const fetchDepartments = async () => {
     try {
       const response = await departmentApi.getAll();
-      setDepartments(response.data || []);
+      setDepartments(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching departments:', error);
+      setDepartments([]); // Ensure departments is always an array
     }
   };
 
@@ -203,7 +204,7 @@ export default function CreateEmployeePage() {
                       <SelectValue placeholder="Add department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {departments.filter(dept => !formData.departments.includes(dept.name)).map((dept) => (
+                      {Array.isArray(departments) && departments.filter(dept => !formData.departments.includes(dept.name)).map((dept) => (
                         <SelectItem key={dept._id} value={dept.name}>
                           {dept.name}
                         </SelectItem>

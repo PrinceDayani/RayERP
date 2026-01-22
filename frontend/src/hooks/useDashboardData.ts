@@ -4,6 +4,28 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
+// Cache configuration
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+const statsCache = new Map<string, CacheEntry<any>>();
+
+const getCachedStats = <T>(key: string): T | null => {
+  const entry = statsCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL) {
+    statsCache.delete(key);
+    return null;
+  }
+  return entry.data;
+};
+
+const setCachedStats = <T>(key: string, data: T): void => {
+  statsCache.set(key, { data, timestamp: Date.now() });
+};
+
 interface DashboardStats {
   totalEmployees: number;
   activeEmployees: number;
@@ -73,6 +95,17 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
       return;
     }
 
+    // Check cache first
+    const cacheKey = 'dashboard-stats';
+    if (!force) {
+      const cached = getCachedStats<DashboardStats>(cacheKey);
+      if (cached) {
+        setStats(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
     const now = Date.now();
     if (!force && now - lastFetchRef.current < FETCH_COOLDOWN) return;
     lastFetchRef.current = now;
@@ -93,7 +126,9 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
       
       console.log('[Dashboard] Stats response:', response.data);
       if (response.data.success) {
-        setStats(response.data.data);
+        const data = response.data.data;
+        setStats(data);
+        setCachedStats(cacheKey, data);
         setError(null);
       } else {
         console.error('[Dashboard] Stats fetch failed:', response.data);
@@ -121,6 +156,20 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
     if (isAuthenticated) {
       fetchStats();
     }
+  }, [isAuthenticated, fetchStats]);
+
+  // Refetch on tab visibility change
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchStats(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isAuthenticated, fetchStats]);
 
   // Socket connection for real-time updates

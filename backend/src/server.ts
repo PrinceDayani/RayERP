@@ -54,9 +54,9 @@ const limiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => {
     // Skip rate limiting for health checks, static files, and in development
-    return req.path === '/api/health' || 
-           req.path.startsWith('/uploads/') || 
-           process.env.NODE_ENV === 'development';
+    return req.path === '/api/health' ||
+      req.path.startsWith('/uploads/') ||
+      process.env.NODE_ENV === 'development';
   },
 });
 
@@ -190,7 +190,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Quick fix routes
-app.use("/api/fast", require('./routes/quickfix.routes'));
+// app.use("/api/fast", require('./routes/fast.routes'));
 
 // Validation Jobs Routes
 import validationJobsRoutes from "./routes/validationJobs.routes";
@@ -204,6 +204,14 @@ app.use("/api/backup", backupRoutes);
 // Salary Management Routes
 import salaryRoutes from "./routes/salary.routes";
 app.use("/api/salary", salaryRoutes);
+
+// Employee Career Routes
+import careerRoutes from "./routes/career.routes";
+app.use("/api/career", careerRoutes);
+
+// Achievement Routes
+import achievementRoutes from "./routes/achievement.routes";
+app.use("/api/achievements", achievementRoutes);
 
 // Budget Module Routes (Modules 1-10) - Complete!
 import budgetApprovalWorkflowRoutes from "./routes/budgetApprovalWorkflow.routes";
@@ -321,6 +329,15 @@ async function initializeRealTimeSystems() {
       logger.warn('⚠️ Validation jobs could not be started:', err.message);
     }
 
+    // Initialize session cleanup
+    try {
+      const { startSessionCleanup } = await import('./jobs/sessionCleanup');
+      startSessionCleanup();
+      logger.info('✅ Session cleanup cron job started (hourly)');
+    } catch (err) {
+      logger.warn('⚠️ Session cleanup could not be started:', err.message);
+    }
+
     logger.info('✅ Real-time systems initialized');
     logger.info('✅ Budget cron jobs started');
     logger.info('✅ Audit log cleanup initialized');
@@ -371,6 +388,15 @@ connectDB()
       logger.info('✅ Default chart of accounts seeded');
     } catch (error) {
       logger.warn('⚠️ Default accounts could not be seeded:', error.message);
+    }
+
+    // Seed default currencies
+    try {
+      const { seedDefaultCurrencies } = await import('./utils/seedDefaultCurrencies');
+      await seedDefaultCurrencies();
+      logger.info('✅ Default currencies seeded');
+    } catch (error) {
+      logger.warn('⚠️ Default currencies could not be seeded:', error.message);
     }
 
     // Start server

@@ -15,6 +15,7 @@ import { Settings, User, Bell, Palette, Shield, Wifi, WifiOff, Search, Command, 
 import toast, { Toaster } from 'react-hot-toast';
 import HierarchySettings from '@/components/settings/HierarchySettings';
 import CurrencySettings from '@/components/settings/CurrencySettings';
+import ActiveSessions from '@/components/user/ActiveSessions';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
@@ -48,15 +49,15 @@ export default function SettingsPage() {
     const newMode = accountingMode === "western" ? "indian" : "western";
     try {
       const token = localStorage.getItem("token");
-      const endpoint = newMode === "indian" 
+      const endpoint = newMode === "indian"
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/accounting-settings/convert-to-indian`
         : `${process.env.NEXT_PUBLIC_API_URL}/api/accounting-settings/convert-to-western`;
-      
+
       await fetch(endpoint, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       setAccountingMode(newMode);
       toast.success(`Switched to ${newMode === "indian" ? "Indian" : "Western"} accounting mode`);
     } catch (error) {
@@ -113,7 +114,7 @@ export default function SettingsPage() {
       // Cmd/Ctrl + 1-6 for tab navigation
       if ((e.metaKey || e.ctrlKey) && ['1', '2', '3', '4', '5', '6'].includes(e.key)) {
         e.preventDefault();
-        const tabs = ['profile', 'notifications', 'appearance', 'security', 'hierarchy', 'currency'];
+        const tabs = ['profile', 'sessions', 'notifications', 'appearance', 'security', 'hierarchy', 'currency'];
         setActiveTab(tabs[parseInt(e.key) - 1]);
       }
       // Escape to close search
@@ -129,7 +130,7 @@ export default function SettingsPage() {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    
+
     // Emit tab change for analytics
     if (socket) {
       socket.emit('settings:tab_changed', { tab: value, timestamp: new Date() });
@@ -151,7 +152,7 @@ export default function SettingsPage() {
         className: 'backdrop-blur-sm',
         style: { background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)' }
       }} />
-      
+
       <div className="container mx-auto py-8 px-4 space-y-8 max-w-7xl">
         {/* Header with Glassmorphism */}
         <div className="relative">
@@ -174,11 +175,11 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-3">
                   {/* Search Toggle */}
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => setShowSearch(!showSearch)}
                     className="gap-2 hover:bg-[#970E2C]/10 dark:hover:bg-[#970E2C]/20 transition-all"
@@ -189,7 +190,7 @@ export default function SettingsPage() {
                       <Command className="h-3 w-3" />K
                     </kbd>
                   </Button>
-                  
+
                   {/* Connection Status */}
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border border-green-200 dark:border-green-800">
                     {isConnected ? (
@@ -210,11 +211,11 @@ export default function SettingsPage() {
                       </>
                     )}
                   </div>
-                  
+
                   {/* Accounting Mode Toggle */}
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={toggleAccountingMode}
                     disabled={switchingMode}
                     className="gap-2 hover:bg-[#970E2C]/10 dark:hover:bg-[#970E2C]/20 transition-all"
@@ -225,11 +226,11 @@ export default function SettingsPage() {
                       <><Globe className="h-4 w-4" /> Western</>
                     )}
                   </Button>
-                  
+
                   {/* Sync Button */}
-                  <Button 
-                    variant="default" 
-                    size="sm" 
+                  <Button
+                    variant="default"
+                    size="sm"
                     onClick={syncSettings}
                     disabled={!isConnected}
                     className="gap-2 bg-gradient-to-r from-[#970E2C] to-[#CD2E4F] hover:from-[#CD2E4F] hover:to-[#E04D68] shadow-lg hover:shadow-xl transition-all"
@@ -239,7 +240,7 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               </div>
-              
+
               {/* Search Bar */}
               {showSearch && (
                 <div className="mt-6 animate-in slide-in-from-top-2 duration-300">
@@ -270,9 +271,9 @@ export default function SettingsPage() {
         {/* Settings Tabs */}
         <Tabs defaultValue="profile" value={activeTab} onValueChange={handleTabChange}>
           <div className="sticky top-4 z-10 mb-8">
-            <TabsList className="grid grid-cols-2 lg:grid-cols-6 w-full max-w-6xl mx-auto p-1.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border shadow-xl rounded-2xl">
-              <TabsTrigger 
-                value="profile" 
+            <TabsList className="grid grid-cols-2 lg:grid-cols-7 w-full max-w-6xl mx-auto p-1.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border shadow-xl rounded-2xl">
+              <TabsTrigger
+                value="profile"
                 className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <User className="h-4 w-4" />
@@ -281,8 +282,8 @@ export default function SettingsPage() {
                   ⌘1
                 </kbd>
               </TabsTrigger>
-              <TabsTrigger 
-                value="notifications" 
+              <TabsTrigger
+                value="notifications"
                 className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <Bell className="h-4 w-4" />
@@ -291,8 +292,8 @@ export default function SettingsPage() {
                   ⌘2
                 </kbd>
               </TabsTrigger>
-              <TabsTrigger 
-                value="appearance" 
+              <TabsTrigger
+                value="appearance"
                 className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <Palette className="h-4 w-4" />
@@ -301,8 +302,8 @@ export default function SettingsPage() {
                   ⌘3
                 </kbd>
               </TabsTrigger>
-              <TabsTrigger 
-                value="security" 
+              <TabsTrigger
+                value="security"
                 className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <Shield className="h-4 w-4" />
@@ -311,8 +312,8 @@ export default function SettingsPage() {
                   ⌘4
                 </kbd>
               </TabsTrigger>
-              <TabsTrigger 
-                value="hierarchy" 
+              <TabsTrigger
+                value="hierarchy"
                 className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <Users className="h-4 w-4" />
@@ -321,8 +322,8 @@ export default function SettingsPage() {
                   ⌘5
                 </kbd>
               </TabsTrigger>
-              <TabsTrigger 
-                value="currency" 
+              <TabsTrigger
+                value="currency"
                 className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <Coins className="h-4 w-4" />
@@ -333,7 +334,7 @@ export default function SettingsPage() {
               </TabsTrigger>
             </TabsList>
           </div>
-        
+
           <TabsContent value="profile" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
@@ -353,11 +354,15 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
+          <TabsContent value="sessions" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ActiveSessions />
+          </TabsContent>
+
           <TabsContent value="notifications" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <NotificationSettings />
           </TabsContent>
-          
+
           <TabsContent value="appearance" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
@@ -377,7 +382,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="security" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
@@ -397,7 +402,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="hierarchy" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
@@ -417,7 +422,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="currency" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
@@ -438,7 +443,7 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
         </Tabs>
-        
+
         {/* Keyboard Shortcuts Help */}
         <Card className="border-0 shadow-lg bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
           <CardContent className="p-6">

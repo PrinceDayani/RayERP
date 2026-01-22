@@ -1,154 +1,114 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Plus, 
-  Calendar, 
-  Users, 
-  Target, 
-  Award, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
-  Edit, 
-  Trash2,
+import {
+  Plus,
+  Calendar,
+  Users,
+  Target,
+  Award,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
   Briefcase,
-  TrendingUp
+  TrendingUp,
+  Filter
 } from "lucide-react";
+import { useState } from "react";
 
-interface Project {
-  _id?: string;
+import { ResourceAllocation } from "@/types/employee-profile";
+
+interface ProjectData {
+  _id: string;
   name: string;
   description: string;
   role: string;
   startDate: string;
   endDate?: string;
-  status: 'active' | 'completed' | 'on-hold' | 'cancelled';
+  status: 'active' | 'completed' | 'on-hold' | 'cancelled' | 'planned';
   technologies: string[];
-  teamSize: number;
-  achievements: string[];
-  challenges: string[];
+  teamSize?: number;
+  completionPercentage?: number;
   clientName?: string;
   projectValue?: number;
-  completionPercentage: number;
 }
 
 interface ProjectHistoryProps {
   employeeId: string;
-  projects: Project[];
-  onProjectsUpdate: (projects: Project[]) => void;
-  editable?: boolean;
+  projects: ResourceAllocation[];
+  onProjectsUpdate?: (projects: ResourceAllocation[]) => void;
 }
 
 const projectStatuses = [
+  { value: 'all', label: 'All Projects', color: 'bg-gray-500', icon: Briefcase },
   { value: 'active', label: 'Active', color: 'bg-blue-500', icon: Clock },
   { value: 'completed', label: 'Completed', color: 'bg-green-500', icon: CheckCircle2 },
   { value: 'on-hold', label: 'On Hold', color: 'bg-yellow-500', icon: AlertCircle },
-  { value: 'cancelled', label: 'Cancelled', color: 'bg-red-500', icon: AlertCircle }
+  { value: 'cancelled', label: 'Cancelled', color: 'bg-red-500', icon: AlertCircle },
+  { value: 'planned', label: 'Planned', color: 'bg-indigo-500', icon: Calendar }
 ];
 
-export default function ProjectHistory({ employeeId, projects, onProjectsUpdate, editable = false }: ProjectHistoryProps) {
-  const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [projectForm, setProjectForm] = useState<Project>({
-    name: '',
-    description: '',
-    role: '',
-    startDate: '',
-    endDate: '',
-    status: 'active',
-    technologies: [],
-    teamSize: 1,
-    achievements: [],
-    challenges: [],
-    clientName: '',
-    projectValue: 0,
-    completionPercentage: 0
+export default function ProjectHistory({ employeeId, projects, onProjectsUpdate }: ProjectHistoryProps) {
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Map ResourceAllocation to display format
+  const displayProjects: ProjectData[] = projects.map((alloc) => {
+    // Handle populated project project
+    const project: any = alloc.project || {};
+    // Fallback if project is just an ID string (should be populated though)
+    const projectName = typeof project === 'string' ? 'Unknown Project' : project.name;
+
+    return {
+      _id: project._id || alloc._id,
+      name: projectName || 'Unknown Project',
+      description: project.description || 'No description available',
+      role: alloc.role || 'Member',
+      startDate: alloc.startDate,
+      endDate: alloc.endDate,
+      status: (alloc.status === 'active' || alloc.status === 'completed' || alloc.status === 'planned') ? alloc.status : 'active',
+      technologies: project.tags || [],
+      teamSize: project.team?.length || 0,
+      completionPercentage: project.progress || 0,
+      clientName: project.client,
+      projectValue: project.budget
+    };
   });
 
+  // Filter projects based on status
+  const filteredProjects = statusFilter === 'all'
+    ? displayProjects
+    : displayProjects.filter(p => p.status === statusFilter);
+
   const getStatusInfo = (status: string) => {
-    return projectStatuses.find(s => s.value === status) || projectStatuses[0];
+    return projectStatuses.find(s => s.value === status) || projectStatuses[1];
   };
 
   const getProjectDuration = (startDate: string, endDate?: string) => {
+    if (!startDate) return 'N/A';
     const start = new Date(startDate);
     const end = endDate ? new Date(endDate) : new Date();
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 30) return `${diffDays} days`;
     if (diffDays < 365) return `${Math.floor(diffDays / 30)} months`;
     return `${Math.floor(diffDays / 365)} years`;
   };
 
-  const handleAddProject = () => {
-    const newProject = {
-      ...projectForm,
-      technologies: projectForm.technologies.filter(tech => tech.trim()),
-      achievements: projectForm.achievements.filter(ach => ach.trim()),
-      challenges: projectForm.challenges.filter(ch => ch.trim())
-    };
-    onProjectsUpdate([...projects, newProject]);
-    resetForm();
-  };
-
-  const handleEditProject = (project: Project) => {
-    setEditingProject(project);
-    setProjectForm(project);
-    setIsAddProjectOpen(true);
-  };
-
-  const handleUpdateProject = () => {
-    const updatedProjects = projects.map(project => 
-      project._id === editingProject?._id ? projectForm : project
-    );
-    onProjectsUpdate(updatedProjects);
-    resetForm();
-  };
-
-  const handleDeleteProject = (projectToDelete: Project) => {
-    const updatedProjects = projects.filter(project => project._id !== projectToDelete._id);
-    onProjectsUpdate(updatedProjects);
-  };
-
-  const resetForm = () => {
-    setProjectForm({
-      name: '',
-      description: '',
-      role: '',
-      startDate: '',
-      endDate: '',
-      status: 'active',
-      technologies: [],
-      teamSize: 1,
-      achievements: [],
-      challenges: [],
-      clientName: '',
-      projectValue: 0,
-      completionPercentage: 0
-    });
-    setEditingProject(null);
-    setIsAddProjectOpen(false);
-  };
-
   const getProjectStats = () => {
-    const completed = projects.filter(p => p.status === 'completed').length;
-    const active = projects.filter(p => p.status === 'active').length;
-    const totalValue = projects.reduce((sum, p) => sum + (p.projectValue || 0), 0);
-    const avgCompletion = projects.length > 0 
-      ? projects.reduce((sum, p) => sum + p.completionPercentage, 0) / projects.length 
+    const completed = displayProjects.filter(p => p.status === 'completed').length;
+    const active = displayProjects.filter(p => p.status === 'active').length;
+    const onHold = displayProjects.filter(p => p.status === 'on-hold').length;
+    const planned = displayProjects.filter(p => p.status === 'planned').length;
+    const totalValue = displayProjects.reduce((sum, p) => sum + (p.projectValue || 0), 0);
+    const avgCompletion = displayProjects.length > 0
+      ? displayProjects.reduce((sum, p) => sum + (p.completionPercentage || 0), 0) / displayProjects.length
       : 0;
 
-    return { completed, active, totalValue, avgCompletion };
+    return { completed, active, onHold, planned, totalValue, avgCompletion };
   };
 
   const stats = getProjectStats();
@@ -156,38 +116,57 @@ export default function ProjectHistory({ employeeId, projects, onProjectsUpdate,
   return (
     <div className="space-y-6">
       {/* Project Overview */}
-      <Card>
+      <Card className="border-2 border-primary/20">
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-primary" />
-              Project History
-            </CardTitle>
-            {editable && (
-              <Button onClick={() => setIsAddProjectOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Project
-              </Button>
-            )}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Briefcase className="w-6 h-6 text-primary" />
+                Project History
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Complete project portfolio and contributions
+              </p>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              {projectStatuses.map((status) => (
+                <Button
+                  key={status.value}
+                  variant={statusFilter === status.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStatusFilter(status.value)}
+                  className="text-xs"
+                >
+                  {status.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="text-center p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div className="text-center p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
               <div className="text-2xl font-bold text-blue-600">{projects.length}</div>
               <div className="text-sm text-muted-foreground">Total Projects</div>
             </div>
-            <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+            <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border-2 border-green-200 dark:border-green-800">
               <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
               <div className="text-sm text-muted-foreground">Completed</div>
             </div>
-            <div className="text-center p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+            <div className="text-center p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg border-2 border-purple-200 dark:border-purple-800">
               <div className="text-2xl font-bold text-purple-600">{stats.active}</div>
               <div className="text-sm text-muted-foreground">Active</div>
             </div>
-            <div className="text-center p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+            <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border-2 border-yellow-200 dark:border-yellow-800">
+              <div className="text-2xl font-bold text-yellow-600">{stats.onHold}</div>
+              <div className="text-sm text-muted-foreground">On Hold</div>
+            </div>
+            <div className="text-center p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border-2 border-orange-200 dark:border-orange-800">
               <div className="text-2xl font-bold text-orange-600">{Math.round(stats.avgCompletion)}%</div>
-              <div className="text-sm text-muted-foreground">Avg Completion</div>
+              <div className="text-sm text-muted-foreground">Avg Progress</div>
             </div>
           </div>
         </CardContent>
@@ -195,25 +174,30 @@ export default function ProjectHistory({ employeeId, projects, onProjectsUpdate,
 
       {/* Projects List */}
       <div className="space-y-4">
-        {projects.length === 0 ? (
+        {filteredProjects.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <Briefcase className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Projects Yet</h3>
-              <p className="text-muted-foreground mb-4">Start tracking project history and achievements</p>
-              {editable && (
-                <Button onClick={() => setIsAddProjectOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add First Project
+              <h3 className="text-lg font-semibold mb-2">
+                {statusFilter === 'all' ? 'No Projects Yet' : `No ${projectStatuses.find(s => s.value === statusFilter)?.label} Projects`}
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {statusFilter === 'all'
+                  ? 'No project history found for this employee.'
+                  : 'Try selecting a different status filter to see projects.'}
+              </p>
+              {statusFilter !== 'all' && (
+                <Button variant="outline" onClick={() => setStatusFilter('all')}>
+                  Show All Projects
                 </Button>
               )}
             </CardContent>
           </Card>
         ) : (
-          projects.map((project, index) => {
+          filteredProjects.map((project, index) => {
             const statusInfo = getStatusInfo(project.status);
             const StatusIcon = statusInfo.icon;
-            
+
             return (
               <Card key={index} className="hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
@@ -227,7 +211,7 @@ export default function ProjectHistory({ employeeId, projects, onProjectsUpdate,
                         </Badge>
                       </div>
                       <p className="text-muted-foreground mb-3">{project.description}</p>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div className="flex items-center gap-2 text-sm">
                           <Target className="w-4 h-4 text-blue-500" />
@@ -275,59 +259,7 @@ export default function ProjectHistory({ employeeId, projects, onProjectsUpdate,
                           </div>
                         </div>
                       )}
-
-                      {project.achievements.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                            <Award className="w-4 h-4 text-yellow-500" />
-                            Key Achievements
-                          </h4>
-                          <ul className="list-disc list-inside space-y-1">
-                            {project.achievements.map((achievement, achIndex) => (
-                              <li key={achIndex} className="text-sm text-muted-foreground">
-                                {achievement}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {project.challenges.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                            <TrendingUp className="w-4 h-4 text-orange-500" />
-                            Challenges Overcome
-                          </h4>
-                          <ul className="list-disc list-inside space-y-1">
-                            {project.challenges.map((challenge, chIndex) => (
-                              <li key={chIndex} className="text-sm text-muted-foreground">
-                                {challenge}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div>
-
-                    {editable && (
-                      <div className="flex gap-2 ml-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditProject(project)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteProject(project)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -335,158 +267,6 @@ export default function ProjectHistory({ employeeId, projects, onProjectsUpdate,
           })
         )}
       </div>
-
-      {/* Add/Edit Project Dialog */}
-      <Dialog open={isAddProjectOpen} onOpenChange={setIsAddProjectOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingProject ? 'Edit Project' : 'Add New Project'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Project Name</Label>
-                <Input
-                  value={projectForm.name}
-                  onChange={(e) => setProjectForm({ ...projectForm, name: e.target.value })}
-                  placeholder="e.g., E-commerce Platform"
-                />
-              </div>
-              <div>
-                <Label>Your Role</Label>
-                <Input
-                  value={projectForm.role}
-                  onChange={(e) => setProjectForm({ ...projectForm, role: e.target.value })}
-                  placeholder="e.g., Lead Developer, Project Manager"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Description</Label>
-              <Textarea
-                value={projectForm.description}
-                onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
-                placeholder="Brief description of the project..."
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>Start Date</Label>
-                <Input
-                  type="date"
-                  value={projectForm.startDate}
-                  onChange={(e) => setProjectForm({ ...projectForm, startDate: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>End Date (Optional)</Label>
-                <Input
-                  type="date"
-                  value={projectForm.endDate}
-                  onChange={(e) => setProjectForm({ ...projectForm, endDate: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select 
-                  value={projectForm.status} 
-                  onValueChange={(value) => setProjectForm({ ...projectForm, status: value as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projectStatuses.map(status => (
-                      <SelectItem key={status.value} value={status.value}>
-                        {status.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>Team Size</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={projectForm.teamSize}
-                  onChange={(e) => setProjectForm({ ...projectForm, teamSize: parseInt(e.target.value) || 1 })}
-                />
-              </div>
-              <div>
-                <Label>Client Name (Optional)</Label>
-                <Input
-                  value={projectForm.clientName}
-                  onChange={(e) => setProjectForm({ ...projectForm, clientName: e.target.value })}
-                  placeholder="Client or company name"
-                />
-              </div>
-              <div>
-                <Label>Completion %</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={projectForm.completionPercentage}
-                  onChange={(e) => setProjectForm({ ...projectForm, completionPercentage: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Technologies Used (comma-separated)</Label>
-              <Input
-                value={projectForm.technologies.join(', ')}
-                onChange={(e) => setProjectForm({ 
-                  ...projectForm, 
-                  technologies: e.target.value.split(',').map(tech => tech.trim()).filter(tech => tech)
-                })}
-                placeholder="e.g., React, Node.js, MongoDB"
-              />
-            </div>
-
-            <div>
-              <Label>Key Achievements (one per line)</Label>
-              <Textarea
-                value={projectForm.achievements.join('\n')}
-                onChange={(e) => setProjectForm({ 
-                  ...projectForm, 
-                  achievements: e.target.value.split('\n').filter(ach => ach.trim())
-                })}
-                placeholder="List your key achievements in this project..."
-                rows={3}
-              />
-            </div>
-
-            <div>
-              <Label>Challenges Overcome (one per line)</Label>
-              <Textarea
-                value={projectForm.challenges.join('\n')}
-                onChange={(e) => setProjectForm({ 
-                  ...projectForm, 
-                  challenges: e.target.value.split('\n').filter(ch => ch.trim())
-                })}
-                placeholder="List challenges you overcame..."
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={resetForm}>
-              Cancel
-            </Button>
-            <Button onClick={editingProject ? handleUpdateProject : handleAddProject}>
-              {editingProject ? 'Update' : 'Add'} Project
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

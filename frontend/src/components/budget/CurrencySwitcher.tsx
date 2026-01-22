@@ -1,17 +1,19 @@
 "use client";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCurrency } from "@/contexts/CurrencyContext";
+import { useGlobalCurrency } from "@/hooks/useGlobalCurrency";
 import { CURRENCY_CONFIG } from "@/config/currency.config";
 
 export default function CurrencySwitcher() {
-  const { currency, setCurrency, symbol } = useCurrency();
+  const { displayCurrency, setGlobalCurrency } = useGlobalCurrency();
+
+  const currentCurrencyConfig = CURRENCY_CONFIG.supported.find(c => c.code === displayCurrency);
 
   return (
-    <Select value={currency} onValueChange={setCurrency}>
+    <Select value={displayCurrency} onValueChange={setGlobalCurrency}>
       <SelectTrigger className="w-[180px]">
         <SelectValue>
-          {symbol} {currency}
+          {currentCurrencyConfig?.symbol} {displayCurrency}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>

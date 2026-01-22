@@ -9,6 +9,7 @@ import { ArrowLeft } from "lucide-react";
 import { getProjectById, updateProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import ProjectForm from "@/components/projects/ProjectForm";
+import ProjectCurrencySwitcher from "@/components/projects/ProjectCurrencySwitcher";
 
 const EditProjectPage = () => {
   const { isAuthenticated } = useAuth();
@@ -64,6 +65,22 @@ const EditProjectPage = () => {
       };
       
       const updatedProject = await updateProject(projectId, updateData);
+      
+      // Handle project permissions if provided
+      if (formData.projectPermissions && Object.keys(formData.projectPermissions).length > 0) {
+        try {
+          const { projectPermissionsAPI } = await import('@/lib/api/projectPermissionsAPI');
+          await projectPermissionsAPI.bulkSetPermissions(projectId, formData.projectPermissions);
+        } catch (permError) {
+          console.error('Error updating project permissions:', permError);
+          toast({
+            title: "Warning",
+            description: "Project updated but permissions may not have been saved",
+            variant: "destructive",
+          });
+        }
+      }
+      
       setProject(updatedProject);
       
       toast({
@@ -124,18 +141,21 @@ const EditProjectPage = () => {
   return (
       <div className="flex-1 space-y-6 p-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            onClick={() => router.push(`/dashboard/projects/${projectId}`)}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Edit Project</h1>
-            <p className="text-muted-foreground">Update project details and settings</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              onClick={() => router.push(`/dashboard/projects/${projectId}`)}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Edit Project</h1>
+              <p className="text-muted-foreground">Update project details and settings</p>
+            </div>
           </div>
+          <ProjectCurrencySwitcher />
         </div>
 
         {/* Edit Form */}
@@ -160,6 +180,7 @@ const EditProjectPage = () => {
                 departments: project.departments,
                 tags: project.tags,
               }}
+              projectId={projectId}
               onSubmit={handleUpdateProject}
               onCancel={handleCancel}
               loading={updating}

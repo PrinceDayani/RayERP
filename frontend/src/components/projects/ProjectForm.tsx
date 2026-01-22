@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,9 +11,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { type Project } from "@/lib/api/projectsAPI";
+import { type Project, projectsAPI } from "@/lib/api/projectsAPI";
 import employeesAPI, { type Employee } from "@/lib/api/employeesAPI";
 import { toast } from "@/components/ui/use-toast";
+import { CURRENCY_CONFIG } from '@/config/currency.config';
+import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
+import ProjectPermissionsManager from './ProjectPermissionsManager';
 
 interface Department {
   _id: string;
@@ -23,28 +26,38 @@ interface Department {
 
 interface ProjectFormProps {
   project?: Partial<Project>;
+  projectId?: string;
   onSubmit: (data: Partial<Project>) => void;
   onCancel: () => void;
   loading?: boolean;
   submitText?: string;
 }
 
+// Cache for employees and departments
+let employeesCache: Employee[] | null = null;
+let departmentsCache: Department[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 const ProjectForm: React.FC<ProjectFormProps> = ({
   project,
+  projectId,
   onSubmit,
   onCancel,
   loading = false,
   submitText = "Save Project",
 }) => {
+  const { formatAmount } = useGlobalCurrency();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [loadingEmployees, setLoadingEmployees] = useState(true);
+  const [loadingData, setLoadingData] = useState(false);
   const [formData, setFormData] = useState({
     name: project?.name || "",
     description: project?.description || "",
     status: project?.status || "planning",
     priority: project?.priority || "medium",
     budget: project?.budget?.toString() || "",
+    currency: (project as any)?.currency || 'INR',
     progress: project?.progress?.toString() || "0",
     client: project?.client || "",
     manager: typeof project?.manager === 'object' && project.manager ? (project.manager as any)._id : project?.manager || "",
@@ -71,10 +84,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     (project as any)?.instructions || []
   );
   const [newInstruction, setNewInstruction] = useState({ title: '', content: '', type: 'general', priority: 'medium' });
+  const [projectPermissions, setProjectPermissions] = useState<{ [employeeId: string]: string[] }>({});
+
+  // Memoized filtered employees for manager selection
+  const managerOptions = useMemo(() => 
+    employees.filter(emp => emp.firstName && emp.lastName),
+    [employees]
+  );
 
   useEffect(() => {
-    fetchEmployees();
-    fetchDepartments();
+    loadCachedData();
   }, []);
 
   useEffect(() => {
@@ -86,43 +105,65 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     }
   }, [project?.departments]);
 
-  const fetchEmployees = async () => {
-    setLoadingEmployees(true);
+  const loadCachedData = async () => {
+    const now = Date.now();
+    
+    // Check if cache is still valid
+    if (employeesCache && departmentsCache && (now - cacheTimestamp) < CACHE_DURATION) {
+      setEmployees(employeesCache);
+      setDepartments(departmentsCache);
+      return;
+    }
+
+    setLoadingData(true);
     try {
-      const response = await employeesAPI.getAll();
-      console.log('Employees API response:', response);
-      const employeeList = response.data || response || [];
-      console.log('Processed employees:', employeeList);
-      setEmployees(Array.isArray(employeeList) ? employeeList : []);
+      // Load both in parallel
+      const [employeesResponse, departmentsResponse] = await Promise.allSettled([
+        fetchEmployees(),
+        fetchDepartments()
+      ]);
+
+      if (employeesResponse.status === 'fulfilled') {
+        employeesCache = employeesResponse.value;
+        setEmployees(employeesResponse.value);
+      }
+
+      if (departmentsResponse.status === 'fulfilled') {
+        departmentsCache = departmentsResponse.value;
+        setDepartments(departmentsResponse.value);
+      }
+
+      cacheTimestamp = now;
     } catch (error) {
-      console.error('Error fetching employees:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load employees",
-        variant: "destructive",
-      });
+      console.error('Error loading data:', error);
     } finally {
-      setLoadingEmployees(false);
+      setLoadingData(false);
     }
   };
 
-  const fetchDepartments = async () => {
+  const fetchEmployees = async (): Promise<Employee[]> => {
+    try {
+      const response = await employeesAPI.getAll();
+      const employeeList = response.data || response || [];
+      return Array.isArray(employeeList) ? employeeList : [];
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      return [];
+    }
+  };
+
+  const fetchDepartments = async (): Promise<Department[]> => {
     try {
       const token = localStorage.getItem('auth-token');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/departments`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!response.ok) {
-        console.error('Departments API error:', response.status, response.statusText);
-        return;
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      console.log('Departments API response:', data);
-      console.log('Project departments:', project?.departments);
-      const deptList = data?.data || data;
-      setDepartments(Array.isArray(deptList) ? deptList : []);
+      return Array.isArray(data?.data || data) ? (data?.data || data) : [];
     } catch (error) {
       console.error('Error fetching departments:', error);
+      return [];
     }
   };
 
@@ -173,6 +214,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       budget: formData.budget ? parseFloat(formData.budget) : 0,
+      currency: formData.currency.toUpperCase(),
       progress: formData.progress ? Math.min(Math.max(parseInt(formData.progress), 0), 100) : 0,
       client: formData.client.trim() || undefined,
       manager: formData.manager || undefined,
@@ -180,9 +222,20 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       departments: selectedDepartments.length > 0 ? selectedDepartments : [],
       tags: tags.length > 0 ? tags : [],
       instructions: instructions.filter(inst => inst.title.trim() && inst.content.trim()),
+      projectPermissions: Object.keys(projectPermissions).length > 0 ? projectPermissions : undefined,
     };
 
     onSubmit(projectData);
+  };
+
+  // Use fast creation API by default
+  const handleFastSubmit = async (projectData: any) => {
+    try {
+      // Use the regular create API since we integrated fast routes
+      await projectsAPI.create(projectData);
+    } catch (error) {
+      throw error;
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -351,15 +404,30 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="budget">Budget</Label>
-          <Input
-            id="budget"
-            type="number"
-            value={formData.budget}
-            onChange={(e) => handleInputChange("budget", e.target.value)}
-            placeholder="Enter project budget"
-            min="0"
-            step="0.01"
-          />
+          <div className="flex gap-2">
+            <Select value={formData.currency} onValueChange={(value) => handleInputChange("currency", value)}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCY_CONFIG.supported.slice(0, 10).map((currency) => (
+                  <SelectItem key={currency.code} value={currency.code}>
+                    {currency.symbol} {currency.code} - {currency.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              id="budget"
+              type="number"
+              value={formData.budget}
+              onChange={(e) => handleInputChange("budget", e.target.value)}
+              placeholder="Enter project budget"
+              min="0"
+              step="0.01"
+              className="flex-1"
+            />
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -377,10 +445,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         <Label>Project Manager</Label>
         <Select value={formData.manager} onValueChange={(value) => handleInputChange("manager", value)}>
           <SelectTrigger>
-            <SelectValue placeholder="Select project manager" />
+            <SelectValue placeholder={loadingData ? "Loading..." : "Select project manager"} />
           </SelectTrigger>
           <SelectContent>
-            {employees.map((employee) => (
+            {managerOptions.map((employee) => (
               <SelectItem key={employee._id} value={employee._id}>
                 {`${employee.firstName} ${employee.lastName}`}
               </SelectItem>
@@ -392,7 +460,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       <div className="space-y-2">
         <Label>Team Members</Label>
         <div className="border rounded-md p-3 max-h-40 overflow-y-auto">
-          {loadingEmployees ? (
+          {loadingData ? (
             <p className="text-sm text-muted-foreground">Loading employees...</p>
           ) : employees.length > 0 ? (
             <div className="space-y-2">
@@ -443,7 +511,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No departments available</p>
+            <p className="text-sm text-muted-foreground">
+              {loadingData ? "Loading departments..." : "No departments available"}
+            </p>
           )}
         </div>
         {selectedDepartments.length > 0 && (
@@ -555,6 +625,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           )}
         </div>
       </div>
+
+      {/* Project Permissions Section */}
+      {selectedTeam.length > 0 && (
+        <ProjectPermissionsManager
+          projectId={projectId}
+          employees={employees}
+          selectedTeam={selectedTeam}
+          onPermissionsChange={setProjectPermissions}
+          initialPermissions={projectPermissions}
+        />
+      )}
 
       <div className="flex gap-4 pt-4">
         <Button type="submit" disabled={loading}>

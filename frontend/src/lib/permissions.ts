@@ -22,12 +22,12 @@ export const PERMISSIONS = {
   ANALYTICS_FINANCIAL: 'analytics.financial',
   ANALYTICS_SALES: 'analytics.sales',
   ANALYTICS_INVENTORY: 'analytics.inventory',
-  
+
   // Admin & System
   VIEW_ADMIN: 'admin.view',
   VIEW_SYSTEM: 'system.view',
   MANAGE_SYSTEM: 'system.manage',
-  
+
   // User Management
   VIEW_USERS: 'users.view',
   CREATE_USER: 'users.create',
@@ -37,14 +37,14 @@ export const PERMISSIONS = {
   ASSIGN_ROLES: 'users.assign_roles',
   RESET_PASSWORD: 'users.reset_password',
   ACTIVATE_DEACTIVATE: 'users.activate_deactivate',
-  
+
   // Role Management
   VIEW_ROLES: 'roles.view',
   CREATE_ROLE: 'roles.create',
   EDIT_ROLE: 'roles.edit',
   DELETE_ROLE: 'roles.delete',
   MANAGE_ROLES: 'roles.manage',
-  
+
   // Employee Management
   VIEW_EMPLOYEES: 'employees.view',
   CREATE_EMPLOYEE: 'employees.create',
@@ -52,13 +52,13 @@ export const PERMISSIONS = {
   DELETE_EMPLOYEE: 'employees.delete',
   VIEW_SALARY: 'employees.view_salary',
   EDIT_SALARY: 'employees.edit_salary',
-  
+
   // Attendance
   VIEW_ATTENDANCE: 'attendance.view',
   MARK_ATTENDANCE: 'attendance.mark',
   EDIT_ATTENDANCE: 'attendance.edit',
   MANAGE_ATTENDANCE: 'attendance.manage',
-  
+
   // Leaves
   VIEW_LEAVES: 'leaves.view',
   APPLY_LEAVE: 'leaves.apply',
@@ -66,7 +66,7 @@ export const PERMISSIONS = {
   CANCEL_LEAVE: 'leaves.cancel',
   CREATE_LEAVE: 'leaves.create',
   MANAGE_LEAVES: 'leaves.manage',
-  
+
   // Projects (6)
   VIEW_PROJECTS: 'projects.view',
   CREATE_PROJECT: 'projects.create',
@@ -74,7 +74,7 @@ export const PERMISSIONS = {
   DELETE_PROJECT: 'projects.delete',
   ARCHIVE_PROJECT: 'projects.archive',
   MANAGE_PROJECT_TEAM: 'projects.manage_team',
-  
+
   // Tasks (7)
   VIEW_TASKS: 'tasks.view',
   CREATE_TASK: 'tasks.create',
@@ -83,12 +83,12 @@ export const PERMISSIONS = {
   ASSIGN_TASK: 'tasks.assign',
   CHANGE_TASK_STATUS: 'tasks.change_status',
   VIEW_ALL_TASKS: 'tasks.view_all',
-  
-  
+
+
   // Finance Module Access (Required for all finance operations)
   VIEW_FINANCE: 'finance.view',
   MANAGE_FINANCE: 'finance.manage',
-  
+
   // Journal Entries (6)
   VIEW_JOURNAL: 'journal.view',
   CREATE_JOURNAL: 'journal.create',
@@ -96,30 +96,30 @@ export const PERMISSIONS = {
   DELETE_JOURNAL: 'journal.delete',
   APPROVE_JOURNAL: 'journal.approve',
   POST_JOURNAL: 'journal.post',
-  
+
   // Bills (4)
   VIEW_BILLS: 'bills.view',
   CREATE_BILL: 'bills.create',
   EDIT_BILL: 'bills.edit',
   DELETE_BILL: 'bills.delete',
-  
+
   // Payments (5)
   VIEW_PAYMENTS: 'payments.view',
   CREATE_PAYMENT: 'payments.create',
   EDIT_PAYMENT: 'payments.edit',
   DELETE_PAYMENT: 'payments.delete',
   APPROVE_PAYMENT: 'payments.approve',
-  
+
   // Chart of Accounts (4)
   VIEW_ACCOUNTS: 'accounts.view',
   CREATE_ACCOUNT: 'accounts.create',
   EDIT_ACCOUNT: 'accounts.edit',
   DELETE_ACCOUNT: 'accounts.delete',
-  
+
   // General Ledger (2)
   VIEW_LEDGER: 'ledger.view',
   EXPORT_LEDGER: 'ledger.export',
-  
+
   // Invoicing & Billing
   VIEW_INVOICES: 'invoices.view',
   CREATE_INVOICE: 'invoices.create',
@@ -129,14 +129,14 @@ export const PERMISSIONS = {
   APPROVE_INVOICE: 'invoices.approve',
   CANCEL_INVOICE: 'invoices.cancel',
   DOWNLOAD_INVOICE: 'invoices.download',
-  
+
   // Expenses
   VIEW_EXPENSES: 'expenses.view',
   CREATE_EXPENSE: 'expenses.create',
   EDIT_EXPENSE: 'expenses.edit',
   DELETE_EXPENSE: 'expenses.delete',
   APPROVE_EXPENSE: 'expenses.approve',
-  
+
   // Budget & Planning
   VIEW_BUDGETS: 'budgets.view',
   CREATE_BUDGET: 'budgets.create',
@@ -145,13 +145,46 @@ export const PERMISSIONS = {
   APPROVE_BUDGET: 'budgets.approve',
   ALLOCATE_BUDGET: 'budgets.allocate',
   TRACK_BUDGET: 'budgets.track',
-  
+
+  // Department Management (16 permissions)
+  VIEW_DEPARTMENTS: 'departments.view',
+  VIEW_DEPARTMENT_DETAILS: 'departments.details',
+  CREATE_DEPARTMENT: 'departments.create',
+  EDIT_DEPARTMENT: 'departments.edit',
+  DELETE_DEPARTMENT: 'departments.delete',
+  MANAGE_DEPARTMENTS: 'departments.manage',
+  DEPT_VIEW_MEMBERS: 'departments.view_members',
+  DEPT_ASSIGN_MEMBERS: 'departments.assign_members',
+  DEPT_MANAGE_MEMBERS: 'departments.manage_members',
+  DEPT_VIEW_BUDGET: 'departments.view_budget',
+  DEPT_EDIT_BUDGET: 'departments.edit_budget',
+  DEPT_ADJUST_BUDGET: 'departments.adjust_budget',
+  DEPT_VIEW_PERFORMANCE: 'departments.view_performance',
+  DEPT_VIEW_SETTINGS: 'departments.view_settings',
+  DEPT_EDIT_SETTINGS: 'departments.edit_settings',
+  DEPT_MANAGE_PERMISSIONS: 'departments.manage_permissions',
+
+  // Extended Department Permissions
+  ARCHIVE_DEPARTMENT: 'departments.archive',
+  RESTORE_DEPARTMENT: 'departments.restore',
+  EXPORT_DEPARTMENT_DATA: 'departments.export',
+  CLONE_DEPARTMENT: 'departments.clone',
+  TRANSFER_MEMBERS: 'departments.transfer_members',
+  VIEW_DEPARTMENT_HISTORY: 'departments.view_history',
+  VIEW_DEPARTMENT_REPORTS: 'departments.view_reports',
+  GENERATE_DEPARTMENT_REPORTS: 'departments.generate_reports',
+  EDIT_PERFORMANCE: 'departments.edit_performance',
+  APPROVE_DEPARTMENT_BUDGET: 'departments.approve_budget',
+  VIEW_DEPARTMENT_EXPENSES: 'departments.view_expenses',
+  VIEW_DEPARTMENT_GOALS: 'departments.view_goals',
+  MANAGE_DEPARTMENT_GOALS: 'departments.manage_goals',
+
   // Reports & Analytics
   VIEW_REPORTS: 'reports.view',
   CREATE_REPORTS: 'reports.create',
   EXPORT_REPORTS: 'reports.export',
   SCHEDULE_REPORTS: 'reports.schedule',
-  
+
   // System Administration (All Active)
   MANAGE_PERMISSIONS: 'permissions.manage',
   VIEW_SETTINGS: 'settings.view',
@@ -192,10 +225,10 @@ export const isRootUser = (user: User | null): boolean => {
 export const hasPermission = (user: User | null, permission: string): boolean => {
   if (!user || !user.role) return false;
   if (isRootUser(user)) return true; // Root has all permissions
-  
+
   const role = typeof user.role === 'string' ? null : user.role;
   if (!role) return false;
-  
+
   return role.permissions?.includes(permission) || false;
 };
 
@@ -218,10 +251,10 @@ export const hasAllPermissions = (user: User | null, permissions: string[]): boo
  */
 export const hasMinimumLevel = (user: User | null, minLevel: number): boolean => {
   if (!user || !user.role) return false;
-  
+
   const role = typeof user.role === 'string' ? null : user.role;
   if (!role) return false;
-  
+
   return role.level >= minLevel;
 };
 
@@ -230,7 +263,7 @@ export const hasMinimumLevel = (user: User | null, minLevel: number): boolean =>
  */
 export const getUserLevel = (user: User | null): number => {
   if (!user || !user.role) return 0;
-  
+
   const role = typeof user.role === 'string' ? null : user.role;
   return role?.level || 0;
 };
@@ -240,7 +273,7 @@ export const getUserLevel = (user: User | null): number => {
  */
 export const getUserPermissions = (user: User | null): string[] => {
   if (!user || !user.role) return [];
-  
+
   const role = typeof user.role === 'string' ? null : user.role;
   return role?.permissions || [];
 };

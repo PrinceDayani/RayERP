@@ -15,8 +15,29 @@ export const generateVarianceReport = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Budget not found' });
     }
 
-    // Get actual spending data (mock - replace with real transaction data)
-    const varianceItems = generateMockVarianceData(budget);
+    // Get actual spending data from transactions
+    const Transaction = require('../models/Transaction').default;
+    const varianceItems = await Transaction.aggregate([
+      { $match: { 
+        budgetId: budget._id,
+        date: { $gte: new Date(startDate), $lte: new Date(endDate) }
+      }},
+      { $group: {
+        _id: '$category',
+        actual: { $sum: '$amount' }
+      }},
+      { $lookup: {
+        from: 'budgetcategories',
+        localField: '_id',
+        foreignField: 'name',
+        as: 'budgetInfo'
+      }},
+      { $project: {
+        category: '$_id',
+        budgeted: { $ifNull: [{ $arrayElemAt: ['$budgetInfo.allocated', 0] }, 0] },
+        actual: 1
+      }}
+    ]);
 
     // Analyze variances
     const analyzedItems = analyzeVariances(varianceItems);
@@ -176,20 +197,4 @@ export const compareVarianceTrends = async (req: Request, res: Response) => {
   }
 };
 
-// Helper: Generate mock variance data
-const generateMockVarianceData = (budget: any) => {
-  const categories = ['Personnel', 'Operations', 'Marketing', 'Technology', 'Travel', 'Supplies'];
-  const totalBudget = budget.totalAmount;
-  
-  return categories.map(category => {
-    const budgeted = totalBudget / categories.length;
-    const variance = (Math.random() - 0.5) * 0.3; // -15% to +15%
-    const actual = budgeted * (1 + variance);
-    
-    return {
-      category,
-      budgeted,
-      actual
-    };
-  });
-};
+

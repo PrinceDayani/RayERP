@@ -6,12 +6,52 @@ import Notification from '../models/Notification';
 import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
+import { registerCacheInvalidator } from '../utils/dashboardCache';
+
+// Chat cache with 2min TTL - per user
+let chatsCache: Map<string, { data: any; timestamp: number }> = new Map();
+let messagesCache: Map<string, { data: any; timestamp: number }> = new Map();
+const CACHE_TTL = 120000; // 2 minutes
+
+const clearChatCacheForUser = (userId: string) => {
+  // Clear user's chat list cache
+  chatsCache.delete(`chats_${userId}`);
+  
+  // Clear message caches for chats involving this user
+  for (const key of messagesCache.keys()) {
+    if (key.includes(userId)) {
+      messagesCache.delete(key);
+    }
+  }
+};
+
+const clearChatCacheForChat = (chatId: string, participantIds: string[]) => {
+  // Clear message cache for this chat
+  messagesCache.delete(`messages_${chatId}`);
+  
+  // Clear chat list cache for all participants
+  participantIds.forEach(id => {
+    chatsCache.delete(`chats_${id}`);
+  });
+};
+
+registerCacheInvalidator(() => {
+  chatsCache.clear();
+  messagesCache.clear();
+});
 
 export const chatController = {
   // Get all chats for current user
   getChats: async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.id;
+      const cacheKey = `chats_${userId}`;
+      const cached = chatsCache.get(cacheKey);
+      
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return res.json({ success: true, data: cached.data, cached: true });
+      }
+
       const user = await User.findById(userId).populate('role');
       const isRoot = user?.role && (user.role as any).name?.toLowerCase() === 'root';
 
@@ -21,6 +61,8 @@ export const chatController = {
         .populate('groupAdmin', 'name email')
         .populate('messages.sender', 'name email')
         .sort({ lastMessageTime: -1 });
+      
+      chatsCache.set(cacheKey, { data: chats, timestamp: Date.now() });
       
       res.json({ success: true, data: chats });
     } catch (error: any) {
@@ -131,6 +173,10 @@ export const chatController = {
       chat.lastMessageTime = new Date();
       await chat.save();
 
+      // Clear cache only for participants of this chat
+      const participantIds = chat.participants.map((p: any) => p.toString());
+      clearChatCacheForChat(chatId, participantIds);
+
       const populatedChat = await Chat.findById(chatId)
         .populate('participants', 'name email')
         .populate('messages.sender', 'name email');
@@ -199,6 +245,12 @@ export const chatController = {
     try {
       const userId = (req as any).user.id;
       const { chatId } = req.params;
+      const cacheKey = `messages_${chatId}`;
+      const cached = messagesCache.get(cacheKey);
+      
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return res.json({ success: true, data: cached.data, cached: true });
+      }
 
       const chat = await Chat.findById(chatId)
         .populate('messages.sender', 'name email');
@@ -213,6 +265,8 @@ export const chatController = {
       if (!isRoot && !chat.participants.includes(userId)) {
         return res.status(403).json({ success: false, message: 'Not authorized' });
       }
+
+      messagesCache.set(cacheKey, { data: chat.messages, timestamp: Date.now() });
 
       res.json({ success: true, data: chat.messages });
     } catch (error: any) {
@@ -272,6 +326,9 @@ export const chatController = {
       // Save only if there were updates
       if (updatedCount > 0) {
         await chat.save();
+        // Clear cache only for participants of this chat
+        const participantIds = chat.participants.map((p: any) => p.toString());
+        clearChatCacheForChat(chatId, participantIds);
       }
       
       res.json({ 

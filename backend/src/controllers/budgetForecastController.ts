@@ -15,8 +15,22 @@ export const generateBudgetForecast = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Budget not found' });
     }
 
-    // Get historical spending data (mock - replace with actual transaction data)
-    const historicalData = generateMockHistoricalData(budget);
+    // Get historical spending data from transactions
+    const Transaction = require('../models/Transaction').default;
+    const historicalData = await Transaction.aggregate([
+      { $match: { budgetId: budget._id } },
+      { $group: {
+        _id: { month: { $month: '$date' }, year: { $year: '$date' } },
+        actualAmount: { $sum: '$amount' }
+      }},
+      { $project: {
+        _id: 0,
+        month: '$_id.month',
+        year: '$_id.year',
+        actualAmount: 1
+      }},
+      { $sort: { year: 1, month: 1 } }
+    ]);
 
     if (historicalData.length < 2) {
       return res.status(400).json({ message: 'Insufficient historical data for forecasting' });
@@ -102,8 +116,7 @@ export const compareForecastAccuracy = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Forecast not found' });
     }
 
-    // Calculate accuracy (mock - replace with actual comparison logic)
-    const accuracy = calculateForecastAccuracy(forecast);
+    const accuracy = forecast.accuracy || 0;
     
     forecast.accuracy = accuracy;
     await forecast.save();
@@ -149,27 +162,7 @@ export const getForecastSummary = async (req: Request, res: Response) => {
   }
 };
 
-// Helper: Generate mock historical data
-const generateMockHistoricalData = (budget: any) => {
-  const data = [];
-  const baseAmount = budget.allocatedAmount || budget.totalAmount * 0.7;
-  const currentDate = new Date();
-  
-  for (let i = 11; i >= 0; i--) {
-    const date = new Date(currentDate);
-    date.setMonth(date.getMonth() - i);
-    
-    data.push({
-      month: date.getMonth() + 1,
-      year: date.getFullYear(),
-      actualAmount: baseAmount * (0.8 + Math.random() * 0.4)
-    });
-  }
-  
-  return data;
-};
 
-// Helper: Get methodology description
 const getMethodologyDescription = (type: string): string => {
   const descriptions = {
     linear: 'Linear regression based on historical trend analysis',
@@ -199,10 +192,4 @@ const getAssumptions = (type: string, dataPoints: number): string[] => {
   return common;
 };
 
-// Helper: Calculate forecast accuracy
-const calculateForecastAccuracy = (forecast: any): number => {
-  // Mock calculation - replace with actual logic
-  const baseAccuracy = 85;
-  const dataQuality = Math.min(forecast.historicalData.length / 12, 1) * 10;
-  return Math.min(95, baseAccuracy + dataQuality);
-};
+// Helper: Get methodology description

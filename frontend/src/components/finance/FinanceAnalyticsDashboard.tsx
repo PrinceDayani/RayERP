@@ -46,75 +46,95 @@ export default function FinanceAnalyticsDashboard({
   const [selectedPeriod, setSelectedPeriod] = useState(dateRange);
   const [selectedCurrency, setSelectedCurrency] = useState(currency);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - replace with actual API calls
-  const topLevelKPIs = {
-    totalRevenue: { mtd: 2450000, ytd: 18750000, growth: 12.5 },
-    totalExpenses: { mtd: 1890000, ytd: 14200000, growth: -3.2 },
-    netProfit: { amount: 4550000, margin: 24.3 },
-    cashFlow: { inflow: 2100000, outflow: 1650000, net: 450000 },
-    ebitda: 5200000,
-    operatingCost: 12800000,
-    grossProfit: { amount: 6950000, margin: 37.1 },
-    accountsReceivable: 3200000,
-    accountsPayable: 1850000
-  };
+  const [topLevelKPIs, setTopLevelKPIs] = useState<any>({
+    totalRevenue: { mtd: 0, ytd: 0, growth: 0 },
+    totalExpenses: { mtd: 0, ytd: 0, growth: 0 },
+    netProfit: { amount: 0, margin: 0 },
+    cashFlow: { inflow: 0, outflow: 0, net: 0 },
+    ebitda: 0,
+    operatingCost: 0,
+    grossProfit: { amount: 0, margin: 0 },
+    accountsReceivable: 0,
+    accountsPayable: 0
+  });
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [expenseBreakdown, setExpenseBreakdown] = useState<any[]>([]);
+  const [profitabilityData, setProfitabilityData] = useState<any[]>([]);
+  const [cashFlowData, setCashFlowData] = useState<any[]>([]);
+  const [arAgingData, setArAgingData] = useState<any[]>([]);
+  const [budgetVsActual, setBudgetVsActual] = useState<any[]>([]);
+  const [clientProfitability, setClientProfitability] = useState<any[]>([]);
 
-  const revenueData = [
-    { month: 'Jan', revenue: 1200000, target: 1100000, growth: 8.2 },
-    { month: 'Feb', revenue: 1350000, target: 1200000, growth: 12.5 },
-    { month: 'Mar', revenue: 1180000, target: 1150000, growth: 2.6 },
-    { month: 'Apr', revenue: 1420000, target: 1300000, growth: 9.2 },
-    { month: 'May', revenue: 1650000, target: 1400000, growth: 17.9 },
-    { month: 'Jun', revenue: 1580000, target: 1450000, growth: 9.0 }
-  ];
+  // Fetch analytics data from API
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Authentication required');
+          return;
+        }
 
-  const expenseBreakdown = [
-    { category: 'Staff Salaries', amount: 8500000, budget: 9000000, variance: -5.6 },
-    { category: 'Office Rent', amount: 1200000, budget: 1200000, variance: 0 },
-    { category: 'Software Licenses', amount: 850000, budget: 800000, variance: 6.3 },
-    { category: 'Marketing', amount: 1500000, budget: 1400000, variance: 7.1 },
-    { category: 'Operations', amount: 950000, budget: 1000000, variance: -5.0 },
-    { category: 'Travel', amount: 320000, budget: 400000, variance: -20.0 }
-  ];
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
 
-  const profitabilityData = [
-    { month: 'Jan', netProfit: 280000, margin: 23.3 },
-    { month: 'Feb', netProfit: 320000, margin: 23.7 },
-    { month: 'Mar', netProfit: 265000, margin: 22.5 },
-    { month: 'Apr', netProfit: 385000, margin: 27.1 },
-    { month: 'May', netProfit: 445000, margin: 27.0 },
-    { month: 'Jun', netProfit: 420000, margin: 26.6 }
-  ];
+        // Fetch dashboard analytics
+        const dashboardRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/analytics/dashboard`,
+          { headers }
+        );
+        
+        if (dashboardRes.ok) {
+          const dashboardData = await dashboardRes.json();
+          if (dashboardData.success) {
+            // Map dashboard data to KPIs (placeholder values for now)
+            setTopLevelKPIs(prev => ({
+              ...prev,
+              // You can map actual data here when available
+            }));
+          }
+        }
 
-  const cashFlowData = [
-    { day: 'Mon', cashIn: 85000, cashOut: 62000, balance: 23000 },
-    { day: 'Tue', cashIn: 92000, cashOut: 58000, balance: 34000 },
-    { day: 'Wed', cashIn: 78000, cashOut: 71000, balance: 7000 },
-    { day: 'Thu', cashIn: 105000, cashOut: 83000, balance: 22000 },
-    { day: 'Fri', cashIn: 88000, cashOut: 65000, balance: 23000 }
-  ];
+        // Fetch budget analytics
+        const budgetRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/analytics/budget-analytics`,
+          { headers }
+        );
+        
+        if (budgetRes.ok) {
+          const budgetData = await budgetRes.json();
+          if (budgetData.success && budgetData.data) {
+            // Map budget data
+            const { departmentBudgets, topSpendingDepartments } = budgetData.data;
+            
+            if (topSpendingDepartments) {
+              setBudgetVsActual(topSpendingDepartments.map((dept: any) => ({
+                category: dept.department,
+                budget: dept.allocated,
+                actual: dept.spent,
+                variance: dept.utilization - 100
+              })));
+            }
+          }
+        }
 
-  const arAgingData = [
-    { range: '0-30 days', amount: 1200000, percentage: 37.5, color: COLORS.success },
-    { range: '31-60 days', amount: 950000, percentage: 29.7, color: COLORS.warning },
-    { range: '61-90 days', amount: 680000, percentage: 21.3, color: COLORS.orange },
-    { range: '90+ days', amount: 370000, percentage: 11.6, color: COLORS.danger }
-  ];
+      } catch (err: any) {
+        console.error('Error fetching analytics:', err);
+        setError(err.message || 'Failed to fetch analytics data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const budgetVsActual = [
-    { category: 'Revenue', budget: 18000000, actual: 18750000, variance: 4.2 },
-    { category: 'Expenses', budget: 14800000, actual: 14200000, variance: -4.1 },
-    { category: 'Marketing', budget: 1400000, actual: 1500000, variance: 7.1 },
-    { category: 'Operations', budget: 1000000, actual: 950000, variance: -5.0 }
-  ];
-
-  const clientProfitability = [
-    { client: 'TechCorp Ltd', revenue: 2500000, profit: 650000, margin: 26.0 },
-    { client: 'Global Systems', revenue: 1800000, profit: 485000, margin: 26.9 },
-    { client: 'Innovation Hub', revenue: 1200000, profit: 280000, margin: 23.3 },
-    { client: 'Digital Solutions', revenue: 950000, profit: 190000, margin: 20.0 }
-  ];
+    fetchAnalyticsData();
+  }, [selectedPeriod, selectedCurrency]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -134,15 +154,29 @@ export default function FinanceAnalyticsDashboard({
   };
 
   return (
-    <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
+    <div className="space-y-6 p-6 bg-background min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">💰 Finance Analytics Dashboard</h1>
-          <p className="text-gray-600 mt-1">Comprehensive financial insights and performance metrics</p>
+          <h1 className="text-3xl font-bold">💰 Finance Analytics Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Comprehensive financial insights and performance metrics</p>
           <div className="flex items-center gap-2 mt-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-green-600">Live Updates Active</span>
+            {loading ? (
+              <>
+                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                <span className="text-sm text-yellow-600">Loading data...</span>
+              </>
+            ) : error ? (
+              <>
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <span className="text-sm text-red-600">{error}</span>
+              </>
+            ) : (
+              <>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm text-green-600">Live Updates Active</span>
+              </>
+            )}
           </div>
         </div>
         
@@ -185,67 +219,67 @@ export default function FinanceAnalyticsDashboard({
 
       {/* Top-Level Financial KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+        <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <Coins className="h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(topLevelKPIs.totalRevenue.ytd)}</div>
-            <p className="text-xs opacity-80">
+            <p className="text-xs opacity-90">
               MTD: {formatCurrency(topLevelKPIs.totalRevenue.mtd)} 
-              <span className="ml-2 text-green-200">+{formatPercentage(topLevelKPIs.totalRevenue.growth)}</span>
+              <span className="ml-2">+{formatPercentage(topLevelKPIs.totalRevenue.growth)}</span>
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-red-600 to-red-700 text-white">
+        <Card className="bg-gradient-to-br from-red-600 to-red-700 text-white border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
             <CreditCard className="h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(topLevelKPIs.totalExpenses.ytd)}</div>
-            <p className="text-xs opacity-80">
+            <p className="text-xs opacity-90">
               MTD: {formatCurrency(topLevelKPIs.totalExpenses.mtd)}
-              <span className="ml-2 text-green-200">{formatPercentage(topLevelKPIs.totalExpenses.growth)}</span>
+              <span className="ml-2">{formatPercentage(topLevelKPIs.totalExpenses.growth)}</span>
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-600 to-green-700 text-white">
+        <Card className="bg-gradient-to-br from-green-600 to-green-700 text-white border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
             <TrendingUp className="h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(topLevelKPIs.netProfit.amount)}</div>
-            <p className="text-xs opacity-80">Margin: {formatPercentage(topLevelKPIs.netProfit.margin)}</p>
+            <p className="text-xs opacity-90">Margin: {formatPercentage(topLevelKPIs.netProfit.margin)}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-600 to-purple-700 text-white">
+        <Card className="bg-gradient-to-br from-purple-600 to-purple-700 text-white border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Cash Flow</CardTitle>
             <Activity className="h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(topLevelKPIs.cashFlow.net)}</div>
-            <p className="text-xs opacity-80">
+            <p className="text-xs opacity-90">
               In: {formatCurrency(topLevelKPIs.cashFlow.inflow)} | 
               Out: {formatCurrency(topLevelKPIs.cashFlow.outflow)}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-600 to-orange-700 text-white">
+        <Card className="bg-gradient-to-br from-orange-600 to-orange-700 text-white border-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">EBITDA</CardTitle>
             <BarChart3 className="h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(topLevelKPIs.ebitda)}</div>
-            <p className="text-xs opacity-80">Earnings Before Interest, Tax, D&A</p>
+            <p className="text-xs opacity-90">Earnings Before Interest, Tax, D&A</p>
           </CardContent>
         </Card>
       </div>
@@ -321,16 +355,20 @@ export default function FinanceAnalyticsDashboard({
               </CardHeader>
               <CardContent>
                 <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={revenueData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                      <Bar dataKey="revenue" fill={COLORS.primary} name="Actual Revenue" />
-                      <Line type="monotone" dataKey="target" stroke={COLORS.danger} name="Target" />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+                  {revenueData.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">No data available</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={revenueData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                        <Bar dataKey="revenue" fill={COLORS.primary} name="Actual Revenue" />
+                        <Line type="monotone" dataKey="target" stroke={COLORS.danger} name="Target" />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -341,18 +379,22 @@ export default function FinanceAnalyticsDashboard({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {clientProfitability.map((client, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <div className="font-medium">{client.client}</div>
-                        <div className="text-sm text-gray-600">Margin: {formatPercentage(client.margin)}</div>
+                  {clientProfitability.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">No client data available</div>
+                  ) : (
+                    clientProfitability.map((client, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div>
+                          <div className="font-medium">{client.client}</div>
+                          <div className="text-sm text-muted-foreground">Margin: {formatPercentage(client.margin)}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold">{formatCurrency(client.revenue)}</div>
+                          <div className="text-sm text-green-600">{formatCurrency(client.profit)} profit</div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold">{formatCurrency(client.revenue)}</div>
-                        <div className="text-sm text-green-600">{formatCurrency(client.profit)} profit</div>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -517,11 +559,13 @@ export default function FinanceAnalyticsDashboard({
                     <span className="font-bold text-blue-600">{formatCurrency(topLevelKPIs.cashFlow.net)}</span>
                   </div>
                   
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-600 mb-2">Cash Reserve Runway</div>
-                    <div className="text-2xl font-bold">4.2 months</div>
-                    <div className="text-sm text-gray-600">Based on current burn rate</div>
-                  </div>
+                  {topLevelKPIs.cashFlow?.net > 0 && (
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="text-sm text-gray-600 mb-2">Cash Reserve Runway</div>
+                      <div className="text-2xl font-bold">N/A</div>
+                      <div className="text-sm text-gray-600">Based on current burn rate</div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -581,12 +625,14 @@ export default function FinanceAnalyticsDashboard({
                     </div>
                   ))}
                   
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      {formatCurrency(370000)} in invoices are overdue by 90+ days. Immediate action required.
-                    </AlertDescription>
-                  </Alert>
+                  {arAgingData.length > 0 && arAgingData[3]?.amount > 0 && (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        {formatCurrency(arAgingData[3].amount)} in invoices are overdue by 90+ days. Immediate action required.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -710,22 +756,8 @@ export default function FinanceAnalyticsDashboard({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <div className="font-medium text-blue-900">Revenue Forecast (Next 3 Months)</div>
-                    <div className="text-2xl font-bold text-blue-600">{formatCurrency(4850000)}</div>
-                    <div className="text-sm text-blue-700">Based on current trends and pipeline</div>
-                  </div>
-                  
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <div className="font-medium text-green-900">Expense Optimization Potential</div>
-                    <div className="text-2xl font-bold text-green-600">{formatCurrency(285000)}</div>
-                    <div className="text-sm text-green-700">Identified savings opportunities</div>
-                  </div>
-                  
-                  <div className="p-3 bg-yellow-50 rounded-lg">
-                    <div className="font-medium text-yellow-900">Collection Risk Assessment</div>
-                    <div className="text-2xl font-bold text-yellow-600">Medium Risk</div>
-                    <div className="text-sm text-yellow-700">{formatCurrency(680000)} at risk of delayed payment</div>
+                  <div className="text-center text-muted-foreground py-8">
+                    <p>Predictive analytics will be available once sufficient data is collected.</p>
                   </div>
                 </div>
               </CardContent>

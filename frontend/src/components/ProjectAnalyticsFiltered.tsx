@@ -6,6 +6,7 @@ import { TrendingUp, BarChart3, Users as UsersIcon, AlertTriangle, Coins, Activi
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useMemo } from 'react';
+import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
 
 interface FilteredAnalyticsProps {
   view: string;
@@ -14,9 +15,11 @@ interface FilteredAnalyticsProps {
   utilization: any;
   performance: any;
   risk: any;
+  projectCurrency?: string;
 }
 
-export default function ProjectAnalyticsFiltered({ burndown, velocity, utilization, performance, risk }: FilteredAnalyticsProps) {
+export default function ProjectAnalyticsFiltered({ burndown, velocity, utilization, performance, risk, projectCurrency = 'INR' }: FilteredAnalyticsProps) {
+  const { formatAmount } = useGlobalCurrency();
   
   // Advanced Analytics Calculations
   const advancedMetrics = useMemo(() => {
@@ -486,7 +489,7 @@ export default function ProjectAnalyticsFiltered({ burndown, velocity, utilizati
               <Coins className="h-4 w-4" />
               <span className="text-sm text-muted-foreground">Planned</span>
             </div>
-            <div className="text-2xl font-bold">${performance?.plannedValue?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold">{formatAmount(performance?.plannedValue || 0, projectCurrency)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -495,7 +498,7 @@ export default function ProjectAnalyticsFiltered({ burndown, velocity, utilizati
               <TrendingUp className="h-4 w-4" />
               <span className="text-sm text-muted-foreground">Earned</span>
             </div>
-            <div className="text-2xl font-bold text-green-600">${performance?.earnedValue?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-green-600">{formatAmount(performance?.earnedValue || 0, projectCurrency)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -504,7 +507,7 @@ export default function ProjectAnalyticsFiltered({ burndown, velocity, utilizati
               <Activity className="h-4 w-4" />
               <span className="text-sm text-muted-foreground">Actual</span>
             </div>
-            <div className="text-2xl font-bold text-orange-600">${performance?.actualCost?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-orange-600">{formatAmount(performance?.actualCost || 0, projectCurrency)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -514,7 +517,7 @@ export default function ProjectAnalyticsFiltered({ burndown, velocity, utilizati
               <span className="text-sm text-muted-foreground">Variance</span>
             </div>
             <div className={`text-2xl font-bold ${performance?.costVariance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ${performance?.costVariance?.toLocaleString() || 0}
+              {formatAmount(performance?.costVariance || 0, projectCurrency)}
             </div>
           </CardContent>
         </Card>

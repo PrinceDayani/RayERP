@@ -237,101 +237,238 @@ export const createProject = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
+    // Validate required fields only
+    const { name, description, startDate, endDate } = req.body;
+    if (!name?.trim() || !description?.trim() || !startDate || !endDate) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Name, description, start date, and end date are required' 
+      });
+    }
+
+    // Create project with minimal data processing
     const projectData = {
-      ...req.body,
+      name: name.trim(),
+      description: description.trim(),
+      status: req.body.status || 'planning',
+      priority: req.body.priority || 'medium',
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      budget: parseFloat(req.body.budget) || 0,
+      currency: req.body.currency || 'USD',
+      progress: Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100),
+      client: req.body.client?.trim() || undefined,
+      manager: req.body.manager || undefined,
+      team: Array.isArray(req.body.team) ? req.body.team : [],
+      departments: Array.isArray(req.body.departments) ? req.body.departments : [],
+      tags: Array.isArray(req.body.tags) ? req.body.tags : [],
       owner: user._id,
-      members: req.body.members || [],
-      departments: req.body.departments || [],
-      milestones: req.body.milestones || [],
-      risks: req.body.risks || [],
-      dependencies: req.body.dependencies || []
+      members: Array.isArray(req.body.members) ? req.body.members : [],
+      milestones: Array.isArray(req.body.milestones) ? req.body.milestones : [],
+      risks: Array.isArray(req.body.risks) ? req.body.risks : [],
+      dependencies: Array.isArray(req.body.dependencies) ? req.body.dependencies : [],
+      instructions: Array.isArray(req.body.instructions) ? req.body.instructions : []
     };
-    
+
+    // Create and save project
     const project = new Project(projectData);
     await project.save();
-    await project.populate('manager', 'firstName lastName');
-    await project.populate('team', 'firstName lastName');
-    await project.populate('owner', 'name email');
-    await project.populate('members', 'name email');
-    await project.populate('departments', 'name description');
-    await project.populate('dependencies', 'name');
-    
-    // Safely get manager ID
-    const managerId = project.manager ? 
-                     (project.manager._id?.toString() || project.manager.toString()) : 
-                     req.body.manager;
-    
-    if (!managerId) {
-      return res.status(400).json({ message: 'Manager is required for timeline event' });
+
+    // Handle project permissions if provided
+    if (req.body.projectPermissions && Object.keys(req.body.projectPermissions).length > 0) {
+      try {
+        const ProjectPermission = (await import('../models/ProjectPermission')).default;
+        const permissionPromises = Object.entries(req.body.projectPermissions).map(([employeeId, permissions]) => {
+          return ProjectPermission.create({
+            project: project._id,
+            employee: employeeId,
+            permissions: permissions as string[],
+            createdBy: user._id
+          });
+        });
+        await Promise.all(permissionPromises);
+      } catch (permError) {
+        console.error('Error creating project permissions:', permError);
+        // Don't fail the project creation if permissions fail
+      }
     }
-    
-    // Create timeline event
-    await createTimelineEvent(
-      'project',
-      project._id.toString(),
-      'created',
-      'Project Created',
-      `Project "${project.name}" was created`,
-      managerId
-    );
-    
-    // Emit socket events
-    const { io } = await import('../server');
-    io.emit('project:created', project);
-    await emitProjectStats();
-    
-    // Log project creation activity
-    const { logActivity } = await import('../utils/activityLogger');
-    await logActivity({
-      userId: user._id.toString(),
-      userName: user.name,
-      action: 'create',
-      resource: `Project: ${project.name}`,
-      resourceType: 'project',
-      resourceId: project._id.toString(),
-      projectId: project._id.toString(),
-      details: `Created new project "${project.name}" with status ${project.status}`,
-      metadata: { 
-        projectId: project._id, 
-        projectName: project.name, 
-        status: project.status,
-        budget: project.budget,
-        startDate: project.startDate,
-        endDate: project.endDate
-      },
-      category: 'project',
-      severity: 'medium',
-      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+
+    // Return immediately with essential data
+    const response = {
+      _id: project._id,
+      name: project.name,
+      description: project.description,
+      status: project.status,
+      priority: project.priority,
+      startDate: project.startDate,
+      endDate: project.endDate,
+      budget: project.budget,
+      currency: project.currency,
+      progress: project.progress,
+      client: project.client,
+      manager: project.manager,
+      team: project.team,
+      owner: project.owner,
+      members: project.members,
+      departments: project.departments,
+      tags: project.tags,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt
+    };
+
+    res.status(201).json(response);
+
+    // Handle background tasks asynchronously without blocking response
+    setImmediate(async () => {
+      try {
+        // Import modules only when needed
+        const [
+          { createTimelineEvent },
+          { logActivity },
+          { RealTimeEmitter },
+          { io }
+        ] = await Promise.all([
+          import('../utils/timelineHelper'),
+          import('../utils/activityLogger'),
+          import('../utils/realTimeEmitter'),
+          import('../server')
+        ]);
+
+        // Execute background tasks in parallel
+        const backgroundTasks = [];
+
+        // Timeline event
+        if (project.manager) {
+          backgroundTasks.push(
+            createTimelineEvent(
+              'project',
+              project._id.toString(),
+              'created',
+              'Project Created',
+              `Project "${project.name}" was created`,
+              project.manager.toString()
+            ).catch(console.error)
+          );
+        }
+
+        // Activity logging
+        backgroundTasks.push(
+          logActivity({
+            userId: user._id.toString(),
+            userName: user.name,
+            action: 'create',
+            resource: `Project: ${project.name}`,
+            resourceType: 'project',
+            resourceId: project._id.toString(),
+            projectId: project._id.toString(),
+            details: `Created new project "${project.name}"`,
+            metadata: { 
+              projectId: project._id, 
+              projectName: project.name, 
+              status: project.status 
+            },
+            category: 'project',
+            severity: 'medium',
+            ipAddress: req.ip || 'unknown'
+          }).catch(console.error)
+        );
+
+        // Socket emissions
+        backgroundTasks.push(
+          Promise.resolve().then(() => {
+            io.emit('project:created', response);
+            return Promise.all([
+              RealTimeEmitter.emitDashboardStats(),
+              RealTimeEmitter.emitActivityLog({
+                type: 'project',
+                message: `New project "${project.name}" created`,
+                user: user.name || 'System',
+                userId: user._id?.toString(),
+                metadata: { projectId: project._id, projectName: project.name }
+              })
+            ]);
+          }).catch(console.error)
+        );
+
+        // Execute all background tasks
+        await Promise.allSettled(backgroundTasks);
+      } catch (error) {
+        console.error('Background task error:', error);
+      }
     });
 
-    // Emit dashboard stats update
-    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
-    await RealTimeEmitter.emitDashboardStats();
-    await RealTimeEmitter.emitActivityLog({
-      type: 'project',
-      message: `New project "${project.name}" created`,
-      user: user.name || 'System',
-      userId: user._id?.toString(),
-      metadata: { projectId: project._id, projectName: project.name, status: project.status }
-    });
-    
-    res.status(201).json(project);
   } catch (error) {
     console.error('Error creating project:', error);
-    res.status(400).json({ message: 'Error creating project', error: error instanceof Error ? error.message : 'Unknown error' });
+    res.status(400).json({ 
+      success: false, 
+      message: 'Error creating project', 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
   }
 };
 
 export const updateProject = async (req: Request, res: Response) => {
   try {
+    console.log('Update project request:', {
+      projectId: req.params.id,
+      body: req.body,
+      user: req.user?.name
+    });
+
     const oldProject = await Project.findById(req.params.id);
     if (!oldProject) {
       return res.status(404).json({ message: 'Project not found' });
     }
     
+    // Validate and sanitize update data
+    const updateData: any = {};
+    
+    // Only include fields that are actually being updated
+    if (req.body.name !== undefined) updateData.name = req.body.name;
+    if (req.body.description !== undefined) updateData.description = req.body.description;
+    if (req.body.status !== undefined) updateData.status = req.body.status;
+    if (req.body.priority !== undefined) updateData.priority = req.body.priority;
+    if (req.body.budget !== undefined) updateData.budget = parseFloat(req.body.budget) || 0;
+    if (req.body.progress !== undefined) updateData.progress = Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100);
+    if (req.body.client !== undefined) updateData.client = req.body.client;
+    if (req.body.manager !== undefined) updateData.manager = req.body.manager;
+    if (req.body.team !== undefined) updateData.team = Array.isArray(req.body.team) ? req.body.team : [];
+    if (req.body.departments !== undefined) updateData.departments = Array.isArray(req.body.departments) ? req.body.departments : [];
+    if (req.body.tags !== undefined) updateData.tags = Array.isArray(req.body.tags) ? req.body.tags : [];
+    
+    // Handle dates carefully
+    if (req.body.startDate) {
+      try {
+        updateData.startDate = new Date(req.body.startDate);
+        if (isNaN(updateData.startDate.getTime())) {
+          return res.status(400).json({ message: 'Invalid start date format' });
+        }
+      } catch (error) {
+        return res.status(400).json({ message: 'Invalid start date format' });
+      }
+    }
+    
+    if (req.body.endDate) {
+      try {
+        updateData.endDate = new Date(req.body.endDate);
+        if (isNaN(updateData.endDate.getTime())) {
+          return res.status(400).json({ message: 'Invalid end date format' });
+        }
+      } catch (error) {
+        return res.status(400).json({ message: 'Invalid end date format' });
+      }
+    }
+    
+    // Validate date range if both dates are provided
+    if (updateData.startDate && updateData.endDate && updateData.startDate > updateData.endDate) {
+      return res.status(400).json({ message: 'Start date must be before end date' });
+    }
+    
+    console.log('Sanitized update data:', updateData);
+    
     const project = await Project.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     ).populate('manager', 'firstName lastName')
      .populate('team', 'firstName lastName')
@@ -343,6 +480,8 @@ export const updateProject = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Project not found after update' });
     }
     
+    console.log('Project updated successfully:', project._id);
+    
     // Safely get manager ID for timeline
     const managerId = req.body.updatedBy || 
                      (project.manager ? 
@@ -350,84 +489,115 @@ export const updateProject = async (req: Request, res: Response) => {
                       null);
     
     if (!managerId) {
-      return res.status(400).json({ message: 'Unable to determine user for timeline event' });
-    }
-    
-    // Create timeline event
-    if (oldProject.status !== project.status) {
-      await createTimelineEvent(
-        'project',
-        project._id.toString(),
-        'status_changed',
-        'Status Updated',
-        `Project status changed from "${oldProject.status}" to "${project.status}"`,
-        managerId,
-        {
-          field: 'status',
-          oldValue: oldProject.status,
-          newValue: project.status
-        }
-      );
+      console.warn('No manager ID found for timeline event');
     } else {
-      await createTimelineEvent(
-        'project',
-        project._id.toString(),
-        'updated',
-        'Project Updated',
-        `Project "${project.name}" was updated`,
-        managerId
-      );
+      // Create timeline event
+      try {
+        if (oldProject.status !== project.status) {
+          await createTimelineEvent(
+            'project',
+            project._id.toString(),
+            'status_changed',
+            'Status Updated',
+            `Project status changed from "${oldProject.status}" to "${project.status}"`,
+            managerId,
+            {
+              field: 'status',
+              oldValue: oldProject.status,
+              newValue: project.status
+            }
+          );
+        } else {
+          await createTimelineEvent(
+            'project',
+            project._id.toString(),
+            'updated',
+            'Project Updated',
+            `Project "${project.name}" was updated`,
+            managerId
+          );
+        }
+      } catch (timelineError) {
+        console.error('Timeline event creation failed:', timelineError);
+      }
     }
     
-    // Emit socket events
-    const { io } = await import('../server');
-    io.emit('project:updated', project);
-    await emitProjectStats();
-    
-    // Send notification
-    const { NotificationEmitter } = await import('../utils/notificationEmitter');
-    NotificationEmitter.projectUpdated(project);
-    
-    // Log project update activity
-    const { logActivity } = await import('../utils/activityLogger');
-    await logActivity({
-      userId: req.user?._id?.toString() || 'system',
-      userName: req.user?.name || 'System',
-      action: 'update',
-      resource: `Project: ${project.name}`,
-      resourceType: 'project',
-      resourceId: project._id.toString(),
-      projectId: project._id.toString(),
-      details: oldProject.status !== project.status ? 
-        `Updated project "${project.name}" - Status changed from ${oldProject.status} to ${project.status}` :
-        `Updated project "${project.name}"`,
-      metadata: { 
-        projectId: project._id, 
-        projectName: project.name, 
-        oldStatus: oldProject.status,
-        newStatus: project.status,
-        changes: Object.keys(req.body)
-      },
-      category: 'project',
-      severity: oldProject.status !== project.status ? 'medium' : 'low',
-      ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
-    });
+    // Emit socket events (non-blocking)
+    setImmediate(async () => {
+      try {
+        const { io } = await import('../server');
+        io.emit('project:updated', project);
+        await emitProjectStats();
+        
+        // Send notification
+        const { NotificationEmitter } = await import('../utils/notificationEmitter');
+        NotificationEmitter.projectUpdated(project);
+        
+        // Log project update activity
+        const { logActivity } = await import('../utils/activityLogger');
+        await logActivity({
+          userId: req.user?._id?.toString() || 'system',
+          userName: req.user?.name || 'System',
+          action: 'update',
+          resource: `Project: ${project.name}`,
+          resourceType: 'project',
+          resourceId: project._id.toString(),
+          projectId: project._id.toString(),
+          details: oldProject.status !== project.status ? 
+            `Updated project "${project.name}" - Status changed from ${oldProject.status} to ${project.status}` :
+            `Updated project "${project.name}"`,
+          metadata: { 
+            projectId: project._id, 
+            projectName: project.name, 
+            oldStatus: oldProject.status,
+            newStatus: project.status,
+            changes: Object.keys(updateData)
+          },
+          category: 'project',
+          severity: oldProject.status !== project.status ? 'medium' : 'low',
+          ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+        });
 
-    // Emit dashboard stats update
-    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
-    await RealTimeEmitter.emitDashboardStats();
-    await RealTimeEmitter.emitActivityLog({
-      type: 'project',
-      message: `Project "${project.name}" updated`,
-      user: req.user?.name || 'System',
-      userId: req.user?._id?.toString(),
-      metadata: { projectId: project._id, projectName: project.name, status: project.status }
+        // Emit dashboard stats update
+        const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
+        await RealTimeEmitter.emitDashboardStats();
+        await RealTimeEmitter.emitActivityLog({
+          type: 'project',
+          message: `Project "${project.name}" updated`,
+          user: req.user?.name || 'System',
+          userId: req.user?._id?.toString(),
+          metadata: { projectId: project._id, projectName: project.name, status: project.status }
+        });
+      } catch (error) {
+        console.error('Background task error:', error);
+      }
     });
     
     res.json(project);
   } catch (error) {
     console.error('Error updating project:', error);
-    res.status(400).json({ message: 'Error updating project', error: error instanceof Error ? error.message : 'Unknown error' });
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('validation')) {
+        return res.status(400).json({ 
+          message: 'Validation error', 
+          error: error.message,
+          details: 'Please check your input data format'
+        });
+      }
+      if (error.message.includes('Cast to ObjectId')) {
+        return res.status(400).json({ 
+          message: 'Invalid ID format', 
+          error: 'One or more IDs are not in valid format'
+        });
+      }
+    }
+    
+    res.status(400).json({ 
+      message: 'Error updating project', 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
   }
 };
 
@@ -1423,5 +1593,199 @@ export const getProjectTemplates = async (req: Request, res: Response) => {
     res.json(templates);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching templates', error });
+  }
+};
+
+// Fast project creation endpoint - minimal processing
+export const createProjectFast = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    // Validate required fields only
+    const { name, description, startDate, endDate } = req.body;
+    if (!name?.trim() || !description?.trim() || !startDate || !endDate) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Name, description, start date, and end date are required' 
+      });
+    }
+
+    // Create project with minimal data processing
+    const projectData = {
+      name: name.trim(),
+      description: description.trim(),
+      status: req.body.status || 'planning',
+      priority: req.body.priority || 'medium',
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      budget: parseFloat(req.body.budget) || 0,
+      currency: req.body.currency || 'USD',
+      progress: Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100),
+      client: req.body.client?.trim() || undefined,
+      manager: req.body.manager || undefined,
+      team: Array.isArray(req.body.team) ? req.body.team : [],
+      departments: Array.isArray(req.body.departments) ? req.body.departments : [],
+      tags: Array.isArray(req.body.tags) ? req.body.tags : [],
+      owner: user._id,
+      members: Array.isArray(req.body.members) ? req.body.members : [],
+      milestones: Array.isArray(req.body.milestones) ? req.body.milestones : [],
+      risks: Array.isArray(req.body.risks) ? req.body.risks : [],
+      dependencies: Array.isArray(req.body.dependencies) ? req.body.dependencies : [],
+      instructions: Array.isArray(req.body.instructions) ? req.body.instructions : []
+    };
+
+    // Create and save project
+    const project = new Project(projectData);
+    await project.save();
+
+    // Return immediately with essential data
+    const response = {
+      _id: project._id,
+      name: project.name,
+      description: project.description,
+      status: project.status,
+      priority: project.priority,
+      startDate: project.startDate,
+      endDate: project.endDate,
+      budget: project.budget,
+      currency: project.currency,
+      progress: project.progress,
+      client: project.client,
+      manager: project.manager,
+      team: project.team,
+      owner: project.owner,
+      members: project.members,
+      departments: project.departments,
+      tags: project.tags,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt
+    };
+
+    res.status(201).json(response);
+
+    // Handle background tasks asynchronously without blocking response
+    setImmediate(async () => {
+      try {
+        // Import modules only when needed
+        const [
+          { createTimelineEvent },
+          { logActivity },
+          { RealTimeEmitter },
+          { io }
+        ] = await Promise.all([
+          import('../utils/timelineHelper'),
+          import('../utils/activityLogger'),
+          import('../utils/realTimeEmitter'),
+          import('../server')
+        ]);
+
+        // Execute background tasks in parallel
+        const backgroundTasks = [];
+
+        // Timeline event
+        if (project.manager) {
+          backgroundTasks.push(
+            createTimelineEvent(
+              'project',
+              project._id.toString(),
+              'created',
+              'Project Created',
+              `Project "${project.name}" was created`,
+              project.manager.toString()
+            ).catch(console.error)
+          );
+        }
+
+        // Activity logging
+        backgroundTasks.push(
+          logActivity({
+            userId: user._id.toString(),
+            userName: user.name,
+            action: 'create',
+            resource: `Project: ${project.name}`,
+            resourceType: 'project',
+            resourceId: project._id.toString(),
+            projectId: project._id.toString(),
+            details: `Created new project "${project.name}"`,
+            metadata: { 
+              projectId: project._id, 
+              projectName: project.name, 
+              status: project.status 
+            },
+            category: 'project',
+            severity: 'medium',
+            ipAddress: req.ip || 'unknown'
+          }).catch(console.error)
+        );
+
+        // Socket emissions
+        backgroundTasks.push(
+          Promise.resolve().then(() => {
+            io.emit('project:created', response);
+            return Promise.all([
+              RealTimeEmitter.emitDashboardStats(),
+              RealTimeEmitter.emitActivityLog({
+                type: 'project',
+                message: `New project "${project.name}" created`,
+                user: user.name || 'System',
+                userId: user._id?.toString(),
+                metadata: { projectId: project._id, projectName: project.name }
+              })
+            ]);
+          }).catch(console.error)
+        );
+
+        // Execute all background tasks
+        await Promise.allSettled(backgroundTasks);
+      } catch (error) {
+        console.error('Background task error:', error);
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating project:', error);
+    res.status(400).json({ 
+      success: false, 
+      message: 'Error creating project', 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+};
+
+// Fast data loading endpoints
+export const getEmployeesMinimal = async (req: Request, res: Response) => {
+  try {
+    const Employee = (await import('../models/Employee')).default;
+    
+    // Only fetch essential fields
+    const employees = await Employee.find(
+      { status: 'active' }, 
+      'firstName lastName _id'
+    ).lean().limit(100);
+
+    res.json(employees);
+  } catch (error) {
+    console.error('Error fetching employees:', error);
+    res.status(500).json({ message: 'Error fetching employees' });
+  }
+};
+
+export const getDepartmentsMinimal = async (req: Request, res: Response) => {
+  try {
+    const Department = (await import('../models/Department')).default;
+    
+    // Only fetch essential fields
+    const departments = await Department.find(
+      { status: 'active' }, 
+      'name _id'
+    ).lean().limit(50);
+
+    res.json(departments);
+  } catch (error) {
+    console.error('Error fetching departments:', error);
+    res.status(500).json({ message: 'Error fetching departments' });
   }
 };

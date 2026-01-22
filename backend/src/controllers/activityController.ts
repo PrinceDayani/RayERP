@@ -3,6 +3,19 @@ import ActivityLog from '../models/ActivityLog';
 import Project from '../models/Project';
 import { Role } from '../models/Role';
 import mongoose from 'mongoose';
+import { registerCacheInvalidator } from '../utils/dashboardCache';
+
+// Activity cache with 5min TTL
+let activitiesCache: Map<string, { data: any; timestamp: number }> = new Map();
+let statsCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL = 300000; // 5 minutes
+
+const clearActivityCache = () => {
+  activitiesCache.clear();
+  statsCache = null;
+};
+
+registerCacheInvalidator(clearActivityCache);
 
 export const createActivity = async (req: Request, res: Response) => {
   try {
@@ -24,6 +37,8 @@ export const createActivity = async (req: Request, res: Response) => {
       ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
     });
 
+    clearActivityCache();
+
     res.status(201).json({
       success: true,
       data: activity
@@ -40,6 +55,13 @@ export const createActivity = async (req: Request, res: Response) => {
 export const getBatchActivities = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
+    const cacheKey = `batch_${user.id}`;
+    const cached = activitiesCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return res.status(200).json({ success: true, data: cached.data, cached: true });
+    }
+
     const userRole = await Role.findById(user.role).lean();
     const isManagement = userRole && ['ROOT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(userRole.name);
 
@@ -73,6 +95,8 @@ export const getBatchActivities = async (req: Request, res: Response) => {
       .limit(50)
       .lean();
 
+    activitiesCache.set(cacheKey, { data: activities, timestamp: Date.now() });
+
     res.status(200).json({
       success: true,
       data: activities
@@ -92,6 +116,13 @@ export const getActivities = async (req: Request, res: Response) => {
     const { page = 1, limit = 20, resourceType, projectId, startDate, endDate, action, status, category, severity, userName } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
     const user = (req as any).user;
+    
+    const cacheKey = `activities_${user.id}_${JSON.stringify(req.query)}`;
+    const cached = activitiesCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return res.status(200).json({ ...cached.data, cached: true });
+    }
 
     // Get user's role
     const userRole = await Role.findById(user.role).lean();
@@ -149,7 +180,7 @@ export const getActivities = async (req: Request, res: Response) => {
 
     const total = await ActivityLog.countDocuments(query);
 
-    res.status(200).json({
+    const response = {
       success: true,
       data: activities,
       pagination: {
@@ -158,7 +189,11 @@ export const getActivities = async (req: Request, res: Response) => {
         limit: Number(limit),
         pages: Math.ceil(total / Number(limit))
       }
-    });
+    };
+
+    activitiesCache.set(cacheKey, { data: response, timestamp: Date.now() });
+
+    res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching activities:', error);
     res.status(500).json({
@@ -221,6 +256,10 @@ export const getActivityById = async (req: Request, res: Response) => {
 
 export const getActivityStats = async (req: Request, res: Response) => {
   try {
+    if (statsCache && Date.now() - statsCache.timestamp < CACHE_TTL) {
+      return res.status(200).json({ success: true, data: statsCache.data, cached: true });
+    }
+
     const user = (req as any).user;
     const userRole = await Role.findById(user.role).lean();
     const isManagement = userRole && ['ROOT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(userRole.name);
@@ -268,16 +307,20 @@ export const getActivityStats = async (req: Request, res: Response) => {
       ])
     ]);
 
+    const statsData = {
+      totalActivities,
+      todayActivities,
+      weekActivities,
+      monthActivities,
+      resourceTypeStats,
+      actionStats
+    };
+
+    statsCache = { data: statsData, timestamp: Date.now() };
+
     res.status(200).json({
       success: true,
-      data: {
-        totalActivities,
-        todayActivities,
-        weekActivities,
-        monthActivities,
-        resourceTypeStats,
-        actionStats
-      }
+      data: statsData
     });
   } catch (error) {
     console.error('Error fetching activity stats:', error);

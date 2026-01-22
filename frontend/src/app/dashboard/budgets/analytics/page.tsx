@@ -233,7 +233,7 @@ export default function BudgetAnalyticsPage() {
         </TabsList>
 
         <TabsContent value="overview">
-          <BudgetAnalytics budgets={filteredBudgets} />
+          <BudgetAnalytics budgets={filteredBudgets} displayCurrency="INR" />
         </TabsContent>
 
         <TabsContent value="projects" className="space-y-6">

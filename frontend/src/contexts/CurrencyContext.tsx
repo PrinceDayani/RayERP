@@ -1,83 +1,128 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { currencyAPI, type Currency } from '@/lib/api/currencyAPI';
 
 interface CurrencyContextType {
-  currency: string;
-  symbol: string;
-  setCurrency: (currency: string) => void;
-  formatAmount: (amount: number, showSymbol?: boolean) => string;
-  formatCompact: (amount: number) => string;
+  currencies: Currency[];
+  baseCurrency: Currency | null;
+  loading: boolean;
+  error: string | null;
+  formatCurrency: (amount: number, currencyCode?: string) => string;
+  getCurrencySymbol: (currencyCode: string) => string;
+  refreshCurrencies: () => Promise<void>;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
-export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const [currency, setCurrencyState] = useState('INR');
-  const [symbol, setSymbol] = useState('₹');
+export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [baseCurrency, setBaseCurrency] = useState<Currency | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const symbols: Record<string, string> = {
-    INR: '₹', USD: '$', EUR: '€', GBP: '£', JPY: '¥', CAD: 'C$', AUD: 'A$', CHF: 'CHF',
-    AED: 'د.إ', SAR: 'ر.س', QAR: 'ر.ق', KWD: 'د.ك', BHD: 'د.ب', OMR: 'ر.ع',
-    JOD: 'د.ا', ILS: '₪', LBP: 'ل.ل', EGP: 'ج.م', IQD: 'ع.د', SYP: 'ل.س',
-    YER: 'ر.ي', TRY: '₺', IRR: '﷼'
-  };
-
-  const locales: Record<string, string> = {
-    INR: 'en-IN', USD: 'en-US', EUR: 'de-DE', GBP: 'en-GB', JPY: 'ja-JP', CAD: 'en-CA',
-    AUD: 'en-AU', CHF: 'de-CH', AED: 'ar-AE', SAR: 'ar-SA', QAR: 'ar-QA', KWD: 'ar-KW',
-    BHD: 'ar-BH', OMR: 'ar-OM', JOD: 'ar-JO', ILS: 'he-IL', LBP: 'ar-LB', EGP: 'ar-EG',
-    IQD: 'ar-IQ', SYP: 'ar-SY', YER: 'ar-YE', TRY: 'tr-TR', IRR: 'fa-IR'
+  const fetchCurrencies = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check if user is authenticated
+      const token = sessionStorage.getItem('auth-token') || localStorage.getItem('token');
+      if (!token) {
+        console.log('No auth token found, using default currencies');
+        const defaultCurrencies = [
+          { _id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', isBaseCurrency: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { _id: 'eur', code: 'EUR', name: 'Euro', symbol: '€', isBaseCurrency: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { _id: 'gbp', code: 'GBP', name: 'British Pound', symbol: '£', isBaseCurrency: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          { _id: 'inr', code: 'INR', name: 'Indian Rupee', symbol: '₹', isBaseCurrency: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+        ];
+        setCurrencies(defaultCurrencies);
+        setBaseCurrency(defaultCurrencies[3]); // INR as base
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Fetching currencies from API...');
+      const [currenciesData, baseCurrencyData] = await Promise.all([
+        currencyAPI.getAll(),
+        currencyAPI.getBase()
+      ]);
+      
+      console.log('Currencies fetched:', currenciesData);
+      setCurrencies(currenciesData);
+      setBaseCurrency(baseCurrencyData);
+    } catch (err) {
+      console.error('Error fetching currencies:', err);
+      setError('Failed to load currencies');
+      // Set default fallback
+      const defaultCurrencies = [
+        { _id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', isBaseCurrency: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { _id: 'eur', code: 'EUR', name: 'Euro', symbol: '€', isBaseCurrency: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { _id: 'gbp', code: 'GBP', name: 'British Pound', symbol: '£', isBaseCurrency: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { _id: 'inr', code: 'INR', name: 'Indian Rupee', symbol: '₹', isBaseCurrency: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+      ];
+      setCurrencies(defaultCurrencies);
+      setBaseCurrency(defaultCurrencies[3]); // INR as base
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    // Always force INR as the currency
-    setCurrencyState('INR');
-    setSymbol('₹');
-    localStorage.setItem('preferredCurrency', 'INR');
+    fetchCurrencies();
+    
+    // Listen for auth changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if ((e.key === 'auth-token' || e.key === 'token') && e.newValue) {
+        console.log('Auth token detected, refreshing currencies');
+        fetchCurrencies();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
-  const setCurrency = (newCurrency: string) => {
-    // Only allow INR
-    if (newCurrency !== 'INR') return;
-    setCurrencyState('INR');
-    setSymbol('₹');
-    localStorage.setItem('preferredCurrency', 'INR');
+  const formatCurrency = (amount: number, currencyCode?: string): string => {
+    const currency = currencyCode 
+      ? currencies.find(c => c.code === currencyCode) 
+      : baseCurrency;
+    
+    const symbol = currency?.symbol || '$';
+    return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const formatAmount = (amount: number, showSymbol = true) => {
-    const locale = locales[currency] || 'en-IN';
-    const formatted = amount.toLocaleString(locale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-    return showSymbol ? `${symbol}${formatted}` : formatted;
+  const getCurrencySymbol = (currencyCode: string): string => {
+    const currency = currencies.find(c => c.code === currencyCode);
+    return currency?.symbol || '$';
   };
 
-  const formatCompact = (amount: number) => {
-    // Indian format (Lakhs/Crores) for INR
-    if (currency === 'INR') {
-      if (amount >= 10000000) return `${symbol}${(amount / 10000000).toFixed(2)} Cr`;
-      if (amount >= 100000) return `${symbol}${(amount / 100000).toFixed(2)} L`;
-      if (amount >= 1000) return `${symbol}${(amount / 1000).toFixed(0)}K`;
-      return `${symbol}${amount.toFixed(0)}`;
-    }
-    // International format (Million/Billion) for others
-    if (amount >= 1000000000) return `${symbol}${(amount / 1000000000).toFixed(2)}B`;
-    if (amount >= 1000000) return `${symbol}${(amount / 1000000).toFixed(2)}M`;
-    if (amount >= 1000) return `${symbol}${(amount / 1000).toFixed(0)}K`;
-    return `${symbol}${amount.toFixed(0)}`;
+  const refreshCurrencies = async () => {
+    await fetchCurrencies();
   };
 
   return (
-    <CurrencyContext.Provider value={{ currency, symbol, setCurrency, formatAmount, formatCompact }}>
+    <CurrencyContext.Provider value={{
+      currencies,
+      baseCurrency,
+      loading,
+      error,
+      formatCurrency,
+      getCurrencySymbol,
+      refreshCurrencies
+    }}>
       {children}
     </CurrencyContext.Provider>
   );
-}
+};
 
-export function useCurrency() {
+export const useCurrency = () => {
   const context = useContext(CurrencyContext);
-  if (!context) throw new Error('useCurrency must be used within CurrencyProvider');
+  if (context === undefined) {
+    throw new Error('useCurrency must be used within a CurrencyProvider');
+  }
   return context;
-}
+};
