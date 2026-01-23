@@ -29,7 +29,7 @@ export function DepartmentNav({ departmentId }: DepartmentNavProps) {
     const visibleItems = navItems.filter(item => !item.permission || hasPermission(item.permission));
 
     return (
-        <div className="border-b">
+        <div className="border-b bg-gradient-to-r from-background to-muted/20">
             <nav className="flex space-x-1 px-1">
                 {visibleItems.map((item) => {
                     const href = `${basePath}${item.href}`;
@@ -43,10 +43,10 @@ export function DepartmentNav({ departmentId }: DepartmentNavProps) {
                             key={item.href}
                             href={href}
                             className={cn(
-                                "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                                "flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200",
                                 isActive
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted"
+                                    ? "border-[#970E2C] text-[#970E2C] bg-[#970E2C]/5"
+                                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted hover:bg-muted/30"
                             )}
                         >
                             <Icon className="w-4 h-4" />

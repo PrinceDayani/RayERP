@@ -275,91 +275,97 @@ const ProjectManagementDashboard: React.FC = () => {
       fullAccessCount={fullAccessCount}
       basicViewCount={basicViewCount}
     >
+      <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
         <div>
-          <p className="text-muted-foreground mt-1">Manage projects, tasks, and team collaboration</p>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-[#970E2C] via-[#800020] to-[#970E2C] bg-clip-text text-transparent">Project Management</h1>
+          <p className="text-muted-foreground mt-2 text-base">Manage projects, tasks, and team collaboration</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <ProjectCurrencySwitcher className="hidden sm:flex" />
-          <Button variant="outline" onClick={() => router.push("/dashboard/projects/timeline-overview")}>
+          <Button variant="outline" onClick={() => router.push("/dashboard/projects/timeline-overview")} className="h-11 hover:bg-[#970E2C]/5 hover:border-[#970E2C]/30">
             <GanttChartSquare className="h-4 w-4 mr-2" />
             Timeline
           </Button>
-          <Button variant="outline" onClick={() => router.push("/dashboard/projects/analytics")}>
+          <Button variant="outline" onClick={() => router.push("/dashboard/projects/analytics")} className="h-11 hover:bg-[#970E2C]/5 hover:border-[#970E2C]/30">
             <BarChart3 className="h-4 w-4 mr-2" />
             Analytics
           </Button>
-          <Button onClick={() => router.push("/dashboard/projects/create")} className="btn-primary-gradient">
+          <Button onClick={() => router.push("/dashboard/projects/create")} className="h-11 bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20">
             <Plus className="h-4 w-4 mr-2" />
             New Project
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Premium Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
-          <CardContent className="p-6">
+        <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <CardContent className="p-6 relative">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Projects</p>
-                <p className="text-3xl font-bold text-foreground">{stats.totalProjects}</p>
-                <p className="text-xs text-muted-foreground mt-1">All projects</p>
+                <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Total Projects</p>
+                <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.totalProjects}</p>
+                <p className="text-xs text-muted-foreground mt-2">All projects</p>
               </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
-                <Briefcase className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                <Briefcase className="h-7 w-7 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="card-modern hover-lift border-l-4 border-l-green-500">
-          <CardContent className="p-6">
+        <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <CardContent className="p-6 relative">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Active Projects</p>
-                <p className="text-3xl font-bold text-foreground">{stats.activeProjects}</p>
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Active Projects</p>
+                <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.activeProjects}</p>
+                <p className="text-xs text-[#970E2C] mt-2">
                   {stats.totalProjects > 0 ? ((stats.activeProjects / stats.totalProjects) * 100).toFixed(0) : 0}% of total
                 </p>
               </div>
-              <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
-                <Activity className="h-6 w-6 text-green-600 dark:text-green-400" />
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                <Activity className="h-7 w-7 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="card-modern hover-lift border-l-4 border-l-purple-500">
-          <CardContent className="p-6">
+        <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <CardContent className="p-6 relative">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Completed</p>
-                <p className="text-3xl font-bold text-foreground">{stats.completedProjects}</p>
-                <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Completed</p>
+                <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.completedProjects}</p>
+                <p className="text-xs text-[#970E2C] mt-2">
                   {stats.totalProjects > 0 ? ((stats.completedProjects / stats.totalProjects) * 100).toFixed(0) : 0}% success rate
                 </p>
               </div>
-              <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
-                <Target className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                <Target className="h-7 w-7 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="card-modern hover-lift border-l-4 border-l-orange-500">
-          <CardContent className="p-6">
+        <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <CardContent className="p-6 relative">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">At Risk</p>
-                <p className="text-3xl font-bold text-foreground">{stats.atRiskProjects || 0}</p>
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">At Risk</p>
+                <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.atRiskProjects || 0}</p>
+                <p className="text-xs text-[#970E2C] mt-2">
                   {stats.overdueTasks || 0} overdue tasks
                 </p>
               </div>
-              <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-xl">
-                <Zap className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                <Zap className="h-7 w-7 text-white" />
               </div>
             </div>
           </CardContent>
@@ -368,33 +374,33 @@ const ProjectManagementDashboard: React.FC = () => {
 
       {/* Main Content */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-card dark:bg-card shadow-sm border border-border">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="projects">All Projects</TabsTrigger>
-          <TabsTrigger value="budgets">Budgets</TabsTrigger>
-          <TabsTrigger value="tasks">My Tasks</TabsTrigger>
-          <TabsTrigger value="task-management">Task Management</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-6 h-12 bg-muted/50 p-1 rounded-xl border border-border/50">
+          <TabsTrigger value="overview" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Overview</TabsTrigger>
+          <TabsTrigger value="projects" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">All Projects</TabsTrigger>
+          <TabsTrigger value="budgets" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Budgets</TabsTrigger>
+          <TabsTrigger value="tasks" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">My Tasks</TabsTrigger>
+          <TabsTrigger value="task-management" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Task Management</TabsTrigger>
+          <TabsTrigger value="reports" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Reports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           {/* Search and Filters */}
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
             <CardContent className="p-6">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col md:flex-row gap-4">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search projects..."
+                      placeholder="Search projects by name or description..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 h-11 border-border/50 focus:border-[#970E2C] focus:ring-[#970E2C]/20"
                     />
                   </div>
-                  <div className="flex gap-4 flex-wrap">
+                  <div className="flex gap-3 flex-wrap">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-full md:w-48">
+                      <SelectTrigger className="w-full md:w-40 h-11">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -406,7 +412,7 @@ const ProjectManagementDashboard: React.FC = () => {
                       </SelectContent>
                     </Select>
                     <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                      <SelectTrigger className="w-full md:w-48">
+                      <SelectTrigger className="w-full md:w-40 h-11">
                         <SelectValue placeholder="Priority" />
                       </SelectTrigger>
                       <SelectContent>
@@ -418,7 +424,7 @@ const ProjectManagementDashboard: React.FC = () => {
                       </SelectContent>
                     </Select>
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-full md:w-48">
+                      <SelectTrigger className="w-full md:w-40 h-11">
                         <SelectValue placeholder="Sort By" />
                       </SelectTrigger>
                       <SelectContent>
@@ -441,41 +447,42 @@ const ProjectManagementDashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.length === 0 ? (
               <Card className="col-span-full border-0 shadow-lg">
-                <CardContent className="p-12 text-center">
-                  <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Briefcase className="w-10 h-10 text-blue-600" />
+                <CardContent className="p-16 text-center">
+                  <div className="w-24 h-24 bg-gradient-to-br from-[#970E2C]/10 to-[#800020]/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <Briefcase className="w-12 h-12 text-[#970E2C]" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">No projects found</h3>
-                  <p className="text-muted-foreground mb-6">Create your first project to get started</p>
-                  <Button onClick={() => router.push("/dashboard/projects/create")} className="shadow-lg">
+                  <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">No projects found</h3>
+                  <p className="text-muted-foreground mb-8 text-base">Create your first project to get started with project management</p>
+                  <Button onClick={() => router.push("/dashboard/projects/create")} className="bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20">
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Project
+                    Create Your First Project
                   </Button>
                 </CardContent>
               </Card>
             ) : (
               filteredProjects.map((project) => (
-                <Card key={project._id} className="group relative border hover:border-primary/50 hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden bg-gradient-to-br from-card to-card/50"
+                <Card key={project._id} className="group relative border-0 shadow-lg hover:shadow-2xl hover:shadow-[#970E2C]/10 transition-all duration-300 cursor-pointer overflow-hidden bg-gradient-to-br from-card to-card/50 hover:-translate-y-1"
                       onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
-                  <CardContent className="p-6 space-y-4">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <CardContent className="p-6 space-y-4 relative">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${getPriorityColor(project.priority)}`}>
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ${getPriorityColor(project.priority)}`}>
                           <Briefcase className="h-6 w-6" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-lg group-hover:text-primary transition-colors line-clamp-1">
+                          <h3 className="font-bold text-lg group-hover:text-[#970E2C] transition-colors line-clamp-1">
                             {project.name}
                           </h3>
                           <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{project.description}</p>
                         </div>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <Button variant="ghost" size="icon"
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#970E2C]/10 hover:text-[#970E2C]"
                                 onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/edit`); }}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="hover:bg-red-100 hover:text-red-600"
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-100 hover:text-red-600"
                                 onClick={(e) => handleDeleteProject(project._id, project.name, e)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -486,13 +493,13 @@ const ProjectManagementDashboard: React.FC = () => {
                       <Badge variant="secondary" className={getStatusColor(project.status)}>
                         {project.status}
                       </Badge>
-                      <Badge variant="outline">{project.priority}</Badge>
+                      <Badge variant="outline" className="border-[#970E2C]/30 text-[#970E2C]">{project.priority}</Badge>
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground font-medium">Progress</span>
-                        <span className="font-bold text-primary">{project.progress}%</span>
+                        <span className="font-bold text-[#970E2C]">{project.progress}%</span>
                       </div>
                       <Progress value={project.progress} className="h-2.5" />
                     </div>
@@ -519,12 +526,12 @@ const ProjectManagementDashboard: React.FC = () => {
                     </div>
 
                     <div className="flex gap-2 pt-2">
-                      <Button size="sm" variant="outline" className="flex-1 hover:bg-primary hover:text-primary-foreground"
+                      <Button size="sm" variant="outline" className="flex-1 hover:bg-[#970E2C] hover:text-white hover:border-[#970E2C] transition-all"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=tasks`); }}>
                         <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
                         Tasks
                       </Button>
-                      <Button size="sm" variant="outline" className="flex-1 hover:bg-primary hover:text-primary-foreground"
+                      <Button size="sm" variant="outline" className="flex-1 hover:bg-[#970E2C] hover:text-white hover:border-[#970E2C] transition-all"
                               onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}?tab=finance`); }}>
                         <Coins className="h-3.5 w-3.5 mr-1.5" />
                         {formatAmount(project.budget || 0, (project as any).currency || 'INR')}
@@ -557,22 +564,24 @@ const ProjectManagementDashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="reports">
-          <Card className="card-modern">
+          <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
             <CardHeader>
-              <CardTitle>Project Reports</CardTitle>
+              <CardTitle className="text-lg">Project Reports</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
-                  { icon: TrendingUp, title: "Performance Report", desc: "Project completion rates", color: "text-green-600", route: "/dashboard/projects/reports/performance" },
-                  { icon: Coins, title: "Budget Analysis", desc: "Financial performance", color: "text-blue-600", route: "/dashboard/projects/reports/budget" },
-                  { icon: Calendar, title: "Timeline Report", desc: "Project schedules", color: "text-purple-600", route: "/dashboard/projects/reports/timeline" },
+                  { icon: TrendingUp, title: "Performance Report", desc: "Project completion rates", route: "/dashboard/projects/reports/performance" },
+                  { icon: Coins, title: "Budget Analysis", desc: "Financial performance", route: "/dashboard/projects/reports/budget" },
+                  { icon: Calendar, title: "Timeline Report", desc: "Project schedules", route: "/dashboard/projects/reports/timeline" },
                 ].map((report, idx) => (
-                  <Card key={idx} className="cursor-pointer hover:shadow-xl hover:scale-105 hover:border-primary/50 transition-all duration-300 group"
+                  <Card key={idx} className="group cursor-pointer hover:shadow-xl hover:shadow-[#970E2C]/10 transition-all duration-300 hover:-translate-y-1 border-0 shadow-lg"
                         onClick={() => router.push(report.route)}>
                     <CardContent className="p-6 text-center">
-                      <report.icon className={`h-8 w-8 mx-auto mb-2 ${report.color} group-hover:scale-110 transition-transform duration-300`} />
-                      <h3 className="font-medium">{report.title}</h3>
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                        <report.icon className="h-8 w-8 text-white" />
+                      </div>
+                      <h3 className="font-semibold text-base mb-2">{report.title}</h3>
                       <p className="text-sm text-muted-foreground">{report.desc}</p>
                     </CardContent>
                   </Card>
@@ -582,6 +591,7 @@ const ProjectManagementDashboard: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </TieredAccessWrapper>
   );
 };
@@ -742,40 +752,44 @@ const MyTasksContent: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Total Tasks</p>
-            <p className="text-2xl font-bold">{tasks.length}</p>
+        <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <CardContent className="p-4 relative">
+            <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Total Tasks</p>
+            <p className="text-3xl font-bold mt-2 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{tasks.length}</p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-yellow-500">
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">In Progress</p>
-            <p className="text-2xl font-bold">{tasks.filter(t => t.status === 'in-progress').length}</p>
+        <Card className="group relative overflow-hidden border-0 shadow-lg shadow-amber-500/10 hover:shadow-xl hover:shadow-amber-500/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <CardContent className="p-4 relative">
+            <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">In Progress</p>
+            <p className="text-3xl font-bold mt-2 bg-gradient-to-r from-amber-600 to-amber-500 bg-clip-text text-transparent">{tasks.filter(t => t.status === 'in-progress').length}</p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Completed</p>
-            <p className="text-2xl font-bold">{tasks.filter(t => t.status === 'completed').length}</p>
+        <Card className="group relative overflow-hidden border-0 shadow-lg shadow-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <CardContent className="p-4 relative">
+            <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Completed</p>
+            <p className="text-3xl font-bold mt-2 bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent">{tasks.filter(t => t.status === 'completed').length}</p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-red-500">
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Overdue</p>
-            <p className="text-2xl font-bold">{tasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'completed').length}</p>
+        <Card className="group relative overflow-hidden border-0 shadow-lg shadow-red-500/10 hover:shadow-xl hover:shadow-red-500/20 transition-all duration-300 hover:-translate-y-1">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <CardContent className="p-4 relative">
+            <p className="text-xs font-semibold text-red-600 uppercase tracking-wide">Overdue</p>
+            <p className="text-3xl font-bold mt-2 bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent">{tasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'completed').length}</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="card-modern">
+      <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-primary" />
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CheckCircle className="h-5 w-5 text-[#970E2C]" />
               My Tasks
             </CardTitle>
-            <Button onClick={() => setIsCreateModalOpen(true)} className="btn-primary-gradient">
+            <Button onClick={() => setIsCreateModalOpen(true)} className="bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20">
               <Plus className="h-4 w-4 mr-2" />
               New Task
             </Button>
@@ -963,20 +977,21 @@ const TaskManagementContent: React.FC = () => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {['todo', 'in-progress', 'review', 'completed'].map(status => (
-          <Card key={status} className="border-l-4 border-l-blue-500">
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground capitalize">{status.replace('-', ' ')}</p>
-              <p className="text-2xl font-bold">{tasks.filter(t => t.status === status).length}</p>
+          <Card key={status} className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <CardContent className="p-4 relative">
+              <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide capitalize">{status.replace('-', ' ')}</p>
+              <p className="text-3xl font-bold mt-2 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{tasks.filter(t => t.status === status).length}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Card className="card-modern">
+      <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-primary" />
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CheckCircle className="h-5 w-5 text-[#970E2C]" />
               All Tasks
             </CardTitle>
             <div className="flex gap-2">
@@ -1240,15 +1255,15 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
       )}
 
       {/* Budget List */}
-      <Card className="card-modern">
+      <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Coins className="h-5 w-5 text-primary" />
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Coins className="h-5 w-5 text-[#970E2C]" />
             Project Budgets
           </CardTitle>
           <div className="flex items-center gap-3">
             <ProjectCurrencySwitcher />
-            <Button onClick={() => setIsCreateModalOpen(true)} size="sm" className="btn-primary-gradient">
+            <Button onClick={() => setIsCreateModalOpen(true)} size="sm" className="bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20">
               <Plus className="h-4 w-4 mr-2" />
               New Budget
             </Button>

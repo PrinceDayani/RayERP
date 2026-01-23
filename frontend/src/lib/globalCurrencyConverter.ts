@@ -1,26 +1,26 @@
 import { CURRENCY_CONFIG } from '@/config/currency.config';
 
-// Exchange rates with INR as base currency
+// Exchange rates with USD as base currency
 const EXCHANGE_RATES: Record<string, number> = {
-  'INR': 1,
-  'USD': 0.012,
-  'EUR': 0.011,
-  'GBP': 0.0095,
-  'JPY': 1.8,
-  'CAD': 0.016,
-  'AUD': 0.018,
-  'CHF': 0.011,
-  'AED': 0.044,
-  'SAR': 0.045,
-  'QAR': 0.044,
-  'KWD': 0.0036,
-  'BHD': 0.0045,
-  'OMR': 0.0046,
-  'JOD': 0.0085,
-  'ILS': 0.044,
-  'LBP': 18.2,
-  'EGP': 0.37,
-  'TRY': 0.35,
+  'USD': 1,
+  'INR': 83.12,
+  'EUR': 0.92,
+  'GBP': 0.79,
+  'JPY': 149.50,
+  'CAD': 1.36,
+  'AUD': 1.52,
+  'CHF': 0.88,
+  'AED': 3.67,
+  'SAR': 3.75,
+  'QAR': 3.64,
+  'KWD': 0.31,
+  'BHD': 0.38,
+  'OMR': 0.38,
+  'JOD': 0.71,
+  'ILS': 3.64,
+  'LBP': 1507.50,
+  'EGP': 30.90,
+  'TRY': 32.20,
 };
 
 class CurrencyConverter {
@@ -51,27 +51,27 @@ class CurrencyConverter {
     };
   }
 
-  convert(amount: number, fromCurrency: string = 'INR'): number {
+  convert(amount: number, fromCurrency: string = 'USD'): number {
     if (amount === null || amount === undefined || isNaN(amount)) {
       return 0;
     }
     
     if (this.selectedCurrency === 'Original') return amount;
     
-    // Convert to INR first
-    let amountInINR = amount;
-    if (fromCurrency !== 'INR' && EXCHANGE_RATES[fromCurrency]) {
-      amountInINR = amount / EXCHANGE_RATES[fromCurrency];
+    // Convert to USD first
+    let amountInUSD = amount;
+    if (fromCurrency !== 'USD' && EXCHANGE_RATES[fromCurrency]) {
+      amountInUSD = amount / EXCHANGE_RATES[fromCurrency];
     }
     
-    // Convert from INR to target currency
-    if (this.selectedCurrency === 'INR') return amountInINR;
+    // Convert from USD to target currency
+    if (this.selectedCurrency === 'USD') return amountInUSD;
     
     const rate = EXCHANGE_RATES[this.selectedCurrency];
-    return rate ? amountInINR * rate : amountInINR;
+    return rate ? amountInUSD * rate : amountInUSD;
   }
 
-  formatAmount(amount: number, fromCurrency: string = 'INR'): string {
+  formatAmount(amount: number, fromCurrency: string = 'USD'): string {
     if (amount === null || amount === undefined || isNaN(amount)) {
       amount = 0;
     }

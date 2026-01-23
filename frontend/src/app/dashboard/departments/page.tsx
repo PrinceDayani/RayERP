@@ -87,23 +87,24 @@ export default function DepartmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-[#970E2C] via-[#800020] to-[#970E2C] bg-clip-text text-transparent">
             Department Management
           </h1>
-          <p className="text-muted-foreground mt-1">Manage your organizational structure and teams</p>
+          <p className="text-muted-foreground mt-2 text-base">Manage your organizational structure and teams</p>
         </div>
         <div className="flex items-center gap-3">
           <Button
             onClick={handleExport}
             variant="outline"
+            className="h-11 hover:bg-[#970E2C]/5 hover:border-[#970E2C]/30 transition-all"
           >
             <Download className="w-4 h-4 mr-2" /> Export CSV
           </Button>
           <Button
             onClick={() => router.push("/dashboard/departments/new")}
-            className="btn-primary-gradient"
+            className="h-11 bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20 transition-all"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Department
@@ -116,76 +117,80 @@ export default function DepartmentsPage() {
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Departments */}
-            <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
-              <CardContent className="p-6">
+            <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardContent className="p-6 relative">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">
                       Total Departments
                     </p>
-                    <p className="text-3xl font-bold text-foreground">{stats.total}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300">
+                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.total}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="secondary" className="text-xs bg-[#970E2C]/10 text-[#970E2C] border-[#970E2C]/20">
                         {stats.active} Active
                       </Badge>
                     </div>
                   </div>
-                  <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
-                    <Building className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                    <Building className="h-7 w-7 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Total Employees - Green Gradient */}
-            <Card className="card-modern hover-lift border-l-4 border-l-green-500">
-              <CardContent className="p-6">
+            {/* Total Employees */}
+            <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardContent className="p-6 relative">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">
                       Total Employees
                     </p>
-                    <p className="text-3xl font-bold text-foreground">{stats.totalEmployees}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Across all departments</p>
+                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.totalEmployees}</p>
+                    <p className="text-xs text-muted-foreground mt-2">Across all departments</p>
                   </div>
-                  <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
-                    <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                    <Users className="h-7 w-7 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Total Budget - Purple Gradient */}
-            <Card className="card-modern hover-lift border-l-4 border-l-purple-500">
-              <CardContent className="p-6">
+            {/* Total Budget */}
+            <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardContent className="p-6 relative">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">
                       Total Budget
                     </p>
-                    <p className="text-3xl font-bold text-foreground">{formatAmount(stats.totalBudget)}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Annual allocation</p>
+                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{formatAmount(stats.totalBudget)}</p>
+                    <p className="text-xs text-muted-foreground mt-2">Annual allocation</p>
                   </div>
-                  <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
-                    <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                    <TrendingUp className="h-7 w-7 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Avg Team Size - Orange Gradient */}
-            <Card className="card-modern hover-lift border-l-4 border-l-orange-500">
-              <CardContent className="p-6">
+            {/* Avg Team Size */}
+            <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardContent className="p-6 relative">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">
                       Avg. Team Size
                     </p>
-                    <p className="text-3xl font-bold text-foreground">{stats.avgTeamSize}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Employees per dept</p>
+                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.avgTeamSize}</p>
+                    <p className="text-xs text-muted-foreground mt-2">Employees per dept</p>
                   </div>
-                  <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-xl">
-                    <Users className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                    <Users className="h-7 w-7 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -194,11 +199,11 @@ export default function DepartmentsPage() {
         )}
 
         {/* Search and Filters Card */}
-        <Card className="card-modern">
+        <Card className="glass-morphism">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Filter className="h-5 w-5 text-[#970E2C]" />
                 Search & Filter
               </CardTitle>
               {(searchQuery || statusFilter !== "all") && (
@@ -209,6 +214,7 @@ export default function DepartmentsPage() {
                     setSearchQuery("");
                     setStatusFilter("all");
                   }}
+                  className="hover:bg-[#970E2C]/10 hover:text-[#970E2C]"
                 >
                   <X className="w-4 h-4 mr-1" />
                   Clear All
@@ -224,11 +230,11 @@ export default function DepartmentsPage() {
                   placeholder="Search departments, managers, locations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-11 border-2 focus:border-[#970E2C] transition-colors"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 border-2 focus:border-[#970E2C]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -239,8 +245,11 @@ export default function DepartmentsPage() {
               </Select>
             </div>
             {(searchQuery || statusFilter !== "all") && (
-              <div className="mt-3 text-sm text-muted-foreground">
-                Showing {filteredDepartments.length} of {departments.length} departments
+              <div className="mt-3 text-sm text-muted-foreground flex items-center gap-2">
+                <Badge variant="secondary" className="bg-[#970E2C]/10 text-[#970E2C] border-[#970E2C]/20">
+                  {filteredDepartments.length}
+                </Badge>
+                of {departments.length} departments
               </div>
             )}
           </CardContent>
@@ -248,14 +257,14 @@ export default function DepartmentsPage() {
 
         {/* Tabs with Tables */}
         <Tabs defaultValue="all" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 h-12 bg-muted/80 p-1 rounded-xl border border-border/50">
-            <TabsTrigger value="all" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">
+          <TabsList className="grid w-full grid-cols-3 h-12 bg-muted/50 p-1 rounded-xl border border-border/50">
+            <TabsTrigger value="all" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">
               All Departments ({filteredDepartments.length})
             </TabsTrigger>
-            <TabsTrigger value="active" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">
+            <TabsTrigger value="active" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">
               Active ({activeDepartments.length})
             </TabsTrigger>
-            <TabsTrigger value="inactive" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">
+            <TabsTrigger value="inactive" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">
               Inactive ({inactiveDepartments.length})
             </TabsTrigger>
           </TabsList>
@@ -264,75 +273,76 @@ export default function DepartmentsPage() {
             {loading ? (
               <SectionLoader />
             ) : filteredDepartments.length === 0 ? (
-              <Card className="card-modern">
-                <CardContent className="py-12 text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Building className="w-8 h-8 text-primary" />
+              <Card className="glass-morphism">
+                <CardContent className="py-16 text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-[#970E2C]/20 to-[#970E2C]/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <Building className="w-10 h-10 text-[#970E2C]" />
                   </div>
-                  <p className="text-muted-foreground mb-4">No departments found</p>
-                  <Button onClick={() => router.push("/dashboard/departments/new")} className="btn-primary-gradient">
+                  <h3 className="text-xl font-semibold mb-2">No departments found</h3>
+                  <p className="text-muted-foreground mb-6">Get started by creating your first department</p>
+                  <Button onClick={() => router.push("/dashboard/departments/new")} className="bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20">
                     <Plus className="w-4 h-4 mr-2" />
                     Create First Department
                   </Button>
                 </CardContent>
               </Card>
             ) : (
-              <Card className="card-modern">
+              <Card className="glass-morphism overflow-hidden">
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
-                    <div className="table-modern rounded-xl overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-muted/50">
-                            <th className="text-left p-4 font-semibold text-muted-foreground">Department</th>
-                            <th className="text-left p-4 font-semibold text-muted-foreground">Manager</th>
-                            <th className="text-left p-4 font-semibold text-muted-foreground">Location</th>
-                            <th className="text-left p-4 font-semibold text-muted-foreground">Employees</th>
-                            <th className="text-left p-4 font-semibold text-muted-foreground">Budget</th>
-                            <th className="text-left p-4 font-semibold text-muted-foreground">Status</th>
-                            <th className="text-left p-4 font-semibold text-muted-foreground">Actions</th>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-muted/80 to-muted/50 border-b border-border">
+                          <th className="text-left p-4 font-semibold text-sm text-foreground">Department</th>
+                          <th className="text-left p-4 font-semibold text-sm text-foreground">Manager</th>
+                          <th className="text-left p-4 font-semibold text-sm text-foreground">Location</th>
+                          <th className="text-left p-4 font-semibold text-sm text-foreground">Employees</th>
+                          <th className="text-left p-4 font-semibold text-sm text-foreground">Budget</th>
+                          <th className="text-left p-4 font-semibold text-sm text-foreground">Status</th>
+                          <th className="text-left p-4 font-semibold text-sm text-foreground">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredDepartments.map((dept) => (
+                          <tr key={dept._id} className="border-b border-border/50 hover:bg-[#970E2C]/5 transition-colors cursor-pointer group">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-11 h-11 bg-gradient-to-br from-[#970E2C]/20 to-[#970E2C]/10 rounded-xl flex items-center justify-center group-hover:from-[#970E2C]/30 group-hover:to-[#970E2C]/20 transition-all">
+                                  <Building className="w-5 h-5 text-[#970E2C]" />
+                                </div>
+                                <span className="font-semibold text-foreground">{dept.name}</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-foreground">{dept.manager?.name || "No manager"}</td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <MapPin className="w-3 h-3" />
+                                {dept.location}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <Badge variant="secondary" className="font-medium">{dept.employeeCount || 0}</Badge>
+                            </td>
+                            <td className="p-4 text-foreground font-medium">{formatAmount(dept.budget)}</td>
+                            <td className="p-4">
+                              <Badge variant={dept.status === "active" ? "default" : "secondary"} className={dept.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300 border-green-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300 border-yellow-200"}>
+                                {dept.status}
+                              </Badge>
+                            </td>
+                            <td className="p-4">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => router.push(`/dashboard/departments/${dept._id}`)}
+                                className="hover:bg-[#970E2C] hover:text-white hover:border-[#970E2C] transition-all"
+                              >
+                                View Details
+                              </Button>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {filteredDepartments.map((dept) => (
-                            <tr key={dept._id} className="table-row-hover border-b border-border/50 cursor-pointer">
-                              <td className="p-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
-                                    <Building className="w-5 h-5 text-primary" />
-                                  </div>
-                                  <span className="font-semibold text-foreground">{dept.name}</span>
-                                </div>
-                              </td>
-                              <td className="p-4 text-foreground">{dept.manager?.name || "No manager"}</td>
-                              <td className="p-4">
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                  <MapPin className="w-3 h-3" />
-                                  {dept.location}
-                                </div>
-                              </td>
-                              <td className="p-4 text-foreground font-medium">{dept.employeeCount || 0}</td>
-                              <td className="p-4 text-foreground font-medium">{formatAmount(dept.budget)}</td>
-                              <td className="p-4">
-                                <Badge variant={dept.status === "active" ? "default" : "secondary"} className={dept.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300"}>
-                                  {dept.status}
-                                </Badge>
-                              </td>
-                              <td className="p-4">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => router.push(`/dashboard/departments/${dept._id}`)}
-                                  className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                                >
-                                  View Details
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </CardContent>
               </Card>
@@ -340,126 +350,128 @@ export default function DepartmentsPage() {
           </TabsContent>
 
           <TabsContent value="active">
-            <Card className="card-modern">
+            <Card className="glass-morphism overflow-hidden">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
-                  <div className="table-modern rounded-xl overflow-hidden">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-muted/50">
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Department</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Manager</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Location</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Employees</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Budget</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Actions</th>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-muted/80 to-muted/50 border-b border-border">
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Department</th>
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Manager</th>
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Location</th>
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Employees</th>
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Budget</th>
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeDepartments.map((dept) => (
+                        <tr key={dept._id} className="border-b border-border/50 hover:bg-[#970E2C]/5 transition-colors cursor-pointer group">
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-11 h-11 bg-gradient-to-br from-[#970E2C]/20 to-[#970E2C]/10 rounded-xl flex items-center justify-center group-hover:from-[#970E2C]/30 group-hover:to-[#970E2C]/20 transition-all">
+                                <Building className="w-5 h-5 text-[#970E2C]" />
+                              </div>
+                              <span className="font-semibold text-foreground">{dept.name}</span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-foreground">{dept.manager?.name || "No manager"}</td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <MapPin className="w-3 h-3" />
+                              {dept.location}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <Badge variant="secondary" className="font-medium">{dept.employeeCount || 0}</Badge>
+                          </td>
+                          <td className="p-4 text-foreground font-medium">{formatAmount(dept.budget)}</td>
+                          <td className="p-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/dashboard/departments/${dept._id}`)}
+                              className="hover:bg-[#970E2C] hover:text-white hover:border-[#970E2C] transition-all"
+                            >
+                              View Details
+                            </Button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {activeDepartments.map((dept) => (
-                          <tr key={dept._id} className="table-row-hover border-b border-border/50 cursor-pointer">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
-                                  <Building className="w-5 h-5 text-primary" />
-                                </div>
-                                <span className="font-semibold text-foreground">{dept.name}</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-foreground">{dept.manager?.name || "No manager"}</td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <MapPin className="w-3 h-3" />
-                                {dept.location}
-                              </div>
-                            </td>
-                            <td className="p-4 text-foreground font-medium">{dept.employeeCount || 0}</td>
-                            <td className="p-4 text-foreground font-medium">{formatAmount(dept.budget)}</td>
-                            <td className="p-4">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => router.push(`/dashboard/departments/${dept._id}`)}
-                                className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                              >
-                                View Details
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                        {activeDepartments.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="text-center text-muted-foreground py-8">
-                              No active departments
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                      {activeDepartments.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="text-center text-muted-foreground py-12">
+                            <Building className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                            <p>No active departments</p>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="inactive">
-            <Card className="card-modern">
+            <Card className="glass-morphism overflow-hidden">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
-                  <div className="table-modern rounded-xl overflow-hidden">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-muted/50">
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Department</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Manager</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Location</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Employees</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Budget</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Actions</th>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-muted/80 to-muted/50 border-b border-border">
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Department</th>
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Manager</th>
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Location</th>
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Employees</th>
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Budget</th>
+                        <th className="text-left p-4 font-semibold text-sm text-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inactiveDepartments.map((dept) => (
+                        <tr key={dept._id} className="border-b border-border/50 hover:bg-[#970E2C]/5 transition-colors cursor-pointer group">
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-11 h-11 bg-gradient-to-br from-[#970E2C]/20 to-[#970E2C]/10 rounded-xl flex items-center justify-center group-hover:from-[#970E2C]/30 group-hover:to-[#970E2C]/20 transition-all">
+                                <Building className="w-5 h-5 text-[#970E2C]" />
+                              </div>
+                              <span className="font-semibold text-foreground">{dept.name}</span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-foreground">{dept.manager?.name || "No manager"}</td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <MapPin className="w-3 h-3" />
+                              {dept.location}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <Badge variant="secondary" className="font-medium">{dept.employeeCount || 0}</Badge>
+                          </td>
+                          <td className="p-4 text-foreground font-medium">{formatAmount(dept.budget)}</td>
+                          <td className="p-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/dashboard/departments/${dept._id}`)}
+                              className="hover:bg-[#970E2C] hover:text-white hover:border-[#970E2C] transition-all"
+                            >
+                              View Details
+                            </Button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {inactiveDepartments.map((dept) => (
-                          <tr key={dept._id} className="table-row-hover border-b border-border/50 cursor-pointer">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
-                                  <Building className="w-5 h-5 text-primary" />
-                                </div>
-                                <span className="font-semibold text-foreground">{dept.name}</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-foreground">{dept.manager?.name || "No manager"}</td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <MapPin className="w-3 h-3" />
-                                {dept.location}
-                              </div>
-                            </td>
-                            <td className="p-4 text-foreground font-medium">{dept.employeeCount || 0}</td>
-                            <td className="p-4 text-foreground font-medium">{formatAmount(dept.budget)}</td>
-                            <td className="p-4">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => router.push(`/dashboard/departments/${dept._id}`)}
-                                className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                              >
-                                View Details
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                        {inactiveDepartments.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="text-center text-muted-foreground py-8">
-                              No inactive departments
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                      {inactiveDepartments.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="text-center text-muted-foreground py-12">
+                            <Building className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                            <p>No inactive departments</p>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </CardContent>
             </Card>

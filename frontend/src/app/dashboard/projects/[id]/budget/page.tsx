@@ -14,6 +14,7 @@ import ProjectBudgetAnalytics from "@/components/budget/ProjectBudgetAnalytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CurrencyConverter from "@/components/budget/CurrencyConverter";
 import { formatCurrency } from "@/utils/currency";
+import { getCurrency } from "@/utils/currency";
 import ProjectCurrencySwitcher from "@/components/projects/ProjectCurrencySwitcher";
 import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
 
@@ -349,7 +350,7 @@ export default function ProjectBudgetPage() {
                 <Coins className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatAmount(budget.totalBudget, budget.currency)}</div>
+                <div className="text-2xl font-bold">{formatAmount(budget.totalBudget, getCurrency(budget))}</div>
               </CardContent>
             </Card>
 
@@ -359,7 +360,7 @@ export default function ProjectBudgetPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatAmount(totalSpent, budget.currency)}</div>
+                <div className="text-2xl font-bold">{formatAmount(totalSpent, getCurrency(budget))}</div>
                 <p className="text-xs text-muted-foreground">{(spentPercentage || 0).toFixed(1)}% of budget</p>
               </CardContent>
             </Card>
@@ -370,7 +371,7 @@ export default function ProjectBudgetPage() {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatAmount(remainingBudget, budget.currency)}</div>
+                <div className="text-2xl font-bold">{formatAmount(remainingBudget, getCurrency(budget))}</div>
               </CardContent>
             </Card>
 
@@ -601,11 +602,11 @@ export default function ProjectBudgetPage() {
                     <CardContent className="space-y-4">
                       <div className="flex justify-between text-sm">
                         <span>Allocated</span>
-                        <span className="font-semibold">{formatCurrency(category.allocatedAmount, budget.currency)}</span>
+                        <span className="font-semibold">{formatCurrency(category.allocatedAmount, getCurrency(budget))}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Spent</span>
-                        <span className="font-semibold">{formatCurrency(category.spentAmount, budget.currency)}</span>
+                        <span className="font-semibold">{formatCurrency(category.spentAmount, getCurrency(budget))}</span>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
@@ -622,10 +623,10 @@ export default function ProjectBudgetPage() {
                             <div>
                               <p className="font-medium">{item.name}</p>
                               <p className="text-muted-foreground">{item.description}</p>
-                              <p className="text-muted-foreground/70">{item.quantity} × {formatCurrency(item.unitCost, budget.currency)}</p>
+                              <p className="text-muted-foreground/70">{item.quantity} × {formatCurrency(item.unitCost, getCurrency(budget))}</p>
                             </div>
                             <div className="text-right">
-                              <p className="font-medium">{formatCurrency(item.totalCost, budget.currency)}</p>
+                              <p className="font-medium">{formatCurrency(item.totalCost, getCurrency(budget))}</p>
                             </div>
                           </div>
                         ))}

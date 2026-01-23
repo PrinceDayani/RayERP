@@ -23,6 +23,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
+import { formatCurrency } from "@/utils/currency";
+import { getCurrency } from "@/utils/currency";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -326,10 +328,10 @@ const ProjectDetailPage = () => {
                 <div>
                   <p className="text-sm font-medium text-orange-700 dark:text-orange-300">Budget</p>
                   <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                    {formatAmount(project.budget || 0, (project as any).currency || 'INR')}
+                    {formatAmount(project.budget || 0, getCurrency(project))}
                   </p>
                   <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                    {formatAmount(project.spentBudget || 0, (project as any).currency || 'INR')} spent
+                    {formatAmount(project.spentBudget || 0, getCurrency(project))} spent
                   </p>
                 </div>
                 <div className="h-12 w-12 bg-orange-200 dark:bg-orange-800 rounded-full flex items-center justify-center">
@@ -403,7 +405,7 @@ const ProjectDetailPage = () => {
                   <div className="flex justify-between text-xs pt-1">
                     <span className="text-muted-foreground">Remaining</span>
                     <span className="font-medium text-green-600">
-                      {formatAmount(budget.totalBudget - ((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)), budget.currency || 'INR')}
+                      {formatAmount(budget.totalBudget - ((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)), getCurrency(budget))}
                     </span>
                   </div>
                 </div>
@@ -422,7 +424,7 @@ const ProjectDetailPage = () => {
                   <div className="flex justify-between text-xs pt-1">
                     <span className="text-muted-foreground">Remaining</span>
                     <span className="font-medium text-green-600">
-                      {formatAmount(project.budget - (project.spentBudget || 0), (project as any).currency || 'INR')}
+                      {formatAmount(project.budget - (project.spentBudget || 0), getCurrency(project))}
                     </span>
                   </div>
                 </div>
@@ -546,7 +548,7 @@ const ProjectDetailPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {project.manager && (
+                  {project.managers && project.managers.length > 0 && (
                     <div className="flex items-center gap-3 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950">
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                         <Users className="h-4 w-4 text-blue-600" />
@@ -554,13 +556,17 @@ const ProjectDetailPage = () => {
                       <div>
                         <p className="font-medium">
                           {(() => {
-                            const manager = project.manager as any;
-                            return typeof manager === 'object' && manager?.firstName && manager?.lastName
-                              ? `${manager.firstName} ${manager.lastName}`
-                              : 'Project Manager';
+                            const managers = project.managers as any[];
+                            if (managers.length === 1) {
+                              const mgr = managers[0];
+                              return typeof mgr === 'object' && mgr?.firstName && mgr?.lastName
+                                ? `${mgr.firstName} ${mgr.lastName}`
+                                : 'Project Manager';
+                            }
+                            return `${managers.length} Managers`;
                           })()}
                         </p>
-                        <p className="text-sm text-muted-foreground">Manager</p>
+                        <p className="text-sm text-muted-foreground">Manager{project.managers.length > 1 ? 's' : ''}</p>
                       </div>
                     </div>
                   )}
@@ -583,7 +589,7 @@ const ProjectDetailPage = () => {
                       </div>
                     ))
                   ) : (
-                    !project.manager && <p className="text-muted-foreground text-center py-4">No team members assigned</p>
+                    !project.managers && <p className="text-muted-foreground text-center py-4">No team members assigned</p>
                   )}
                 </div>
               </CardContent>
@@ -644,7 +650,7 @@ const ProjectDetailPage = () => {
                         <div className="text-center">
                           <Coins className="h-8 w-8 mx-auto text-blue-600 mb-2" />
                           <p className="text-sm text-muted-foreground">Total Budget</p>
-                          <p className="text-2xl font-bold">{formatAmount(budget.totalBudget, budget.currency || 'INR')}</p>
+                          <p className="text-2xl font-bold">{formatAmount(budget.totalBudget, getCurrency(budget))}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -653,7 +659,7 @@ const ProjectDetailPage = () => {
                         <div className="text-center">
                           <BarChart3 className="h-8 w-8 mx-auto text-green-600 mb-2" />
                           <p className="text-sm text-muted-foreground">Spent</p>
-                          <p className="text-2xl font-bold">{formatAmount((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0), budget.currency || 'INR')}</p>
+                          <p className="text-2xl font-bold">{formatAmount((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0), getCurrency(budget))}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -662,7 +668,7 @@ const ProjectDetailPage = () => {
                         <div className="text-center">
                           <Users className="h-8 w-8 mx-auto text-orange-600 mb-2" />
                           <p className="text-sm text-muted-foreground">Remaining</p>
-                          <p className="text-2xl font-bold">{formatAmount(budget.totalBudget - ((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)), budget.currency || 'INR')}</p>
+                          <p className="text-2xl font-bold">{formatAmount(budget.totalBudget - ((budget.categories || []).reduce((sum: number, cat: any) => sum + (cat.spentAmount || 0), 0)), getCurrency(budget))}</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -692,11 +698,11 @@ const ProjectDetailPage = () => {
                               <div className="space-y-1 text-sm">
                                 <div className="flex justify-between">
                                   <span>Allocated:</span>
-                                  <span>{formatAmount(category.allocatedAmount, budget.currency || 'INR')}</span>
+                                  <span>{formatAmount(category.allocatedAmount, getCurrency(budget))}</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span>Spent:</span>
-                                  <span>{formatAmount(category.spentAmount, budget.currency || 'INR')}</span>
+                                  <span>{formatAmount(category.spentAmount, getCurrency(budget))}</span>
                                 </div>
                               </div>
                             </CardContent>

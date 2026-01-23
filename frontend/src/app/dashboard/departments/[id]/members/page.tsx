@@ -8,7 +8,6 @@ import {
     UserMinus,
     Search,
     Filter,
-import { SectionLoader } from '@/components/PageLoader';
     Loader2,
     Mail,
     Phone,
@@ -16,6 +15,7 @@ import { SectionLoader } from '@/components/PageLoader';
     CheckCircle2,
     XCircle,
 } from "lucide-react";
+import { SectionLoader } from '@/components/PageLoader';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -129,21 +129,21 @@ export default function DepartmentMembersPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
                 <div>
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Department Members</h2>
-                    <p className="text-muted-foreground mt-1">
+                    <h2 className="text-4xl font-bold bg-gradient-to-r from-[#970E2C] via-[#800020] to-[#970E2C] bg-clip-text text-transparent">Department Members</h2>
+                    <p className="text-muted-foreground mt-2 text-base">
                         {employees.length} member{employees.length !== 1 ? "s" : ""} in this department
                     </p>
                 </div>
-                <Button onClick={() => setIsAssignDialogOpen(true)} className="btn-primary-gradient">
+                <Button onClick={() => setIsAssignDialogOpen(true)} className="h-11 bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20 transition-all">
                     <UserPlus className="w-4 h-4 mr-2" />
                     Assign Employees
                 </Button>
             </div>
 
             {/* Filters */}
-            <Card className="card-modern">
+            <Card className="glass-morphism">
                 <CardHeader className="pb-4">
                     <div className="flex flex-col md:flex-row gap-4">
                         <div className="flex-1 relative">
@@ -152,11 +152,11 @@ export default function DepartmentMembersPage() {
                                 placeholder="Search employees..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10"
+                                className="pl-10 h-11 border-2 focus:border-[#970E2C] transition-colors"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-full md:w-[180px]">
+                            <SelectTrigger className="w-full md:w-[180px] h-11 border-2 focus:border-[#970E2C]">
                                 <Filter className="w-4 h-4 mr-2" />
                                 <SelectValue placeholder="Filter by status" />
                             </SelectTrigger>
@@ -172,16 +172,19 @@ export default function DepartmentMembersPage() {
 
             {/* Employee List */}
             {filteredEmployees.length === 0 ? (
-                <Card className="card-modern">
-                    <CardContent className="py-12 text-center">
-                        <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                        <p className="text-muted-foreground">No employees found</p>
+                <Card className="glass-morphism">
+                    <CardContent className="py-16 text-center">
+                        <div className="w-20 h-20 bg-gradient-to-br from-[#970E2C]/20 to-[#970E2C]/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                            <Users className="w-10 h-10 text-[#970E2C]" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">No employees found</h3>
+                        <p className="text-muted-foreground">Try adjusting your search or filters</p>
                     </CardContent>
                 </Card>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredEmployees.map((employee) => (
-                        <Card key={employee._id} className="card-modern hover-lift">
+                        <Card key={employee._id} className="glass-morphism hover:shadow-lg hover:shadow-[#970E2C]/10 transition-all duration-300 hover:-translate-y-1">
                             <CardHeader>
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
@@ -193,7 +196,7 @@ export default function DepartmentMembersPage() {
                                             {employee.position || "No position"}
                                         </CardDescription>
                                     </div>
-                                    <Badge variant={employee.status === "active" ? "default" : "secondary"}>
+                                    <Badge variant={employee.status === "active" ? "default" : "secondary"} className={employee.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300 border-green-200" : ""}>
                                         {employee.status}
                                     </Badge>
                                 </div>

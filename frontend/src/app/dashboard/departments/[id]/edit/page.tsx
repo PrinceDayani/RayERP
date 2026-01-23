@@ -133,20 +133,21 @@ export default function EditDepartmentPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
                 <div className="flex items-center gap-4">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => router.push(`/dashboard/departments/${params.id}`)}
+                        className="hover:bg-[#970E2C]/10"
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </Button>
                     <div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                        <h1 className="text-4xl font-bold bg-gradient-to-r from-[#970E2C] via-[#800020] to-[#970E2C] bg-clip-text text-transparent">
                             Edit Department
                         </h1>
-                        <p className="text-muted-foreground mt-1">Update department information and settings</p>
+                        <p className="text-muted-foreground mt-2 text-base">Update department information and settings</p>
                     </div>
                 </div>
                 {hasChanges && (
@@ -162,10 +163,10 @@ export default function EditDepartmentPage() {
                 {/* Main Form - Left Column */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Basic Information */}
-                    <Card className="card-modern">
+                    <Card className="glass-morphism">
                         <CardHeader className="pb-4">
-                            <CardTitle className="flex items-center gap-2">
-                                <Building className="w-5 h-5 text-primary" />
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <Building className="w-5 h-5 text-[#970E2C]" />
                                 Basic Information
                             </CardTitle>
                             <CardDescription>Essential department details</CardDescription>
@@ -252,9 +253,9 @@ export default function EditDepartmentPage() {
                     </Card>
 
                     {/* Manager Information */}
-                    <Card className="card-modern">
+                    <Card className="glass-morphism">
                         <CardHeader className="pb-4">
-                            <CardTitle>Manager Information</CardTitle>
+                            <CardTitle className="text-lg">Manager Information</CardTitle>
                             <CardDescription>Department head contact details</CardDescription>
                         </CardHeader>
                         <CardContent className="pt-6 space-y-4">
@@ -308,8 +309,8 @@ export default function EditDepartmentPage() {
                 <div className="lg:col-span-1">
                     <div className="sticky top-6 space-y-4">
                         {/* Save Actions */}
-                        <Card className="card-modern">
-                            <CardHeader className="pb-4 bg-gradient-to-br from-primary/10 to-primary/5">
+                        <Card className="glass-morphism">
+                            <CardHeader className="pb-4 bg-gradient-to-br from-[#970E2C]/10 to-[#970E2C]/5">
                                 <CardTitle className="text-base">Actions</CardTitle>
                                 <CardDescription className="text-xs">Save or discard changes</CardDescription>
                             </CardHeader>
@@ -317,7 +318,7 @@ export default function EditDepartmentPage() {
                                 <Button
                                     onClick={handleSave}
                                     disabled={saving || !hasChanges}
-                                    className="w-full h-12 btn-primary-gradient"
+                                    className="w-full h-12 bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20 transition-all"
                                 >
                                     {saving ? (
                                         <>
@@ -353,7 +354,7 @@ export default function EditDepartmentPage() {
 
                         {/* Department Info */}
                         {department && (
-                            <Card className="card-modern">
+                            <Card className="glass-morphism">
                                 <CardHeader className="pb-4">
                                     <CardTitle className="text-base">Department Info</CardTitle>
                                 </CardHeader>

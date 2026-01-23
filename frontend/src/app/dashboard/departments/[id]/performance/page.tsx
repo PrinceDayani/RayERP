@@ -8,13 +8,13 @@ import {
     TrendingDown,
     Users,
     Target,
-import { SectionLoader } from '@/components/PageLoader';
     Award,
     Activity,
     Loader2,
     Shield,
     Zap,
 } from "lucide-react";
+import { SectionLoader } from '@/components/PageLoader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -96,9 +96,9 @@ export default function DepartmentPerformancePage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Performance & Analytics</h2>
-                <p className="text-muted-foreground mt-1">
+            <div className="mb-2">
+                <h2 className="text-4xl font-bold bg-gradient-to-r from-[#970E2C] via-[#800020] to-[#970E2C] bg-clip-text text-transparent">Performance & Analytics</h2>
+                <p className="text-muted-foreground mt-2 text-base">
                     Track department performance, goals, and key metrics
                 </p>
             </div>
@@ -106,125 +106,126 @@ export default function DepartmentPerformancePage() {
             {/* Premium Performance Metrics */}
             {performanceMetrics ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* Productivity - Blue */}
-                    <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
-                        <CardContent className="p-6">
+                    {/* Productivity - Brand */}
+                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <CardContent className="p-6 relative">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Productivity</p>
-                                    <p className="text-3xl font-bold text-foreground">{performanceMetrics.productivity}%</p>
+                                    <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Productivity</p>
+                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{performanceMetrics.productivity}%</p>
                                     <Progress value={performanceMetrics.productivity} className="mt-3 h-2" />
                                 </div>
-                                <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
-                                    <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                                    <TrendingUp className="h-7 w-7 text-white" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Satisfaction - Green Gradient */}
-                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-green-500/10 hover:shadow-xl hover:shadow-green-500/20 transition-all duration-300 hover:-translate-y-1">
-                        <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-green-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300" />
+                    {/* Satisfaction - Brand */}
+                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <CardContent className="pt-6 relative">
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                    <p className="text-xs font-semibold text-green-600 uppercase tracking-wide">
+                                    <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">
                                         Employee Satisfaction
                                     </p>
-                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
+                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">
                                         {performanceMetrics.satisfaction}%
                                     </p>
                                     <Progress value={performanceMetrics.satisfaction} className="mt-3 h-2" />
                                 </div>
-                                <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-500/30">
+                                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
                                     <Users className="w-7 h-7 text-white" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Retention - Purple Gradient */}
-                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-purple-500/10 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 hover:-translate-y-1">
-                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-purple-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300" />
+                    {/* Retention Rate - Brand */}
+                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <CardContent className="pt-6 relative">
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                    <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide">
+                                    <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">
                                         Retention Rate
                                     </p>
-                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent">
+                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">
                                         {performanceMetrics.retention}%
                                     </p>
                                     <Progress value={performanceMetrics.retention} className="mt-3 h-2" />
                                 </div>
-                                <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30">
+                                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
                                     <Shield className="w-7 h-7 text-white" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Growth - Orange Gradient */}
-                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-orange-500/10 hover:shadow-xl hover:shadow-orange-500/20 transition-all duration-300 hover:-translate-y-1">
-                        <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-orange-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300" />
+                    {/* Growth - Brand Gradient */}
+                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <CardContent className="pt-6 relative">
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                    <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+                                    <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">
                                         Growth Rate
                                     </p>
-                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
+                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">
                                         +{performanceMetrics.growth}%
                                     </p>
                                     <div className="mt-3">
-                                        <Badge variant="secondary" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                                        <Badge variant="secondary" className="text-xs bg-[#970E2C]/10 text-[#970E2C] border-[#970E2C]/20">
                                             Year over year
                                         </Badge>
                                     </div>
                                 </div>
-                                <div className="p-4 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-lg shadow-orange-500/30">
+                                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
                                     <TrendingUp className="w-7 h-7 text-white" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Efficiency - Cyan Gradient */}
-                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-cyan-500/10 hover:shadow-xl hover:shadow-cyan-500/20 transition-all duration-300 hover:-translate-y-1">
-                        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-cyan-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300" />
+                    {/* Efficiency - Brand Gradient */}
+                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <CardContent className="pt-6 relative">
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                    <p className="text-xs font-semibold text-cyan-600 uppercase tracking-wide">
+                                    <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">
                                         Efficiency
                                     </p>
-                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-cyan-600 to-cyan-700 bg-clip-text text-transparent">
+                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">
                                         {performanceMetrics.efficiency}%
                                     </p>
                                     <Progress value={performanceMetrics.efficiency} className="mt-3 h-2" />
                                 </div>
-                                <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-lg shadow-cyan-500/30">
+                                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
                                     <Zap className="w-7 h-7 text-white" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Quality Score - Emerald Gradient */}
-                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/20 transition-all duration-300 hover:-translate-y-1">
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-600 opacity-0 group-hover:opacity-5 transition-opacity duration-300" />
+                    {/* Quality Score - Brand Gradient */}
+                    <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <CardContent className="pt-6 relative">
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                    <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">
+                                    <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">
                                         Quality Score
                                     </p>
-                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-emerald-600 to-emerald-700 bg-clip-text text-transparent">
+                                    <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">
                                         {performanceMetrics.qualityScore}%
                                     </p>
                                     <Progress value={performanceMetrics.qualityScore} className="mt-3 h-2" />
                                 </div>
-                                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30">
+                                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
                                     <Award className="w-7 h-7 text-white" />
                                 </div>
                             </div>
@@ -261,7 +262,7 @@ export default function DepartmentPerformancePage() {
                                     </CardTitle>
                                     <CardDescription>Active goals and their progress</CardDescription>
                                 </div>
-                                <Button onClick={() => toast({ title: "Coming Soon", description: "Goal creation will be available soon" })} className="btn-primary-gradient">
+                                <Button onClick={() => toast({ title: "Coming Soon", description: "Goal creation will be available soon" })} className="bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20 transition-all">
                                     <Target className="w-4 h-4 mr-2" />
                                     Create Goal
                                 </Button>

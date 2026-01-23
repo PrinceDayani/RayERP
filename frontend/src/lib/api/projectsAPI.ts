@@ -31,10 +31,10 @@ export interface Project {
   priority: 'low' | 'medium' | 'high' | 'critical';
   budget: number;
   spentBudget?: number;
-  currency?: string;
+  currency: string;
   progress: number;
   autoCalculateProgress?: boolean;
-  manager: string;
+  managers: string[];
   team: string[];
   departments?: string[];
   client?: string;

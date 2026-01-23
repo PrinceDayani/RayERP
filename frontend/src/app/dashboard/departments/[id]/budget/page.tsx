@@ -8,7 +8,6 @@ import {
     TrendingUp,
     TrendingDown,
     Plus,
-import { SectionLoader } from '@/components/PageLoader';
     Minus,
     Loader2,
     Save,
@@ -17,6 +16,7 @@ import { SectionLoader } from '@/components/PageLoader';
     PieChart,
     ExternalLink
 } from "lucide-react";
+import { SectionLoader } from '@/components/PageLoader';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -188,27 +188,27 @@ export default function DepartmentBudgetPage() {
     return (
         <div className="space-y-6">
             {/* Header with Currency Switcher */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2">
                 <div>
                     <div className="flex items-center gap-3">
-                        <h2 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Budget Management</h2>
+                        <h2 className="text-4xl font-bold bg-gradient-to-r from-[#970E2C] via-[#800020] to-[#970E2C] bg-clip-text text-transparent">Budget Management</h2>
                         {budgetRecord && (
-                            <Badge variant={budgetRecord.status === 'approved' ? 'default' : budgetRecord.status === 'draft' ? 'secondary' : 'outline'}>
+                            <Badge variant={budgetRecord.status === 'approved' ? 'default' : budgetRecord.status === 'draft' ? 'secondary' : 'outline'} className="px-3 py-1">
                                 {budgetRecord.status}
                             </Badge>
                         )}
                     </div>
-                    <p className="text-muted-foreground mt-1">Track and manage department budget allocation</p>
+                    <p className="text-muted-foreground mt-2 text-base">Track and manage department budget allocation</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <CurrencySwitcher />
                     <Link href={`/dashboard/department-budgets?departmentId=${params.id}`}>
-                        <Button variant="outline">
+                        <Button variant="outline" className="h-11 hover:bg-[#970E2C]/5 hover:border-[#970E2C]/30">
                             <ExternalLink className="w-4 h-4 mr-2" />
                             View in Budget Module
                         </Button>
                     </Link>
-                    <Button onClick={() => setIsAdjustDialogOpen(true)} className="btn-primary-gradient">
+                    <Button onClick={() => setIsAdjustDialogOpen(true)} className="h-11 bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20 transition-all">
                         <Wallet className="w-4 h-4 mr-2" />
                         Adjust Budget
                     </Button>
@@ -234,67 +234,71 @@ export default function DepartmentBudgetPage() {
 
             {/* Premium Budget Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Total Budget - Blue */}
-                <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
-                    <CardContent className="p-6">
+                {/* Total Budget */}
+                <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <CardContent className="p-6 relative">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Total Budget</p>
-                                <p className="text-3xl font-bold text-foreground">{formatAmount(department.budget)}</p>
-                                <p className="text-xs text-muted-foreground mt-1">Annual allocation</p>
+                                <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Total Budget</p>
+                                <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{formatAmount(department.budget)}</p>
+                                <p className="text-xs text-muted-foreground mt-2">Annual allocation</p>
                             </div>
-                            <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
-                                <Wallet className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                                <Wallet className="h-7 w-7 text-white" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Spent This Month - Red */}
-                <Card className="card-modern hover-lift border-l-4 border-l-red-500">
-                    <CardContent className="p-6">
+                {/* Spent This Month */}
+                <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <CardContent className="p-6 relative">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Spent This Month</p>
-                                <p className="text-3xl font-bold text-foreground">{formatAmount(currentSpent)}</p>
-                                <Badge variant="secondary" className="text-xs bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 mt-1">
+                                <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Spent This Month</p>
+                                <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{formatAmount(currentSpent)}</p>
+                                <Badge variant="secondary" className="text-xs bg-[#970E2C]/10 text-[#970E2C] border-[#970E2C]/20 mt-2">
                                     {currentUtilization}% utilized
                                 </Badge>
                             </div>
-                            <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-xl">
-                                <TrendingDown className="h-6 w-6 text-red-600 dark:text-red-400" />
+                            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                                <TrendingDown className="h-7 w-7 text-white" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Remaining - Green */}
-                <Card className="card-modern hover-lift border-l-4 border-l-green-500">
-                    <CardContent className="p-6">
+                {/* Remaining */}
+                <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <CardContent className="p-6 relative">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Remaining</p>
-                                <p className="text-3xl font-bold text-foreground">{formatAmount(currentRemaining)}</p>
-                                <p className="text-xs text-muted-foreground mt-1">Available balance</p>
+                                <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Remaining</p>
+                                <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{formatAmount(currentRemaining)}</p>
+                                <p className="text-xs text-muted-foreground mt-2">Available balance</p>
                             </div>
-                            <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
-                                <Wallet className="h-6 w-6 text-green-600 dark:text-green-400" />
+                            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                                <Wallet className="h-7 w-7 text-white" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Monthly Average - Purple */}
-                <Card className="card-modern hover-lift border-l-4 border-l-purple-500">
-                    <CardContent className="p-6">
+                {/* Monthly Average */}
+                <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <CardContent className="p-6 relative">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Monthly Average</p>
-                                <p className="text-3xl font-bold text-foreground">{formatAmount(monthlyAverage)}</p>
-                                <p className="text-xs text-muted-foreground mt-1">Avg spending rate</p>
+                                <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Monthly Average</p>
+                                <p className="text-4xl font-bold mt-3 bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{formatAmount(monthlyAverage)}</p>
+                                <p className="text-xs text-muted-foreground mt-2">Avg spending rate</p>
                             </div>
-                            <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
-                                <Calendar className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                                <Calendar className="h-7 w-7 text-white" />
                             </div>
                         </div>
                     </CardContent>
@@ -303,17 +307,17 @@ export default function DepartmentBudgetPage() {
 
             {/* Tabs for different views */}
             <Tabs defaultValue="utilization" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-3 h-12 bg-muted/80 p-1 rounded-xl border border-border/50">
-                    <TabsTrigger value="utilization" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Budget Utilization</TabsTrigger>
-                    <TabsTrigger value="breakdown" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Expense Breakdown</TabsTrigger>
-                    <TabsTrigger value="history" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Adjustment History</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3 h-12 bg-muted/50 p-1 rounded-xl border border-border/50">
+                    <TabsTrigger value="utilization" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Budget Utilization</TabsTrigger>
+                    <TabsTrigger value="breakdown" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Expense Breakdown</TabsTrigger>
+                    <TabsTrigger value="history" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Adjustment History</TabsTrigger>
                 </TabsList>
 
                 {/* Budget Utilization Tab */}
                 <TabsContent value="utilization">
-                    <Card className="card-modern">
+                    <Card className="glass-morphism">
                         <CardHeader className="pb-4">
-                            <CardTitle>Monthly Budget Utilization</CardTitle>
+                            <CardTitle className="text-lg">Monthly Budget Utilization</CardTitle>
                             <CardDescription>Track spending trends across months</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -361,10 +365,10 @@ export default function DepartmentBudgetPage() {
 
                 {/* Expense Breakdown Tab */}
                 <TabsContent value="breakdown">
-                    <Card className="card-modern">
+                    <Card className="glass-morphism">
                         <CardHeader className="pb-4">
-                            <CardTitle className="flex items-center gap-2">
-                                <PieChart className="w-5 h-5 text-primary" />
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <PieChart className="w-5 h-5 text-[#970E2C]" />
                                 Expense Breakdown by Category
                             </CardTitle>
                             <CardDescription>Current month spending distribution</CardDescription>
@@ -413,9 +417,9 @@ export default function DepartmentBudgetPage() {
 
                 {/* Adjustment History Tab */}
                 <TabsContent value="history">
-                    <Card className="card-modern">
+                    <Card className="glass-morphism">
                         <CardHeader className="pb-4">
-                            <CardTitle>Budget Adjustment History</CardTitle>
+                            <CardTitle className="text-lg">Budget Adjustment History</CardTitle>
                             <CardDescription>Recent budget changes and modifications</CardDescription>
                         </CardHeader>
                         <CardContent>

@@ -228,6 +228,27 @@ For issues or questions, check the logs:
 
 ## 🎉 Latest Updates
 
+### Team/Member Management - Fixed & Simplified ✅ (Latest)
+- ✅ **Multiple Managers** - Support for multiple project managers
+- ✅ **Removed Duplication** - Eliminated duplicate fields (manager/managers, team/members)
+- ✅ **Single Source of Truth** - `managers` array and `team` array only
+- ✅ **Type Safety** - Consistent Employee refs throughout
+- ✅ **Backward Compatible** - Virtual `manager` field for compatibility
+- ✅ **Migration Script** - One-time data migration included
+
+See [TEAM_MANAGEMENT_FIX.md](./TEAM_MANAGEMENT_FIX.md) for complete details.
+
+### Currency System - Standardized & Type-Safe ✅
+- ✅ **Backend Consistency** - USD default across Project and Budget models
+- ✅ **Type Safety** - Removed all `(entity as any).currency` type casts
+- ✅ **Utility Functions** - `getCurrency()` with automatic USD fallback
+- ✅ **Validation** - Built-in currency code validation
+- ✅ **Global Converter** - USD-based exchange rates
+- ✅ **Zero Breaking Changes** - Backward compatible with existing data
+
+See [CURRENCY_SYSTEM_FIX.md](./CURRENCY_SYSTEM_FIX.md) for complete details.
+See [CURRENCY_QUICK_REFERENCE.md](./CURRENCY_QUICK_REFERENCE.md) for quick start guide.
+
 ### Financial Reports - ENTERPRISE PERFECT ✅ (Latest)
 **Status**: Fortune 500 Enterprise Grade | Version 4.0.0
 

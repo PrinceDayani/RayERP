@@ -55,10 +55,10 @@ export const getAllProjects = async (req: Request, res: Response) => {
       console.log(`Total projects in DB: ${count}`);
       
       const projects = await Project.find({})
-        .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
+        .populate({ path: 'managers', select: 'firstName lastName', strictPopulate: false })
         .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
         .populate({ path: 'owner', select: 'name email', strictPopulate: false })
-        .populate({ path: 'members', select: 'name email', strictPopulate: false })
+        
         .populate({ path: 'departments', select: 'name description', strictPopulate: false });
       
       console.log(`✅ Returning ${projects.length} projects:`, projects.map(p => ({ id: p._id, name: p.name })));
@@ -85,7 +85,6 @@ export const getAllProjects = async (req: Request, res: Response) => {
 
     // Find projects user is assigned to (full access)
     const assignedConditions: any[] = [
-      { members: user._id },
       { owner: user._id }
     ];
     
@@ -95,10 +94,10 @@ export const getAllProjects = async (req: Request, res: Response) => {
     }
     
     const assignedProjects = await Project.find({ $or: assignedConditions })
-      .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
+      .populate({ path: 'managers', select: 'firstName lastName', strictPopulate: false })
       .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
       .populate({ path: 'owner', select: 'name email', strictPopulate: false })
-      .populate({ path: 'members', select: 'name email', strictPopulate: false })
+      
       .populate({ path: 'departments', select: 'name description', strictPopulate: false });
 
     // If user has department permission, also show basic info of department projects
@@ -147,10 +146,10 @@ export const getProjectById = async (req: Request, res: Response) => {
     // Root or users with projects.view_all permission get full access
     if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
       const project = await Project.findById(req.params.id)
-        .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
+        .populate({ path: 'managers', select: 'firstName lastName', strictPopulate: false })
         .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
         .populate({ path: 'owner', select: 'name email', strictPopulate: false })
-        .populate({ path: 'members', select: 'name email', strictPopulate: false })
+        
         .populate({ path: 'departments', select: 'name description', strictPopulate: false });
       
       if (!project) {
@@ -160,10 +159,10 @@ export const getProjectById = async (req: Request, res: Response) => {
     }
 
     const project = await Project.findById(req.params.id)
-      .populate({ path: 'manager', select: 'firstName lastName', strictPopulate: false })
+      .populate({ path: 'managers', select: 'firstName lastName', strictPopulate: false })
       .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
       .populate({ path: 'owner', select: 'name email', strictPopulate: false })
-      .populate({ path: 'members', select: 'name email', strictPopulate: false })
+      
       .populate({ path: 'departments', select: 'name description', strictPopulate: false });
     
     if (!project) {
@@ -171,7 +170,7 @@ export const getProjectById = async (req: Request, res: Response) => {
     }
 
     // Check if user is assigned to project
-    const isMember = project.members.some(m => m && m._id && m._id.toString() === user._id.toString());
+    
     const isOwner = project.owner && project.owner._id && project.owner._id.toString() === user._id.toString();
     
     const Employee = (await import('../models/Employee')).default;
@@ -182,10 +181,10 @@ export const getProjectById = async (req: Request, res: Response) => {
     
     if (employee) {
       isTeamMember = project.team && project.team.some((t: any) => t && t._id && t._id.toString() === employee._id.toString());
-      isManager = project.manager && project.manager._id && project.manager._id.toString() === employee._id.toString();
+      isManager = project.managers && project.managers.some((m: any) => m && m._id && m._id.toString() === employee._id.toString());
     }
     
-    const isAssigned = isMember || isOwner || isTeamMember || isManager;
+    const isAssigned = isOwner || isTeamMember || isManager;
     
     // If assigned, return full project details
     if (isAssigned) {
@@ -258,12 +257,12 @@ export const createProject = async (req: Request, res: Response) => {
       currency: req.body.currency || 'USD',
       progress: Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100),
       client: req.body.client?.trim() || undefined,
-      manager: req.body.manager || undefined,
+      manager: req.body.managers && req.body.managers.length > 0 ? req.body.managers[0] : req.body.manager,
+      managers: Array.isArray(req.body.managers) ? req.body.managers : (req.body.manager ? [req.body.manager] : []),
       team: Array.isArray(req.body.team) ? req.body.team : [],
       departments: Array.isArray(req.body.departments) ? req.body.departments : [],
       tags: Array.isArray(req.body.tags) ? req.body.tags : [],
       owner: user._id,
-      members: Array.isArray(req.body.members) ? req.body.members : [],
       milestones: Array.isArray(req.body.milestones) ? req.body.milestones : [],
       risks: Array.isArray(req.body.risks) ? req.body.risks : [],
       dependencies: Array.isArray(req.body.dependencies) ? req.body.dependencies : [],
@@ -432,6 +431,7 @@ export const updateProject = async (req: Request, res: Response) => {
     if (req.body.progress !== undefined) updateData.progress = Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100);
     if (req.body.client !== undefined) updateData.client = req.body.client;
     if (req.body.manager !== undefined) updateData.manager = req.body.manager;
+    if (req.body.managers !== undefined) updateData.managers = Array.isArray(req.body.managers) ? req.body.managers : [];
     if (req.body.team !== undefined) updateData.team = Array.isArray(req.body.team) ? req.body.team : [];
     if (req.body.departments !== undefined) updateData.departments = Array.isArray(req.body.departments) ? req.body.departments : [];
     if (req.body.tags !== undefined) updateData.tags = Array.isArray(req.body.tags) ? req.body.tags : [];
@@ -485,7 +485,7 @@ export const updateProject = async (req: Request, res: Response) => {
     // Safely get manager ID for timeline
     const managerId = req.body.updatedBy || 
                      (project.manager ? 
-                      (project.manager._id?.toString() || project.manager.toString()) : 
+                      (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null) : 
                       null);
     
     if (!managerId) {
@@ -626,7 +626,7 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     
     // Safely get user ID
     const userId = user || (project.manager ? 
-                           (project.manager._id?.toString() || project.manager.toString()) : 
+                           (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null) : 
                            null);
     
     if (!userId) {
@@ -668,7 +668,7 @@ export const deleteProject = async (req: Request, res: Response) => {
     await Task.deleteMany({ project: req.params.id });
     
     // Safely get manager ID
-    const managerId = project.manager ? project.manager.toString() : null;
+    const managerId = project.managers && project.managers.length > 0 ? project.managers[0].toString() : null;
     
     if (managerId) {
       // Create timeline event
@@ -740,7 +740,7 @@ export const getProjectTasks = async (req: Request, res: Response) => {
 
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
     const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
-    const isMember = project.members.some(m => m.toString() === user._id.toString());
+    
     const isOwner = project.owner.toString() === user._id.toString();
     
     // Find employee record to check team/manager fields
@@ -884,7 +884,6 @@ export const getProjectStats = async (req: Request, res: Response) => {
       const employee = await Employee.findOne({ user: user._id });
       
       const conditions: any[] = [
-        { members: user._id },
         { owner: user._id }
       ];
       
@@ -1108,7 +1107,6 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
       const employee = await Employee.findOne({ user: user._id });
       
       const conditions: any[] = [
-        { members: user._id },
         { owner: user._id }
       ];
       
@@ -1539,7 +1537,6 @@ export const getProjectsByView = async (req: Request, res: Response) => {
       const employee = await Employee.findOne({ user: user._id });
       
       const conditions: any[] = [
-        { members: user._id },
         { owner: user._id }
       ];
       
@@ -1625,12 +1622,12 @@ export const createProjectFast = async (req: Request, res: Response) => {
       currency: req.body.currency || 'USD',
       progress: Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100),
       client: req.body.client?.trim() || undefined,
-      manager: req.body.manager || undefined,
+      manager: req.body.managers && req.body.managers.length > 0 ? req.body.managers[0] : req.body.manager,
+      managers: Array.isArray(req.body.managers) ? req.body.managers : (req.body.manager ? [req.body.manager] : []),
       team: Array.isArray(req.body.team) ? req.body.team : [],
       departments: Array.isArray(req.body.departments) ? req.body.departments : [],
       tags: Array.isArray(req.body.tags) ? req.body.tags : [],
       owner: user._id,
-      members: Array.isArray(req.body.members) ? req.body.members : [],
       milestones: Array.isArray(req.body.milestones) ? req.body.milestones : [],
       risks: Array.isArray(req.body.risks) ? req.body.risks : [],
       dependencies: Array.isArray(req.body.dependencies) ? req.body.dependencies : [],

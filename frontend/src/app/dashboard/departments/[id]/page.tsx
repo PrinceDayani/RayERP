@@ -86,15 +86,15 @@ export default function DepartmentOverviewPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-[#970E2C] via-[#800020] to-[#970E2C] bg-clip-text text-transparent">
             {department.name}
           </h1>
-          <p className="text-muted-foreground mt-1">{department.description}</p>
+          <p className="text-muted-foreground mt-2 text-base">{department.description}</p>
         </div>
         <div className="flex items-center gap-3">
-          <Badge variant={department.status === "active" ? "default" : "secondary"} className={department.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300"}>
+          <Badge variant={department.status === "active" ? "default" : "secondary"} className={department.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300 border-green-200 px-4 py-1.5" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300 border-yellow-200 px-4 py-1.5"}>
             {department.status}
           </Badge>
           <CurrencySwitcher />
@@ -115,10 +115,10 @@ export default function DepartmentOverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Department Information */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="card-modern">
+          <Card className="glass-morphism">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <Building className="w-5 h-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Building className="w-5 h-5 text-[#970E2C]" />
                 Department Information
               </CardTitle>
             </CardHeader>
@@ -133,7 +133,7 @@ export default function DepartmentOverviewPage() {
                 <div className="flex items-center gap-2 text-sm">
                   <Wallet className="w-4 h-4 text-muted-foreground" />
                   <span className="font-medium">Budget:</span>
-                  <span>{formatAmount(department.budget)}</span>
+                  <span className="font-semibold text-[#970E2C]">{formatAmount(department.budget)}</span>
                 </div>
 
                 <div className="flex items-center gap-2 text-sm col-span-2">
@@ -153,10 +153,10 @@ export default function DepartmentOverviewPage() {
           </Card>
 
           {/* Active Projects with Table */}
-          <Card className="card-modern">
+          <Card className="glass-morphism">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <FolderOpen className="w-5 h-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FolderOpen className="w-5 h-5 text-[#970E2C]" />
                 Active Projects
               </CardTitle>
               <CardDescription>
@@ -216,10 +216,10 @@ export default function DepartmentOverviewPage() {
           </Card>
 
           {/* Recent Activity */}
-          <Card className="card-modern">
+          <Card className="glass-morphism">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Activity className="w-5 h-5 text-[#970E2C]" />
                 Recent Activity
               </CardTitle>
             </CardHeader>
@@ -250,7 +250,7 @@ export default function DepartmentOverviewPage() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Quick Stats */}
-          <Card className="card-modern">
+          <Card className="glass-morphism">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm">Quick Stats</CardTitle>
             </CardHeader>
@@ -277,10 +277,10 @@ export default function DepartmentOverviewPage() {
           </Card>
 
           {/* Team Members Preview with Table */}
-          <Card className="card-modern">
+          <Card className="glass-morphism">
             <CardHeader className="pb-4">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
+                <Users className="w-4 h-4 text-[#970E2C]" />
                 Team Members
               </CardTitle>
             </CardHeader>

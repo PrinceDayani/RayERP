@@ -51,11 +51,9 @@ export interface IProject extends Document {
   progress: number;
   autoCalculateProgress: boolean;
 
-  manager: mongoose.Types.ObjectId;
   managers: mongoose.Types.ObjectId[];
   team: mongoose.Types.ObjectId[];
   owner: mongoose.Types.ObjectId;
-  members: mongoose.Types.ObjectId[];
   departments: mongoose.Types.ObjectId[];
   client?: string;
   tags: string[];
@@ -141,15 +139,13 @@ const projectSchema = new Schema<IProject>({
   endDate: { type: Date, required: true },
   budget: { type: Number, required: true, default: 0 },
   spentBudget: { type: Number, default: 0 },
-  currency: { type: String, default: 'USD', trim: true, uppercase: true },
+  currency: { type: String, default: 'USD', trim: true, uppercase: true, required: true },
 
   progress: { type: Number, min: 0, max: 100, default: 0 },
   autoCalculateProgress: { type: Boolean, default: true },
-  manager: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
-  managers: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
+  managers: [{ type: Schema.Types.ObjectId, ref: 'Employee', required: true }],
   team: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
   owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   departments: [{ type: Schema.Types.ObjectId, ref: 'Department' }],
   client: String,
   tags: [String],
@@ -170,11 +166,16 @@ const projectSchema = new Schema<IProject>({
 projectSchema.index({ 'instructions.type': 1 });
 projectSchema.index({ 'instructions.priority': 1 });
 
+
+// Virtual for backward compatibility
+projectSchema.virtual('manager').get(function() {
+  return this.managers && this.managers.length > 0 ? this.managers[0] : null;
+});
+
 // Performance indexes
 projectSchema.index({ owner: 1, status: 1 });
-projectSchema.index({ manager: 1, status: 1 });
+projectSchema.index({ managers: 1, status: 1 });
 projectSchema.index({ team: 1, status: 1 });
-projectSchema.index({ members: 1, status: 1 });
 projectSchema.index({ departments: 1, status: 1 });
 projectSchema.index({ status: 1, priority: 1 });
 projectSchema.index({ startDate: 1, endDate: 1 });
