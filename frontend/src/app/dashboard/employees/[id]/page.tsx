@@ -360,7 +360,7 @@ export default function EmployeeDetailPage() {
   };
 
   if (loading) {
-    return <PageLoader text=\"Loading employee details...\" />;
+    return <PageLoader text="Loading employee details..." />;
   }
 
   if (!employee) {

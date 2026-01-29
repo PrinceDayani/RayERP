@@ -48,10 +48,32 @@ export const scheduleReport = async (req: Request, res: Response) => {
 export const getSchedules = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
-    const schedules = await ReportSchedule.find({ createdBy: userId, isActive: true });
+    const { module } = req.query;
+    const filter: any = { createdBy: userId, isActive: true };
+    if (module) filter.reportType = { $regex: module, $options: 'i' };
+    const schedules = await ReportSchedule.find(filter);
     res.json({ success: true, data: schedules });
   } catch (error: any) {
     logger.error('Get schedules error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateSchedule = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id;
+    const schedule = await ReportSchedule.findOneAndUpdate(
+      { _id: id, createdBy: userId },
+      { $set: req.body },
+      { new: true }
+    );
+    if (!schedule) {
+      return res.status(404).json({ success: false, message: 'Schedule not found' });
+    }
+    res.json({ success: true, data: schedule });
+  } catch (error: any) {
+    logger.error('Update schedule error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

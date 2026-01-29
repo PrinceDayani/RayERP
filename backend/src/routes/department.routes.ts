@@ -19,14 +19,16 @@ import {
   getDepartmentProjects,
   getDepartmentNotifications,
   getDepartmentActivityLogs,
-  // Production endpoints
   getDepartmentBudgetHistory,
   getDepartmentExpenses,
   getDepartmentPerformanceMetrics,
   getDepartmentGoals,
   getDepartmentResourceUtilization,
   getDepartmentComplianceStatus,
-  adjustDepartmentBudget
+  adjustDepartmentBudget,
+  bulkDeleteDepartments,
+  bulkUpdateDepartments,
+  exportDepartments
 } from '../controllers/departmentController';
 import { protect } from '../middleware/auth.middleware';
 import { requirePermission, requireAnyPermission } from '../middleware/rbac.middleware';
@@ -81,6 +83,13 @@ router.get('/:id/compliance-status', requireAnyPermission(['departments.view_set
 // ==================== MANAGEMENT ROUTES ====================
 // Create Department (departments.create)
 router.post('/', requirePermission('departments.create'), createDepartment);
+
+// Bulk Operations
+router.post('/bulk/delete', requirePermission('departments.delete'), bulkDeleteDepartments);
+router.post('/bulk/update', requirePermission('departments.edit'), bulkUpdateDepartments);
+
+// Export
+router.get('/export', requirePermission('departments.view'), exportDepartments);
 
 // Edit Department (departments.edit)
 router.put('/:id', requirePermission('departments.edit'), updateDepartment);

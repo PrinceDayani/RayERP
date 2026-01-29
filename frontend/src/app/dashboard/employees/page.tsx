@@ -300,23 +300,23 @@ const EmployeeManagementDashboard = () => {
   return (
     <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="space-y-1">
+            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-[#970E2C] via-[#800020] to-[#970E2C] bg-clip-text text-transparent">
               Employee Management
             </h1>
-            <p className="text-muted-foreground mt-1">Manage your workforce efficiently with real-time insights</p>
+            <p className="text-muted-foreground text-base">Manage your workforce efficiently with real-time insights</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-xl">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border border-green-200 dark:border-green-800 rounded-lg shadow-sm">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-green-700 dark:text-green-400 font-medium">Live Data</span>
+              <span className="text-sm text-green-700 dark:text-green-400 font-medium">Live</span>
             </div>
-            <Button onClick={() => router.push("/dashboard/resources")} variant="outline">
+            <Button onClick={() => router.push("/dashboard/resources")} variant="outline" size="default" className="h-11 hover:bg-[#970E2C]/5 hover:border-[#970E2C]/30 shadow-sm">
               <Calendar className="h-4 w-4 mr-2" />
-              Resource Allocation
+              Resources
             </Button>
-            <Button onClick={() => router.push("/dashboard/employees/create")} className="btn-primary-gradient">
+            <Button onClick={() => router.push("/dashboard/employees/create")} className="h-11 bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20">
               <Plus className="h-4 w-4 mr-2" />
               Add Employee
             </Button>
@@ -324,62 +324,66 @@ const EmployeeManagementDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Employees</p>
-                  <p className="text-3xl font-bold text-foreground">{stats.totalEmployees}</p>
-                  <p className="text-xs text-muted-foreground mt-1">All workforce</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Total Employees</p>
+                  <p className="text-4xl font-bold tracking-tight bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.totalEmployees}</p>
+                  <p className="text-xs text-muted-foreground">All workforce</p>
                 </div>
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
-                  <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-modern hover-lift border-l-4 border-l-green-500">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active</p>
-                  <p className="text-3xl font-bold text-foreground">{stats.activeEmployees}</p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Currently working</p>
-                </div>
-                <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
-                  <UserCheck className="h-6 w-6 text-green-600 dark:text-green-400" />
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                  <Users className="h-7 w-7 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="card-modern hover-lift border-l-4 border-l-purple-500">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Present Today</p>
-                  <p className="text-3xl font-bold text-foreground">{stats.presentToday}</p>
-                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">In office now</p>
+          <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Active</p>
+                  <p className="text-4xl font-bold tracking-tight bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.activeEmployees}</p>
+                  <p className="text-xs text-[#970E2C]">Currently working</p>
                 </div>
-                <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
-                  <Clock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                  <UserCheck className="h-7 w-7 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="card-modern hover-lift border-l-4 border-l-orange-500">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">On Leave</p>
-                  <p className="text-3xl font-bold text-foreground">{stats.onLeave}</p>
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Away today</p>
+          <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">Present Today</p>
+                  <p className="text-4xl font-bold tracking-tight bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.presentToday}</p>
+                  <p className="text-xs text-[#970E2C]">In office now</p>
                 </div>
-                <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-xl">
-                  <UserX className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                  <Clock className="h-7 w-7 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="group relative overflow-hidden border-0 shadow-lg shadow-[#970E2C]/10 hover:shadow-xl hover:shadow-[#970E2C]/20 transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[#970E2C] uppercase tracking-wide">On Leave</p>
+                  <p className="text-4xl font-bold tracking-tight bg-gradient-to-r from-[#970E2C] to-[#800020] bg-clip-text text-transparent">{stats.onLeave}</p>
+                  <p className="text-xs text-[#970E2C]">Away today</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#800020] shadow-lg shadow-[#970E2C]/30">
+                  <UserX className="h-7 w-7 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -388,51 +392,67 @@ const EmployeeManagementDashboard = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 h-12 bg-muted/80 p-1 rounded-xl border border-border/50">
-            <TabsTrigger value="overview" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Overview</TabsTrigger>
-            <TabsTrigger value="employees" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Employees</TabsTrigger>
-            <TabsTrigger value="attendance" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Attendance</TabsTrigger>
-            <TabsTrigger value="leaves" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Leaves</TabsTrigger>
-            <TabsTrigger value="reports" className="rounded-lg font-medium text-sm data-[state=active]:bg-[#800020] data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-[#800020] hover:bg-background/50 transition-all">Reports</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5 h-12 bg-muted/50 p-1 rounded-xl border border-border/50">
+            <TabsTrigger value="overview" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Overview</TabsTrigger>
+            <TabsTrigger value="employees" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Employees</TabsTrigger>
+            <TabsTrigger value="attendance" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Attendance</TabsTrigger>
+            <TabsTrigger value="leaves" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Leaves</TabsTrigger>
+            <TabsTrigger value="reports" className="rounded-lg font-medium text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#800020] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#970E2C]/20 hover:bg-background/50 transition-all">Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Recent Employees */}
-            <Card className="card-modern">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
+            <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
+              <CardHeader className="pb-4 border-b">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Users className="h-5 w-5 text-[#970E2C]" />
                   Recent Employees
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {employees.slice(0, 5).map((employee) => (
-                    <div key={employee._id} className="flex items-center justify-between p-4 border border-border/50 rounded-xl hover:bg-accent/50 transition-colors">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center">
-                          <span className="text-primary font-semibold text-lg">
-                            {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
-                          </span>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-foreground">{employee.firstName} {employee.lastName}</h3>
-                          <p className="text-sm text-muted-foreground">{employee.position} • {employee.department}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge className={getStatusColor(employee.status)} variant="secondary">
-                              {employee.status}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground font-mono">{employee.employeeId}</span>
+              <CardContent className="pt-6">
+                {employees.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <p className="text-muted-foreground text-sm">No employees found</p>
+                    <Button onClick={() => router.push("/dashboard/employees/create")} className="mt-4 bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20" size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add First Employee
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {employees.slice(0, 5).map((employee) => (
+                      <div 
+                        key={employee._id} 
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 hover:shadow-md transition-all duration-200 cursor-pointer group"
+                        onClick={() => router.push(`/dashboard/employees/${employee._id}`)}
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-12 h-12 bg-gradient-to-br from-[#970E2C]/20 to-[#800020]/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                            <span className="text-[#970E2C] font-semibold text-base">
+                              {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-foreground truncate group-hover:text-[#970E2C] transition-colors">{employee.firstName} {employee.lastName}</h3>
+                            <p className="text-sm text-muted-foreground truncate">{employee.position} • {employee.department}</p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <Badge className={getStatusColor(employee.status)} variant="secondary">
+                                {employee.status}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground font-mono">{employee.employeeId}</span>
+                            </div>
                           </div>
                         </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-xs text-muted-foreground mb-1">Joined</p>
+                          <p className="font-medium text-sm">{new Date(employee.hireDate).toLocaleDateString()}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Joined</p>
-                        <p className="font-medium text-sm">{new Date(employee.hireDate).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -447,56 +467,67 @@ const EmployeeManagementDashboard = () => {
               skills={skills}
             />
             
-            <Card className="card-modern">
-              <CardHeader className="pb-4">
+            <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
+              <CardHeader className="pb-4 border-b">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    All Employees ({filteredEmployees.length})
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <Users className="h-5 w-5 text-[#970E2C]" />
+                    All Employees
+                    <Badge variant="secondary" className="ml-2">{filteredEmployees.length}</Badge>
                   </CardTitle>
-                  <div className="flex gap-3 w-full sm:w-auto">
-                    <Button onClick={() => router.push("/dashboard/employees/create")} className="btn-primary-gradient">
+                  <Button onClick={() => router.push("/dashboard/employees/create")} className="bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Employee
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {filteredEmployees.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <p className="text-muted-foreground text-sm mb-2">No employees found</p>
+                    <p className="text-xs text-muted-foreground mb-4">Try adjusting your filters or add a new employee</p>
+                    <Button onClick={() => router.push("/dashboard/employees/create")} size="sm">
                       <Plus className="h-4 w-4 mr-2" />
                       Add Employee
                     </Button>
                   </div>
-                </div>
-              </CardHeader>
-                <CardContent>
-                <div className="overflow-x-auto">
-                  <div className="table-modern rounded-xl overflow-hidden">
+                ) : (
+                  <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead>
-                        <tr className="bg-muted/50">
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Employee ID</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Name</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Department</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Position</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Status</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Hire Date</th>
-                          <th className="text-left p-4 font-semibold text-muted-foreground">Actions</th>
+                      <thead className="bg-muted/50 border-b">
+                        <tr>
+                          <th className="text-left p-4 font-semibold text-sm text-muted-foreground">ID</th>
+                          <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Employee</th>
+                          <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Department</th>
+                          <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Position</th>
+                          <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Status</th>
+                          <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Hire Date</th>
+                          <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Actions</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y">
                         {filteredEmployees.map((employee) => (
                           <tr 
                             key={employee._id} 
-                            className="table-row-hover border-b border-border/50 cursor-pointer"
+                            className="hover:bg-accent/30 transition-colors cursor-pointer"
                             onClick={() => router.push(`/dashboard/employees/${employee._id}`)}
                           >
                             <td className="p-4">
-                              <span className="font-mono text-sm bg-muted/50 px-2 py-1 rounded">{employee.employeeId}</span>
+                              <span className="font-mono text-xs bg-muted px-2 py-1 rounded">{employee.employeeId}</span>
                             </td>
                             <td className="p-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
-                                  <span className="text-primary font-semibold text-sm">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#970E2C]/20 to-[#800020]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <span className="text-[#970E2C] font-semibold text-sm">
                                     {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
                                   </span>
                                 </div>
-                                <div>
-                                  <p className="font-semibold text-foreground">{employee.firstName} {employee.lastName}</p>
-                                  <p className="text-sm text-muted-foreground">{employee.email}</p>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-sm truncate">{employee.firstName} {employee.lastName}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{employee.email}</p>
                                 </div>
                               </div>
                             </td>
@@ -504,49 +535,49 @@ const EmployeeManagementDashboard = () => {
                               {employee.departments && employee.departments.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
                                   {employee.departments.map((dept, idx) => (
-                                    <span key={idx} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-medium">
+                                    <span key={idx} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
                                       {dept}
                                     </span>
                                   ))}
                                 </div>
                               ) : (
-                                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium">
+                                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
                                   {employee.department || 'N/A'}
                                 </span>
                               )}
                             </td>
-                            <td className="p-4 text-foreground font-medium">{employee.position}</td>
+                            <td className="p-4 text-sm">{employee.position}</td>
                             <td className="p-4">
                               <Badge className={getStatusColor(employee.status)} variant="secondary">
                                 {employee.status}
                               </Badge>
                             </td>
-                            <td className="p-4 text-muted-foreground">{new Date(employee.hireDate).toLocaleDateString()}</td>
+                            <td className="p-4 text-sm text-muted-foreground">{new Date(employee.hireDate).toLocaleDateString()}</td>
                             <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex gap-2">
+                              <div className="flex gap-1">
                                 <Button 
-                                  variant="outline" 
+                                  variant="ghost" 
                                   size="sm"
                                   onClick={() => router.push(`/dashboard/employees/${employee._id}`)}
-                                  className="hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                                  className="h-8 w-8 p-0 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950"
                                   title="View Details"
                                 >
                                   <User className="w-4 h-4" />
                                 </Button>
                                 <Button 
-                                  variant="outline" 
+                                  variant="ghost" 
                                   size="sm"
                                   onClick={() => router.push(`/dashboard/employees/${employee._id}/edit`)}
-                                  className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                                  className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950"
                                   title="Edit Employee"
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
                                 <Button 
-                                  variant="outline" 
+                                  variant="ghost" 
                                   size="sm" 
                                   onClick={() => handleDeleteEmployee(employee._id, `${employee.firstName} ${employee.lastName}`)}
-                                  className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                  className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
                                   title="Delete Employee"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -558,7 +589,7 @@ const EmployeeManagementDashboard = () => {
                       </tbody>
                     </table>
                   </div>
-                </div>
+                )}
 
                 {/* Delete Confirmation Dialog */}
                 <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -582,7 +613,7 @@ const EmployeeManagementDashboard = () => {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                </CardContent>
+              </CardContent>
             </Card>
           </TabsContent>
 
@@ -666,52 +697,68 @@ const LeaveManagement = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
+      <CardHeader className="border-b">
         <div className="flex justify-between items-center">
-          <CardTitle>Leave Management</CardTitle>
-          <Button onClick={() => setIsCreateLeaveOpen(true)}>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Calendar className="h-5 w-5 text-[#970E2C]" />
+            Leave Management
+          </CardTitle>
+          <Button onClick={() => setIsCreateLeaveOpen(true)} className="bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20">
             <Plus className="h-4 w-4 mr-2" />
             New Leave Request
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {leaves.map((leave: any) => (
-            <div key={leave._id} className="border rounded-lg p-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-medium">
-                    {leave.employee?.firstName || 'N/A'} {leave.employee?.lastName || ''}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {leave.leaveType} - {leave.totalDays} days
-                  </p>
-                  <p className="text-sm">
-                    {new Date(leave.startDate).toLocaleDateString()} to {new Date(leave.endDate).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm mt-2">{leave.reason}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={leave.status === 'approved' ? 'default' : leave.status === 'rejected' ? 'destructive' : 'secondary'}>
-                    {leave.status}
-                  </Badge>
-                  {leave.status === 'pending' && (
-                    <>
-                      <Button size="sm" onClick={() => handleStatusUpdate(leave._id, 'approved')}>
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(leave._id, 'rejected', 'Not approved')}>
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
+      <CardContent className="pt-6">
+        {leaves.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground text-sm mb-2">No leave requests found</p>
+            <Button onClick={() => setIsCreateLeaveOpen(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Leave Request
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {leaves.map((leave: any) => (
+              <div key={leave._id} className="border rounded-lg p-4 hover:bg-accent/30 transition-colors">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-sm">
+                      {leave.employee?.firstName || 'N/A'} {leave.employee?.lastName || ''}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {leave.leaveType} - {leave.totalDays} days
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(leave.startDate).toLocaleDateString()} to {new Date(leave.endDate).toLocaleDateString()}
+                    </p>
+                    <p className="text-sm mt-2">{leave.reason}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={leave.status === 'approved' ? 'default' : leave.status === 'rejected' ? 'destructive' : 'secondary'}>
+                      {leave.status}
+                    </Badge>
+                    {leave.status === 'pending' && (
+                      <>
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-green-50 hover:text-green-600" onClick={() => handleStatusUpdate(leave._id, 'approved')}>
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600" onClick={() => handleStatusUpdate(leave._id, 'rejected', 'Not approved')}>
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <Dialog open={isCreateLeaveOpen} onOpenChange={setIsCreateLeaveOpen}>
           <DialogContent>
@@ -815,30 +862,33 @@ const EmployeeReports = () => {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Employee Reports & Analytics</CardTitle>
+      <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
+        <CardHeader className="border-b">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <FileText className="h-5 w-5 text-[#970E2C]" />
+            Employee Reports & Analytics
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Start Date</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Start Date</Label>
               <Input
                 type="date"
                 value={filters.startDate}
                 onChange={(e) => setFilters({...filters, startDate: e.target.value})}
               />
             </div>
-            <div>
-              <Label>End Date</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">End Date</Label>
               <Input
                 type="date"
                 value={filters.endDate}
                 onChange={(e) => setFilters({...filters, endDate: e.target.value})}
               />
             </div>
-            <div>
-              <Label>Department</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Department</Label>
               <Select onValueChange={(value) => setFilters({...filters, department: value === 'all' ? '' : value})}>
                 <SelectTrigger>
                   <SelectValue placeholder="All departments" />
@@ -860,87 +910,108 @@ const EmployeeReports = () => {
 
       {/* Department Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Department Summary</CardTitle>
+        <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
+          <CardHeader className="border-b">
+            <CardTitle className="text-lg">Department Summary</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {departmentSummary.map((dept: any) => (
-                <div key={dept._id} className="flex justify-between items-center p-3 border rounded">
-                  <div>
-                    <p className="font-medium">{dept._id}</p>
-                    <p className="text-sm text-muted-foreground">{dept.count} employees</p>
+          <CardContent className="pt-6">
+            {departmentSummary.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No department data available</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {departmentSummary.map((dept: any) => (
+                  <div key={dept._id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-accent/30 transition-colors">
+                    <div>
+                      <p className="font-semibold text-sm">{dept._id}</p>
+                      <p className="text-xs text-muted-foreground">{dept.count} employees</p>
+                    </div>
+                    <p className="font-semibold text-sm">₹{Math.round(dept.avgSalary).toLocaleString()}</p>
                   </div>
-                  <p className="font-medium">₹{Math.round(dept.avgSalary).toLocaleString()}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Attendance Summary</CardTitle>
+        <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
+          <CardHeader className="border-b">
+            <CardTitle className="text-lg">Attendance Summary</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {attendanceSummary.map((att: any) => (
-                <div key={att._id} className="flex justify-between items-center p-3 border rounded">
-                  <div>
-                    <p className="font-medium capitalize">{att._id}</p>
-                    <p className="text-sm text-muted-foreground">{att.count} days</p>
+          <CardContent className="pt-6">
+            {attendanceSummary.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No attendance data available</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {attendanceSummary.map((att: any) => (
+                  <div key={att._id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-accent/30 transition-colors">
+                    <div>
+                      <p className="font-semibold text-sm capitalize">{att._id}</p>
+                      <p className="text-xs text-muted-foreground">{att.count} days</p>
+                    </div>
+                    <p className="font-semibold text-sm">{Math.round(att.totalHours)}h</p>
                   </div>
-                  <p className="font-medium">{Math.round(att.totalHours)}h</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Employee Report Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Employee Performance Report</CardTitle>
+      <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
+        <CardHeader className="border-b">
+          <CardTitle className="text-lg">Employee Performance Report</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Employee</th>
-                  <th className="text-left p-2">Department</th>
-                  <th className="text-left p-2">Attendance</th>
-                  <th className="text-left p-2">Hours</th>
-                  <th className="text-left p-2">Leaves</th>
-                  <th className="text-left p-2">Salary</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.map((emp: any) => (
-                  <tr key={emp.employee._id} className="border-b hover:bg-gray-50">
-                    <td className="p-2">
-                      <div>
-                        <p className="font-medium">{emp.employee.name}</p>
-                        <p className="text-sm text-muted-foreground">{emp.employee.employeeId}</p>
-                      </div>
-                    </td>
-                    <td className="p-2">{emp.employee.department}</td>
-                    <td className="p-2">
-                      <div className="text-sm">
-                        <p>{emp.attendance.presentDays}/{emp.attendance.totalDays} days</p>
-                        <p className="text-muted-foreground">{emp.attendance.lateDays} late</p>
-                      </div>
-                    </td>
-                    <td className="p-2">{Math.round(emp.attendance.totalHours)}h</td>
-                    <td className="p-2">{emp.leaves.totalLeaves} days</td>
-                    <td className="p-2">₹{emp.employee.salary.toLocaleString()}</td>
+        <CardContent className="p-0">
+          {reportData.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">No report data available</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="text-left p-3 text-sm font-semibold text-muted-foreground">Employee</th>
+                    <th className="text-left p-3 text-sm font-semibold text-muted-foreground">Department</th>
+                    <th className="text-left p-3 text-sm font-semibold text-muted-foreground">Attendance</th>
+                    <th className="text-left p-3 text-sm font-semibold text-muted-foreground">Hours</th>
+                    <th className="text-left p-3 text-sm font-semibold text-muted-foreground">Leaves</th>
+                    <th className="text-left p-3 text-sm font-semibold text-muted-foreground">Salary</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {reportData.map((emp: any) => (
+                    <tr key={emp.employee._id} className="hover:bg-accent/30 transition-colors">
+                      <td className="p-3">
+                        <div>
+                          <p className="font-semibold text-sm">{emp.employee.name}</p>
+                          <p className="text-xs text-muted-foreground">{emp.employee.employeeId}</p>
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm">{emp.employee.department}</td>
+                      <td className="p-3">
+                        <div className="text-xs">
+                          <p className="font-medium">{emp.attendance.presentDays}/{emp.attendance.totalDays} days</p>
+                          <p className="text-muted-foreground">{emp.attendance.lateDays} late</p>
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm font-medium">{Math.round(emp.attendance.totalHours)}h</td>
+                      <td className="p-3 text-sm">{emp.leaves.totalLeaves} days</td>
+                      <td className="p-3 text-sm font-semibold">₹{emp.employee.salary.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -986,50 +1057,61 @@ const TodayAttendance = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
+      <CardHeader className="border-b">
         <div className="flex justify-between items-center">
-          <CardTitle>Today's Attendance</CardTitle>
-          <Button onClick={() => router.push("/dashboard/employees/attendance")}>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Clock className="h-5 w-5 text-[#970E2C]" />
+            Today's Attendance
+          </CardTitle>
+          <Button onClick={() => router.push("/dashboard/employees/attendance")} className="bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20">
             <BarChart3 className="h-4 w-4 mr-2" />
-            View Attendance
+            View All
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         {loading ? (
           <SectionLoader text="Loading attendance..." />
         ) : todayAttendance.length === 0 ? (
-          <div className="text-center py-8">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
-            <p className="text-muted-foreground">No attendance records for today</p>
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Clock className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground text-sm">No attendance records for today</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {todayAttendance.map((record) => (
-              <div key={record._id} className="flex items-center justify-between p-4 border rounded-lg">
+              <div key={record._id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/30 transition-colors">
                 <div className="flex-1">
-                  <h3 className="font-medium">
+                  <h3 className="font-semibold text-sm">
                     {record.employee.firstName} {record.employee.lastName}
                   </h3>
-                  <p className="text-sm text-muted-foreground">{record.employee.employeeId}</p>
-                  <div className="flex items-center gap-4 mt-2 text-sm">
-                    <span>Check-in: {new Date(record.checkIn).toLocaleTimeString()}</span>
+                  <p className="text-xs text-muted-foreground mt-1">{record.employee.employeeId}</p>
+                  <div className="flex items-center gap-4 mt-2 text-xs">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      In: {new Date(record.checkIn).toLocaleTimeString()}
+                    </span>
                     {record.checkOut ? (
-                      <span>Check-out: {new Date(record.checkOut).toLocaleTimeString()}</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Out: {new Date(record.checkOut).toLocaleTimeString()}
+                      </span>
                     ) : (
-                      <span className="text-green-600 font-medium">Currently Present</span>
+                      <span className="text-green-600 font-medium flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                        Present
+                      </span>
                     )}
-                    <span>Hours: {record.totalHours.toFixed(1)}</span>
+                    <span>{record.totalHours.toFixed(1)}h</span>
                   </div>
                 </div>
                 <div className="text-right">
                   <Badge className={getStatusColor(record.status)}>
                     {record.status}
                   </Badge>
-                  {!record.checkOut && (
-                    <p className="text-xs text-green-600 mt-1">Active</p>
-                  )}
                 </div>
               </div>
             ))}

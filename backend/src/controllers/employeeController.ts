@@ -344,22 +344,20 @@ export const getEmployeeTaskStats = async (req: Request, res: Response) => {
     }
 
     const employeeId = req.params.id;
-    const totalTasks = await Task.countDocuments({ assignedTo: employeeId });
-    const completedTasks = await Task.countDocuments({ assignedTo: employeeId, status: 'completed' });
-    const inProgressTasks = await Task.countDocuments({ assignedTo: employeeId, status: 'in-progress' });
-    const overdueTasks = await Task.countDocuments({ 
+    const total = await Task.countDocuments({ assignedTo: employeeId });
+    const completed = await Task.countDocuments({ assignedTo: employeeId, status: 'completed' });
+    const inProgress = await Task.countDocuments({ assignedTo: employeeId, status: 'in-progress' });
+    const overdue = await Task.countDocuments({ 
       assignedTo: employeeId,
       dueDate: { $lt: new Date() }, 
       status: { $ne: 'completed' } 
     });
     
     const stats = {
-      totalTasks,
-      completedTasks,
-      inProgressTasks,
-      overdueTasks,
-      todoTasks: await Task.countDocuments({ assignedTo: employeeId, status: 'todo' }),
-      reviewTasks: await Task.countDocuments({ assignedTo: employeeId, status: 'review' })
+      total,
+      completed,
+      inProgress,
+      overdue
     };
     
     res.json(stats);

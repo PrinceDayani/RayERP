@@ -25,10 +25,19 @@ interface Activity {
   details: string;
   status: 'success' | 'error' | 'warning';
   projectId?: { _id: string; name: string };
+  projectName?: string;
   metadata?: any;
   ipAddress?: string;
   visibility?: string;
   user?: { _id: string; name: string; email: string };
+  requestId?: string;
+  duration?: number;
+  errorStack?: string;
+  userAgent?: string;
+  sessionId?: string;
+  httpMethod?: string;
+  endpoint?: string;
+  changes?: { before?: any; after?: any };
 }
 
 interface ActivityStats {
@@ -96,10 +105,12 @@ function ActivityPageContent() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [userNameFilter, setUserNameFilter] = useState('');
+  const [projectNameFilter, setProjectNameFilter] = useState('');
   const [stats, setStats] = useState<ActivityStats | null>(null);
   const [showCharts, setShowCharts] = useState(false);
 
   const debouncedUserNameFilter = useDebounce(userNameFilter, 500);
+  const debouncedProjectNameFilter = useDebounce(projectNameFilter, 500);
 
   const fetchActivities = async () => {
     if (!token) {
@@ -137,8 +148,9 @@ function ActivityPageContent() {
       const statusParam = statusFilter && statusFilter !== 'all' ? `&status=${statusFilter}` : '';
       const categoryParam = categoryFilter && categoryFilter !== 'all' ? `&category=${categoryFilter}` : '';
       const userParam = debouncedUserNameFilter ? `&userName=${debouncedUserNameFilter}` : '';
+      const projectParam = debouncedProjectNameFilter ? `&projectName=${debouncedProjectNameFilter}` : '';
       
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/activity?page=${page}&limit=20${filterParam}${dateParams}${actionParam}${statusParam}${categoryParam}${userParam}`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/activity?page=${page}&limit=20${filterParam}${dateParams}${actionParam}${statusParam}${categoryParam}${userParam}${projectParam}`;
       console.log('Full Request URL:', url);
       console.log('Request Headers:', {
         Authorization: `Bearer ${token.substring(0, 20)}...`,
@@ -385,6 +397,7 @@ function ActivityPageContent() {
     setStatusFilter('all');
     setCategoryFilter('all');
     setUserNameFilter('');
+    setProjectNameFilter('');
     setStartDate('');
     setEndDate('');
   };
@@ -411,7 +424,7 @@ function ActivityPageContent() {
 
   useEffect(() => {
     fetchActivities();
-  }, [page, filter, startDate, endDate, actionFilter, statusFilter, categoryFilter, debouncedUserNameFilter]);
+  }, [page, filter, startDate, endDate, actionFilter, statusFilter, categoryFilter, debouncedUserNameFilter, debouncedProjectNameFilter]);
 
   useEffect(() => {
     fetchActivityStats();
@@ -618,6 +631,18 @@ function ActivityPageContent() {
                   />
                 </div>
               </div>
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by project name..."
+                    value={projectNameFilter}
+                    onChange={(e) => setProjectNameFilter(e.target.value)}
+                    className="pl-10"
+                    aria-label="Search activities by project name"
+                  />
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <Input
                   type="date"
@@ -636,7 +661,7 @@ function ActivityPageContent() {
                 />
               </div>
 
-              {(filter !== 'all' || (actionFilter && actionFilter !== 'all') || (statusFilter && statusFilter !== 'all') || (categoryFilter && categoryFilter !== 'all') || userNameFilter || startDate || endDate) && (
+              {(filter !== 'all' || (actionFilter && actionFilter !== 'all') || (statusFilter && statusFilter !== 'all') || (categoryFilter && categoryFilter !== 'all') || userNameFilter || projectNameFilter || startDate || endDate) && (
                 <Button
                   variant="outline"
                   onClick={clearAllFilters}
@@ -724,9 +749,9 @@ function ActivityPageContent() {
                           <Badge variant="outline" className="text-xs capitalize font-medium">
                             {activity.resourceType}
                           </Badge>
-                          {activity.projectId && (
+                          {(activity.projectId || activity.projectName) && (
                             <Badge variant="secondary" className="text-xs">
-                              📁 {activity.projectId.name}
+                              📁 {activity.projectId?.name || activity.projectName}
                             </Badge>
                           )}
                           {activity.metadata?.category && (
@@ -878,12 +903,40 @@ function ActivityPageContent() {
               </div>
 
               {/* Project Information */}
-              {selectedActivity.projectId && (
+              {(selectedActivity.projectId || selectedActivity.projectName) && (
                 <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
                   <label className="text-xs font-semibold text-primary uppercase tracking-wide">Project</label>
-                  <p className="text-sm font-medium mt-1">{selectedActivity.projectId.name}</p>
+                  <p className="text-sm font-medium mt-1">{selectedActivity.projectId?.name || selectedActivity.projectName}</p>
                 </div>
               )}
+
+              {/* Performance & Technical Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedActivity.duration !== undefined && (
+                  <div className="bg-muted/30 rounded-lg p-4">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Duration</label>
+                    <p className="text-sm font-mono mt-1">{selectedActivity.duration}ms</p>
+                  </div>
+                )}
+                {selectedActivity.requestId && (
+                  <div className="bg-muted/30 rounded-lg p-4">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Request ID</label>
+                    <p className="text-sm font-mono mt-1">{selectedActivity.requestId}</p>
+                  </div>
+                )}
+                {selectedActivity.httpMethod && (
+                  <div className="bg-muted/30 rounded-lg p-4">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">HTTP Method</label>
+                    <p className="text-sm font-mono mt-1">{selectedActivity.httpMethod}</p>
+                  </div>
+                )}
+                {selectedActivity.endpoint && (
+                  <div className="bg-muted/30 rounded-lg p-4">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Endpoint</label>
+                    <p className="text-sm font-mono mt-1 break-all">{selectedActivity.endpoint}</p>
+                  </div>
+                )}
+              </div>
 
               {/* User Information */}
               {selectedActivity.user && (
@@ -915,7 +968,48 @@ function ActivityPageContent() {
                     <p className="text-sm mt-1 capitalize">{selectedActivity.visibility}</p>
                   </div>
                 )}
+                {selectedActivity.userAgent && (
+                  <div className="bg-muted/30 rounded-lg p-4 md:col-span-2">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">User Agent</label>
+                    <p className="text-sm font-mono mt-1 break-all">{selectedActivity.userAgent}</p>
+                  </div>
+                )}
+                {selectedActivity.sessionId && (
+                  <div className="bg-muted/30 rounded-lg p-4">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Session ID</label>
+                    <p className="text-sm font-mono mt-1">{selectedActivity.sessionId}</p>
+                  </div>
+                )}
               </div>
+
+              {/* Error Stack */}
+              {selectedActivity.errorStack && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                  <label className="text-xs font-semibold text-destructive uppercase tracking-wide mb-3 block">Error Stack Trace</label>
+                  <pre className="text-xs font-mono bg-background/50 p-3 rounded overflow-x-auto">{selectedActivity.errorStack}</pre>
+                </div>
+              )}
+
+              {/* Changes */}
+              {selectedActivity.changes && (selectedActivity.changes.before || selectedActivity.changes.after) && (
+                <div className="bg-muted/30 rounded-lg p-4">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 block">Changes</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedActivity.changes.before && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground mb-2">Before:</p>
+                        <pre className="text-xs font-mono bg-background/50 p-3 rounded overflow-x-auto">{JSON.stringify(selectedActivity.changes.before, null, 2)}</pre>
+                      </div>
+                    )}
+                    {selectedActivity.changes.after && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground mb-2">After:</p>
+                        <pre className="text-xs font-mono bg-background/50 p-3 rounded overflow-x-auto">{JSON.stringify(selectedActivity.changes.after, null, 2)}</pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Metadata */}
               {selectedActivity.metadata && Object.keys(selectedActivity.metadata).length > 0 && (

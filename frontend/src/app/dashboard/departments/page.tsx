@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Building, Search, Filter, Loader2, Users, MapPin, X, Download, FileText, Clock, TrendingUp } from "lucide-react";
+import { Plus, Building, Search, Filter, Loader2, Users, MapPin, X, Download, FileText, Clock, TrendingUp, Undo, Redo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionLoader } from '@/components/PageLoader';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,11 +11,17 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { departmentApi, Department, DepartmentStats } from "@/lib/api/departments";
 import { useGlobalCurrency } from "@/hooks/useGlobalCurrency";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS } from "@/lib/permissions";
+import CurrencySwitcher from "@/components/budget/CurrencySwitcher";
+import { BulkOperations } from "@/components/departments/BulkOperations";
+import { AdvancedFilters } from "@/components/departments/AdvancedFilters";
+import { ExportData } from "@/components/departments/ExportData";
+import { useUndoRedo } from "@/hooks/useUndoRedo";
 
 export default function DepartmentsPage() {
   const router = useRouter();
@@ -27,6 +33,8 @@ export default function DepartmentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const { state: filterState, setState: setFilterState, undo, redo, canUndo, canRedo } = useUndoRedo({ search: "", status: "all" });
 
   useEffect(() => {
     fetchData();
@@ -95,13 +103,14 @@ export default function DepartmentsPage() {
           <p className="text-muted-foreground mt-2 text-base">Manage your organizational structure and teams</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            onClick={handleExport}
-            variant="outline"
-            className="h-11 hover:bg-[#970E2C]/5 hover:border-[#970E2C]/30 transition-all"
-          >
-            <Download className="w-4 h-4 mr-2" /> Export CSV
+          <Button size="sm" variant="ghost" onClick={undo} disabled={!canUndo}>
+            <Undo className="w-4 h-4" />
           </Button>
+          <Button size="sm" variant="ghost" onClick={redo} disabled={!canRedo}>
+            <Redo className="w-4 h-4" />
+          </Button>
+          <ExportData filters={{ search: searchQuery, status: statusFilter }} module="departments" />
+          <CurrencySwitcher />
           <Button
             onClick={() => router.push("/dashboard/departments/new")}
             className="h-11 bg-gradient-to-r from-[#970E2C] to-[#800020] hover:from-[#800020] hover:to-[#970E2C] text-white shadow-lg shadow-[#970E2C]/20 transition-all"
@@ -223,35 +232,15 @@ export default function DepartmentsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search departments, managers, locations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-11 border-2 focus:border-[#970E2C] transition-colors"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-11 border-2 focus:border-[#970E2C]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {(searchQuery || statusFilter !== "all") && (
-              <div className="mt-3 text-sm text-muted-foreground flex items-center gap-2">
-                <Badge variant="secondary" className="bg-[#970E2C]/10 text-[#970E2C] border-[#970E2C]/20">
-                  {filteredDepartments.length}
-                </Badge>
-                of {departments.length} departments
-              </div>
-            )}
+            <AdvancedFilters
+              onFilterChange={(filters) => {
+                setSearchQuery(filters.search || "");
+                setStatusFilter(filters.status || "all");
+                setFilterState(filters);
+                fetchData();
+              }}
+              module="departments"
+            />
           </CardContent>
         </Card>
 
@@ -293,6 +282,14 @@ export default function DepartmentsPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="bg-gradient-to-r from-muted/80 to-muted/50 border-b border-border">
+                          <th className="text-left p-4 font-semibold text-sm text-foreground w-12">
+                            <Checkbox
+                              checked={selectedIds.length === filteredDepartments.length && filteredDepartments.length > 0}
+                              onCheckedChange={(checked) => {
+                                setSelectedIds(checked ? filteredDepartments.map(d => d._id) : []);
+                              }}
+                            />
+                          </th>
                           <th className="text-left p-4 font-semibold text-sm text-foreground">Department</th>
                           <th className="text-left p-4 font-semibold text-sm text-foreground">Manager</th>
                           <th className="text-left p-4 font-semibold text-sm text-foreground">Location</th>
@@ -305,6 +302,16 @@ export default function DepartmentsPage() {
                       <tbody>
                         {filteredDepartments.map((dept) => (
                           <tr key={dept._id} className="border-b border-border/50 hover:bg-[#970E2C]/5 transition-colors cursor-pointer group">
+                            <td className="p-4">
+                              <Checkbox
+                                checked={selectedIds.includes(dept._id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedIds(prev =>
+                                    checked ? [...prev, dept._id] : prev.filter(id => id !== dept._id)
+                                  );
+                                }}
+                              />
+                            </td>
                             <td className="p-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-11 h-11 bg-gradient-to-br from-[#970E2C]/20 to-[#970E2C]/10 rounded-xl flex items-center justify-center group-hover:from-[#970E2C]/30 group-hover:to-[#970E2C]/20 transition-all">
@@ -478,6 +485,12 @@ export default function DepartmentsPage() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      <BulkOperations
+        selectedIds={selectedIds}
+        onClearSelection={() => setSelectedIds([])}
+        onRefresh={fetchData}
+      />
     </div>
   );
 }

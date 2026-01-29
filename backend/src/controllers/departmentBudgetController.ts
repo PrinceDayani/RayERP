@@ -4,6 +4,22 @@ import Department from '../models/Department';
 import ApprovalRequest from '../models/ApprovalRequest';
 import ApprovalConfig from '../models/ApprovalConfig';
 
+const CACHE_TTL = 300000;
+const cache = new Map<string, { data: any; timestamp: number }>();
+
+const getCacheKey = (prefix: string, params?: any) => 
+  params ? `${prefix}:${JSON.stringify(params)}` : prefix;
+
+const getCache = (key: string) => {
+  const cached = cache.get(key);
+  return cached && Date.now() - cached.timestamp < CACHE_TTL ? cached.data : null;
+};
+
+const setCache = (key: string, data: any) => 
+  cache.set(key, { data, timestamp: Date.now() });
+
+const clearBudgetCache = () => cache.clear();
+
 const determineApprovalLevels = async (amount: number, entityType: string) => {
   const config = await ApprovalConfig.findOne({ entityType, isActive: true });
   
@@ -25,6 +41,10 @@ const determineApprovalLevels = async (amount: number, entityType: string) => {
 export const getDepartmentBudgets = async (req: Request, res: Response) => {
   try {
     const { departmentId, fiscalYear, status } = req.query;
+    const cacheKey = getCacheKey('budgets', { departmentId, fiscalYear, status });
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const filter: any = {};
 
     if (departmentId) filter.departmentId = departmentId;
@@ -36,6 +56,7 @@ export const getDepartmentBudgets = async (req: Request, res: Response) => {
       .populate('approvedBy', 'firstName lastName')
       .sort({ createdAt: -1 });
 
+    setCache(cacheKey, budgets);
     res.json({ success: true, data: budgets });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -44,6 +65,10 @@ export const getDepartmentBudgets = async (req: Request, res: Response) => {
 
 export const getDepartmentBudgetById = async (req: Request, res: Response) => {
   try {
+    const cacheKey = getCacheKey('budget', req.params.id);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const budget = await DepartmentBudget.findById(req.params.id)
       .populate('departmentId', 'name')
       .populate('approvedBy', 'firstName lastName');
@@ -52,6 +77,7 @@ export const getDepartmentBudgetById = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Budget not found' });
     }
 
+    setCache(cacheKey, budget);
     res.json({ success: true, data: budget });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -108,6 +134,8 @@ export const createDepartmentBudget = async (req: Request, res: Response) => {
       metadata: { departmentId, fiscalYear }
     });
 
+    console.log('Department created successfully:', department);
+    clearBudgetCache();
     res.status(201).json({ success: true, data: budget, message: 'Budget created and sent for approval' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -151,6 +179,7 @@ export const updateDepartmentBudget = async (req: Request, res: Response) => {
       });
     }
 
+    clearBudgetCache();
     res.json({ success: true, data: budget, message: 'Budget updated successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -165,6 +194,7 @@ export const deleteDepartmentBudget = async (req: Request, res: Response) => {
     }
 
     await DepartmentBudget.findByIdAndDelete(req.params.id);
+    clearBudgetCache();
     res.json({ success: true, message: 'Budget deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -197,6 +227,7 @@ export const approveBudget = async (req: Request, res: Response) => {
     budget.approvedAt = new Date();
     await budget.save();
 
+    clearBudgetCache();
     res.json({ success: true, data: budget, message: 'Budget approved successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -225,6 +256,7 @@ export const recordExpense = async (req: Request, res: Response) => {
     budget.spentBudget += amount;
     await budget.save();
 
+    clearBudgetCache();
     res.json({ success: true, data: budget, message: 'Expense recorded successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -234,6 +266,9 @@ export const recordExpense = async (req: Request, res: Response) => {
 export const getBudgetSummary = async (req: Request, res: Response) => {
   try {
     const { departmentId } = req.params;
+    const cacheKey = getCacheKey('budget-summary', departmentId);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
 
     const budgets = await DepartmentBudget.find({ departmentId });
     
@@ -241,16 +276,16 @@ export const getBudgetSummary = async (req: Request, res: Response) => {
     const totalSpent = budgets.reduce((sum, b) => sum + b.spentBudget, 0);
     const totalRemaining = totalAllocated - totalSpent;
 
-    res.json({
-      success: true,
-      data: {
-        totalAllocated,
-        totalSpent,
-        totalRemaining,
-        utilizationRate: totalAllocated > 0 ? ((totalSpent / totalAllocated) * 100).toFixed(2) : 0,
-        budgetCount: budgets.length
-      }
-    });
+    const summary = {
+      totalAllocated,
+      totalSpent,
+      totalRemaining,
+      utilizationRate: totalAllocated > 0 ? ((totalSpent / totalAllocated) * 100).toFixed(2) : 0,
+      budgetCount: budgets.length
+    };
+
+    setCache(cacheKey, summary);
+    res.json({ success: true, data: summary });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

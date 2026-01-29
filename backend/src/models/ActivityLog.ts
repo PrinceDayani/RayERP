@@ -9,6 +9,7 @@ export interface IActivityLog extends Document {
   resourceType: 'project' | 'task' | 'file' | 'comment' | 'employee' | 'budget' | 'user' | 'role' | 'department' | 'report' | 'notification' | 'system' | 'auth' | 'other';
   resourceId?: mongoose.Types.ObjectId;
   projectId?: mongoose.Types.ObjectId;
+  projectName?: string;
   status: 'success' | 'error' | 'warning';
   details: string;
   description?: string;
@@ -18,6 +19,14 @@ export interface IActivityLog extends Document {
   visibility: 'all' | 'management' | 'project_team' | 'private';
   category?: 'system' | 'user' | 'project' | 'security' | 'data';
   severity?: 'low' | 'medium' | 'high' | 'critical';
+  requestId?: string;
+  duration?: number;
+  errorStack?: string;
+  userAgent?: string;
+  sessionId?: string;
+  httpMethod?: string;
+  endpoint?: string;
+  changes?: { before?: any; after?: any };
 }
 
 const ActivityLogSchema = new Schema<IActivityLog>({
@@ -52,6 +61,9 @@ const ActivityLogSchema = new Schema<IActivityLog>({
   projectId: {
     type: Schema.Types.ObjectId,
     ref: 'Project'
+  },
+  projectName: {
+    type: String
   },
   status: {
     type: String,
@@ -88,6 +100,33 @@ const ActivityLogSchema = new Schema<IActivityLog>({
     type: String,
     enum: ['low', 'medium', 'high', 'critical'],
     default: 'low'
+  },
+  requestId: {
+    type: String,
+    index: true
+  },
+  duration: {
+    type: Number
+  },
+  errorStack: {
+    type: String
+  },
+  userAgent: {
+    type: String
+  },
+  sessionId: {
+    type: String,
+    index: true
+  },
+  httpMethod: {
+    type: String
+  },
+  endpoint: {
+    type: String
+  },
+  changes: {
+    before: Schema.Types.Mixed,
+    after: Schema.Types.Mixed
   }
 }, {
   timestamps: true
@@ -101,5 +140,8 @@ ActivityLogSchema.index({ status: 1 });
 ActivityLogSchema.index({ projectId: 1 });
 ActivityLogSchema.index({ resourceType: 1 });
 ActivityLogSchema.index({ visibility: 1 });
+ActivityLogSchema.index({ requestId: 1 });
+ActivityLogSchema.index({ sessionId: 1 });
+ActivityLogSchema.index({ projectName: 1 });
 
 export default mongoose.model<IActivityLog>('ActivityLog', ActivityLogSchema);

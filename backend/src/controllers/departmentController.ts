@@ -7,27 +7,33 @@ import Project from '../models/Project';
 import ActivityLog from '../models/ActivityLog';
 import { registerCacheInvalidator } from '../utils/dashboardCache';
 
-// Department cache with 5min TTL
-let departmentsCache: { data: any; timestamp: number } | null = null;
-let departmentDetailsCache: Map<string, { data: any; timestamp: number }> = new Map();
-let statsCache: { data: any; timestamp: number } | null = null;
-const CACHE_TTL = 300000; // 5 minutes
+// Enhanced cache with 5min TTL
+const CACHE_TTL = 300000;
+const cache = new Map<string, { data: any; timestamp: number }>();
 
-const clearDepartmentCache = () => {
-  departmentsCache = null;
-  departmentDetailsCache.clear();
-  statsCache = null;
+const getCacheKey = (prefix: string, params?: any) => 
+  params ? `${prefix}:${JSON.stringify(params)}` : prefix;
+
+const getCache = (key: string) => {
+  const cached = cache.get(key);
+  return cached && Date.now() - cached.timestamp < CACHE_TTL ? cached.data : null;
 };
+
+const setCache = (key: string, data: any) => 
+  cache.set(key, { data, timestamp: Date.now() });
+
+const clearDepartmentCache = () => cache.clear();
 
 registerCacheInvalidator(clearDepartmentCache);
 
 export const getDepartments = async (req: Request, res: Response) => {
   try {
-    const { search, status } = req.query;
-    const cacheKey = JSON.stringify({ search, status });
+    const { search, status, location, minBudget, maxBudget, minEmployees, maxEmployees, sortBy, sortOrder } = req.query;
+    const cacheKey = getCacheKey('departments', { search, status, location, minBudget, maxBudget, minEmployees, maxEmployees, sortBy, sortOrder });
+    const cached = getCache(cacheKey);
     
-    if (!search && !status && departmentsCache && Date.now() - departmentsCache.timestamp < CACHE_TTL) {
-      return res.json({ success: true, data: departmentsCache.data, cached: true });
+    if (cached) {
+      return res.json({ success: true, data: cached, cached: true });
     }
 
     const filter: any = {};
@@ -36,17 +42,40 @@ export const getDepartments = async (req: Request, res: Response) => {
       filter.status = status;
     }
 
+    if (location) {
+      filter.location = { $regex: location, $options: 'i' };
+    }
+
+    if (minBudget || maxBudget) {
+      filter.budget = {};
+      if (minBudget) filter.budget.$gte = Number(minBudget);
+      if (maxBudget) filter.budget.$lte = Number(maxBudget);
+    }
+
+    if (minEmployees || maxEmployees) {
+      filter.employeeCount = {};
+      if (minEmployees) filter.employeeCount.$gte = Number(minEmployees);
+      if (maxEmployees) filter.employeeCount.$lte = Number(maxEmployees);
+    }
+
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
         { 'manager.name': { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } }
+        { location: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
       ];
     }
 
-    const departments = await Department.find(filter).sort({ createdAt: -1 });
+    const sort: any = {};
+    if (sortBy) {
+      sort[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
+    } else {
+      sort.createdAt = -1;
+    }
 
-    // Update employee counts for all departments
+    const departments = await Department.find(filter).sort(sort);
+
     for (const dept of departments) {
       const count = await Employee.countDocuments({ departments: dept.name });
       if (dept.employeeCount !== count) {
@@ -55,10 +84,7 @@ export const getDepartments = async (req: Request, res: Response) => {
       }
     }
 
-    if (!search && !status) {
-      departmentsCache = { data: departments, timestamp: Date.now() };
-    }
-
+    setCache(cacheKey, departments);
     res.json({ success: true, data: departments });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -67,11 +93,11 @@ export const getDepartments = async (req: Request, res: Response) => {
 
 export const getDepartmentById = async (req: Request, res: Response) => {
   try {
-    const cacheKey = req.params.id;
-    const cached = departmentDetailsCache.get(cacheKey);
+    const cacheKey = getCacheKey('department', req.params.id);
+    const cached = getCache(cacheKey);
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      return res.json({ success: true, data: cached.data, cached: true });
+    if (cached) {
+      return res.json({ success: true, data: cached, cached: true });
     }
 
     const department = await Department.findById(req.params.id);
@@ -87,8 +113,7 @@ export const getDepartmentById = async (req: Request, res: Response) => {
     };
 
     const result = { ...department.toObject(), budgetSummary };
-    departmentDetailsCache.set(cacheKey, { data: result, timestamp: Date.now() });
-
+    setCache(cacheKey, result);
     res.json({ success: true, data: result });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -357,8 +382,11 @@ export const deleteDepartment = async (req: Request, res: Response) => {
 
 export const getDepartmentStats = async (req: Request, res: Response) => {
   try {
-    if (statsCache && Date.now() - statsCache.timestamp < CACHE_TTL) {
-      return res.json({ success: true, data: statsCache.data, cached: true });
+    const cacheKey = getCacheKey('stats');
+    const cached = getCache(cacheKey);
+    
+    if (cached) {
+      return res.json({ success: true, data: cached, cached: true });
     }
 
     const total = await Department.countDocuments();
@@ -378,8 +406,7 @@ export const getDepartmentStats = async (req: Request, res: Response) => {
       avgTeamSize: total > 0 ? (totalEmployees / total).toFixed(1) : 0
     };
 
-    statsCache = { data: statsData, timestamp: Date.now() };
-
+    setCache(cacheKey, statsData);
     res.json({ success: true, data: statsData });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -407,11 +434,16 @@ export const updateEmployeeCount = async (req: Request, res: Response) => {
 
 export const getDepartmentEmployees = async (req: Request, res: Response) => {
   try {
+    const cacheKey = getCacheKey('dept-employees', req.params.id);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const department = await Department.findById(req.params.id);
     if (!department) {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
     const employees = await Employee.find({ departments: department.name }).select('firstName lastName email position status departments');
+    setCache(cacheKey, employees);
     res.json({ success: true, data: employees });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -622,6 +654,10 @@ export const getAllEmployeesForDepartment = async (req: Request, res: Response) 
 export const getDepartmentAnalytics = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const cacheKey = getCacheKey('analytics', id);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const department = await Department.findById(id);
 
     if (!department) {
@@ -684,6 +720,7 @@ export const getDepartmentAnalytics = async (req: Request, res: Response) => {
       }
     };
 
+    setCache(cacheKey, analytics);
     res.json({ success: true, data: analytics });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -693,6 +730,10 @@ export const getDepartmentAnalytics = async (req: Request, res: Response) => {
 export const getDepartmentProjects = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const cacheKey = getCacheKey('projects', id);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const department = await Department.findById(id);
 
     if (!department) {
@@ -704,6 +745,7 @@ export const getDepartmentProjects = async (req: Request, res: Response) => {
       .populate('team', 'firstName lastName email')
       .sort({ createdAt: -1 });
 
+    setCache(cacheKey, projects);
     res.json({ success: true, data: projects });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -786,6 +828,10 @@ export const getDepartmentActivityLogs = async (req: Request, res: Response) => 
 export const getDepartmentBudgetHistory = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const cacheKey = getCacheKey('budget-history', id);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const department = await Department.findById(id);
 
     if (!department) {
@@ -806,6 +852,7 @@ export const getDepartmentBudgetHistory = async (req: Request, res: Response) =>
       utilization: record.totalBudget > 0 ? Math.round((record.spentBudget / record.totalBudget) * 100) : 0
     }));
 
+    setCache(cacheKey, history);
     res.json({ success: true, data: history });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -816,6 +863,10 @@ export const getDepartmentBudgetHistory = async (req: Request, res: Response) =>
 export const getDepartmentExpenses = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const cacheKey = getCacheKey('expenses', id);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const department = await Department.findById(id);
 
     if (!department) {
@@ -841,6 +892,7 @@ export const getDepartmentExpenses = async (req: Request, res: Response) => {
       };
     });
 
+    setCache(cacheKey, expenses);
     res.json({ success: true, data: expenses });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -851,6 +903,10 @@ export const getDepartmentExpenses = async (req: Request, res: Response) => {
 export const getDepartmentPerformanceMetrics = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const cacheKey = getCacheKey('performance', id);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const department = await Department.findById(id);
 
     if (!department) {
@@ -874,6 +930,7 @@ export const getDepartmentPerformanceMetrics = async (req: Request, res: Respons
       qualityScore: Math.min(100, Math.round(70 + (completedProjects / Math.max(totalProjects, 1)) * 30))
     };
 
+    setCache(cacheKey, metrics);
     res.json({ success: true, data: metrics });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -884,6 +941,10 @@ export const getDepartmentPerformanceMetrics = async (req: Request, res: Respons
 export const getDepartmentGoals = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const cacheKey = getCacheKey('goals', id);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const department = await Department.findById(id);
 
     if (!department) {
@@ -919,6 +980,7 @@ export const getDepartmentGoals = async (req: Request, res: Response) => {
       }
     ];
 
+    setCache(cacheKey, goals);
     res.json({ success: true, data: goals });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -929,6 +991,10 @@ export const getDepartmentGoals = async (req: Request, res: Response) => {
 export const getDepartmentResourceUtilization = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const cacheKey = getCacheKey('utilization', id);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const department = await Department.findById(id);
 
     if (!department) {
@@ -954,6 +1020,7 @@ export const getDepartmentResourceUtilization = async (req: Request, res: Respon
       }
     };
 
+    setCache(cacheKey, utilization);
     res.json({ success: true, data: utilization });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -964,6 +1031,10 @@ export const getDepartmentResourceUtilization = async (req: Request, res: Respon
 export const getDepartmentComplianceStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const cacheKey = getCacheKey('compliance', id);
+    const cached = getCache(cacheKey);
+    if (cached) return res.json({ success: true, data: cached, cached: true });
+
     const department = await Department.findById(id);
 
     if (!department) {
@@ -984,6 +1055,7 @@ export const getDepartmentComplianceStatus = async (req: Request, res: Response)
 
     compliance.overall = Math.round((compliance.training + compliance.certifications + compliance.policies + compliance.security) / 4);
 
+    setCache(cacheKey, compliance);
     res.json({ success: true, data: compliance });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -991,6 +1063,58 @@ export const getDepartmentComplianceStatus = async (req: Request, res: Response)
 };
 
 // Budget Adjustment Endpoint
+// Bulk operations
+export const bulkDeleteDepartments = async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'Department IDs are required' });
+    }
+    const result = await Department.deleteMany({ _id: { $in: ids } });
+    clearDepartmentCache();
+    res.json({ success: true, message: `${result.deletedCount} departments deleted`, data: result });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const bulkUpdateDepartments = async (req: Request, res: Response) => {
+  try {
+    const { ids, updates } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'Department IDs are required' });
+    }
+    const result = await Department.updateMany({ _id: { $in: ids } }, { $set: updates });
+    clearDepartmentCache();
+    res.json({ success: true, message: `${result.modifiedCount} departments updated`, data: result });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Export departments
+export const exportDepartments = async (req: Request, res: Response) => {
+  try {
+    const { format = 'csv', filters } = req.query;
+    const query = filters ? JSON.parse(filters as string) : {};
+    const departments = await Department.find(query).lean();
+
+    if (format === 'csv') {
+      const csv = [
+        ['Name', 'Manager', 'Location', 'Budget', 'Employees', 'Status'],
+        ...departments.map(d => [d.name, d.manager?.name || '', d.location, d.budget, d.employeeCount, d.status])
+      ].map(row => row.join(',')).join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=departments-${Date.now()}.csv`);
+      return res.send(csv);
+    }
+
+    res.json({ success: true, data: departments });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const adjustDepartmentBudget = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
