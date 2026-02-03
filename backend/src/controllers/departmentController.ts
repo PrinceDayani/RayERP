@@ -845,7 +845,7 @@ export const getDepartmentBudgetHistory = async (req: Request, res: Response) =>
 
     // Transform to monthly history format
     const history = budgetRecords.map(record => ({
-      month: `${record.month}/${record.fiscalYear}`,
+      month: `${record.fiscalYear}`,
       allocated: record.totalBudget,
       spent: record.spentBudget,
       remaining: record.totalBudget - record.spentBudget,

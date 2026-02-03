@@ -90,7 +90,7 @@ export const getAllProjects = async (req: Request, res: Response) => {
     
     if (employee) {
       assignedConditions.push({ team: employee._id });
-      assignedConditions.push({ manager: employee._id });
+      assignedConditions.push({ managers: employee._id });
     }
     
     const assignedProjects = await Project.find({ $or: assignedConditions })
@@ -305,10 +305,10 @@ export const createProject = async (req: Request, res: Response) => {
       currency: project.currency,
       progress: project.progress,
       client: project.client,
-      manager: project.manager,
+      manager: project.managers && project.managers.length > 0 ? project.managers[0] : null,
       team: project.team,
       owner: project.owner,
-      members: project.members,
+      members: project.team,
       departments: project.departments,
       tags: project.tags,
       createdAt: project.createdAt,
@@ -337,7 +337,7 @@ export const createProject = async (req: Request, res: Response) => {
         const backgroundTasks = [];
 
         // Timeline event
-        if (project.manager) {
+        if (project.managers && project.managers.length > 0) {
           backgroundTasks.push(
             createTimelineEvent(
               'project',
@@ -345,7 +345,7 @@ export const createProject = async (req: Request, res: Response) => {
               'created',
               'Project Created',
               `Project "${project.name}" was created`,
-              project.manager.toString()
+              project.managers[0].toString()
             ).catch(console.error)
           );
         }
@@ -470,7 +470,7 @@ export const updateProject = async (req: Request, res: Response) => {
       req.params.id,
       updateData,
       { new: true, runValidators: true }
-    ).populate('manager', 'firstName lastName')
+    ).populate('managers', 'firstName lastName')
      .populate('team', 'firstName lastName')
      .populate('owner', 'name email')
      .populate('members', 'name email')
@@ -484,9 +484,7 @@ export const updateProject = async (req: Request, res: Response) => {
     
     // Safely get manager ID for timeline
     const managerId = req.body.updatedBy || 
-                     (project.manager ? 
-                      (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null) : 
-                      null);
+                     (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null);
     
     if (!managerId) {
       console.warn('No manager ID found for timeline event');
@@ -618,16 +616,14 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     const oldStatus = project.status;
     project.status = status;
     await project.save();
-    await project.populate('manager', 'firstName lastName');
+    await project.populate('managers', 'firstName lastName');
     await project.populate('team', 'firstName lastName');
     await project.populate('owner', 'name email');
     await project.populate('members', 'name email');
     await project.populate('departments', 'name description');
     
     // Safely get user ID
-    const userId = user || (project.manager ? 
-                           (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null) : 
-                           null);
+    const userId = user || (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null);
     
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required for timeline event' });
@@ -752,10 +748,10 @@ export const getProjectTasks = async (req: Request, res: Response) => {
     
     if (employee) {
       isTeamMember = project.team && project.team.some((t: any) => t.toString() === employee._id.toString());
-      isManager = project.manager && project.manager.toString() === employee._id.toString();
+      isManager = project.managers && project.managers[0].toString() === employee._id.toString();
     }
     
-    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all') && !isMember && !isOwner && !isTeamMember && !isManager) {
+    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all') && !isOwner && !isTeamMember && !isManager) {
       return res.status(403).json({ message: 'Access denied: You are not assigned to this project' });
     }
 
@@ -889,7 +885,7 @@ export const getProjectStats = async (req: Request, res: Response) => {
       
       if (employee) {
         conditions.push({ team: employee._id });
-        conditions.push({ manager: employee._id });
+        conditions.push({ managers: employee._id });
       }
       
       query = { $or: conditions };
@@ -952,7 +948,7 @@ export const cloneProject = async (req: Request, res: Response) => {
     
     const clonedProject = new Project(clonedData);
     await clonedProject.save();
-    await clonedProject.populate('manager', 'firstName lastName');
+    await clonedProject.populate('managers', 'firstName lastName');
     await clonedProject.populate('team', 'firstName lastName');
     await clonedProject.populate('owner', 'name email');
     await clonedProject.populate('departments', 'name description');
@@ -1113,7 +1109,7 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
       // If user has an employee record, check team and manager fields
       if (employee) {
         conditions.push({ team: employee._id });
-        conditions.push({ manager: employee._id });
+        conditions.push({ managers: employee._id });
       }
       
       query = { $or: conditions };
@@ -1298,15 +1294,15 @@ export const addProjectMember = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    if (project.members.includes(memberId)) {
+    if (project.team.includes(memberId)) {
       return res.status(400).json({ success: false, message: 'User is already a member' });
     }
 
-    project.members.push(memberId);
+    project.team.push(memberId);
     await project.save();
-    await project.populate('members', 'name email');
+    await project.populate('team', 'name email');
     
-    res.json({ success: true, message: 'Member added successfully', members: project.members });
+    res.json({ success: true, message: 'Member added successfully', team: project.team });
   } catch (error) {
     console.error('Error adding project member:', error);
     res.status(500).json({ success: false, message: 'Error adding member', error });
@@ -1323,11 +1319,11 @@ export const removeProjectMember = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    project.members = project.members.filter(id => id.toString() !== memberId);
+    project.team = project.team.filter(id => id.toString() !== memberId);
     await project.save();
-    await project.populate('members', 'name email');
+    await project.populate('team', 'name email');
     
-    res.json({ success: true, message: 'Member removed successfully', members: project.members });
+    res.json({ success: true, message: 'Member removed successfully', team: project.team });
   } catch (error) {
     console.error('Error removing project member:', error);
     res.status(500).json({ success: false, message: 'Error removing member', error });
@@ -1338,7 +1334,7 @@ export const getProjectMembers = async (req: Request, res: Response) => {
   try {
     const project = await Project.findById(req.params.id)
       .populate('owner', 'name email')
-      .populate('members', 'name email');
+      .populate('team', 'name email');
     
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
@@ -1347,7 +1343,7 @@ export const getProjectMembers = async (req: Request, res: Response) => {
     res.json({ 
       success: true, 
       owner: project.owner,
-      members: project.members 
+      team: project.team 
     });
   } catch (error) {
     console.error('Error fetching project members:', error);
@@ -1542,7 +1538,7 @@ export const getProjectsByView = async (req: Request, res: Response) => {
       
       if (employee) {
         conditions.push({ team: employee._id });
-        conditions.push({ manager: employee._id });
+        conditions.push({ managers: employee._id });
       }
       
       query = { $or: conditions };
@@ -1565,7 +1561,7 @@ export const getProjectsByView = async (req: Request, res: Response) => {
     }
     
     const projects = await Project.find(query)
-      .populate('manager', 'firstName lastName')
+      .populate('managers', 'firstName lastName')
       .populate('team', 'firstName lastName')
       .populate('owner', 'name email')
       .populate('members', 'name email')
@@ -1651,10 +1647,10 @@ export const createProjectFast = async (req: Request, res: Response) => {
       currency: project.currency,
       progress: project.progress,
       client: project.client,
-      manager: project.manager,
+      manager: project.managers && project.managers.length > 0 ? project.managers[0] : null,
       team: project.team,
       owner: project.owner,
-      members: project.members,
+      members: project.team,
       departments: project.departments,
       tags: project.tags,
       createdAt: project.createdAt,
@@ -1683,7 +1679,7 @@ export const createProjectFast = async (req: Request, res: Response) => {
         const backgroundTasks = [];
 
         // Timeline event
-        if (project.manager) {
+        if (project.managers && project.managers.length > 0) {
           backgroundTasks.push(
             createTimelineEvent(
               'project',
@@ -1691,7 +1687,7 @@ export const createProjectFast = async (req: Request, res: Response) => {
               'created',
               'Project Created',
               `Project "${project.name}" was created`,
-              project.manager.toString()
+              project.managers[0].toString()
             ).catch(console.error)
           );
         }
@@ -1786,3 +1782,4 @@ export const getDepartmentsMinimal = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error fetching departments' });
   }
 };
+

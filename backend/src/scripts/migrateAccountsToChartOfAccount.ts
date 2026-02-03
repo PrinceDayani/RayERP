@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { Account } from '../models/Account';
 import ChartOfAccount from '../models/ChartOfAccount';
 import dotenv from 'dotenv';
 
@@ -9,7 +8,7 @@ const migrateAccounts = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI!);
     
-    const oldAccounts = await Account.find();
+    const oldAccounts = await ChartOfAccount.find();
     console.log(`Found ${oldAccounts.length} accounts in old Account model`);
     
     let migrated = 0;
@@ -59,3 +58,5 @@ const migrateAccounts = async () => {
 };
 
 migrateAccounts();
+
+

@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import ChartOfAccount from '../models/ChartOfAccount';
-import { Account } from '../models/Account';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -10,7 +9,7 @@ const checkAccountCounts = async () => {
     await mongoose.connect(process.env.MONGO_URI!);
     
     const chartOfAccountsCount = await ChartOfAccount.countDocuments();
-    const oldAccountsCount = await Account.countDocuments();
+    const oldAccountsCount = await ChartOfAccount.countDocuments();
     
     console.log('\n=== Account Counts ===');
     console.log(`ChartOfAccount model: ${chartOfAccountsCount}`);
@@ -22,7 +21,7 @@ const checkAccountCounts = async () => {
     chartSample.forEach(acc => console.log(`${acc.code} - ${acc.name} (${acc.type})`));
     
     console.log('\n=== Old Account Sample ===');
-    const oldSample = await Account.find().limit(5).select('code name type');
+    const oldSample = await ChartOfAccount.find().limit(5).select('code name type');
     oldSample.forEach(acc => console.log(`${acc.code} - ${acc.name} (${acc.type})`));
     
     process.exit(0);
@@ -33,3 +32,5 @@ const checkAccountCounts = async () => {
 };
 
 checkAccountCounts();
+
+

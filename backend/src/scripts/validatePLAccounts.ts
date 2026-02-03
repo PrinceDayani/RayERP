@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -12,13 +12,13 @@ async function validatePLAccounts() {
     
     console.log('🔍 Checking accounts without subType...');
     
-    const revenueWithoutSubType = await Account.find({ 
+    const revenueWithoutSubType = await ChartOfAccount.find({ 
       type: 'revenue', 
       $or: [{ subType: '' }, { subType: { $exists: false } }],
       isActive: true 
     });
     
-    const expenseWithoutSubType = await Account.find({ 
+    const expenseWithoutSubType = await ChartOfAccount.find({ 
       type: 'expense', 
       $or: [{ subType: '' }, { subType: { $exists: false } }],
       isActive: true 
@@ -52,3 +52,4 @@ async function validatePLAccounts() {
 }
 
 validatePLAccounts();
+

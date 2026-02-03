@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { Account } from '../models/Account';
 import ChartOfAccount from '../models/ChartOfAccount';
 import JournalEntry from '../models/JournalEntry';
 import { Ledger } from '../models/Ledger';
@@ -11,7 +10,7 @@ const updateJournalReferences = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI!);
     
-    const oldAccounts = await Account.find();
+    const oldAccounts = await ChartOfAccount.find();
     const accountMap = new Map();
     
     for (const oldAcc of oldAccounts) {
@@ -31,10 +30,9 @@ const updateJournalReferences = async () => {
       let updated = false;
       
       for (const line of entry.lines) {
-        const oldId = line.account?.toString() || line.accountId?.toString();
+        const oldId = line.account?.toString();
         if (oldId && accountMap.has(oldId)) {
           line.account = accountMap.get(oldId);
-          line.accountId = accountMap.get(oldId);
           updated = true;
         }
       }
@@ -71,3 +69,5 @@ const updateJournalReferences = async () => {
 };
 
 updateJournalReferences();
+
+

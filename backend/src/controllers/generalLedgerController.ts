@@ -160,10 +160,10 @@ export const getLedgerById = async (req: Request, res: Response) => {
     const transactions = await transactionQuery;
     
     const ledgerTransactions = transactions.map(entry => {
-      const line = entry.lines.find(l => l.accountId?.toString() === ledger.accountId?.toString());
+      const line = entry.lines.find(l => l.account?.toString() === ledger.accountId?.toString());
       return {
         entryNumber: entry.entryNumber,
-        date: entry.date,
+        date: entry.entryDate,
         description: line?.description || entry.description,
         debit: line?.debit || 0,
         credit: line?.credit || 0
@@ -589,7 +589,7 @@ export const createJournalEntry = async (req: Request, res: Response) => {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
-      const accountId = line.account || line.accountId;
+      const accountId = line.account || line.account;
       if (!accountId) {
         return res.status(400).json({ 
           message: `Line ${i + 1}: Account is required`
@@ -759,7 +759,7 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
     if (lines && Array.isArray(lines)) {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (!line.account && !line.accountId) {
+        if (!line.account && !line.account) {
           return res.status(400).json({ 
             message: `Line ${i + 1}: Account is required` 
           });
@@ -778,8 +778,8 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
     
     // Track changes for audit trail
     const changes: any[] = [];
-    if (date && entry.date?.toString() !== new Date(date).toString()) {
-      changes.push({ field: 'date', oldValue: entry.date, newValue: new Date(date), changedBy: userId, changedAt: new Date() });
+    if (date && entry.entryDate?.toString() !== new Date(date).toString()) {
+      changes.push({ field: 'date', oldValue: entry.entryDate, newValue: new Date(date), changedBy: userId, changedAt: new Date() });
     }
     if (reference !== undefined && entry.reference !== reference) {
       changes.push({ field: 'reference', oldValue: entry.reference, newValue: reference, changedBy: userId, changedAt: new Date() });
@@ -858,19 +858,19 @@ export const postJournalEntry = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = (req as any).user?.id;
 
-    const journalEntry = await JournalEntry.findById(id).session(session);
-    if (!journalEntry) {
+    const entry = await JournalEntry.findById(id).session(session);
+    if (!entry) {
       await session.abortTransaction();
       return res.status(404).json({ message: 'Journal entry not found' });
     }
 
-    if (journalEntry.isPosted) {
+    if (entry.isPosted) {
       await session.abortTransaction();
       return res.status(400).json({ message: 'Journal entry already posted' });
     }
 
     // Add audit trail for posting
-    journalEntry.changeHistory.push({
+    entry.changeHistory.push({
       field: 'status',
       oldValue: 'draft',
       newValue: 'posted',
@@ -879,7 +879,7 @@ export const postJournalEntry = async (req: Request, res: Response) => {
     });
 
     // Process each journal line - update Account balances
-    for (const line of journalEntry.lines) {
+    for (const line of entry.lines) {
       const accountId = (line as any).account;
       if (!accountId) {
         console.error('Line missing account:', line);
@@ -912,10 +912,10 @@ export const postJournalEntry = async (req: Request, res: Response) => {
       if (Ledger) {
         await Ledger.create([{
           accountId: accountId,
-          journalEntryId: journalEntry._id,
-          date: journalEntry.date || journalEntry.entryDate,
-          description: line.description || journalEntry.description,
-          reference: journalEntry.reference || journalEntry.entryNumber,
+          journalEntryId: entry._id,
+          date: entry.entryDate || entry.entryDate,
+          description: line.description || entry.description,
+          reference: entry.reference || entry.entryNumber,
           debit: line.debit,
           credit: line.credit,
           balance: newBalance
@@ -924,10 +924,10 @@ export const postJournalEntry = async (req: Request, res: Response) => {
     }
 
     // Mark journal entry as posted
-    journalEntry.isPosted = true;
-    journalEntry.postedBy = userId;
-    journalEntry.postingDate = new Date();
-    await journalEntry.save({ session });
+    entry.isPosted = true;
+    entry.postedBy = userId;
+    entry.postingDate = new Date();
+    await entry.save({ session });
 
     await session.commitTransaction();
     res.json({ message: 'Journal entry posted successfully' });
@@ -1050,7 +1050,7 @@ export const getAccountLedger = async (req: Request, res: Response) => {
       filteredEntries = journalEntries.filter(entry => {
         const otherAccounts = entry.lines
           .filter((line: any) => {
-            const lineAccountId = line.account?._id?.toString() || line.account?.toString() || line.accountId?.toString();
+            const lineAccountId = line.account?._id?.toString() || line.account?.toString() || line.account?.toString();
             return lineAccountId !== accountId;
           })
           .map((line: any) => ({
@@ -1072,7 +1072,7 @@ export const getAccountLedger = async (req: Request, res: Response) => {
     const entries = filteredEntries.flatMap(entry => {
       return entry.lines
         .filter((line: any) => {
-          const lineAccountId = line.account?._id?.toString() || line.account?.toString() || line.accountId?.toString();
+          const lineAccountId = line.account?._id?.toString() || line.account?.toString() || line.account?.toString();
           return lineAccountId === accountId;
         })
         .map((line: any) => {
@@ -1084,7 +1084,7 @@ export const getAccountLedger = async (req: Request, res: Response) => {
           }
           return {
             _id: entry._id,
-            date: entry.entryDate || entry.date,
+            date: entry.entryDate || entry.entryDate,
             description: line.description || entry.description,
             reference: entry.reference || entry.entryNumber,
             journalEntryId: {
@@ -1092,7 +1092,7 @@ export const getAccountLedger = async (req: Request, res: Response) => {
               entryNumber: entry.entryNumber,
               reference: entry.reference,
               description: entry.description,
-              date: entry.entryDate || entry.date,
+              date: entry.entryDate || entry.entryDate,
               entries: entry.lines,
               createdBy: entry.createdBy,
               status: entry.status
@@ -1273,7 +1273,7 @@ export const createTransactionJournal = async (req: Request, res: Response) => {
     const entryNumber = `JE${nextNumber.toString().padStart(6, '0')}`;
 
     // Create journal entry
-    const journalEntry = await JournalEntry.create([{
+    const journalEntryDoc = await JournalEntry.create([{
       entryNumber,
       date: new Date(),
       reference: transactionId,
@@ -1286,7 +1286,7 @@ export const createTransactionJournal = async (req: Request, res: Response) => {
     await Transaction.create([{
       transactionType,
       transactionId,
-      journalEntryId: journalEntry[0]._id,
+      journalEntryId: journalEntryDoc[0]._id,
       amount,
       status: 'posted',
       metadata
@@ -1294,7 +1294,7 @@ export const createTransactionJournal = async (req: Request, res: Response) => {
 
     await session.commitTransaction();
     res.status(201).json({
-      journalEntry: journalEntry[0],
+      journalEntry: journalEntryDoc[0],
       message: 'Transaction journal entry created successfully'
     });
   } catch (error) {
@@ -1463,7 +1463,7 @@ export const getCostCenterReport = async (req: Request, res: Response) => {
           totalDebit += line.debit;
           totalCredit += line.credit;
           return {
-            date: entry.date,
+            date: entry.entryDate,
             entryNumber: entry.entryNumber,
             description: line.description,
             debit: line.debit,
@@ -1631,7 +1631,7 @@ export const getInterestReport = async (req: Request, res: Response) => {
     });
     
     const totalInterest = entries.reduce((sum, e) => {
-      const line = e.lines.find(l => l.accountId.toString() === accountId);
+      const line = e.lines.find(l => l.account.toString() === accountId);
       return sum + (line ? line.credit - line.debit : 0);
     }, 0);
     
@@ -1812,7 +1812,7 @@ export const exportInvoice = async (req: Request, res: Response) => {
     for (const entry of entries) {
       const line = entry.lines.find((l: any) => l.account?._id?.toString() === accountId || l.account?.toString() === accountId);
       if (line) {
-        content += `Date: ${entry.entryDate?.toLocaleDateString() || entry.date?.toLocaleDateString()}\n`;
+        content += `Date: ${entry.entryDate?.toLocaleDateString() || entry.entryDate?.toLocaleDateString()}\n`;
         content += `Entry: ${entry.entryNumber}\n`;
         content += `Description: ${line.description || entry.description}\n`;
         content += `Debit: ${line.debit.toFixed(2)} | Credit: ${line.credit.toFixed(2)}\n`;
@@ -1834,5 +1834,9 @@ export const exportInvoice = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error exporting invoice' });
   }
 };
+
+
+
+
 
 

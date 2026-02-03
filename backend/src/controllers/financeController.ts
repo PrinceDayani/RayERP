@@ -194,7 +194,7 @@ export const getFinances = async (req: Request, res: Response) => {
     const { page = 1, limit = 10, type, status, search } = req.query as any;
     const cacheKey = `finances:${page}:${limit}:${type}:${status}:${search}`;
     const cached = getFromCache(cacheKey);
-    if (cached) return res.json({ ...cached, cached: true });
+    if (cached) return res.json({ success: true, ...cached as any, cached: true });
 
     const filter: any = {};
     if (type) filter.type = type;
@@ -462,7 +462,7 @@ export const getFinanceAnalytics = async (req: Request, res: Response) => {
   try {
     const cacheKey = 'analytics:finance';
     const cached = getFromCache(cacheKey);
-    if (cached) return res.json({ ...cached, cached: true });
+    if (cached) return res.json({ success: true, ...cached as any, cached: true });
 
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);

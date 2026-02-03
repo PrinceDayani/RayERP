@@ -90,13 +90,21 @@ router.post('/pay-reference', auth, async (req, res) => {
       throw new Error(`Amount ${amount} exceeds outstanding reference amount ${reference.outstandingAmount}`);
     }
     
-    await payment.addReferenceAllocation(
-      reference.journalEntryId,
-      reference.entryNumber,
-      reference.reference,
+    // Add reference allocation to payment
+    if (!payment.referenceAllocations) {
+      payment.referenceAllocations = [];
+    }
+    payment.referenceAllocations.push({
+      journalEntryId: reference.journalEntryId,
+      entryNumber: reference.entryNumber,
+      reference: reference.reference,
       amount,
-      reference.description
-    );
+      allocationDate: new Date(),
+      description: reference.description
+    });
+    payment.allocatedAmount = (payment.allocatedAmount || 0) + amount;
+    payment.unappliedAmount = payment.totalAmount - payment.allocatedAmount;
+    await payment.save({ session });
     
     reference.paidAmount += amount;
     reference.payments.push({

@@ -96,10 +96,10 @@ export const cloneProject = async (req: Request, res: Response) => {
       budget: sourceProject.budget,
       spentBudget: 0,
       progress: 0,
-      manager: req.body.manager || sourceProject.manager,
+      manager: req.body.manager || sourceProject.managers && sourceProject.managers.length > 0 ? sourceProject.managers[0] : null,
       team: req.body.team || sourceProject.team,
       owner: req.user?._id,
-      members: req.body.members || sourceProject.members,
+      members: req.body.members || sourceProject.team,
       client: sourceProject.client,
       tags: sourceProject.tags
     });
@@ -190,3 +190,4 @@ export const createProjectFromTemplate = async (req: Request, res: Response) => 
     res.status(500).json({ message: error.message });
   }
 };
+

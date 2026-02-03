@@ -35,7 +35,7 @@ export const requireProjectPermission = (permission: string, managerOverride: bo
       // Check if user is project manager (if manager override is enabled)
       if (managerOverride) {
         const employee = await Employee.findOne({ user: user._id });
-        if (employee && project.manager && project.manager.toString() === employee._id.toString()) {
+        if (employee && project.managers && project.managers[0].toString() === employee._id.toString()) {
           return next();
         }
       }

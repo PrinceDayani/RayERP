@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import { logger } from '../utils/logger';
 
 /**
@@ -41,7 +41,7 @@ export const migrateAccountCategories = async () => {
   try {
     logger.info('Starting account categorization migration...');
     
-    const accounts = await Account.find({ isActive: true });
+    const accounts = await ChartOfAccount.find({ isActive: true });
     let updated = 0;
     let skipped = 0;
 
@@ -58,7 +58,7 @@ export const migrateAccountCategories = async () => {
       );
 
       if (match) {
-        await Account.updateOne(
+        await ChartOfAccount.updateOne(
           { _id: account._id },
           { 
             $set: { 
@@ -74,16 +74,16 @@ export const migrateAccountCategories = async () => {
         let defaultSubType = '';
         let defaultCategory = '';
         
-        if (account.type === 'revenue') {
+        if (account.type === 'REVENUE') {
           defaultSubType = 'other_income';
           defaultCategory = 'Other Income';
-        } else if (account.type === 'expense') {
+        } else if (account.type === 'EXPENSE') {
           defaultSubType = 'operating';
           defaultCategory = 'Other Operating Expenses';
         }
 
         if (defaultSubType) {
-          await Account.updateOne(
+          await ChartOfAccount.updateOne(
             { _id: account._id },
             { 
               $set: { 
@@ -128,3 +128,4 @@ if (require.main === module) {
       process.exit(1);
     });
 }
+

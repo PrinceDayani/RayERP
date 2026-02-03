@@ -315,7 +315,7 @@ export const getAccountSuggestions = async (req: Request, res: Response) => {
 
     const accountIds = new Set();
     similarEntries.forEach(entry => {
-      entry.lines.forEach(line => accountIds.add(line.accountId.toString()));
+      entry.lines.forEach(line => accountIds.add(line.account.toString()));
     });
 
     const accounts = await ChartOfAccount.find({ _id: { $in: Array.from(accountIds) } });
@@ -395,4 +395,5 @@ function evaluateFormula(formula: string, variables: any): number {
     return 0;
   }
 }
+
 

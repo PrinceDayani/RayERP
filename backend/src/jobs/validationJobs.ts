@@ -89,7 +89,7 @@ export const duplicateDetectionJob = cron.schedule('0 */6 * * *', async () => {
 
                 // Same date, amount, and similar description
                 if (
-                    entry1.date.toDateString() === entry2.date.toDateString() &&
+                    entry1.entryDate.toDateString() === entry2.entryDate.toDateString() &&
                     Math.abs(entry1.totalDebit - entry2.totalDebit) < 0.01 &&
                     calculateSimilarity(entry1.description, entry2.description) > 0.8
                 ) {
@@ -153,11 +153,11 @@ export const orphanedRecordsJob = cron.schedule('0 3 * * 0', async () => {
 
         for (const entry of allEntries) {
             for (const line of entry.lines || []) {
-                const account = await ChartOfAccount.findById(line.accountId);
+                const account = await ChartOfAccount.findById(line.account);
                 if (!account) {
                     entriesWithMissingAccounts.push({
                         entryNumber: entry.entryNumber,
-                        missingAccountId: line.accountId
+                        missingAccountId: line.account
                     });
                 }
             }
@@ -332,5 +332,6 @@ export async function runAllValidationJobs() {
 
     logger.info('✅ All validation jobs completed');
 }
+
 
 

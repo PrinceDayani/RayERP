@@ -157,6 +157,7 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
 // Alias for consistency with admin routes
 export const authenticateToken = protect;
+export const authMiddleware = protect;
 
 // Fast auth for performance-critical routes
 export const fastAuth = (req: Request, res: Response, next: NextFunction) => {

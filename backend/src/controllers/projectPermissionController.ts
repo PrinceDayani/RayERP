@@ -53,8 +53,12 @@ export const setProjectPermissions = async (req: Request, res: Response) => {
     
     await logActivity({
       userId,
-      action: existingPermission ? 'UPDATE' : 'CREATE',
-      module: 'PROJECT_PERMISSIONS',
+      userName: (req as any).user?.firstName || 'Unknown',
+      action: existingPermission ? 'update' : 'create',
+      resource: 'Project Permissions',
+      resourceType: 'project',
+      resourceId: projectId,
+      projectId,
       details: `${existingPermission ? 'Updated' : 'Set'} project permissions for employee`,
       metadata: { projectId, employeeId, permissions }
     });
@@ -85,8 +89,12 @@ export const removeProjectPermissions = async (req: Request, res: Response) => {
 
     await logActivity({
       userId,
-      action: 'DELETE',
-      module: 'PROJECT_PERMISSIONS',
+      userName: (req as any).user?.firstName || 'Unknown',
+      action: 'delete',
+      resource: 'Project Permissions',
+      resourceType: 'project',
+      resourceId: projectId,
+      projectId,
       details: 'Removed project permissions for employee',
       metadata: { projectId, employeeId }
     });

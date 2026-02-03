@@ -186,10 +186,10 @@ export const getTaskById = async (req: Request, res: Response) => {
     const Project = (await import('../models/Project')).default;
     const project = await Project.findById(task.project);
     const hasProjectAccess = project && (
-      project.members.some(m => m.toString() === user._id.toString()) ||
+      project.team.some(m => m.toString() === user._id.toString()) ||
       project.owner.toString() === user._id.toString() ||
       (project.team && project.team.some((t: any) => t.toString() === employee._id.toString())) ||
-      (project.manager && project.manager.toString() === employee._id.toString())
+      (project.managers && project.managers[0].toString() === employee._id.toString())
     );
     
     // Check if user created the task

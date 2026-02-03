@@ -99,7 +99,7 @@ export const getCashFlowStatement = async (req: Request, res: Response) => {
 
     entries.forEach(entry => {
       entry.lines.forEach(line => {
-        const account = line.accountId as any;
+        const account = line.account as any;
         const amount = line.debit - line.credit;
         
         if (account?.type === 'REVENUE' || account?.type === 'EXPENSE') {
@@ -158,6 +158,7 @@ export const getVoucherRegister = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error generating voucher register' });
   }
 };
+
 
 
 

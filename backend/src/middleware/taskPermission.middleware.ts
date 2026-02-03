@@ -46,9 +46,9 @@ const isAssignedToTask = async (userId: string, taskId: string): Promise<boolean
   
   // Check project assignment
   const project = await Project.findById(task.project);
-  return project?.members?.some(m => m.toString() === userId) || 
+  return project?.team?.some(m => m.toString() === userId) || 
          project?.team?.some(t => t.toString() === employee._id.toString()) ||
-         project?.manager?.toString() === employee._id.toString() ||
+         project?.managers?.[0]?.toString() === employee._id.toString() ||
          project?.owner?.toString() === userId;
 };
 
@@ -60,9 +60,9 @@ const isAssignedToProject = async (userId: string, projectId: string): Promise<b
   const employee = await Employee.findOne({ user: userId });
   if (!employee) return false;
   
-  return project.members?.some(m => m.toString() === userId) || 
+  return project.team?.some(m => m.toString() === userId) || 
          project.team?.some(t => t.toString() === employee._id.toString()) ||
-         project.manager?.toString() === employee._id.toString() ||
+         project.managers?.[0]?.toString() === employee._id.toString() ||
          project.owner?.toString() === userId;
 };
 
@@ -163,3 +163,4 @@ export const requireProjectPermission = (permission: string, requiresAssignment 
     }
   };
 };
+

@@ -933,7 +933,7 @@ export const getAccountTransactions = async (req: Request, res: Response) => {
               return {
                 ...txn,
                 journalEntry: {
-                  _id: entry._id,
+                  _id: (Array.isArray(entry) ? entry[0]?._id : entry._id),
                   entryNumber: (entry as any).entryNumber,
                   entryDate: (entry as any).entryDate,
                   description: (entry as any).description,
@@ -1672,4 +1672,5 @@ export const getRevenueReport = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Error generating revenue report', error: error.message });
   }
 };
+
 

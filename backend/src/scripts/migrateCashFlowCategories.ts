@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { Ledger } from '../models/Ledger';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -14,7 +14,7 @@ async function migrateCashFlowCategories() {
     console.log('Connected to MongoDB');
 
     // Get all cash accounts
-    const cashAccounts = await Account.find({ type: 'asset', subType: 'cash' });
+    const cashAccounts = await ChartOfAccount.find({ type: 'asset', subType: 'cash' });
     const cashAccountIds = cashAccounts.map(a => a._id.toString());
 
     console.log(`Found ${cashAccounts.length} cash accounts`);
@@ -59,3 +59,4 @@ async function migrateCashFlowCategories() {
 }
 
 migrateCashFlowCategories();
+

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { JournalEntry } from '../models/JournalEntry';
 import { Ledger } from '../models/Ledger';
-import { Account } from '../models/Account';
+import ChartOfAccount from '../models/ChartOfAccount';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -31,7 +31,7 @@ async function backfillLedgerEntries() {
       
       const ledgerEntries = [];
       for (const line of je.lines) {
-        const account = await Account.findById(line.account);
+        const account = await ChartOfAccount.findById(line.account);
         if (!account) continue;
         
         const isDebitNormal = ['asset', 'expense'].includes(account.type);
@@ -70,3 +70,4 @@ async function backfillLedgerEntries() {
 }
 
 backfillLedgerEntries();
+

@@ -1,5 +1,5 @@
 // backend/src/services/settingsService.ts
-import Setting, { SettingScope, ISetting } from '../models/Settings';
+import Setting, { SettingScope, ISettings } from '../models/Settings';
 import AdminSettings, { IAdminSettings } from '../models/AdminSettings';
 import { io } from '../server';
 

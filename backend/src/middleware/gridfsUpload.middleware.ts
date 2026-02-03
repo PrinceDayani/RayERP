@@ -1,17 +1,18 @@
 import multer from 'multer';
-import { GridFsStorage } from 'multer-gridfs-storage';
+import mongoose from 'mongoose';
+import { GridFSBucket } from 'mongodb';
 import path from 'path';
+import { Readable } from 'stream';
 
-const storage = new GridFsStorage({
-  url: process.env.MONGO_URI!,
-  options: { useNewUrlParser: true, useUnifiedTopology: true },
-  file: (req, file) => {
-    return {
-      filename: `file-${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`,
-      bucketName: 'documents'
-    };
-  }
+let bucket: GridFSBucket;
+
+mongoose.connection.once('open', () => {
+  bucket = new GridFSBucket(mongoose.connection.db, {
+    bucketName: 'documents'
+  });
 });
+
+const storage = multer.memoryStorage();
 
 const fileFilter = (req: any, file: any, cb: any) => {
   const allowedTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.txt'];

@@ -84,7 +84,7 @@ export const getAgingAnalysis = async (req: Request, res: Response) => {
       let current = 0, days30 = 0, days60 = 0, days90 = 0, over90 = 0;
       
       entries.forEach(entry => {
-        const daysDiff = Math.floor((now.getTime() - new Date(entry.date).getTime()) / (1000 * 60 * 60 * 24));
+        const daysDiff = Math.floor((now.getTime() - new Date(entry.entryDate).getTime()) / (1000 * 60 * 60 * 24));
         const line = entry.lines.find((li: any) => li.accountId.toString() === acc._id.toString());
         const amount = line ? (line.debit || line.credit) : 0;
         
@@ -441,4 +441,5 @@ export const autoDetectAnomalies = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
