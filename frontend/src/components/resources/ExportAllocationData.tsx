@@ -170,13 +170,15 @@ export default function ExportAllocationData({
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
                       <Calendar
+                        selectedDate={options.dateRange.from}
+                        onChange={() => {}}
                         mode="single"
                         selected={options.dateRange.from}
                         onSelect={(date) => setOptions(prev => ({
                           ...prev,
                           dateRange: { ...prev.dateRange, from: date }
                         }))}
-                        initialFocus
+                        disabled={false}
                       />
                     </PopoverContent>
                   </Popover>
@@ -193,13 +195,15 @@ export default function ExportAllocationData({
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
                       <Calendar
+                        selectedDate={options.dateRange.to}
+                        onChange={() => {}}
                         mode="single"
                         selected={options.dateRange.to}
                         onSelect={(date) => setOptions(prev => ({
                           ...prev,
                           dateRange: { ...prev.dateRange, to: date }
                         }))}
-                        initialFocus
+                        disabled={false}
                       />
                     </PopoverContent>
                   </Popover>

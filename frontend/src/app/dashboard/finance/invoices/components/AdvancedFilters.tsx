@@ -144,12 +144,12 @@ export default function AdvancedFilters({ onFilterChange, customers = [] }: Adva
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
                                     <Calendar
-                                        initialFocus
+                                        selectedDate={filters.dateRange.from}
+                                        onChange={() => {}}
                                         mode="range"
-                                        defaultMonth={filters.dateRange?.from}
                                         selected={{ from: filters.dateRange.from, to: filters.dateRange.to }}
                                         onSelect={(range) => updateFilter('dateRange', range || {})}
-                                        numberOfMonths={2}
+                                        disabled={false}
                                     />
                                 </PopoverContent>
                             </Popover>

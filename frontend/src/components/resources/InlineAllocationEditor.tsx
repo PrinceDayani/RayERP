@@ -253,10 +253,12 @@ export default function InlineAllocationEditor({
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
                   <Calendar
+                    selectedDate={formData.startDate}
+                    onChange={() => {}}
                     mode="single"
                     selected={formData.startDate}
                     onSelect={(date) => date && setFormData({ ...formData, startDate: date })}
-                    initialFocus
+                    disabled={false}
                   />
                 </PopoverContent>
               </Popover>
@@ -279,10 +281,12 @@ export default function InlineAllocationEditor({
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
                   <Calendar
+                    selectedDate={formData.endDate}
+                    onChange={() => {}}
                     mode="single"
                     selected={formData.endDate}
                     onSelect={(date) => date && setFormData({ ...formData, endDate: date })}
-                    initialFocus
+                    disabled={false}
                   />
                 </PopoverContent>
               </Popover>

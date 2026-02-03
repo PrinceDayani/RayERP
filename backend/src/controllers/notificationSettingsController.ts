@@ -1,49 +1,44 @@
 import { Request, Response } from 'express';
+import NotificationSettings from '../models/NotificationSettings';
 
 export const getNotificationSettings = async (req: Request, res: Response) => {
-  try {
-    const settings = {
-      email: {
-        enabled: true,
-        smtp: {
-          host: 'smtp.example.com',
-          port: 587,
-          secure: false,
-          from: 'noreply@rayerp.com'
-        }
-      },
-      inApp: {
-        enabled: true,
-        retentionDays: 30
-      },
-      push: {
-        enabled: false
-      },
-      channels: {
-        taskAssigned: ['email', 'inApp'],
-        projectUpdated: ['inApp'],
-        leaveApproved: ['email', 'inApp'],
-        invoiceCreated: ['email']
-      }
-    };
+  const userId = (req as any).user?.id;
 
-    res.json({ success: true, data: settings });
+  try {
+    let settings = await NotificationSettings.findOne({ user: userId });
+    
+    if (!settings) {
+      settings = await NotificationSettings.create({ user: userId });
+    }
+
+    res.json({ success: true, settings });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 export const updateNotificationSettings = async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+
   try {
-    const settings = req.body;
+    const updates = req.body;
+    
+    let settings = await NotificationSettings.findOne({ user: userId });
+    
+    if (!settings) {
+      settings = await NotificationSettings.create({ user: userId, ...updates });
+    } else {
+      Object.assign(settings, updates);
+      await settings.save();
+    }
 
     res.json({
       success: true,
-      data: settings,
-      message: 'Notification settings updated'
+      settings,
+      message: 'Notification settings updated successfully'
     });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

@@ -16,6 +16,8 @@ import toast, { Toaster } from 'react-hot-toast';
 import HierarchySettings from '@/components/settings/HierarchySettings';
 import CurrencySettings from '@/components/settings/CurrencySettings';
 import ActiveSessions from '@/components/user/ActiveSessions';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { fetchWithRetry } from '@/lib/utils';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
@@ -25,22 +27,43 @@ export default function SettingsPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [accountingMode, setAccountingMode] = useState<"western" | "indian">("western");
   const [switchingMode, setSwitchingMode] = useState(false);
+  const [csrfToken, setCsrfToken] = useState("");
   const socket = useSocket();
 
   useEffect(() => {
     fetchAccountingMode();
+    fetchCsrfToken();
   }, []);
+
+  const fetchCsrfToken = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetchWithRetry(
+        () => fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/csrf/token`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        { maxAttempts: 3, delayMs: 1000 }
+      );
+      const data = await response.json();
+      setCsrfToken(data.csrfToken);
+    } catch (error) {
+      // Silent fail
+    }
+  };
 
   const fetchAccountingMode = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/accounting-settings`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await fetchWithRetry(
+        () => fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        { maxAttempts: 3, delayMs: 1000 }
+      );
       const data = await response.json();
       setAccountingMode(data.accountingMode || "western");
     } catch (error) {
-      console.error("Failed to fetch accounting mode", error);
+      // Silent fail - use default mode
     }
   };
 
@@ -50,13 +73,19 @@ export default function SettingsPage() {
     try {
       const token = localStorage.getItem("token");
       const endpoint = newMode === "indian"
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/accounting-settings/convert-to-indian`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/accounting-settings/convert-to-western`;
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/settings/convert-to-indian`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/settings/convert-to-western`;
 
-      await fetch(endpoint, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await fetchWithRetry(
+        () => fetch(endpoint, {
+          method: "POST",
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'X-CSRF-Token': csrfToken
+          }
+        }),
+        { maxAttempts: 3, delayMs: 1000 }
+      );
 
       setAccountingMode(newMode);
       toast.success(`Switched to ${newMode === "indian" ? "Indian" : "Western"} accounting mode`);
@@ -111,8 +140,8 @@ export default function SettingsPage() {
         e.preventDefault();
         setShowSearch(prev => !prev);
       }
-      // Cmd/Ctrl + 1-6 for tab navigation
-      if ((e.metaKey || e.ctrlKey) && ['1', '2', '3', '4', '5', '6'].includes(e.key)) {
+      // Cmd/Ctrl + 1-7 for tab navigation
+      if ((e.metaKey || e.ctrlKey) && ['1', '2', '3', '4', '5', '6', '7'].includes(e.key)) {
         e.preventDefault();
         const tabs = ['profile', 'sessions', 'notifications', 'appearance', 'security', 'hierarchy', 'currency'];
         setActiveTab(tabs[parseInt(e.key) - 1]);
@@ -147,6 +176,7 @@ export default function SettingsPage() {
   };
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <Toaster position="top-right" toastOptions={{
         className: 'backdrop-blur-sm',
@@ -283,13 +313,23 @@ export default function SettingsPage() {
                 </kbd>
               </TabsTrigger>
               <TabsTrigger
+                value="sessions"
+                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
+              >
+                <Shield className="h-4 w-4" />
+                <span>Sessions</span>
+                <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  ⌘2
+                </kbd>
+              </TabsTrigger>
+              <TabsTrigger
                 value="notifications"
                 className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
               >
                 <Bell className="h-4 w-4" />
                 <span>Notifications</span>
                 <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘2
+                  ⌘3
                 </kbd>
               </TabsTrigger>
               <TabsTrigger
@@ -299,7 +339,7 @@ export default function SettingsPage() {
                 <Palette className="h-4 w-4" />
                 <span>Appearance</span>
                 <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘3
+                  ⌘4
                 </kbd>
               </TabsTrigger>
               <TabsTrigger
@@ -309,7 +349,7 @@ export default function SettingsPage() {
                 <Shield className="h-4 w-4" />
                 <span>Security</span>
                 <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘4
+                  ⌘5
                 </kbd>
               </TabsTrigger>
               <TabsTrigger
@@ -319,7 +359,7 @@ export default function SettingsPage() {
                 <Users className="h-4 w-4" />
                 <span>Hierarchy</span>
                 <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘5
+                  ⌘6
                 </kbd>
               </TabsTrigger>
               <TabsTrigger
@@ -329,7 +369,7 @@ export default function SettingsPage() {
                 <Coins className="h-4 w-4" />
                 <span>Currency</span>
                 <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘6
+                  ⌘7
                 </kbd>
               </TabsTrigger>
             </TabsList>
@@ -453,7 +493,7 @@ export default function SettingsPage() {
                 <span>Search</span>
               </div>
               <div className="flex items-center gap-2">
-                <kbd className="px-2 py-1 bg-white dark:bg-slate-700 rounded border shadow-sm font-mono text-xs">⌘1-6</kbd>
+                <kbd className="px-2 py-1 bg-white dark:bg-slate-700 rounded border shadow-sm font-mono text-xs">⌘1-7</kbd>
                 <span>Switch tabs</span>
               </div>
               <div className="flex items-center gap-2">
@@ -465,5 +505,6 @@ export default function SettingsPage() {
         </Card>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

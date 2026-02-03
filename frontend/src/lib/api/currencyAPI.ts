@@ -23,12 +23,14 @@ export interface ExchangeRate {
 export const currencyAPI = {
   // Get all currencies
   getAll: async (): Promise<Currency[]> => {
-    return apiClient.get<Currency[]>('/currencies');
+    const response = await apiClient.get<Currency[]>('/currencies');
+    return response.data;
   },
 
   // Get base currency
   getBase: async (): Promise<Currency> => {
-    return apiClient.get<Currency>('/currencies/base');
+    const response = await apiClient.get<Currency>('/currencies/base');
+    return response.data;
   },
 
   // Get exchange rates
@@ -37,7 +39,8 @@ export const currencyAPI = {
     if (from) params.append('from', from);
     if (to) params.append('to', to);
     
-    return apiClient.get<ExchangeRate[]>(`/currencies/rates?${params}`);
+    const response = await apiClient.get<ExchangeRate[]>(`/currencies/rates?${params}`);
+    return response.data;
   }
 };
 

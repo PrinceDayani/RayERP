@@ -77,7 +77,7 @@ export default function BudgetCard({ budget, onUpdate }: BudgetCardProps) {
           {budget.categories.slice(0, 4).map((category) => (
             <div key={category._id} className="flex justify-between">
               <span className="text-gray-600 capitalize">{category.type}</span>
-              <span>{formatCurrency(category.allocatedAmount, budget.currency, true, true)}</span>
+              <span>{formatCurrency(category.allocatedAmount, budget.currency)}</span>
             </div>
           ))}
         </div>

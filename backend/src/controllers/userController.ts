@@ -507,9 +507,15 @@ export const getCompleteProfile = async (req: Request, res: Response) => {
         position: employee.position,
         hireDate: employee.hireDate,
         status: employee.status,
-        skills: employee.skills || [],
+        skills: employee.skillsEnhanced || employee.skills || [],
         avatarUrl: (employee as any).avatarUrl,
-        address: employee.address
+        address: employee.address,
+        bio: (employee as any).bio,
+        socialLinks: (employee as any).socialLinks,
+        documents: (employee as any).documents || [],
+        notificationSettings: (employee as any).notificationSettings,
+        timezone: (employee as any).timezone,
+        supervisor: (employee as any).supervisor
       } : null,
       projects: projects
     };

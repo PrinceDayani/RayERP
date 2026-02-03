@@ -26,6 +26,8 @@ import onboardingRoutes from './onboarding.routes';
 import fileShareRoutes from './fileShare.routes';
 import chatRoutes from './chat.routes';
 import broadcastRoutes from './broadcast.routes';
+import csrfRoutes from './csrf.routes';
+import profileRoutes from './profile.routes';
 // --- Merged Financial & Ledger Routes ---
 import budgetRoutes from './budgetRoutes';
 import budgetForecastRoutes from './budgetForecast.routes';
@@ -86,6 +88,8 @@ router.use(invalidateCacheOnMutation);
 
 // --- Core Application Routes ---
 router.use("/auth", authRoutes);
+router.use("/csrf", csrfRoutes);
+router.use("/profile", profileRoutes);
 router.use("/users", userRoutes);
 router.use("/sessions", sessionRoutes);
 router.use("/employees", employeeRoutes);

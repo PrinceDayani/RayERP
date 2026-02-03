@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Search, FileText, Banknote, TrendingUp, RefreshCw, Plus, Edit, Trash2, Eye, Download, Filter, X, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { useCurrency } from '@/contexts/CurrencyContext';
+import { useCurrencyFormat } from '@/hooks/useCurrencyFormat';
 import { useToast } from '@/hooks/use-toast';
 import PaymentAgainstReference from '@/components/finance/PaymentAgainstReference';
 import CreateReference from '@/components/finance/CreateReference';
@@ -37,7 +37,7 @@ interface Reference {
 }
 
 export default function ReferenceManagement() {
-  const { formatAmount } = useCurrency();
+  const { formatAmount } = useCurrencyFormat();
   const { toast } = useToast();
   const [references, setReferences] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);

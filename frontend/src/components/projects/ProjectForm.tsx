@@ -60,7 +60,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     currency: (project as any)?.currency || 'INR',
     progress: project?.progress?.toString() || "0",
     client: project?.client || "",
-    manager: typeof project?.manager === 'object' && project.manager ? (project.manager as any)._id : project?.manager || "",
+    manager: Array.isArray(project?.managers) && project.managers.length > 0 
+      ? (typeof project.managers[0] === 'object' ? (project.managers[0] as any)._id : project.managers[0])
+      : "",
   });
   const [startDate, setStartDate] = useState<Date | undefined>(
     project?.startDate ? new Date(project.startDate) : undefined
@@ -372,8 +374,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               <Calendar
                 mode="single"
                 selected={startDate}
+                selectedDate={startDate}
                 onSelect={setStartDate}
-                initialFocus
+                disabled={undefined}
               />
             </PopoverContent>
           </Popover>
@@ -392,8 +395,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               <Calendar
                 mode="single"
                 selected={endDate}
+                selectedDate={endDate}
                 onSelect={setEndDate}
-                initialFocus
                 disabled={(date) => startDate ? date < startDate : false}
               />
             </PopoverContent>

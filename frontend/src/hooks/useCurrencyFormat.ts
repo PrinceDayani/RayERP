@@ -1,7 +1,7 @@
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 export function useCurrencyFormat() {
-  const { currency, symbol, formatAmount } = useCurrency();
+  const { baseCurrency, formatCurrency: contextFormatCurrency, getCurrencySymbol } = useCurrency();
 
   const format = (amount: number, options?: { showSymbol?: boolean; currencyOverride?: string }) => {
     if (options?.currencyOverride) {
@@ -22,8 +22,25 @@ export function useCurrencyFormat() {
       const formatted = amount.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       return options.showSymbol !== false ? `${sym}${formatted}` : formatted;
     }
-    return formatAmount(amount, options?.showSymbol);
+    return contextFormatCurrency(amount, baseCurrency?.code);
   };
 
-  return { currency, symbol, format };
+  const formatAmount = (amount: number, currencyOverride?: string) => {
+    return contextFormatCurrency(amount, currencyOverride || baseCurrency?.code);
+  };
+
+  const formatCompact = (amount: number) => {
+    if (amount >= 10000000) return `${(amount / 10000000).toFixed(2)}Cr`;
+    if (amount >= 100000) return `${(amount / 100000).toFixed(2)}L`;
+    if (amount >= 1000) return `${(amount / 1000).toFixed(2)}K`;
+    return amount.toFixed(2);
+  };
+
+  return { 
+    currency: baseCurrency?.code || 'USD', 
+    symbol: baseCurrency?.symbol || '$', 
+    format,
+    formatAmount,
+    formatCompact
+  };
 }

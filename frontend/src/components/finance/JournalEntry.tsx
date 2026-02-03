@@ -28,7 +28,7 @@ const JournalEntry = () => {
   const editId = searchParams.get('edit');
   const prefilledAccountId = searchParams.get('accountId');
   const { accounts, loading, fetchAccounts, createJournalEntry } = useGeneralLedger();
-  const { currency, symbol, formatAmount } = useCurrency();
+  const { formatCurrency: formatAmount } = useCurrency();
   
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],

@@ -145,12 +145,12 @@ const ProjectReports: React.FC = () => {
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
               <Calendar
-                initialFocus
+                selectedDate={dateRange.from}
+                onChange={() => {}}
                 mode="range"
-                defaultMonth={dateRange.from}
                 selected={dateRange}
                 onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
-                numberOfMonths={2}
+                disabled={false}
               />
             </PopoverContent>
           </Popover>

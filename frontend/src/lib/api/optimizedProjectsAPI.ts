@@ -1,2 +1,24 @@
 //path: frontend/src/lib/api/optimizedProjectsAPI.ts
-import api from './api';\nimport { Project } from './projectsAPI';\n\nexport const optimizedProjectsAPI = {\n  // Fast project creation\n  createFast: async (projectData: Partial<Project>) => {\n    const response = await api.post(\"/projects-fast/fast\", projectData);\n    return response.data;\n  },\n\n  // Fast data loading\n  getEmployeesMinimal: async () => {\n    const response = await api.get(\"/projects-fast/employees/minimal\");\n    return response.data;\n  },\n\n  getDepartmentsMinimal: async () => {\n    const response = await api.get(\"/projects-fast/departments/minimal\");\n    return response.data;\n  },\n};\n\nexport default optimizedProjectsAPI;
+import api from './api';
+import { Project } from './projectsAPI';
+
+export const optimizedProjectsAPI = {
+  // Fast project creation
+  createFast: async (projectData: Partial<Project>) => {
+    const response = await api.post("/projects-fast/fast", projectData);
+    return response.data;
+  },
+
+  // Fast data loading
+  getEmployeesMinimal: async () => {
+    const response = await api.get("/projects-fast/employees/minimal");
+    return response.data;
+  },
+
+  getDepartmentsMinimal: async () => {
+    const response = await api.get("/projects-fast/departments/minimal");
+    return response.data;
+  },
+};
+
+export default optimizedProjectsAPI;

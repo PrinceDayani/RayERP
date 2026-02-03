@@ -14,7 +14,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
 
 function FinancePageContent() {
   const router = useRouter();
-  const { currency, symbol } = useCurrency();
+  const { baseCurrency, getCurrencySymbol } = useCurrency();
+  const currency = baseCurrency?.code || 'INR';
+  const symbol = baseCurrency?.symbol || '₹';
   const [stats, setStats] = useState({ accounts: 0, entries: 0 });
   const [loading, setLoading] = useState(true);
 

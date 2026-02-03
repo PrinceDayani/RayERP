@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 import { BudgetCategory, BudgetItem, BudgetTemplate, Currency } from "@/types/budget";
-import { formatCurrency, getCurrencySymbol } from "@/utils/currency";
+import { formatCurrency } from "@/utils/currency";
 
 interface BudgetDialogProps {
   open: boolean;

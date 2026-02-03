@@ -1,11 +1,27 @@
 import { Request, Response } from 'express';
-import { Settings } from '../models/Settings';
+import { Settings, UserSetting } from '../models/Settings';
 import ChartOfAccount from '../models/ChartOfAccount';
 import { PartyLedger } from '../models/PartyLedger';
 import mongoose from 'mongoose';
 
 export const getSettings = async (req: Request, res: Response) => {
   try {
+    const { scope, key, format } = req.query;
+    const userId = (req as any).user?.id;
+
+    if (scope === 'user' && userId) {
+      if (key) {
+        const setting = await UserSetting.findOne({ userId, key });
+        if (format === 'keyValue') {
+          return res.json({ [key as string]: setting?.value || null });
+        }
+        return res.status(setting ? 200 : 404).json(setting || { message: 'Setting not found' });
+      }
+      const userSettings = await UserSetting.find({ userId });
+      const settingsObj = userSettings.reduce((acc, s) => ({ ...acc, [s.key]: s.value }), {});
+      return res.json(settingsObj);
+    }
+
     let settings = await Settings.findOne();
     if (!settings) {
       settings = await Settings.create({ accountingMode: 'western' });
@@ -18,6 +34,18 @@ export const getSettings = async (req: Request, res: Response) => {
 
 export const updateSettings = async (req: Request, res: Response) => {
   try {
+    const { key, value, scope } = req.body;
+    const userId = (req as any).user?.id;
+
+    if (scope === 'user' && userId && key) {
+      const setting = await UserSetting.findOneAndUpdate(
+        { userId, key },
+        { userId, key, value, scope },
+        { upsert: true, new: true }
+      );
+      return res.json(setting);
+    }
+
     let settings = await Settings.findOne();
     if (!settings) {
       settings = await Settings.create(req.body);

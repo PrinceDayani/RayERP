@@ -43,6 +43,32 @@ export default function ProfileSettings() {
     setter(e.target.value);
     showSaveIndicator();
   };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('avatar', file);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile/avatar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+      
+      if (response.ok) {
+        toast.success('Avatar updated successfully');
+        window.location.reload();
+      } else {
+        toast.error('Failed to upload avatar');
+      }
+    } catch (error) {
+      toast.error('Upload failed');
+    }
+  };
   
   if (isLoading) {
     return <div className="animate-pulse space-y-8">
@@ -89,7 +115,10 @@ export default function ProfileSettings() {
         <div className="flex-1 text-center sm:text-left">
           <h3 className="text-xl font-semibold">{firstName} {lastName}</h3>
           <p className="text-sm text-muted-foreground mt-1">{email}</p>
-          <Button variant="outline" type="button" className="mt-3 hover:bg-white dark:hover:bg-slate-800">Upload New Photo</Button>
+          <label htmlFor="avatar-upload">
+            <Button variant="outline" type="button" className="mt-3 hover:bg-white dark:hover:bg-slate-800" onClick={() => document.getElementById('avatar-upload')?.click()}>Upload New Photo</Button>
+          </label>
+          <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
         </div>
       </div>
       

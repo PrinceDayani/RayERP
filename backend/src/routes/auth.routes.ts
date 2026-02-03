@@ -4,6 +4,7 @@ import { register, login, getCurrentUser, logout, checkInitialSetup, checkAuth, 
 import { protect } from '../middleware/auth.middleware';
 import { authorizeMinLevel } from '../middleware/role.middleware';
 import { updateUserRole, getAllUsers } from '../controllers/userController';
+import { validateCsrfToken } from '../middleware/csrf.middleware';
 
 const router = express.Router();
 
@@ -57,6 +58,6 @@ router.put('/users/:id/role', protect, authorizeMinLevel(90), updateUserRole);
 router.post('/initial-setup', authLimiter, register);
 router.get('/initial-setup', generalLimiter, checkInitialSetup);
 
-router.put('/change-password', protect, generalLimiter, changePassword);
+router.put('/change-password', protect, generalLimiter, validateCsrfToken, changePassword);
 
 export default router;

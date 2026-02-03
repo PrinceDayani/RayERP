@@ -7,12 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Globe, Coins, TrendingUp } from 'lucide-react';
-import { useCurrency } from '@/contexts/CurrencyContext';
+import { useCurrencyFormat } from '@/hooks/useCurrencyFormat';
 import { setNumberFormat, getNumberFormat, type NumberFormat } from '@/utils/currency';
 
 const CurrencySettings = () => {
-  const { currency, setCurrency, formatAmount, formatCompact } = useCurrency();
+  const { currency, formatAmount, formatCompact } = useCurrencyFormat();
   const [numberFormat, setNumberFormatState] = useState<NumberFormat>(getNumberFormat());
+
+  const setCurrency = (newCurrency: string) => {
+    localStorage.setItem('preferredCurrency', newCurrency);
+    window.location.reload();
+  };
 
   const currencies = [
     { code: 'INR', name: 'Indian Rupee', symbol: '₹' },

@@ -46,12 +46,13 @@ interface SkillMatrix {
     _id: string;
     name: string;
     position: string;
-    department: string;
+    department?: string;
   };
   skills: Array<{
     skill: string;
     level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert' | null;
-    lastUpdated: string;
+    lastUpdated?: string;
+    yearsOfExperience?: number;
   }>;
 }
 

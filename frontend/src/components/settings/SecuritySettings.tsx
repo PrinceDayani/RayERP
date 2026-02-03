@@ -7,7 +7,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Spinner } from "@/components/ui/spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRealTimeSetting } from '@/lib/realTimeSettings';
 import { Eye, EyeOff, ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
@@ -130,6 +129,7 @@ export default function SecuritySettings() {
   }, [hasUnsavedChanges]);
   
   // Handle setting changes with unsaved changes tracking
+  // Handle setting changes with unsaved changes tracking
   const handleToggleTwoFactor = (enabled: boolean) => {
     setTwoFactorEnabled(enabled);
     if (enabled && !twoFactorEnabled) {
@@ -235,7 +235,7 @@ export default function SecuritySettings() {
       
       // Call API to change password
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/change-password`, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
@@ -293,7 +293,7 @@ export default function SecuritySettings() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <Spinner size="lg" />
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
         <span className="ml-2">Loading security settings...</span>
       </div>
     );
@@ -435,7 +435,7 @@ export default function SecuritySettings() {
               >
                 {isChangingPassword ? (
                   <>
-                    <Spinner className="mr-2 h-4 w-4" />
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block" />
                     Changing Password...
                   </>
                 ) : "Change Password"}
@@ -647,20 +647,11 @@ export default function SecuritySettings() {
         )}
       </Card>
       
-      {/* Save Settings Button */}
-      <div className="flex justify-end">
-        <Button 
-          onClick={handleSaveSettings} 
-          disabled={isSaving || !hasUnsavedChanges}
-          size="lg"
-        >
-          {isSaving ? (
-            <>
-              <Spinner className="mr-2 h-4 w-4" />
-              Saving...
-            </>
-          ) : "Save Security Settings"}
-        </Button>
+      <div className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl border border-blue-100 dark:border-blue-900">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-blue-600" />
+          <span>All security settings are automatically saved</span>
+        </div>
       </div>
     </div>
   );

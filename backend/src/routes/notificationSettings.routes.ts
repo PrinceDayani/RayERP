@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/auth.middleware';
-import { requirePermission } from '../middleware/permission.middleware';
+import { profileUpdateRateLimiter } from '../middleware/rateLimiter.middleware';
 import { 
   getNotificationSettings, 
   updateNotificationSettings,
@@ -10,9 +10,9 @@ import {
 
 const router = express.Router();
 
-router.get('/', protect, requirePermission('notifications.manage'), getNotificationSettings);
-router.put('/', protect, requirePermission('notifications.manage'), updateNotificationSettings);
-router.get('/templates', protect, requirePermission('notifications.manage'), getNotificationTemplates);
-router.put('/templates/:id', protect, requirePermission('notifications.manage'), updateNotificationTemplate);
+router.get('/', protect, getNotificationSettings);
+router.put('/', protect, profileUpdateRateLimiter, updateNotificationSettings);
+router.get('/templates', protect, getNotificationTemplates);
+router.put('/templates/:id', protect, updateNotificationTemplate);
 
 export default router;

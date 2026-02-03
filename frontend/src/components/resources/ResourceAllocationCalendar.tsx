@@ -45,7 +45,19 @@ export default function ResourceAllocationCalendar() {
     try {
       setLoading(true);
       const response = await resourceApi.getResourceAllocations();
-      setAllocations(response.data || []);
+      const data = response.data || [];
+      // Map API response to component's AllocationData type
+      const mappedData: AllocationData[] = data.map((alloc: any) => ({
+        _id: alloc._id,
+        employee: alloc.employee,
+        project: alloc.project,
+        allocatedHours: alloc.allocationPercentage || 0,
+        startDate: alloc.startDate,
+        endDate: alloc.endDate || '',
+        role: alloc.role,
+        status: alloc.status === 'active' ? 'partial' : alloc.status === 'completed' ? 'available' : 'partial'
+      }));
+      setAllocations(mappedData);
     } catch (error) {
       console.error('Error fetching allocation data:', error);
       setAllocations([]);
@@ -61,16 +73,19 @@ export default function ResourceAllocationCalendar() {
 
   const handleDragDrop = async (allocation: AllocationData, newDate: Date, newEmployeeId: string) => {
     try {
-      const updatedData = {
-        ...allocation,
-        employee: { ...allocation.employee, _id: newEmployeeId },
-        startDate: newDate.toISOString()
+      const updatedData: Partial<any> = {
+        employee: newEmployeeId,
+        startDate: newDate.toISOString(),
+        project: typeof allocation.project === 'string' ? allocation.project : allocation.project._id,
+        role: allocation.role,
+        allocationPercentage: allocation.allocatedHours,
+        status: 'active'
       };
       
       await resourceApi.updateResourceAllocation(allocation._id, updatedData);
       
       setAllocations(prev => prev.map(alloc => 
-        alloc._id === allocation._id ? updatedData : alloc
+        alloc._id === allocation._id ? { ...alloc, ...updatedData, startDate: newDate.toISOString() } : alloc
       ));
       
       toast({

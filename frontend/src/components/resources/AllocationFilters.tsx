@@ -124,12 +124,12 @@ export default function AllocationFilters({ filters, onFilterChange, activeFilte
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
-                initialFocus
+                selectedDate={dateRange?.from}
+                onChange={() => {}}
                 mode="range"
-                defaultMonth={dateRange?.from}
                 selected={dateRange as any}
                 onSelect={(range) => handleDateRangeChange(range || {})}
-                numberOfMonths={2}
+                disabled={false}
               />
             </PopoverContent>
           </Popover>

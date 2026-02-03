@@ -1,9 +1,8 @@
 'use client';
 
 import React, { Component, ReactNode } from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface Props {
   children: ReactNode;
@@ -12,13 +11,13 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error: Error | null;
+  error?: Error;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -26,12 +25,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('ErrorBoundary caught:', error, errorInfo);
+    }
   }
-
-  handleReset = () => {
-    this.setState({ hasError: false, error: null });
-  };
 
   render() {
     if (this.state.hasError) {
@@ -40,24 +37,43 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="flex items-center justify-center min-h-[400px] p-6">
-          <Card className="max-w-md w-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-600">
-                <AlertCircle className="h-5 w-5" />
-                Something went wrong
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {this.state.error?.message || 'An unexpected error occurred'}
-              </p>
-              <Button onClick={this.handleReset} className="w-full">
-                <RefreshCw className="h-4 w-4 mr-2" />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4">
+          <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-4 bg-red-100 dark:bg-red-900/20 rounded-full">
+                <AlertTriangle className="h-12 w-12 text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+              Something went wrong
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
+              We encountered an error while loading this page. Please try again.
+            </p>
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-900 rounded-lg text-left">
+                <p className="text-xs font-mono text-red-600 dark:text-red-400 break-all">
+                  {this.state.error.message}
+                </p>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => this.setState({ hasError: false, error: undefined })}
+                className="flex-1"
+                variant="default"
+              >
                 Try Again
               </Button>
-            </CardContent>
-          </Card>
+              <Button
+                onClick={() => window.location.href = '/dashboard'}
+                className="flex-1"
+                variant="outline"
+              >
+                Go to Dashboard
+              </Button>
+            </div>
+          </div>
         </div>
       );
     }

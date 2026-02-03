@@ -91,10 +91,12 @@ interface AnalyticsData {
 }
 
 const Dashboard = () => {
-  const { currency, formatAmount } = useCurrency();
+  const { formatCurrency } = useCurrency();
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
   // const { salesData, loading: salesLoading } = useSalesData();
+  
+  const formatAmount = (amount: number) => formatCurrency(amount);
   
   // State management with proper typing
   const [activeTab, setActiveTab] = useState("overview");

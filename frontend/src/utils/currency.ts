@@ -26,6 +26,31 @@ export const formatCurrency = (amount: number, currency: string = DEFAULT_CURREN
 };
 
 /**
+ * Get currency symbol
+ */
+export const getCurrencySymbol = (currency: string): string => {
+  const symbols: Record<string, string> = {
+    USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CAD: 'C$', AUD: 'A$', CHF: 'CHF',
+    AED: 'د.إ', SAR: 'ر.س'
+  };
+  return symbols[currency] || '$';
+};
+
+/**
+ * Smart currency formatter with compact notation
+ */
+export const formatCurrencySmart = (amount: number, currency: string = DEFAULT_CURRENCY): string => {
+  const symbol = getCurrencySymbol(currency);
+  if (Math.abs(amount) >= 1000000) {
+    return `${symbol}${(amount / 1000000).toFixed(2)}M`;
+  }
+  if (Math.abs(amount) >= 1000) {
+    return `${symbol}${(amount / 1000).toFixed(2)}K`;
+  }
+  return `${symbol}${amount.toFixed(2)}`;
+};
+
+/**
  * Validate currency code
  */
 export const isValidCurrency = (currency: string): boolean => {

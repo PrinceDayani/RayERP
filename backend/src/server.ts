@@ -9,6 +9,7 @@ import rateLimit from "express-rate-limit";
 import { connectDB, createIndexes } from "./config/database";
 import { cacheMiddleware } from "./middleware/cache.middleware";
 import { paginationMiddleware } from "./middleware/pagination.middleware";
+import { provideCsrfToken } from "./middleware/csrf.middleware";
 import http from "http";
 import path from "path";
 import { Server as SocketServer } from "socket.io";
@@ -152,6 +153,9 @@ app.use(express.urlencoded({
   parameterLimit: 1000
 }));
 app.use(cookieParser());
+
+// CSRF token middleware (must be after auth but before routes)
+app.use(provideCsrfToken);
 
 // Request logging middleware (temporary for debugging)
 app.use((req, res, next) => {
@@ -336,6 +340,15 @@ async function initializeRealTimeSystems() {
       logger.info('✅ Session cleanup cron job started (hourly)');
     } catch (err) {
       logger.warn('⚠️ Session cleanup could not be started:', err.message);
+    }
+
+    // Initialize file cleanup
+    try {
+      const { startFileCleanup } = await import('./jobs/fileCleanup');
+      startFileCleanup();
+      logger.info('✅ File cleanup cron job started (daily at 2 AM)');
+    } catch (err) {
+      logger.warn('⚠️ File cleanup could not be started:', err.message);
     }
 
     logger.info('✅ Real-time systems initialized');

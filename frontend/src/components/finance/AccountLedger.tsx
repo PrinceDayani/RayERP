@@ -12,7 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Download, Filter, Plus, TrendingUp, TrendingDown, ArrowLeft, RefreshCw, Edit, FileText, Image, Paperclip, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
-import { useCurrency } from '@/contexts/CurrencyContext';
+import { useCurrencyFormat } from '@/hooks/useCurrencyFormat';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
 interface LedgerEntry {
@@ -62,7 +62,7 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
   const router = useRouter();
   const searchParams = useSearchParams();
   const highlightId = searchParams.get('highlight');
-  const { formatAmount } = useCurrency();
+  const { formatAmount } = useCurrencyFormat();
   const accountId = propAccountId || (params.id as string);
   
   const [account, setAccount] = useState<Account | null>(null);

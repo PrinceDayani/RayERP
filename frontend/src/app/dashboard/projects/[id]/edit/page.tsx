@@ -175,7 +175,7 @@ const EditProjectPage = () => {
                 startDate: project.startDate,
                 endDate: project.endDate,
                 client: project.client,
-                manager: project.manager,
+                managers: project.managers,
                 team: project.team,
                 departments: project.departments,
                 tags: project.tags,

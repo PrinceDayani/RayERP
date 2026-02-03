@@ -94,14 +94,22 @@ export enum SettingScope {
   PROJECT = 'project'
 }
 
-export interface ISetting {
+export interface IUserSetting extends Document {
+  userId: mongoose.Types.ObjectId;
   key: string;
   value: any;
-  scope: SettingScope;
-  userId?: mongoose.Types.ObjectId;
-  organizationId?: mongoose.Types.ObjectId;
-  departmentId?: mongoose.Types.ObjectId;
-  projectId?: mongoose.Types.ObjectId;
+  scope: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const UserSettingSchema = new Schema<IUserSetting>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  key: { type: String, required: true },
+  value: { type: Schema.Types.Mixed, required: true },
+  scope: { type: String, default: 'user' }
+}, { timestamps: true });
+
+UserSettingSchema.index({ userId: 1, key: 1 }, { unique: true });
+
+export const UserSetting = mongoose.model<IUserSetting>('UserSetting', UserSettingSchema);

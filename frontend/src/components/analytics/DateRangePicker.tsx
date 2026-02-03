@@ -126,17 +126,16 @@ export default function DateRangePicker({ value, onChange }: DateRangePickerProp
             </Select>
           </div>
           <Calendar
-            initialFocus
             mode="range"
-            defaultMonth={value?.from}
             selected={value}
+            selectedDate={value?.from}
             onSelect={(range) => {
               onChange(range || { from: new Date(), to: new Date() });
               if (range?.from && range?.to) {
                 setIsOpen(false);
               }
             }}
-            numberOfMonths={2}
+            disabled={undefined}
           />
         </PopoverContent>
       </Popover>

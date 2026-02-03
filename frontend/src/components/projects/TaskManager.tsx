@@ -214,10 +214,12 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskCreate, onTa
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
               <Calendar
+                selectedDate={dueDate}
+                onChange={() => {}}
                 mode="single"
                 selected={dueDate}
                 onSelect={setDueDate}
-                initialFocus
+                disabled={false}
               />
             </PopoverContent>
           </Popover>

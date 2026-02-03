@@ -1,62 +1,59 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 
-interface CSRFRequest extends Request {
-  csrfToken?: string;
-  session?: any;
-}
+const csrfTokens = new Map<string, { token: string; expires: number }>();
 
-// Generate CSRF token
-export const generateCSRFToken = (): string => {
-  return crypto.randomBytes(32).toString('hex');
-};
-
-// CSRF Protection Middleware
-export const csrfProtection = (req: CSRFRequest, res: Response, next: NextFunction) => {
-  // Skip CSRF for GET requests and health checks
-  if (req.method === 'GET' || req.path === '/api/health') {
-    return next();
-  }
-
-  // Skip CSRF in development mode for API testing
-  if (process.env.NODE_ENV === 'development' && req.headers['x-api-test'] === 'true') {
-    return next();
-  }
-
-  const token = req.headers['x-csrf-token'] as string || req.body._csrf;
-  const sessionToken = req.session?.csrfToken;
-
-  if (!token || !sessionToken || token !== sessionToken) {
-    return res.status(403).json({
-      success: false,
-      message: 'Invalid CSRF token',
-      code: 'CSRF_INVALID'
-    });
-  }
-
-  next();
-};
+const CSRF_TOKEN_EXPIRY = 3600000; // 1 hour
 
 // Middleware to provide CSRF token to client
-export const provideCSRFToken = (req: CSRFRequest, res: Response, next: NextFunction) => {
-  if (!req.session) {
-    req.session = {};
+export const provideCsrfToken = (req: Request, res: Response, next: NextFunction) => {
+  const userId = (req as any).user?.id || req.ip;
+  
+  let stored = csrfTokens.get(userId);
+  
+  // Generate new token if none exists or expired
+  if (!stored || stored.expires < Date.now()) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = Date.now() + CSRF_TOKEN_EXPIRY;
+    stored = { token, expires };
+    csrfTokens.set(userId, stored);
   }
-
-  if (!req.session.csrfToken) {
-    req.session.csrfToken = generateCSRFToken();
-  }
-
-  req.csrfToken = req.session.csrfToken;
-  res.locals.csrfToken = req.session.csrfToken;
-
+  
+  // Attach token to response locals for access in routes
+  res.locals.csrfToken = stored.token;
   next();
 };
 
-// Route to get CSRF token
-export const getCSRFToken = (req: CSRFRequest, res: Response) => {
-  res.json({
-    success: true,
-    csrfToken: req.csrfToken || generateCSRFToken()
-  });
+export const generateCsrfToken = (req: Request, res: Response) => {
+  const userId = (req as any).user?.id || req.ip;
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = Date.now() + CSRF_TOKEN_EXPIRY;
+  
+  csrfTokens.set(userId, { token, expires });
+  
+  // Cleanup expired tokens
+  for (const [key, value] of csrfTokens.entries()) {
+    if (value.expires < Date.now()) {
+      csrfTokens.delete(key);
+    }
+  }
+  
+  res.json({ csrfToken: token });
+};
+
+export const validateCsrfToken = (req: Request, res: Response, next: NextFunction) => {
+  const token = req.headers['x-csrf-token'] as string;
+  const userId = (req as any).user?.id || req.ip;
+  
+  if (!token) {
+    return res.status(403).json({ success: false, message: 'CSRF token missing' });
+  }
+  
+  const stored = csrfTokens.get(userId);
+  
+  if (!stored || stored.token !== token || stored.expires < Date.now()) {
+    return res.status(403).json({ success: false, message: 'Invalid or expired CSRF token' });
+  }
+  
+  next();
 };

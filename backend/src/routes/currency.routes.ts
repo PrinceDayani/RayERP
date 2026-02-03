@@ -44,3 +44,50 @@ router.get('/rates', authenticateToken, async (req, res) => {
 });
 
 export default router;
+
+
+// User Currency Settings
+import UserCurrencySettings from '../models/UserCurrencySettings';
+import { profileUpdateRateLimiter } from '../middleware/rateLimiter.middleware';
+
+router.get('/user-settings', authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    let settings = await UserCurrencySettings.findOne({ user: userId });
+    
+    if (!settings) {
+      settings = await UserCurrencySettings.create({ user: userId });
+    }
+
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('Error fetching user currency settings:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch currency settings' });
+  }
+});
+
+router.put('/user-settings', authenticateToken, profileUpdateRateLimiter, async (req, res) => {
+  try {
+    const userId = (req as any).user?.id;
+    const { preferredCurrency, numberFormat } = req.body;
+    
+    if (numberFormat && !['indian', 'international', 'auto'].includes(numberFormat)) {
+      return res.status(400).json({ success: false, message: 'Invalid numberFormat value' });
+    }
+    
+    let settings = await UserCurrencySettings.findOne({ user: userId });
+    
+    if (!settings) {
+      settings = await UserCurrencySettings.create({ user: userId, preferredCurrency, numberFormat });
+    } else {
+      if (preferredCurrency !== undefined) settings.preferredCurrency = preferredCurrency;
+      if (numberFormat !== undefined) settings.numberFormat = numberFormat;
+      await settings.save();
+    }
+
+    res.json({ success: true, settings, message: 'Currency settings updated successfully' });
+  } catch (error) {
+    console.error('Error updating user currency settings:', error);
+    res.status(500).json({ success: false, message: 'Failed to update currency settings' });
+  }
+});

@@ -4,7 +4,8 @@ import * as glApi from '@/lib/api/generalLedger';
 import { toast } from './use-toast';
 
 export const useGeneralLedger = () => {
-  const { currency } = useCurrency();
+  const { baseCurrency } = useCurrency();
+  const currency = baseCurrency?.code || 'USD';
   const [accounts, setAccounts] = useState<glApi.Account[]>([]);
   const [journalEntries, setJournalEntries] = useState<glApi.JournalEntry[]>([]);
   const [currencies, setCurrencies] = useState<glApi.Currency[]>([]);

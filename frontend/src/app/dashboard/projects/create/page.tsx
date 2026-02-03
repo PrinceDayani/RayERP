@@ -296,9 +296,10 @@ const CreateProjectPage = () => {
                       <Calendar 
                         mode="single" 
                         selected={projectForm.startDate} 
+                        selectedDate={projectForm.startDate}
                         onSelect={(date) => setProjectForm({ ...projectForm, startDate: date })} 
-                        initialFocus 
                         className="rounded-md border"
+                        disabled={undefined}
                       />
                     </PopoverContent>
                   </Popover>
@@ -316,9 +317,9 @@ const CreateProjectPage = () => {
                       <Calendar 
                         mode="single" 
                         selected={projectForm.endDate} 
+                        selectedDate={projectForm.endDate}
                         onSelect={(date) => setProjectForm({ ...projectForm, endDate: date })} 
                         disabled={(date) => projectForm.startDate ? date < projectForm.startDate : false} 
-                        initialFocus 
                         className="rounded-md border"
                       />
                     </PopoverContent>

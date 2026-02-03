@@ -4,6 +4,7 @@ export interface Budget {
   departmentId?: string;
   projectName?: string;
   departmentName?: string;
+  title?: string;
   budgetType: 'project' | 'department' | 'special';
   totalBudget: number;
   currency: string;

@@ -41,7 +41,7 @@ export default function PaymentAgainstReference({
   accountId,
   onSuccess
 }: PaymentAgainstReferenceProps) {
-  const { formatAmount } = useCurrency();
+  const { formatCurrency } = useCurrency();
   const { toast } = useToast();
   const [references, setReferences] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,6 +49,8 @@ export default function PaymentAgainstReference({
   const [selectedRef, setSelectedRef] = useState<Reference | null>(null);
   const [amount, setAmount] = useState('');
   const [processing, setProcessing] = useState(false);
+
+  const formatAmount = (amount: number) => formatCurrency(amount);
 
   useEffect(() => {
     if (open) {
@@ -302,3 +304,4 @@ export default function PaymentAgainstReference({
     </Dialog>
   );
 }
+

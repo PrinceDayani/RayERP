@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Download, Filter, RefreshCw, Search } from 'lucide-react';
 import { format } from 'date-fns';
-import { useCurrency } from '@/contexts/CurrencyContext';
+import { useCurrencyFormat } from '@/hooks/useCurrencyFormat';
 
 interface JournalEntry {
   _id: string;
@@ -30,7 +30,7 @@ interface JournalEntry {
 }
 
 export default function MasterLedgerPage() {
-  const { formatAmount } = useCurrency();
+  const { formatAmount } = useCurrencyFormat();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

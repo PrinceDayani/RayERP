@@ -280,7 +280,7 @@ export const BudgetAnalytics: React.FC<BudgetAnalyticsProps> = ({
               return (
                 <div key={budget._id} className="p-4 border rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-semibold">{budget.projectName || budget.title}</h4>
+                    <h4 className="font-semibold">{budget.projectName || budget.departmentName}</h4>
                     <Badge variant={utilization > 100 ? 'destructive' : utilization > 90 ? 'secondary' : 'outline'}>
                       {utilization.toFixed(1)}%
                     </Badge>

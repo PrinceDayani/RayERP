@@ -829,14 +829,20 @@ export default function EmployeeDetailPage() {
                       }).map(project => (
                         <div key={project._id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
                           <div>
-                            <p className="font-medium text-sm">{project.project?.name || project.name}</p>
+                            <p className="font-medium text-sm">
+                              {typeof project.project === 'object' && project.project?.name ? project.project.name : (project as any).name || 'Unknown Project'}
+                            </p>
                             <p className="text-xs text-muted-foreground">
                               {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'N/A'} - {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Ongoing'}
                             </p>
                           </div>
                           <div className="text-right">
-                            <Badge variant="secondary" className={(project.status || project.project?.status) === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
-                              {project.status || project.project?.status || 'active'}
+                            <Badge variant="secondary" className={
+                              (typeof project.project === 'object' && project.project?.status === 'active') || (project as any).status === 'active'
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                            }>
+                              {typeof project.project === 'object' && project.project?.status ? project.project.status : (project as any).status || 'active'}
                             </Badge>
                             <p className="text-xs text-muted-foreground mt-1">{project.allocatedHours || 40}h allocation</p>
                           </div>

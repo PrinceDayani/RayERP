@@ -37,20 +37,28 @@ interface JournalEntry {
 }
 
 const CurrencyAwareGeneralLedger = () => {
-  const { currency, setCurrency, formatAmount, formatCompact } = useCurrency();
+  const { baseCurrency, formatCurrency } = useCurrency();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState('INR');
 
   const currencies = [
     'INR', 'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF',
     'AED', 'SAR', 'QAR', 'KWD', 'BHD', 'OMR'
   ];
 
+  const formatAmount = (amount: number) => formatCurrency(amount, selectedCurrency);
+  const formatCompact = (amount: number) => {
+    if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `${(amount / 1000).toFixed(1)}K`;
+    return amount.toFixed(0);
+  };
+
   useEffect(() => {
     fetchData();
-  }, [currency]);
+  }, [selectedCurrency]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -95,7 +103,7 @@ const CurrencyAwareGeneralLedger = () => {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-blue-500/20 text-blue-400 px-3 py-2 rounded-lg">
               <Globe className="h-4 w-4" />
-              <Select value={currency} onValueChange={setCurrency}>
+              <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
                 <SelectTrigger className="w-32 border-0 bg-transparent text-blue-400">
                   <SelectValue />
                 </SelectTrigger>
@@ -276,15 +284,15 @@ const CurrencyAwareGeneralLedger = () => {
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="p-4 bg-gray-700/50 rounded-lg">
                     <h3 className="font-semibold mb-2">Trial Balance</h3>
-                    <p className="text-sm text-gray-400">All amounts in {currency}</p>
+                    <p className="text-sm text-gray-400">All amounts in {selectedCurrency}</p>
                   </div>
                   <div className="p-4 bg-gray-700/50 rounded-lg">
                     <h3 className="font-semibold mb-2">Balance Sheet</h3>
-                    <p className="text-sm text-gray-400">All amounts in {currency}</p>
+                    <p className="text-sm text-gray-400">All amounts in {selectedCurrency}</p>
                   </div>
                   <div className="p-4 bg-gray-700/50 rounded-lg">
                     <h3 className="font-semibold mb-2">P&L Statement</h3>
-                    <p className="text-sm text-gray-400">All amounts in {currency}</p>
+                    <p className="text-sm text-gray-400">All amounts in {selectedCurrency}</p>
                   </div>
                 </div>
               </CardContent>

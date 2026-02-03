@@ -634,10 +634,12 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <Calendar
+                      selectedDate={taskForm.dueDate}
+                      onChange={() => {}}
                       mode="single"
                       selected={taskForm.dueDate}
                       onSelect={(date) => setTaskForm({ ...taskForm, dueDate: date })}
-                      initialFocus
+                      disabled={false}
                     />
                   </PopoverContent>
                 </Popover>
@@ -784,10 +786,12 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
                   <Calendar
+                    selectedDate={taskForm.dueDate}
+                    onChange={() => {}}
                     mode="single"
                     selected={taskForm.dueDate}
                     onSelect={(date) => setTaskForm({ ...taskForm, dueDate: date })}
-                    initialFocus
+                    disabled={false}
                   />
                 </PopoverContent>
               </Popover>

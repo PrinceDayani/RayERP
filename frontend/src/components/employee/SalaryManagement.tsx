@@ -39,6 +39,8 @@ export default function SalaryManagement({
     reason: ''
   });
 
+  const formatAmount = (amount: number) => formatCurrency(amount, 'INR');
+
   const canViewSalary = hasPermission('employees.view_salary');
   const canEditSalary = hasPermission('employees.edit_salary');
 

@@ -173,7 +173,6 @@ export default function ResourceAllocationPage() {
 
   if (loading) {
     return <PageLoader text="Loading resource allocation..." />;
-    );
   }
 
   return (

@@ -57,7 +57,9 @@ export default function BudgetConsolidationPage() {
     toast({ title: 'Success', description: 'Data exported successfully' });
   };
 
-  if (loading) {\n    return <PageLoader text=\"Loading consolidation data...\" />;\n  }
+  if (loading) {
+    return <PageLoader text="Loading consolidation data..." />;
+  }
   
   if (!consolidation) return (
     <div className="p-6">

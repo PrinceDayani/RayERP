@@ -209,7 +209,7 @@ export default function BudgetDetailPage() {
                             {category.items.slice(0, 3).map((item, itemIndex) => (
                               <div key={itemIndex} className="text-xs text-gray-600 flex justify-between">
                                 <span>{item.name}</span>
-                                <span>{formatCurrency(item.totalCost, budget.currency, true, true)}</span>
+                                <span>{formatCurrency(item.totalCost, budget.currency)}</span>
                               </div>
                             ))}
                             {category.items.length > 3 && (

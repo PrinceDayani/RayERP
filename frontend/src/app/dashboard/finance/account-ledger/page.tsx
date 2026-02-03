@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Search, Download, FileText, TrendingUp, TrendingDown, Coins, Filter } from 'lucide-react';
-import { useCurrency } from '@/contexts/CurrencyContext';
+import { useCurrencyFormat } from '@/hooks/useCurrencyFormat';
 import { useToast } from '@/hooks/use-toast';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
@@ -24,7 +24,7 @@ interface Account {
 
 export default function LedgerPage() {
   const router = useRouter();
-  const { formatAmount } = useCurrency();
+  const { formatAmount } = useCurrencyFormat();
   const { toast } = useToast();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<Account[]>([]);

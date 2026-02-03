@@ -33,7 +33,7 @@ const sessionAPI = {
     getActiveSessions: async (): Promise<SessionInfo[]> => {
         try {
             const response = await api('/api/sessions');
-            return response.sessions || [];
+            return response.data.sessions || [];
         } catch (error) {
             console.error('Error fetching active sessions:', error);
             throw error;
@@ -58,7 +58,7 @@ const sessionAPI = {
             const response = await api('/api/sessions', {
                 method: 'DELETE'
             });
-            return response.revokedCount || 0;
+            return response.data.revokedCount || 0;
         } catch (error) {
             console.error('Error revoking all sessions:', error);
             throw error;
@@ -69,7 +69,7 @@ const sessionAPI = {
     getStatistics: async (): Promise<SessionStatistics> => {
         try {
             const response = await api('/api/sessions/statistics');
-            return response.statistics;
+            return response.data.statistics;
         } catch (error) {
             console.error('Error fetching session statistics:', error);
             throw error;

@@ -9,6 +9,30 @@ export interface ISkill {
   lastUpdated?: Date;
 }
 
+export interface IDocument {
+  _id?: mongoose.Types.ObjectId;
+  name: string;
+  type: 'Resume' | 'Certificate' | 'ID' | 'Other';
+  url: string;
+  size: number;
+  uploadDate: Date;
+}
+
+export interface INotificationSettings {
+  email: {
+    projectUpdates: boolean;
+    taskAssignments: boolean;
+    mentions: boolean;
+    systemAlerts: boolean;
+  };
+  sms: {
+    projectUpdates: boolean;
+    taskAssignments: boolean;
+    mentions: boolean;
+    systemAlerts: boolean;
+  };
+}
+
 export interface IEmployee extends Document {
   employeeId: string;
   firstName: string;
@@ -18,6 +42,7 @@ export interface IEmployee extends Document {
   department?: string;
   departments?: string[];
   position: string;
+  jobTitle?: string;
   salary: number;
   hireDate: Date;
   status: 'active' | 'inactive' | 'terminated';
@@ -42,8 +67,19 @@ export interface IEmployee extends Document {
     portfolio?: string;
     other?: string;
   };
+  bio?: string;
+  socialLinks?: {
+    linkedin?: string;
+    github?: string;
+    twitter?: string;
+    portfolio?: string;
+  };
+  documents?: IDocument[];
+  notificationSettings?: INotificationSettings;
+  timezone?: string;
   avatarUrl?: string;
   manager?: mongoose.Types.ObjectId;
+  supervisor?: mongoose.Types.ObjectId;
   user: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -58,6 +94,7 @@ const employeeSchema = new Schema<IEmployee>({
   department: { type: String, required: false },
   departments: { type: [String], default: [] },
   position: { type: String, required: true },
+  jobTitle: { type: String },
   salary: { type: Number, required: true },
   hireDate: { type: Date, required: true },
   status: { type: String, enum: ['active', 'inactive', 'terminated'], default: 'active' },
@@ -87,8 +124,38 @@ const employeeSchema = new Schema<IEmployee>({
     portfolio: { type: String, trim: true },
     other: { type: String, trim: true }
   },
+  bio: { type: String, maxlength: 500 },
+  socialLinks: {
+    linkedin: { type: String, trim: true },
+    github: { type: String, trim: true },
+    twitter: { type: String, trim: true },
+    portfolio: { type: String, trim: true }
+  },
+  documents: [{
+    name: { type: String, required: true },
+    type: { type: String, enum: ['Resume', 'Certificate', 'ID', 'Other'], required: true },
+    url: { type: String, required: true },
+    size: { type: Number, required: true },
+    uploadDate: { type: Date, default: Date.now }
+  }],
+  notificationSettings: {
+    email: {
+      projectUpdates: { type: Boolean, default: true },
+      taskAssignments: { type: Boolean, default: true },
+      mentions: { type: Boolean, default: true },
+      systemAlerts: { type: Boolean, default: true }
+    },
+    sms: {
+      projectUpdates: { type: Boolean, default: false },
+      taskAssignments: { type: Boolean, default: false },
+      mentions: { type: Boolean, default: false },
+      systemAlerts: { type: Boolean, default: false }
+    }
+  },
+  timezone: { type: String, default: 'UTC' },
   avatarUrl: { type: String },
   manager: { type: Schema.Types.ObjectId, ref: 'Employee' },
+  supervisor: { type: Schema.Types.ObjectId, ref: 'Employee' },
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 

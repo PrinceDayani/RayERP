@@ -380,7 +380,6 @@ export default function BudgetApprovalsPage() {
           <BudgetAnalytics 
             budgets={budgets}
             displayCurrency={displayCurrency}
-            formatAmount={formatAmount}
           />
         </TabsContent>
 

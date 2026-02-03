@@ -37,25 +37,32 @@ const CURRENCIES = [
 ];
 
 export default function CurrencySettings() {
-  const { currency, setCurrency: updateCurrency, formatAmount } = useCurrency();
-  const [selectedCurrency, setSelectedCurrency] = useState(currency);
+  const { baseCurrency, formatCurrency } = useCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState(baseCurrency?.code || 'INR');
   const [numberFormat, setNumberFormatState] = useState<'indian' | 'international' | 'auto'>('auto');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setSelectedCurrency(currency);
+    if (baseCurrency) {
+      setSelectedCurrency(baseCurrency.code);
+    }
     setNumberFormatState(getNumberFormat());
-  }, [currency]);
+  }, [baseCurrency]);
 
   const handleSave = () => {
     setSaving(true);
-    updateCurrency(selectedCurrency);
+        // Store preference in localStorage
+    localStorage.setItem('preferredCurrency', selectedCurrency);
     setNumberFormat(numberFormat);
     setTimeout(() => {
       setSaving(false);
       toast.success(`Settings saved: ${selectedCurrency} with ${numberFormat} format`);
-      window.location.reload(); // Reload to apply changes
+      window.location.reload(); // Reload to apply changes 
     }, 300);
+  };
+
+  const formatAmount = (amount: number, curr?: string) => {
+    return formatCurrency(amount, curr);
   };
 
   const selectedCurrencyData = CURRENCIES.find(c => c.code === selectedCurrency);
@@ -142,7 +149,7 @@ export default function CurrencySettings() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Example (Large):</span>
-                <span className="font-medium">{formatAmount(5000000)}</span>
+                <span className="font-medium">{formatAmount(5000000, selectedCurrency)}</span>
               </div>
             </div>
           </CardContent>
