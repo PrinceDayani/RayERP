@@ -27,7 +27,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setError(null);
       
       // Check if user is authenticated
-      const token = sessionStorage.getItem('auth-token') || localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       if (!token) {
         console.log('No auth token found, using default currencies');
         const defaultCurrencies = [

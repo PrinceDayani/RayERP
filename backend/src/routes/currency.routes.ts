@@ -8,6 +8,7 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const currencies = await Currency.find().sort({ isBaseCurrency: -1, code: 1 });
+    console.log(`[Currency] Found ${currencies.length} currencies`);
     res.json(currencies);
   } catch (error) {
     console.error('Error fetching currencies:', error);
@@ -19,6 +20,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/base', authenticateToken, async (req, res) => {
   try {
     const baseCurrency = await Currency.findOne({ isBaseCurrency: true });
+    console.log(`[Currency] Base currency: ${baseCurrency ? baseCurrency.code : 'None (using default USD)'}`);
     res.json(baseCurrency || { code: 'USD', name: 'US Dollar', symbol: '$' });
   } catch (error) {
     console.error('Error fetching base currency:', error);

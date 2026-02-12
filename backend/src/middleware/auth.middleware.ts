@@ -35,11 +35,14 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     // Check if token exists
     if (!token || token === 'undefined' || token === 'null') {
+      console.log('[Auth] No token provided');
       return res.status(401).json({
         success: false,
         message: 'Authentication required - no token provided'
       });
     }
+
+    console.log('[Auth] Token received:', token.substring(0, 20) + '...');
 
     // Verify token
     const jwtSecret = process.env.JWT_SECRET;
@@ -124,7 +127,7 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     next();
   } catch (error: any) {
-    console.error('Auth middleware error:', error.message);
+    console.error('[Auth] Error:', error.message, '| Token:', token?.substring(0, 20) + '...');
 
     if (error.name === 'JsonWebTokenError') {
       if (error.message === 'invalid signature') {
