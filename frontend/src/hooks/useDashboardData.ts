@@ -5,7 +5,7 @@ import axios from 'axios';
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 // Cache configuration
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
@@ -87,7 +87,7 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
   const socketRef = useRef<any>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchRef = useRef<number>(0);
-  const FETCH_COOLDOWN = 5000;
+  const FETCH_COOLDOWN = 3000;
 
   const fetchStats = useCallback(async (force = false) => {
     if (!isAuthenticated) {

@@ -1,86 +1,32 @@
-//path: frontend\src\app\dashboard\page.tsx
-
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, memo, lazy, Suspense } from "react";
+import React, { useState, useEffect, memo, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
 import { useDashboardData } from "@/hooks/useDashboardData";
-
-import DashboardHeader from "@/components/Dashboard/DashboardHeader";
-import StatsCards from "@/components/Dashboard/StatsCards";
-import QuickActions from "@/components/Dashboard/QuickActions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Users, 
-  BarChart4, 
-  TrendingUp, 
-  ShieldCheck, 
-  UserCog,
-  Settings,
-  RefreshCw,
-  Wifi,
-  WifiOff,
-  AlertCircle,
-  Briefcase,
-  CheckSquare,
-  Activity,
-  Clock,
-  Target,
-  Calendar,
-  ArrowUpRight,
-  ArrowDownRight,
-  TrendingDown,
-  Shield
+import {
+  Users, TrendingUp, ShieldCheck, UserCog, RefreshCw, Wifi, WifiOff,
+  Briefcase, CheckSquare, Activity, Clock, Target, Calendar, TrendingDown,
+  ArrowUpRight, Plus
 } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
-import { initializeSocket, getSocket } from "@/lib/socket";
-import { hasPermission, hasMinimumLevel, PERMISSIONS, ROLE_LEVELS } from "@/lib/permissions";
-import { useCurrency } from "@/contexts/CurrencyContext";
-import { useSalesData } from "@/hooks/useSalesData";
+import { getSocket } from "@/lib/socket";
 import { formatINR } from "@/lib/currency";
-const AnalyticsCharts = lazy(() => import('@/components/Dashboard/AnalyticsCharts'));
-const EmployeeList = lazy(() => import('@/components/employee').then(m => ({ default: m.EmployeeList })));
-const ProjectList = lazy(() => import('@/components/projects').then(m => ({ default: m.ProjectList })));
-const TaskList = lazy(() => import('@/components/tasks').then(m => ({ default: m.TaskList })));
-const FinanceAnalyticsDashboard = lazy(() => import('@/components/finance/FinanceAnalyticsDashboard'));
-import { UserManagement } from '@/components/admin/UserManagement';
 import { employeesAPI } from "@/lib/api/employeesAPI";
 import { projectsAPI } from "@/lib/api/projectsAPI";
 import { tasksAPI } from "@/lib/api/tasksAPI";
 import { trendsAPI, TrendsResponse } from "@/lib/api/trendsAPI";
-import { analyticsAPI, AnalyticsResponse } from "@/lib/api/analyticsAPI";
+import { analyticsAPI } from "@/lib/api/analyticsAPI";
 
-// Enhanced interfaces
-interface DashboardStats {
-  totalEmployees: number;
-  activeEmployees: number;
-  totalProjects: number;
-  activeProjects: number;
-  completedProjects: number;
-  totalTasks: number;
-  completedTasks: number;
-  inProgressTasks: number;
-  pendingTasks: number;
-  revenue?: number;
-  expenses?: number;
-  profit?: number;
-  // Sales data
-  salesRevenue?: number;
-  salesPaid?: number;
-  salesPending?: number;
-  salesCount?: number;
-  // Project data
-  projectRevenue?: number;
-  projectExpenses?: number;
-  projectProfit?: number;
-}
+const AnalyticsCharts = lazy(() => import('@/components/Dashboard/AnalyticsCharts'));
+const EmployeeList = lazy(() => import('@/components/employee').then(m => ({ default: m.EmployeeList })));
+const ProjectList = lazy(() => import('@/components/projects').then(m => ({ default: m.ProjectList })));
+const TaskList = lazy(() => import('@/components/tasks').then(m => ({ default: m.TaskList })));
 
 interface AnalyticsData {
   projectProgress: Array<{ name: string; progress: number; status: string }>;
@@ -91,1028 +37,338 @@ interface AnalyticsData {
 }
 
 const Dashboard = () => {
-  const { formatCurrency } = useCurrency();
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
-  // const { salesData, loading: salesLoading } = useSalesData();
-  
-  const formatAmount = (amount: number) => formatCurrency(amount);
-  
-  // State management with proper typing
   const [activeTab, setActiveTab] = useState("overview");
   const [revenueView, setRevenueView] = useState<'sales' | 'projects'>('sales');
-  const { stats, loading: dataLoading, error: dataError, socketConnected, refresh } = useDashboardData(isAuthenticated);
+  const { stats, loading: dataLoading, socketConnected, refresh } = useDashboardData(isAuthenticated);
   const [analytics, setAnalytics] = useState<AnalyticsData>({
-    projectProgress: [],
-    taskDistribution: [],
-    monthlyRevenue: [],
-    teamProductivity: [],
-    recentActivity: [],
+    projectProgress: [], taskDistribution: [], monthlyRevenue: [],
+    teamProductivity: [], recentActivity: []
   });
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
-  
-  // Refs
-  const socketRef = useRef<any>(null);
 
-  // Fetch analytics and trends with real-time updates
   useEffect(() => {
     if (!isAuthenticated) return;
-    
-    let mounted = true;
-    
     const fetchData = async () => {
-      try {
-        const [analyticsData, trendsData] = await Promise.allSettled([
-          analyticsAPI.getAnalytics().catch(err => {
-            console.warn('Analytics API failed:', err.message);
-            return null;
-          }),
-          trendsAPI.getTrends().catch(err => {
-            console.warn('Trends API failed:', err.message);
-            return null;
-          })
-        ]);
-        
-        if (mounted) {
-          if (analyticsData.status === 'fulfilled' && analyticsData.value) {
-            setAnalytics({
-              projectProgress: analyticsData.value.projectProgress || [],
-              taskDistribution: analyticsData.value.taskDistribution || [],
-              monthlyRevenue: analyticsData.value.monthlyRevenue || [],
-              teamProductivity: analyticsData.value.teamProductivity || [],
-              recentActivity: analyticsData.value.recentActivity || []
-            });
-          }
-          if (trendsData.status === 'fulfilled' && trendsData.value) {
-            setTrends(trendsData.value);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching analytics:", error);
+      const [analyticsData, trendsData] = await Promise.allSettled([
+        analyticsAPI.getAnalytics().catch(() => null),
+        trendsAPI.getTrends().catch(() => null)
+      ]);
+      if (analyticsData.status === 'fulfilled' && analyticsData.value) {
+        setAnalytics({
+          projectProgress: analyticsData.value.projectProgress || [],
+          taskDistribution: analyticsData.value.taskDistribution || [],
+          monthlyRevenue: analyticsData.value.monthlyRevenue || [],
+          teamProductivity: analyticsData.value.teamProductivity || [],
+          recentActivity: analyticsData.value.recentActivity || []
+        });
       }
+      if (trendsData.status === 'fulfilled' && trendsData.value) setTrends(trendsData.value);
     };
-    
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30s
-
-    // Refetch on tab visibility
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        analyticsAPI.clearCache();
-        fetchData();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => { 
-      mounted = false;
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    const interval = setInterval(fetchData, 60000);
+    return () => clearInterval(interval);
   }, [isAuthenticated]);
 
-  // Real-time activity feed listener
   useEffect(() => {
     if (!isAuthenticated) return;
-    
     const socket = getSocket();
     if (!socket) return;
-
-    const handleActivityLog = (activity: any) => {
+    const handleActivity = (activity: any) => {
       setAnalytics(prev => ({
         ...prev,
-        recentActivity: [
-          {
-            id: activity.id || Date.now().toString(),
-            type: activity.type || 'system',
-            description: activity.message || activity.description,
-            time: new Date(activity.timestamp).toLocaleString(),
-            priority: activity.priority || 'normal',
-            user: activity.user,
-            metadata: activity.metadata
-          },
-          ...prev.recentActivity.slice(0, 19)
-        ]
+        recentActivity: [{
+          id: activity.id || Date.now().toString(),
+          type: activity.type || 'system',
+          description: activity.message || activity.description,
+          time: new Date(activity.timestamp).toLocaleString()
+        }, ...prev.recentActivity.slice(0, 19)]
       }));
     };
-
-    const handleRootActivity = (activity: any) => {
-      // Root users get high-priority activities
-      setAnalytics(prev => ({
-        ...prev,
-        recentActivity: [
-          {
-            id: activity.id || Date.now().toString(),
-            type: activity.type || 'system',
-            description: `🔴 ${activity.message || activity.description}`,
-            time: new Date(activity.timestamp).toLocaleString(),
-            priority: 'high',
-            user: activity.user,
-            metadata: activity.metadata
-          },
-          ...prev.recentActivity.slice(0, 19)
-        ]
-      }));
-      
-      // Show toast notification for Root users
-      toast({
-        title: "System Activity",
-        description: activity.message,
-        variant: "default"
-      });
-    };
-
-    socket.on('activity_log', handleActivityLog);
-    socket.on('root:activity', handleRootActivity);
-
-    return () => {
-      socket.off('activity_log', handleActivityLog);
-      socket.off('root:activity', handleRootActivity);
-    };
+    socket.on('activity_log', handleActivity);
+    return () => socket.off('activity_log', handleActivity);
   }, [isAuthenticated]);
 
-
-
-
-
-
-
-  // Role-specific welcome components
-  const RoleWelcomeCard = memo(({ role, icon: Icon, title, description, colorScheme }: {
-    role: string;
-    icon: any;
-    title: string;
-    description: string;
-    colorScheme: 'red' | 'purple' | 'blue';
-  }) => (
-    <Card className={`
-      mb-6 theme-card theme-shadow theme-transition
-      ${colorScheme === 'red' ? 'border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-800' : ''}
-      ${colorScheme === 'purple' ? 'border-purple-200 bg-purple-50/50 dark:bg-purple-950/20 dark:border-purple-800' : ''}
-      ${colorScheme === 'blue' ? 'border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-800' : ''}
-    `}>
-      <CardContent className="pt-6 theme-compact-padding">
-        <div className="flex items-start gap-4">
-          <Icon className={`
-            h-8 w-8 flex-shrink-0
-            ${colorScheme === 'red' ? 'text-red-600 dark:text-red-400' : ''}
-            ${colorScheme === 'purple' ? 'text-purple-600 dark:text-purple-400' : ''}
-            ${colorScheme === 'blue' ? 'text-red-600 dark:text-red-400' : ''}
-          `} />
-          <div>
-            <h3 className={`
-              font-bold text-lg theme-responsive-text theme-text
-              ${colorScheme === 'red' ? 'text-red-800 dark:text-red-300' : ''}
-              ${colorScheme === 'purple' ? 'text-purple-800 dark:text-purple-300' : ''}
-              ${colorScheme === 'blue' ? 'text-red-800 dark:text-red-300' : ''}
-            `}>
-              {title}
-            </h3>
-            <p className={`
-              theme-text
-              ${colorScheme === 'red' ? 'text-red-700 dark:text-red-400' : ''}
-              ${colorScheme === 'purple' ? 'text-purple-700 dark:text-purple-400' : ''}
-              ${colorScheme === 'blue' ? 'text-red-700 dark:text-red-400' : ''}
-            `}>
-              {description}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  ));
-
-  // Connection status component
-  const ConnectionStatus = memo(() => (
-    <Card className={`
-      theme-card theme-shadow theme-transition mb-4
-      ${socketConnected 
-        ? 'border-green-200 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800' 
-        : 'border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800'
-      }
-    `}>
-      <CardContent className="py-4 theme-compact-padding">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {socketConnected ? (
-              <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
-            ) : (
-              <WifiOff className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            )}
-            <span className={`
-              text-sm font-medium theme-text
-              ${socketConnected 
-                ? 'text-green-700 dark:text-green-400' 
-                : 'text-amber-700 dark:text-amber-400'
-              }
-            `}>
-              {socketConnected ? 'Real-time updates active' : 'Using periodic updates'}
-            </span>
-          </div>
-          {!socketConnected && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => {
-                const socket = getSocket();
-                if (socket) {
-                  socket.connect();
-                } else {
-                  const newSocket = initializeSocket();
-                  socketRef.current = newSocket;
-                }
-              }}
-              className="text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 theme-button theme-touch-target theme-focusable theme-transition"
-            >
-              Reconnect
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  ));
-
-  // Helper function to check minimum level
-  const checkMinimumLevel = (minLevel: number): boolean => {
-    return hasMinimumLevel(user, minLevel);
-  };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-          <p className="text-muted-foreground theme-text">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const userRole = typeof user?.role === 'string' ? user.role : user?.role?.name;
 
   return (
-    <div className="flex-1 space-y-6 p-6 theme-text theme-content mx-auto">
-        {/* Header */}
-        <DashboardHeader 
-          user={user} 
-          isAuthenticated={isAuthenticated}
-          socketConnected={socketConnected}
-          refreshData={refresh}
-        />
-
-        {/* Role-specific welcome messages with live status */}
-        {isAuthenticated && user && (
-          <>
-            {(typeof user.role === 'string' ? user.role : user.role.name) === UserRole.ROOT && (
-              <Card className="mb-6 border-red-200 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/40 dark:border-red-800 theme-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="h-12 w-12 rounded-full bg-red-600 dark:bg-red-500 flex items-center justify-center">
-                        <ShieldCheck className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-xl text-red-800 dark:text-red-300">
-                          Root Access Granted
-                        </h3>
-                        <p className="text-red-700 dark:text-red-400 mt-1">
-                          You have full system access with root privileges. Use with caution.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {socketConnected ? (
-                        <Badge className="bg-green-600 text-white flex items-center gap-1">
-                          <Wifi className="h-3 w-3" />
-                          Live
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-amber-600 text-white flex items-center gap-1">
-                          <WifiOff className="h-3 w-3" />
-                          Polling
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {(typeof user.role === 'string' ? user.role : user.role.name) === UserRole.SUPER_ADMIN && (
-              <Card className="mb-6 border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950/40 dark:to-purple-900/40 dark:border-purple-800 theme-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="h-12 w-12 rounded-full bg-purple-600 dark:bg-purple-500 flex items-center justify-center">
-                        <ShieldCheck className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-xl text-purple-800 dark:text-purple-300">
-                          Super Admin Access
-                        </h3>
-                        <p className="text-purple-700 dark:text-purple-400 mt-1">
-                          Welcome to your administrative dashboard with elevated permissions.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {socketConnected ? (
-                        <Badge className="bg-green-600 text-white flex items-center gap-1">
-                          <Wifi className="h-3 w-3" />
-                          Live
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-amber-600 text-white flex items-center gap-1">
-                          <WifiOff className="h-3 w-3" />
-                          Polling
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {(typeof user.role === 'string' ? user.role : user.role.name) === UserRole.ADMIN && (
-              <Card className="mb-6 border-red-200 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-950/40 dark:to-red-900/40 dark:border-red-800 theme-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="h-12 w-12 rounded-full bg-red-600 dark:bg-red-500 flex items-center justify-center">
-                        <UserCog className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-xl text-red-800 dark:text-red-300">
-                          Admin Dashboard
-                        </h3>
-                        <p className="text-red-700 dark:text-red-400 mt-1">
-                          You have administrative access to manage business operations.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {socketConnected ? (
-                        <Badge className="bg-green-600 text-white flex items-center gap-1">
-                          <Wifi className="h-3 w-3" />
-                          Live
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-amber-600 text-white flex items-center gap-1">
-                          <WifiOff className="h-3 w-3" />
-                          Polling
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </>
-        )}
-
-        {/* Data Error Alert */}
-        {dataError && (
-          <Alert variant="destructive" className="theme-card theme-border theme-transition">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex justify-between items-center theme-text">
-              <span>{dataError}</span>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={refresh}
-                className="theme-button theme-focusable theme-transition"
-              >
-                Retry
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Login Prompt for unauthenticated users */}
-        {!isAuthenticated && (
-          <Card className="theme-card theme-shadow theme-transition">
-            <CardContent className="pt-6 text-center theme-compact-padding">
-              <h2 className="text-xl font-semibold mb-2 text-foreground theme-responsive-text theme-text">
-                Welcome to RayERP
-              </h2>
-              <p className="text-muted-foreground mb-4 theme-text">
-                Please log in to access your dashboard and view real-time data.
-              </p>
-              <Button 
-                onClick={() => router.push("/login")}
-                size="lg"
-                className="theme-button theme-touch-target theme-focusable theme-transition"
-              >
-                Login to Dashboard
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Main Dashboard Content */}
-        <Tabs defaultValue="overview" className="space-y-6 theme-transition" onValueChange={setActiveTab}>
-          <div className="overflow-x-auto pb-2">
-            <TabsList className="inline-flex w-full sm:w-auto min-w-full sm:min-w-0 theme-card theme-shadow gap-1">
-              <TabsTrigger 
-                value="overview" 
-                className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 sm:flex-none"
-              >
-                Overview
-              </TabsTrigger>
-              <TabsTrigger 
-                value="employees"
-                className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 sm:flex-none"
-              >
-                Employees
-              </TabsTrigger>
-              <TabsTrigger 
-                value="projects"
-                className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 sm:flex-none"
-              >
-                Projects
-              </TabsTrigger>
-              <TabsTrigger 
-                value="tasks"
-                className="theme-text theme-touch-target theme-focusable theme-transition theme-rounded data-[state=active]:bg-primary data-[state=active]:text-primary-foreground flex-1 sm:flex-none"
-              >
-                Tasks
-              </TabsTrigger>
-            </TabsList>
+    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-rose-50/30 to-amber-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
+        {/* Header with Role Badge */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-br from-white to-stone-50 dark:from-slate-800 dark:to-slate-800/80 rounded-3xl p-6 border border-stone-200/50 dark:border-slate-700/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.2),-4px_-4px_12px_rgba(255,255,255,0.01)]">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-rose-800 dark:text-rose-300">
+                Welcome back, {user?.name}!
+              </h1>
+              {userRole === UserRole.ROOT && (
+                <Badge className="bg-gradient-to-r from-rose-800 to-rose-900 hover:from-rose-900 hover:to-rose-950 text-white border-0 shadow-lg shadow-rose-800/30">
+                  <ShieldCheck className="h-3 w-3 mr-1" />ROOT
+                </Badge>
+              )}
+              {userRole === UserRole.SUPER_ADMIN && (
+                <Badge className="bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-800 hover:to-amber-900 text-white border-0 shadow-lg shadow-amber-700/30">
+                  <ShieldCheck className="h-3 w-3 mr-1" />SUPER ADMIN
+                </Badge>
+              )}
+              {userRole === UserRole.ADMIN && (
+                <Badge className="bg-gradient-to-r from-rose-700 to-rose-800 hover:from-rose-800 hover:to-rose-900 text-white border-0 shadow-lg shadow-rose-700/30">
+                  <UserCog className="h-3 w-3 mr-1" />ADMIN
+                </Badge>
+              )}
+            </div>
+            <p className="text-stone-600 dark:text-slate-400">Here's your business overview for today</p>
           </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={socketConnected ? "default" : "secondary"} className={`gap-1.5 px-3 py-1.5 ${socketConnected ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white border-0 shadow-lg shadow-emerald-500/30' : 'bg-stone-200 dark:bg-slate-700 text-stone-700 dark:text-slate-300'}`}>
+              {socketConnected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+              {socketConnected ? 'Live Updates' : 'Polling Mode'}
+            </Badge>
+            <Button variant="outline" size="sm" onClick={refresh} className="gap-2 border-stone-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-stone-900 dark:text-slate-200 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.8)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2),inset_-2px_-2px_4px_rgba(255,255,255,0.02)] hover:shadow-[2px_2px_6px_rgba(0,0,0,0.15),-2px_-2px_6px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-1px_-1px_3px_rgba(255,255,255,0.7)]">
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        {/* Tabs Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 h-12 bg-gradient-to-br from-stone-100 to-stone-50 dark:from-slate-800 dark:to-slate-700 p-1.5 rounded-2xl border border-stone-200/50 dark:border-slate-600/50 shadow-[inset_3px_3px_6px_rgba(0,0,0,0.1),inset_-3px_-3px_6px_rgba(255,255,255,0.9)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.3),inset_-3px_-3px_6px_rgba(255,255,255,0.02)]">
+            <TabsTrigger value="overview" className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-rose-700 data-[state=active]:to-rose-800 data-[state=active]:text-white data-[state=active]:shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] transition-all text-stone-700 dark:text-slate-300 hover:shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)]">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="employees" className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-rose-700 data-[state=active]:to-rose-800 data-[state=active]:text-white data-[state=active]:shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] transition-all text-stone-700 dark:text-slate-300 hover:shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)]">
+              Employees
+            </TabsTrigger>
+            <TabsTrigger value="projects" className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-rose-700 data-[state=active]:to-rose-800 data-[state=active]:text-white data-[state=active]:shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] transition-all text-stone-700 dark:text-slate-300 hover:shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)]">
+              Projects
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-rose-700 data-[state=active]:to-rose-800 data-[state=active]:text-white data-[state=active]:shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] transition-all text-stone-700 dark:text-slate-300 hover:shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)]">
+              Tasks
+            </TabsTrigger>
+          </TabsList>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            {/* Enhanced Analytics Section - Moved to Top */}
-            {isAuthenticated && (
-              <>
-                {/* Revenue View Toggle */}
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Financial Overview</h3>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={revenueView === 'sales' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setRevenueView('sales')}
-                    >
-                      Sales Revenue
-                    </Button>
-                    <Button
-                      variant={revenueView === 'projects' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setRevenueView('projects')}
-                    >
-                      Project Budgets
-                    </Button>
-                  </div>
-                </div>
+            {/* Quick Stats */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <StatCard title="Employees" value={stats.totalEmployees} subtitle={`${stats.activeEmployees} active`} icon={Users} trend={trends?.employees} loading={dataLoading} color="blue" />
+              <StatCard title="Projects" value={stats.totalProjects} subtitle={`${stats.completedProjects} completed`} icon={Briefcase} trend={trends?.projects} loading={dataLoading} color="purple" />
+              <StatCard title="Tasks" value={stats.totalTasks} subtitle={`${stats.completedTasks} done`} icon={CheckSquare} loading={dataLoading} color="green" />
+              <StatCard title="Progress" value={`${stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}%`} subtitle="Completion rate" icon={Target} loading={dataLoading} color="orange" />
+            </div>
 
-                {/* Financial Overview - Executive Separated View */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Financial Overview with Toggle */}
+            <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-slate-800 dark:to-slate-800/80 border border-stone-200/50 dark:border-slate-700/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.2),-4px_-4px_12px_rgba(255,255,255,0.01)]">
+              <CardHeader className="flex flex-row items-center justify-between pb-4">
+                <CardTitle className="text-lg font-semibold text-stone-900 dark:text-slate-100">Financial Overview</CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant={revenueView === 'sales' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setRevenueView('sales')}
+                    className={revenueView === 'sales' ? 'bg-gradient-to-br from-rose-700 to-rose-800 hover:from-rose-800 hover:to-rose-900 text-white shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] active:shadow-[inset_2px_2px_6px_rgba(0,0,0,0.3)]' : 'border-stone-300 dark:border-stone-700 shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15)]'}
+                  >
+                    Sales Revenue
+                  </Button>
+                  <Button
+                    variant={revenueView === 'projects' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setRevenueView('projects')}
+                    className={revenueView === 'projects' ? 'bg-gradient-to-br from-rose-700 to-rose-800 hover:from-rose-800 hover:to-rose-900 text-white shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] active:shadow-[inset_2px_2px_6px_rgba(0,0,0,0.3)]' : 'border-stone-300 dark:border-stone-700 shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15)]'}
+                  >
+                    Project Budgets
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
                   {revenueView === 'sales' ? (
                     <>
-                      <Card className="border-l-4 border-l-green-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Sales Revenue</p>
-                              <h3 className="text-xl font-bold">{formatINR(stats.salesRevenue || 0)}</h3>
-                              <p className="text-xs text-muted-foreground">
-                                {stats.salesCount || 0} invoices
-                              </p>
-                            </div>
-                            <TrendingUp className="h-8 w-8 text-green-600" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-l-4 border-l-blue-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Amount Received</p>
-                              <h3 className="text-xl font-bold text-green-600">{formatINR(stats.salesPaid || 0)}</h3>
-                              <p className="text-xs text-muted-foreground">
-                                {stats.salesRevenue > 0 ? ((stats.salesPaid/stats.salesRevenue)*100).toFixed(1) : '0'}% collected
-                              </p>
-                            </div>
-                            <Calendar className="h-8 w-8 text-blue-600" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-l-4 border-l-orange-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Pending Amount</p>
-                              <h3 className="text-xl font-bold text-orange-600">{formatINR(stats.salesPending || 0)}</h3>
-                              <p className="text-xs text-muted-foreground">
-                                {stats.salesRevenue > 0 ? ((stats.salesPending/stats.salesRevenue)*100).toFixed(1) : '0'}% pending
-                              </p>
-                            </div>
-                            <Clock className="h-8 w-8 text-orange-600" />
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <FinanceCard title="Sales Revenue" value={formatINR(stats.salesRevenue || 0)} subtitle={`${stats.salesCount || 0} invoices`} icon={TrendingUp} color="green" />
+                      <FinanceCard title="Amount Received" value={formatINR(stats.salesPaid || 0)} subtitle={`${stats.salesRevenue > 0 ? ((stats.salesPaid / stats.salesRevenue) * 100).toFixed(1) : '0'}% collected`} icon={Calendar} color="blue" />
+                      <FinanceCard title="Pending Amount" value={formatINR(stats.salesPending || 0)} subtitle={`${stats.salesRevenue > 0 ? ((stats.salesPending / stats.salesRevenue) * 100).toFixed(1) : '0'}% pending`} icon={Clock} color="orange" />
                     </>
                   ) : (
                     <>
-                      <Card className="border-l-4 border-l-purple-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Project Revenue</p>
-                              <h3 className="text-xl font-bold">{formatINR(stats.projectRevenue || 0)}</h3>
-                              <p className="text-xs text-muted-foreground">
-                                {stats.totalProjects || 0} projects
-                              </p>
-                            </div>
-                            <Briefcase className="h-8 w-8 text-purple-600" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-l-4 border-l-red-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Project Expenses</p>
-                              <h3 className="text-xl font-bold text-red-600">{formatINR(stats.projectExpenses || 0)}</h3>
-                              <p className="text-xs text-muted-foreground">
-                                Spent budget
-                              </p>
-                            </div>
-                            <TrendingDown className="h-8 w-8 text-red-600" />
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-l-4 border-l-green-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Project Profit</p>
-                              <h3 className="text-xl font-bold text-green-600">{formatINR(stats.projectProfit || 0)}</h3>
-                              <p className="text-xs text-muted-foreground">
-                                Budget - Spent
-                              </p>
-                            </div>
-                            <Target className="h-8 w-8 text-green-600" />
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <FinanceCard title="Project Revenue" value={formatINR(stats.projectRevenue || 0)} subtitle={`${stats.totalProjects || 0} projects`} icon={Briefcase} color="purple" />
+                      <FinanceCard title="Project Expenses" value={formatINR(stats.projectExpenses || 0)} subtitle="Spent budget" icon={TrendingDown} color="red" />
+                      <FinanceCard title="Project Profit" value={formatINR(stats.projectProfit || 0)} subtitle="Budget - Spent" icon={Target} color="green" />
                     </>
                   )}
                 </div>
+              </CardContent>
+            </Card>
 
-                {/* Charts Section - Compact */}
-                <Suspense fallback={<div className="h-[200px] flex items-center justify-center"><RefreshCw className="h-6 w-6 animate-spin" /></div>}>
-                  <AnalyticsCharts 
-                    monthlyRevenue={analytics.monthlyRevenue || []}
-                    taskDistribution={analytics.taskDistribution || []}
-                    teamProductivity={analytics.teamProductivity || []}
-                  />
-                </Suspense>
+            {/* Charts */}
+            <Suspense fallback={<Skeleton className="h-80 rounded-2xl" />}>
+              <AnalyticsCharts
+                monthlyRevenue={analytics.monthlyRevenue}
+                taskDistribution={analytics.taskDistribution}
+                teamProductivity={analytics.teamProductivity}
+              />
+            </Suspense>
 
-                {/* Project Progress & Team Productivity - Compact */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center"><Briefcase className="h-4 w-4 mr-2" />Active Projects</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      {analytics.projectProgress?.length > 0 ? analytics.projectProgress.map((project, index) => (
-                        <div key={index} className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium">{project.name}</span>
-                            <Badge variant="secondary" className="text-xs">{project.progress}%</Badge>
-                          </div>
-                          <Progress value={project.progress} className="h-1.5" />
-                        </div>
-                      )) : (
-                        <div className="text-center py-8">
-                          <Briefcase className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                          <p className="text-sm font-medium text-muted-foreground mb-1">No Active Projects</p>
-                          <p className="text-xs text-muted-foreground mb-4">Create your first project to get started</p>
-                          <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/projects/create')}>
-                            Create Project
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                </div>
-
-                {/* Recent Activity - Compact */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm flex items-center"><Clock className="h-4 w-4 mr-2" />Recent Activity</CardTitle>
-                      <span className="text-xs text-muted-foreground">Live updates</span>
+            {/* Projects & Activity */}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-slate-800 dark:to-slate-800/80 border border-stone-200/50 dark:border-slate-700/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.2),-4px_-4px_12px_rgba(255,255,255,0.01)]">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base flex items-center gap-2 font-semibold text-stone-900 dark:text-slate-100">
+                    <Briefcase className="h-5 w-5 text-rose-700 dark:text-rose-300" />
+                    Active Projects
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {analytics.projectProgress?.length > 0 ? analytics.projectProgress.slice(0, 5).map((project, i) => (
+                    <div key={i} className="space-y-2 p-3 rounded-xl bg-gradient-to-br from-stone-50 to-white dark:from-slate-700 dark:to-slate-700/80 hover:from-stone-100 hover:to-stone-50 dark:hover:from-slate-600 dark:hover:to-slate-600/80 transition-all border border-stone-200/50 dark:border-slate-600/50 shadow-[3px_3px_6px_rgba(0,0,0,0.08),-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[3px_3px_6px_rgba(0,0,0,0.2),-2px_-2px_4px_rgba(255,255,255,0.02)]">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-sm truncate text-stone-700 dark:text-slate-200">{project.name}</span>
+                        <Badge className="bg-gradient-to-br from-rose-700 to-rose-800 text-white shadow-[2px_2px_4px_rgba(136,19,55,0.3)]">{project.progress}%</Badge>
+                      </div>
+                      <Progress value={project.progress} className="h-2" />
                     </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    {analytics.recentActivity?.length > 0 ? (
-                      <div className="space-y-2">
-                        {analytics.recentActivity.map((activity) => (
-                          <div key={activity.id} className="flex items-center space-x-3 py-2 border-b last:border-0">
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                              {activity.type === 'project' && <Briefcase className="h-4 w-4 text-primary" />}
-                              {activity.type === 'task' && <CheckSquare className="h-4 w-4 text-primary" />}
-                              {activity.type === 'employee' && <Users className="h-4 w-4 text-primary" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">{activity.description}</p>
-                              <p className="text-xs text-muted-foreground">{activity.time}</p>
-                            </div>
+                  )) : (
+                    <div className="text-center py-12">
+                      <Briefcase className="h-16 w-16 mx-auto mb-4 text-stone-300 dark:text-stone-700" />
+                      <p className="text-sm font-medium text-stone-600 dark:text-stone-400 mb-2">No active projects</p>
+                      <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/projects/create')} className="border-stone-300 dark:border-stone-700">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Project
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-slate-800 dark:to-slate-800/80 border border-stone-200/50 dark:border-slate-700/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.2),-4px_-4px_12px_rgba(255,255,255,0.01)]">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base flex items-center gap-2 font-semibold text-stone-900 dark:text-slate-100">
+                    <Activity className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+                    Recent Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {analytics.recentActivity?.length > 0 ? (
+                    <div className="space-y-2">
+                      {analytics.recentActivity.slice(0, 5).map((activity) => (
+                        <div key={activity.id} className="flex gap-3 p-3 rounded-xl bg-gradient-to-br from-stone-50 to-white dark:from-slate-700 dark:to-slate-700/80 hover:from-stone-100 hover:to-stone-50 dark:hover:from-slate-600 dark:hover:to-slate-600/80 transition-all border border-stone-200/50 dark:border-slate-600/50 shadow-[3px_3px_6px_rgba(0,0,0,0.08),-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[3px_3px_6px_rgba(0,0,0,0.2),-2px_-2px_4px_rgba(255,255,255,0.02)]">
+                          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-rose-100 to-rose-50 dark:from-rose-900/30 dark:to-rose-800/30 flex items-center justify-center flex-shrink-0 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.8)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2),inset_-1px_-1px_2px_rgba(255,255,255,0.02)]">
+                            {activity.type === 'project' && <Briefcase className="h-4 w-4 text-rose-700 dark:text-rose-300" />}
+                            {activity.type === 'task' && <CheckSquare className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />}
+                            {activity.type === 'employee' && <Users className="h-4 w-4 text-amber-600 dark:text-amber-300" />}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Activity className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                        <p className="text-sm font-medium text-muted-foreground mb-1">No Recent Activity</p>
-                        <p className="text-xs text-muted-foreground mb-4">Activity will appear here as it happens</p>
-                        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                          <RefreshCw className="h-3 w-3 mr-2" />
-                          Refresh
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </>
-            )}
-
-            <StatsCards 
-              stats={stats}
-              trends={trends ? { employees: trends.employees, projects: trends.projects } : undefined}
-              isAuthenticated={isAuthenticated} 
-              loading={dataLoading}
-              router={router}
-            />
-
-            {isAuthenticated && (
-              <>
-              </>
-            )}
-
-            <QuickActions 
-              isAuthenticated={isAuthenticated} 
-              router={router} 
-            />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate text-stone-700 dark:text-slate-200">{activity.description}</p>
+                            <p className="text-xs text-stone-500 dark:text-slate-400">{activity.time}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Activity className="h-16 w-16 mx-auto mb-4 text-stone-300 dark:text-stone-700" />
+                      <p className="text-sm text-stone-600 dark:text-stone-400">No recent activity</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Employees Tab */}
-          <TabsContent value="employees" className="space-y-4">
-            {isAuthenticated ? (
-              <EmployeeSection router={router} />
-            ) : (
-              <Card className="theme-card theme-shadow theme-transition">
-                <CardContent className="p-8 text-center theme-compact-padding">
-                  <Users className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                    Employee Management
-                  </h3>
-                  <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                    Please log in to access employee management features.
-                  </p>
-                  <Button 
-                    onClick={() => router.push("/login")}
-                    variant="outline"
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
-                  >
-                    Login Required
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+          <TabsContent value="employees">
+            <EmployeeSection router={router} />
           </TabsContent>
 
           {/* Projects Tab */}
-          <TabsContent value="projects" className="space-y-4">
-            {isAuthenticated ? (
-              <ProjectSection router={router} />
-            ) : (
-              <Card className="theme-card theme-shadow theme-transition">
-                <CardContent className="p-8 text-center theme-compact-padding">
-                  <Briefcase className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                    Project Management
-                  </h3>
-                  <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                    Please log in to access project management features.
-                  </p>
-                  <Button 
-                    onClick={() => router.push("/login")}
-                    variant="outline"
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
-                  >
-                    Login Required
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+          <TabsContent value="projects">
+            <ProjectSection router={router} />
           </TabsContent>
 
           {/* Tasks Tab */}
-          <TabsContent value="tasks" className="space-y-4">
-            {isAuthenticated ? (
-              <TaskSection router={router} />
-            ) : (
-              <Card className="theme-card theme-shadow theme-transition">
-                <CardContent className="p-8 text-center theme-compact-padding">
-                  <CheckSquare className="h-20 w-20 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-xl font-medium mb-2 text-foreground theme-responsive-text theme-text">
-                    Task Management
-                  </h3>
-                  <p className="text-muted-foreground mb-6 theme-text max-w-md mx-auto">
-                    Please log in to access task management features.
-                  </p>
-                  <Button 
-                    onClick={() => router.push("/login")}
-                    variant="outline"
-                    size="lg"
-                    className="theme-button theme-touch-target theme-focusable theme-transition"
-                  >
-                    Login Required
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+          <TabsContent value="tasks">
+            <TaskSection router={router} />
           </TabsContent>
-
         </Tabs>
+      </div>
     </div>
   );
 };
 
-// Task Section Component
-const TaskSection = ({ router }: { router: any }) => {
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const data = await tasksAPI.getAll();
-        setTasks((data.data || data).slice(0, 6));
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTasks();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-8 w-16" />
-                  </div>
-                  <Skeleton className="h-8 w-8 rounded" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b">
-                  <Skeleton className="h-10 w-10 rounded" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const completedTasks = tasks.filter(t => t.status === 'completed').length;
-  const inProgressTasks = tasks.filter(t => t.status === 'in-progress').length;
-  const pendingTasks = tasks.filter(t => t.status === 'pending').length;
+const StatCard = memo(({ title, value, subtitle, icon: Icon, trend, loading, color }: any) => {
+  const colorClasses = {
+    blue: 'border-rose-200/50 dark:border-rose-700/50 from-rose-50 to-white dark:from-slate-800 dark:to-slate-700',
+    purple: 'border-amber-200/50 dark:border-amber-700/50 from-amber-50 to-white dark:from-slate-800 dark:to-slate-700',
+    green: 'border-emerald-200/50 dark:border-emerald-700/50 from-emerald-50 to-white dark:from-slate-800 dark:to-slate-700',
+    orange: 'border-orange-200/50 dark:border-orange-700/50 from-orange-50 to-white dark:from-slate-800 dark:to-slate-700'
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Task Overview</h2>
-        <Button onClick={() => router.push("/dashboard/tasks")}>
-          View All Tasks
-        </Button>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Tasks</p>
-                <h3 className="text-2xl font-bold">{tasks.length}</h3>
-              </div>
-              <CheckSquare className="h-8 w-8 text-red-600" />
+    <Card className={`bg-gradient-to-br ${colorClasses[color]} border ${colorClasses[color].split(' ')[0]} shadow-[6px_6px_12px_rgba(0,0,0,0.1),-3px_-3px_8px_rgba(255,255,255,0.9)] dark:shadow-[6px_6px_12px_rgba(0,0,0,0.2),-3px_-3px_8px_rgba(255,255,255,0.01)] hover:shadow-[8px_8px_16px_rgba(0,0,0,0.15),-4px_-4px_10px_rgba(255,255,255,1)] dark:hover:shadow-[8px_8px_16px_rgba(0,0,0,0.25),-4px_-4px_10px_rgba(255,255,255,0.02)] transition-all duration-300 hover:-translate-y-1`}>
+      <CardContent className="p-6">
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-start mb-3">
+              <p className="text-sm font-medium text-stone-600 dark:text-slate-400">{title}</p>
+              <Icon className="h-5 w-5 text-stone-500 dark:text-slate-400" />
             </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Completed</p>
-                <h3 className="text-2xl font-bold">{completedTasks}</h3>
-              </div>
-              <Activity className="h-8 w-8 text-green-600" />
+            <h3 className="text-3xl font-bold mb-2 text-stone-900 dark:text-slate-100">{value}</h3>
+            <div className="flex items-center gap-2">
+              {trend && (
+                <Badge className={`text-xs gap-1 ${trend.direction === 'up' ? 'bg-emerald-600 text-white' : 'bg-stone-400 dark:bg-stone-600 text-white'}`}>
+                  <ArrowUpRight className={`h-3 w-3 ${trend.direction === 'down' ? 'rotate-90' : ''}`} />
+                  {trend.value}%
+                </Badge>
+              )}
+              <p className="text-xs text-stone-600 dark:text-slate-400">{subtitle}</p>
             </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">In Progress</p>
-                <h3 className="text-2xl font-bold">{inProgressTasks}</h3>
-              </div>
-              <Clock className="h-8 w-8 text-orange-600" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Tasks</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<RefreshCw className="h-6 w-6 animate-spin mx-auto" />}>
-            <TaskList 
-              tasks={tasks}
-              onView={(id) => router.push(`/dashboard/tasks/${id}`)}
-            />
-          </Suspense>
-        </CardContent>
-      </Card>
-    </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
-};
+});
+StatCard.displayName = 'StatCard';
 
-// Project Section Component
-const ProjectSection = ({ router }: { router: any }) => {
-  const [projects, setProjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+const FinanceCard = memo(({ title, value, subtitle, icon: Icon, color }: any) => {
+  const colorClasses = {
+    green: 'border-l-emerald-500 from-emerald-50 via-emerald-50/50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-700',
+    blue: 'border-l-rose-700 from-rose-50 via-rose-50/50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-700',
+    orange: 'border-l-orange-500 from-orange-50 via-orange-50/50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-700',
+    purple: 'border-l-amber-600 from-amber-50 via-amber-50/50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-700',
+    red: 'border-l-rose-800 from-rose-50 via-rose-50/50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-700'
+  };
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const data = await projectsAPI.getAll();
-        setProjects((data.data || data).slice(0, 6));
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProjects();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-8 w-16" />
-                  </div>
-                  <Skeleton className="h-8 w-8 rounded" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b">
-                  <Skeleton className="h-10 w-10 rounded" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const activeProjects = projects.filter(p => p.status === 'active').length;
-  const completedProjects = projects.filter(p => p.status === 'completed').length;
-  const avgProgress = projects.length > 0 
-    ? Math.round(projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length)
-    : 0;
+  const iconColors = {
+    green: 'text-emerald-600 dark:text-emerald-300',
+    blue: 'text-rose-700 dark:text-rose-300',
+    orange: 'text-orange-600 dark:text-orange-300',
+    purple: 'text-amber-600 dark:text-amber-300',
+    red: 'text-rose-800 dark:text-rose-300'
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Project Overview</h2>
-        <Button onClick={() => router.push("/dashboard/projects")}>
-          View All Projects
-        </Button>
+    <div className={`border-l-4 rounded-xl p-5 bg-gradient-to-br ${colorClasses[color]} shadow-[6px_6px_12px_rgba(0,0,0,0.1),-3px_-3px_8px_rgba(255,255,255,0.9)] dark:shadow-[6px_6px_12px_rgba(0,0,0,0.2),-3px_-3px_8px_rgba(255,255,255,0.01)] hover:shadow-[8px_8px_16px_rgba(0,0,0,0.15),-4px_-4px_10px_rgba(255,255,255,1)] dark:hover:shadow-[8px_8px_16px_rgba(0,0,0,0.25),-4px_-4px_10px_rgba(255,255,255,0.02)] transition-all duration-300`}>
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="text-xs font-medium text-stone-600 dark:text-slate-400 mb-2">{title}</p>
+          <h3 className="text-2xl font-bold mb-1 text-stone-900 dark:text-slate-100">{value}</h3>
+          <p className="text-xs text-stone-600 dark:text-slate-400">{subtitle}</p>
+        </div>
+        <Icon className={`h-9 w-9 ${iconColors[color]}`} />
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Projects</p>
-                <h3 className="text-2xl font-bold">{projects.length}</h3>
-              </div>
-              <Briefcase className="h-8 w-8 text-red-600" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active</p>
-                <h3 className="text-2xl font-bold">{activeProjects}</h3>
-              </div>
-              <Activity className="h-8 w-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Avg Progress</p>
-                <h3 className="text-2xl font-bold">{avgProgress}%</h3>
-              </div>
-              <Target className="h-8 w-8 text-purple-600" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Projects</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<RefreshCw className="h-6 w-6 animate-spin mx-auto" />}>
-            <ProjectList 
-              projects={projects}
-              onView={(id) => router.push(`/dashboard/projects/${id}`)}
-              onEdit={(id) => router.push(`/dashboard/projects/${id}/edit`)}
-            />
-          </Suspense>
-        </CardContent>
-      </Card>
     </div>
   );
-};
+});
+FinanceCard.displayName = 'FinanceCard';
 
-// Employee Section Component
 const EmployeeSection = ({ router }: { router: any }) => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1121,9 +377,9 @@ const EmployeeSection = ({ router }: { router: any }) => {
     const fetchEmployees = async () => {
       try {
         const data = await employeesAPI.getAll();
-        setEmployees((data.data || data).slice(0, 6));
+        setEmployees((data.data || data).slice(0, 10));
       } catch (error) {
-        console.error("Error fetching employees:", error);
+        console.error("Error:", error);
       } finally {
         setLoading(false);
       }
@@ -1131,115 +387,222 @@ const EmployeeSection = ({ router }: { router: any }) => {
     fetchEmployees();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-8 w-16" />
-                  </div>
-                  <Skeleton className="h-8 w-8 rounded" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b">
-                  <Skeleton className="h-10 w-10 rounded" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  if (loading) return <Skeleton className="h-96 rounded-2xl" />;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Employee Overview</h2>
+        <h2 className="text-2xl font-bold">Employee Management</h2>
         <Button onClick={() => router.push("/dashboard/employees")}>
           View All Employees
         </Button>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Employees</p>
-                <h3 className="text-2xl font-bold">{employees.length}</h3>
+                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Total</p>
+                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{employees.length}</h3>
               </div>
-              <Users className="h-8 w-8 text-red-600" />
+              <Users className="h-10 w-10 text-rose-700 dark:text-rose-400" />
             </div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardContent className="p-4">
+        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Active</p>
-                <h3 className="text-2xl font-bold">{employees.filter(e => e.status === 'active').length}</h3>
+                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Active</p>
+                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{employees.filter(e => e.status === 'active').length}</h3>
               </div>
-              <Activity className="h-8 w-8 text-green-600" />
+              <Activity className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
             </div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardContent className="p-4">
+        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Departments</p>
-                <h3 className="text-2xl font-bold">
-                  {new Set(
-                    employees.flatMap(e => 
-                      e.departments && e.departments.length > 0 
-                        ? e.departments 
-                        : e.department ? [e.department] : []
-                    )
-                  ).size}
+                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Departments</p>
+                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">
+                  {new Set(employees.flatMap(e => e.departments?.length > 0 ? e.departments : e.department ? [e.department] : [])).size}
                 </h3>
               </div>
-              <Briefcase className="h-8 w-8 text-purple-600" />
+              <Briefcase className="h-10 w-10 text-amber-600 dark:text-amber-400" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
+      <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
         <CardHeader>
-          <CardTitle>Recent Employees</CardTitle>
+          <CardTitle className="font-semibold text-stone-900 dark:text-white">Recent Employees</CardTitle>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<RefreshCw className="h-6 w-6 animate-spin mx-auto" />}>
-            <EmployeeList 
-              employees={employees}
-              onEdit={(id) => router.push(`/dashboard/employees/${id}/edit`)}
-            />
+          <Suspense fallback={<Skeleton className="h-64" />}>
+            <EmployeeList employees={employees} onEdit={(id) => router.push(`/dashboard/employees/${id}/edit`)} />
+          </Suspense>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const ProjectSection = ({ router }: { router: any }) => {
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const data = await projectsAPI.getAll();
+        setProjects((data.data || data).slice(0, 10));
+      } catch (error) {
+        console.error("Error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProjects();
+  }, []);
+
+  if (loading) return <Skeleton className="h-96 rounded-2xl" />;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Project Management</h2>
+        <Button onClick={() => router.push("/dashboard/projects")}>
+          View All Projects
+        </Button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Total</p>
+                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{projects.length}</h3>
+              </div>
+              <Briefcase className="h-10 w-10 text-rose-700 dark:text-rose-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Active</p>
+                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{projects.filter(p => p.status === 'active').length}</h3>
+              </div>
+              <Activity className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Avg Progress</p>
+                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">
+                  {projects.length > 0 ? Math.round(projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length) : 0}%
+                </h3>
+              </div>
+              <Target className="h-10 w-10 text-amber-600 dark:text-amber-400" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+        <CardHeader>
+          <CardTitle className="font-semibold text-stone-900 dark:text-white">Recent Projects</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={<Skeleton className="h-64" />}>
+            <ProjectList projects={projects} onView={(id) => router.push(`/dashboard/projects/${id}`)} onEdit={(id) => router.push(`/dashboard/projects/${id}/edit`)} />
+          </Suspense>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const TaskSection = ({ router }: { router: any }) => {
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const data = await tasksAPI.getAll();
+        setTasks((data.data || data).slice(0, 10));
+      } catch (error) {
+        console.error("Error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, []);
+
+  if (loading) return <Skeleton className="h-96 rounded-2xl" />;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Task Management</h2>
+        <Button onClick={() => router.push("/dashboard/tasks")}>
+          View All Tasks
+        </Button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Total</p>
+                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{tasks.length}</h3>
+              </div>
+              <CheckSquare className="h-10 w-10 text-rose-700 dark:text-rose-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Completed</p>
+                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{tasks.filter(t => t.status === 'completed').length}</h3>
+              </div>
+              <Activity className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">In Progress</p>
+                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{tasks.filter(t => t.status === 'in-progress').length}</h3>
+              </div>
+              <Clock className="h-10 w-10 text-amber-600 dark:text-amber-400" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+        <CardHeader>
+          <CardTitle className="font-semibold text-stone-900 dark:text-white">Recent Tasks</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={<Skeleton className="h-64" />}>
+            <TaskList tasks={tasks} onView={(id) => router.push(`/dashboard/tasks/${id}`)} />
           </Suspense>
         </CardContent>
       </Card>

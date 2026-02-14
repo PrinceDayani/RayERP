@@ -4,31 +4,35 @@ import { Suspense, lazy, memo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const UserDashboard = lazy(() => import('@/components/admin/UserDashboard').then(m => ({ default: m.default })));
 
-// Loading component for the dashboard - Memoized
 const DashboardLoader = memo(() => (
-  <div className="flex items-center justify-center min-h-[60vh]">
-    <LoadingSpinner 
-      size="lg" 
-      text="Loading dashboard..." 
-      variant="default"
-    />
+  <div className="space-y-4 p-6">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="rounded-lg border bg-card p-4">
+          <Skeleton className="h-4 w-24 mb-3" />
+          <Skeleton className="h-8 w-16 mb-2" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+      ))}
+    </div>
+    <div className="grid gap-4 md:grid-cols-2">
+      <Skeleton className="h-64 rounded-lg" />
+      <Skeleton className="h-64 rounded-lg" />
+    </div>
   </div>
 ));
 DashboardLoader.displayName = 'DashboardLoader';
 
-// Error fallback for dashboard - Memoized
 const DashboardError = memo(() => (
   <div className="flex items-center justify-center min-h-[60vh]">
     <div className="text-center space-y-4">
-      <h2 className="text-xl font-semibold text-foreground">Dashboard Unavailable</h2>
-      <p className="text-muted-foreground">
-        Having trouble loading dashboard. Please refresh.
-      </p>
+      <h2 className="text-xl font-semibold">Dashboard Unavailable</h2>
+      <p className="text-muted-foreground">Please refresh the page.</p>
     </div>
   </div>
 ));
@@ -39,9 +43,7 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.replace('/login');
-    }
+    if (!loading && !isAuthenticated) router.replace('/login');
   }, [isAuthenticated, loading, router]);
 
   if (loading) return <DashboardLoader />;
@@ -49,41 +51,9 @@ export default function Dashboard() {
 
   return (
     <ErrorBoundary fallback={<DashboardError />}>
-      <div className="space-y-6">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-xl p-6 border border-primary/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                Welcome back, {user.name}!
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Here's what's happening with your business today.
-              </p>
-            </div>
-            <div className="hidden sm:block">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">
-                  {new Date().toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Role: {typeof user.role === 'string' ? user.role : user.role?.name || 'User'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Dashboard Content */}
-        <Suspense fallback={<DashboardLoader />}>
-          <UserDashboard />
-        </Suspense>
-      </div>
+      <Suspense fallback={<DashboardLoader />}>
+        <UserDashboard />
+      </Suspense>
     </ErrorBoundary>
   );
 }
