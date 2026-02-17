@@ -431,104 +431,85 @@ function ActivityPageContent() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6 space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full"></div>
-            <div className="relative p-3 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg">
-              <ActivityIcon className="h-7 w-7 text-white" />
-            </div>
-          </div>
-          <div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card rounded-lg p-6 border border-border">
+          <div className="space-y-1">
             <h1 className="text-3xl font-bold text-foreground">Activity Feed</h1>
-            <p className="text-muted-foreground mt-1">Monitor all activities across your organization</p>
+            <p className="text-muted-foreground">Monitor all activities across your organization</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowCharts(!showCharts)} className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              {showCharts ? 'Hide' : 'Show'} Charts
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('csv')} className="gap-2">
+              <Download className="h-4 w-4" />
+              CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('excel')} className="gap-2">
+              <Download className="h-4 w-4" />
+              Excel
+            </Button>
+            <Button size="sm" onClick={fetchActivities} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowCharts(!showCharts)}>
-            <BarChart3 className="h-4 w-4 mr-2" />
-            {showCharts ? 'Hide' : 'Show'} Charts
-          </Button>
-          <Button variant="outline" onClick={() => handleExport('csv')}>
-            <Download className="h-4 w-4 mr-2" />
-            CSV
-          </Button>
-          <Button variant="outline" onClick={() => handleExport('excel')}>
-            <Download className="h-4 w-4 mr-2" />
-            Excel
-          </Button>
-          <Button onClick={fetchActivities} className="bg-primary hover:bg-primary/90 shadow-lg">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
-      </div>
 
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-primary/10 via-primary/5 to-background hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Total Activities</p>
-                  <p className="text-3xl font-bold text-primary">{stats.totalActivities}</p>
+        {/* Stats Cards */}
+        {stats && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="bg-card border border-border hover:border-primary/50 transition-colors">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-3">
+                  <p className="text-sm font-medium text-muted-foreground">Total Activities</p>
+                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <TrendingUp className="h-6 w-6 text-primary" />
+                <h3 className="text-3xl font-bold mb-2 text-foreground">{stats.totalActivities}</h3>
+                <p className="text-xs text-muted-foreground">All time</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border border-border hover:border-primary/50 transition-colors">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-3">
+                  <p className="text-sm font-medium text-muted-foreground">Today</p>
+                  <Clock className="h-5 w-5 text-muted-foreground" />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-primary/10 via-primary/5 to-background hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Today</p>
-                  <p className="text-3xl font-bold text-primary">{stats.todayActivities}</p>
+                <h3 className="text-3xl font-bold mb-2 text-foreground">{stats.todayActivities}</h3>
+                <p className="text-xs text-muted-foreground">Last 24 hours</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border border-border hover:border-primary/50 transition-colors">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-3">
+                  <p className="text-sm font-medium text-muted-foreground">This Week</p>
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <Clock className="h-6 w-6 text-primary" />
+                <h3 className="text-3xl font-bold mb-2 text-foreground">{stats.weekActivities}</h3>
+                <p className="text-xs text-muted-foreground">Last 7 days</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border border-border hover:border-primary/50 transition-colors">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-3">
+                  <p className="text-sm font-medium text-muted-foreground">This Month</p>
+                  <ActivityIcon className="h-5 w-5 text-muted-foreground" />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-primary/10 via-primary/5 to-background hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">This Week</p>
-                  <p className="text-3xl font-bold text-primary">{stats.weekActivities}</p>
-                </div>
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <Calendar className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-primary/10 via-primary/5 to-background hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">This Month</p>
-                  <p className="text-3xl font-bold text-primary">{stats.monthActivities}</p>
-                </div>
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <ActivityIcon className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+                <h3 className="text-3xl font-bold mb-2 text-foreground">{stats.monthActivities}</h3>
+                <p className="text-xs text-muted-foreground">Last 30 days</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-      {/* Analytics Charts */}
-      {showCharts && stats && <ActivityCharts stats={stats} />}
+        {/* Analytics Charts */}
+        {showCharts && stats && <ActivityCharts stats={stats} />}
 
-      {/* Filters Section */}
-      <Card className="border-0 shadow-lg">
+        {/* Filters Section */}
+        <Card className="bg-card border border-border">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -675,8 +656,8 @@ function ActivityPageContent() {
         </CardContent>
       </Card>
 
-      {error ? (
-        <Card className="border-0 shadow-lg">
+        {error ? (
+          <Card className="bg-card border border-border">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="p-4 bg-destructive/10 rounded-full mb-4">
               <X className="h-8 w-8 text-destructive" />
@@ -689,14 +670,14 @@ function ActivityPageContent() {
             </Button>
           </CardContent>
         </Card>
-      ) : loading ? (
-        <Card className="border-0 shadow-lg">
+        ) : loading ? (
+          <Card className="bg-card border border-border">
           <CardContent className="flex justify-center items-center py-16">
             <SectionLoader text="Loading activities..." />
           </CardContent>
         </Card>
-      ) : activities.length === 0 ? (
-        <Card className="border-0 shadow-lg">
+        ) : activities.length === 0 ? (
+          <Card className="bg-card border border-border">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="p-4 bg-muted rounded-full mb-4">
               <Clock className="h-8 w-8 text-muted-foreground" />
@@ -705,12 +686,12 @@ function ActivityPageContent() {
             <p className="text-sm text-muted-foreground">Try adjusting your filters</p>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          {activities.map((activity) => (
-            <Card 
-              key={activity._id} 
-              className="border-0 shadow-md hover:shadow-xl transition-all duration-300 group overflow-hidden touch-manipulation active:scale-[0.98]"
+        ) : (
+          <div className="space-y-4">
+            {activities.map((activity) => (
+              <Card 
+                key={activity._id} 
+                className="bg-card border border-border hover:border-primary/50 transition-colors group overflow-hidden"
               tabIndex={0}
               role="article"
               aria-label={`Activity: ${activity.userName} ${activity.action}d ${activity.resource}`}
@@ -721,10 +702,10 @@ function ActivityPageContent() {
                 }
               }}
             >
-              <CardContent className="p-6 relative">
+                <CardContent className="p-6">
                 <div className="flex gap-4">
                   <div className="relative flex-shrink-0">
-                    <div className={`w-12 h-12 rounded-xl ${getActionColor(activity.action)} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}>
+                    <div className={`w-12 h-12 rounded-xl ${getActionColor(activity.action)} flex items-center justify-center text-white`}>
                       {getActionIcon(activity.action, activity.resourceType)}
                     </div>
                     <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-background rounded-full flex items-center justify-center">
@@ -780,7 +761,7 @@ function ActivityPageContent() {
                           variant="ghost"
                           size="sm"
                           onClick={() => fetchActivityDetails(activity._id)}
-                          className="text-xs h-8 px-3 hover:bg-primary/10 hover:text-primary"
+                          className="text-xs h-8 px-3"
                           aria-label="View activity details"
                         >
                           <Eye className="h-3 w-3 mr-1" />
@@ -791,43 +772,41 @@ function ActivityPageContent() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              </Card>
+            ))}
+          </div>
+        )}
 
-      {totalPages > 1 && (
-        <Card className="border-0 shadow-lg">
+        {totalPages > 1 && (
+          <Card className="bg-card border border-border">
           <CardContent className="p-4">
             <div className="flex items-center justify-center gap-2">
               <Button
                 variant="outline"
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="disabled:opacity-50"
               >
                 Previous
               </Button>
-              <div className="px-4 py-2 bg-primary/10 rounded-lg">
+              <div className="px-4 py-2 bg-muted rounded-lg">
                 <span className="text-sm font-medium">
-                  Page <span className="text-primary font-bold">{page}</span> of {totalPages}
+                  Page <span className="font-bold">{page}</span> of {totalPages}
                 </span>
               </div>
               <Button
                 variant="outline"
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="disabled:opacity-50"
               >
                 Next
               </Button>
             </div>
           </CardContent>
-        </Card>
-      )}
+          </Card>
+        )}
 
-      {/* Activity Detail Modal */}
-      {showDetailModal && selectedActivity && (
+        {/* Activity Detail Modal */}
+        {showDetailModal && selectedActivity && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           role="dialog"
@@ -1054,9 +1033,10 @@ function ActivityPageContent() {
                 </Button>
               </div>
             </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

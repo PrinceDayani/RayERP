@@ -40,115 +40,50 @@
 
 @layer base {
   :root {
-    /* Enhanced Base theme colors with brand #970E2C */
     --background: 0 0% 100%;
-    --foreground: 220 13% 18%;
+    --foreground: 0 0% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 220 13% 18%;
+    --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 13% 18%;
+    --popover-foreground: 0 0% 10%;
     --primary: 348 83% 32%;
-    /* Brand color #970E2C */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 98%;
-    --secondary-foreground: 220 13% 18%;
-    --muted: 210 40% 98%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 98%;
-    --accent-foreground: 220 13% 18%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 10%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
     --ring: 348 83% 32%;
-    /* Brand color for focus rings */
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Enhanced gradient colors */
-    --gradient-primary: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(348 83% 47%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(210 40% 98%) 0%, hsl(220 13% 95%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(158 64% 52%) 100%);
-    --gradient-warning: linear-gradient(135deg, hsl(32 95% 44%) 0%, hsl(45 93% 47%) 100%);
-    --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(348 83% 47%) 100%);
 
-    /* ERP Theme Variables */
-    --bg-primary: 0 0% 100%;
-    --bg-secondary: 0 0% 97%;
-    --bg-sidebar: 0 0% 98%;
-    --bg-navbar: 0 0% 98%;
-    --bg-table-even: 0 0% 95%;
-    --bg-table-odd: 0 0% 100%;
-    --bg-active: 348 83% 95%;
-
-    --text-primary: 0 0% 10%;
-    --text-secondary: 0 0% 45%;
-    --text-heading: 0 0% 0%;
-    --text-active: 348 83% 32%;
-
-    --success: 142 76% 36%;
-    --success-bg: 142 76% 95%;
-    --warning: 32 95% 44%;
-    --warning-bg: 32 95% 95%;
-    --danger: 0 84% 60%;
-    --danger-bg: 0 84% 95%;
-
-    --shadow-light: 0 0% 0% / 0.1;
-    --shadow-medium: 0 0% 0% / 0.15;
   }
 
   .dark {
-    --background: 222 84% 4%;
-    --foreground: 210 40% 98%;
-    --card: 222 84% 6%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 84% 6%;
-    --popover-foreground: 210 40% 98%;
+    --background: 0 0% 9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
     --primary: 348 83% 45%;
-    /* Brand color adjusted for dark theme */
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 32% 15%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 32% 15%;
-    --muted-foreground: 215 20% 70%;
-    --accent: 217 32% 15%;
-    --accent-foreground: 210 40% 98%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 62% 50%;
-    --destructive-foreground: 0 85% 97%;
-    --border: 217 32% 20%;
-    --input: 217 32% 15%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 18%;
     --ring: 348 83% 45%;
-    /* Brand color for focus rings in dark theme */
-
-    /* Enhanced dark gradient colors */
-    --gradient-primary: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(348 83% 47%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(217 32% 17%) 0%, hsl(222 84% 5%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(158 64% 52%) 100%);
-    --gradient-warning: linear-gradient(135deg, hsl(32 95% 44%) 0%, hsl(45 93% 47%) 100%);
-    --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(348 83% 47%) 100%);
-
-    /* ERP Dark Theme Variables */
-    --bg-primary: 222 84% 4%;
-    --bg-secondary: 217 32% 8%;
-    --bg-sidebar: 222 84% 5%;
-    --bg-navbar: 222 84% 5%;
-    --bg-table-even: 217 32% 10%;
-    --bg-table-odd: 217 32% 12%;
-    --bg-active: 348 83% 15%;
-
-    --text-primary: 210 40% 95%;
-    --text-secondary: 215 20% 70%;
-    --text-heading: 210 40% 98%;
-    --text-active: 348 83% 45%;
-
-    --success: 142 76% 50%;
-    --success-bg: 142 76% 12%;
-    --warning: 32 95% 55%;
-    --warning-bg: 32 95% 12%;
-    --danger: 0 84% 60%;
-    --danger-bg: 0 84% 12%;
-
-    --shadow-light: 0 0% 0% / 0.4;
-    --shadow-medium: 0 0% 0% / 0.6;
   }
 }
 
@@ -178,313 +113,37 @@
 }
 
 @layer utilities {
-
-  /* Theme utility classes */
-  .bg-theme-primary {
-    background-color: hsl(var(--bg-primary));
-  }
-
-  .bg-theme-secondary {
-    background-color: hsl(var(--bg-secondary));
-  }
-
-  .bg-theme-sidebar {
-    background-color: hsl(var(--bg-sidebar));
-  }
-
-  .bg-theme-navbar {
-    background-color: hsl(var(--bg-navbar));
-  }
-
-  .bg-theme-active {
-    background-color: hsl(var(--bg-active));
-  }
-
-  .text-theme-primary {
-    color: hsl(var(--text-primary));
-  }
-
-  .text-theme-secondary {
-    color: hsl(var(--text-secondary));
-  }
-
-  .text-theme-heading {
-    color: hsl(var(--text-heading));
-  }
-
-  .text-theme-active {
-    color: hsl(var(--text-active));
-  }
-
-  .text-theme-success {
-    color: hsl(var(--success));
-  }
-
-  .bg-theme-success {
-    background-color: hsl(var(--success-bg));
-  }
-
-  .text-theme-warning {
-    color: hsl(var(--warning));
-  }
-
-  .bg-theme-warning {
-    background-color: hsl(var(--warning-bg));
-  }
-
-  .text-theme-danger {
-    color: hsl(var(--danger));
-  }
-
-  .bg-theme-danger {
-    background-color: hsl(var(--danger-bg));
-  }
-
-  .shadow-theme-light {
-    box-shadow: 0 1px 3px 0 hsl(var(--shadow-light)), 0 1px 2px 0 hsl(var(--shadow-light));
-  }
-
-  .shadow-theme-medium {
-    box-shadow: 0 4px 6px -1px hsl(var(--shadow-medium)), 0 2px 4px -1px hsl(var(--shadow-medium));
-  }
-
-  /* Essential UI Utilities */
-  .glass-effect {
-    @apply bg-background/80 backdrop-blur-md border border-border/50;
-  }
-
-  .gradient-primary {
-    @apply bg-gradient-to-r from-primary to-primary/80;
-  }
-
-  .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
-  }
-
-  /* Essential Button Styles */
-  .btn-primary {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90;
-  }
-
-  .btn-secondary {
-    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
-  }
-
-  /* Essential Card Styles */
   .card-modern {
-    @apply bg-card border border-border rounded-lg shadow-sm;
-  }
-
-  /* Table theming */
-  .table-theme tr:nth-child(even) {
-    background-color: hsl(var(--bg-table-even));
-  }
-
-  .table-theme tr:nth-child(odd) {
-    background-color: hsl(var(--bg-table-odd));
-  }
-
-  /* Enhanced Table Styles */
-  .table-modern {
-    @apply bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden border-0 shadow-sm;
+    @apply bg-card border border-border rounded-lg;
   }
 
   .table-row-hover {
-    @apply hover:bg-accent/50 transition-colors duration-200;
+    @apply hover:bg-accent transition-colors;
   }
 
-  /* Button hover states */
-  .btn-theme-hover:hover {
-    filter: brightness(1.1);
-  }
-
-  /* Enhanced Kanban Board Styles */
   .kanban-column {
-    @apply min-h-[500px] bg-card/50 backdrop-blur-sm rounded-xl p-4 border border-border/50;
+    @apply min-h-[500px] bg-card rounded-lg p-4 border border-border;
   }
 
   .kanban-card {
-    @apply bg-card border border-border/50 rounded-xl p-4 mb-3 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-1;
+    @apply bg-card border border-border rounded-lg p-4 mb-3 cursor-pointer hover:border-primary/50 transition-colors;
   }
 
-  /* Essential Animations */
   .fade-in {
-    animation: fadeIn 0.3s ease-in-out;
-  }
-
-  .slide-up {
-    animation: slideUp 0.2s ease-out;
-  }
-
-  /* Essential Admin Styles */
-  .admin-card {
-    @apply bg-card border border-border rounded-lg shadow-sm;
-  }
-
-  .admin-table {
-    @apply rounded-lg border border-border bg-card;
-  }
-
-  /* Modern Gradient Utilities */
-  .gradient-mesh {
-    background: radial-gradient(circle at 20% 80%, hsl(221 83% 53% / 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, hsl(262 83% 58% / 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 40% 40%, hsl(142 76% 36% / 0.1) 0%, transparent 50%);
-  }
-
-  .glass-morphism {
-    @apply bg-background/80 backdrop-blur-xl border border-border/50 shadow-2xl;
-  }
-
-  .neo-morphism {
-    background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--muted)));
-    box-shadow: 20px 20px 60px hsl(var(--muted)), -20px -20px 60px hsl(var(--background));
-  }
-
-  /* Text utilities */
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .line-clamp-3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  /* Status indicators */
-  .status-dot {
-    @apply w-2 h-2 rounded-full inline-block;
-  }
-
-  .status-online {
-    @apply bg-green-500;
-  }
-
-  .status-offline {
-    @apply bg-gray-400;
-  }
-
-  .status-busy {
-    @apply bg-red-500;
-  }
-
-  .status-away {
-    @apply bg-yellow-500;
-  }
-
-  /* Status border colors */
-  .border-t-todo {
-    @apply border-t-gray-500;
-  }
-
-  .border-t-progress {
-    @apply border-t-[#970E2C];
-  }
-
-  .border-t-review {
-    @apply border-t-yellow-500;
-  }
-
-  .border-t-completed {
-    @apply border-t-green-500;
-  }
-
-  /* Scrollbar styling */
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) transparent;
+    animation: fadeIn 0.2s ease-in-out;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
   }
 
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: hsl(var(--muted));
     border-radius: 3px;
   }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
-  }
-
-  /* Text Gradient Effects */
-  .text-gradient {
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .text-glow {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
-  }
-
-  .heading-modern {
-    @apply text-gradient font-bold tracking-tight;
-  }
-
-  /* Modern Dashboard Components */
-  .dashboard-grid {
-    @apply grid gap-6 auto-rows-min;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  }
-
-  .dashboard-card {
-    @apply card-modern card-interactive card-gradient relative;
-  }
-
-  .dashboard-stat {
-    @apply bg-gradient-to-br from-card via-card to-muted/20 border border-border/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden;
-  }
-
-  .dashboard-stat::before {
-    content: '';
-    @apply absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary;
-  }
 }
 
-/* Essential Keyframe animations */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Essential Status Indicators */
-.status-online {
-  @apply bg-green-500;
-}
-
-.status-busy {
-  @apply bg-red-500;
-}
-
-.status-away {
-  @apply bg-yellow-500;
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

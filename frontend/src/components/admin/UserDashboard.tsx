@@ -87,45 +87,45 @@ const Dashboard = () => {
       }));
     };
     socket.on('activity_log', handleActivity);
-    return () => socket.off('activity_log', handleActivity);
+    return () => { socket.off('activity_log', handleActivity); };
   }, [isAuthenticated]);
 
   const userRole = typeof user?.role === 'string' ? user.role : user?.role?.name;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-rose-50/30 to-amber-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="min-h-screen bg-background">
       <div className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
         {/* Header with Role Badge */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-br from-white to-stone-50 dark:from-slate-800 dark:to-slate-800/80 rounded-3xl p-6 border border-stone-200/50 dark:border-slate-700/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.2),-4px_-4px_12px_rgba(255,255,255,0.01)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card rounded-lg p-6 border border-border">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-rose-800 dark:text-rose-300">
+              <h1 className="text-3xl font-bold text-foreground">
                 Welcome back, {user?.name}!
               </h1>
               {userRole === UserRole.ROOT && (
-                <Badge className="bg-gradient-to-r from-rose-800 to-rose-900 hover:from-rose-900 hover:to-rose-950 text-white border-0 shadow-lg shadow-rose-800/30">
+                <Badge className="bg-primary text-primary-foreground">
                   <ShieldCheck className="h-3 w-3 mr-1" />ROOT
                 </Badge>
               )}
               {userRole === UserRole.SUPER_ADMIN && (
-                <Badge className="bg-gradient-to-r from-amber-700 to-amber-800 hover:from-amber-800 hover:to-amber-900 text-white border-0 shadow-lg shadow-amber-700/30">
+                <Badge className="bg-primary text-primary-foreground">
                   <ShieldCheck className="h-3 w-3 mr-1" />SUPER ADMIN
                 </Badge>
               )}
               {userRole === UserRole.ADMIN && (
-                <Badge className="bg-gradient-to-r from-rose-700 to-rose-800 hover:from-rose-800 hover:to-rose-900 text-white border-0 shadow-lg shadow-rose-700/30">
+                <Badge className="bg-primary text-primary-foreground">
                   <UserCog className="h-3 w-3 mr-1" />ADMIN
                 </Badge>
               )}
             </div>
-            <p className="text-stone-600 dark:text-slate-400">Here's your business overview for today</p>
+            <p className="text-muted-foreground">Here's your business overview for today</p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={socketConnected ? "default" : "secondary"} className={`gap-1.5 px-3 py-1.5 ${socketConnected ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white border-0 shadow-lg shadow-emerald-500/30' : 'bg-stone-200 dark:bg-slate-700 text-stone-700 dark:text-slate-300'}`}>
+            <Badge variant={socketConnected ? "default" : "secondary"} className="gap-1.5 px-3 py-1.5">
               {socketConnected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
               {socketConnected ? 'Live Updates' : 'Polling Mode'}
             </Badge>
-            <Button variant="outline" size="sm" onClick={refresh} className="gap-2 border-stone-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-stone-900 dark:text-slate-200 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.8)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2),inset_-2px_-2px_4px_rgba(255,255,255,0.02)] hover:shadow-[2px_2px_6px_rgba(0,0,0,0.15),-2px_-2px_6px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-1px_-1px_3px_rgba(255,255,255,0.7)]">
+            <Button variant="outline" size="sm" onClick={refresh} className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Refresh
             </Button>
@@ -134,17 +134,17 @@ const Dashboard = () => {
 
         {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 h-12 bg-gradient-to-br from-stone-100 to-stone-50 dark:from-slate-800 dark:to-slate-700 p-1.5 rounded-2xl border border-stone-200/50 dark:border-slate-600/50 shadow-[inset_3px_3px_6px_rgba(0,0,0,0.1),inset_-3px_-3px_6px_rgba(255,255,255,0.9)] dark:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.3),inset_-3px_-3px_6px_rgba(255,255,255,0.02)]">
-            <TabsTrigger value="overview" className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-rose-700 data-[state=active]:to-rose-800 data-[state=active]:text-white data-[state=active]:shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] transition-all text-stone-700 dark:text-slate-300 hover:shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)]">
+          <TabsList className="grid w-full grid-cols-4 h-12 bg-muted p-1 rounded-lg">
+            <TabsTrigger value="overview" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Overview
             </TabsTrigger>
-            <TabsTrigger value="employees" className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-rose-700 data-[state=active]:to-rose-800 data-[state=active]:text-white data-[state=active]:shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] transition-all text-stone-700 dark:text-slate-300 hover:shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)]">
+            <TabsTrigger value="employees" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Employees
             </TabsTrigger>
-            <TabsTrigger value="projects" className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-rose-700 data-[state=active]:to-rose-800 data-[state=active]:text-white data-[state=active]:shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] transition-all text-stone-700 dark:text-slate-300 hover:shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)]">
+            <TabsTrigger value="projects" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Projects
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="rounded-xl data-[state=active]:bg-gradient-to-br data-[state=active]:from-rose-700 data-[state=active]:to-rose-800 data-[state=active]:text-white data-[state=active]:shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] transition-all text-stone-700 dark:text-slate-300 hover:shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)]">
+            <TabsTrigger value="tasks" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Tasks
             </TabsTrigger>
           </TabsList>
@@ -160,15 +160,15 @@ const Dashboard = () => {
             </div>
 
             {/* Financial Overview with Toggle */}
-            <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-slate-800 dark:to-slate-800/80 border border-stone-200/50 dark:border-slate-700/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.2),-4px_-4px_12px_rgba(255,255,255,0.01)]">
+            <Card className="bg-card border border-border">
               <CardHeader className="flex flex-row items-center justify-between pb-4">
-                <CardTitle className="text-lg font-semibold text-stone-900 dark:text-slate-100">Financial Overview</CardTitle>
+                <CardTitle className="text-lg font-semibold">Financial Overview</CardTitle>
                 <div className="flex gap-2">
                   <Button
                     variant={revenueView === 'sales' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setRevenueView('sales')}
-                    className={revenueView === 'sales' ? 'bg-gradient-to-br from-rose-700 to-rose-800 hover:from-rose-800 hover:to-rose-900 text-white shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] active:shadow-[inset_2px_2px_6px_rgba(0,0,0,0.3)]' : 'border-stone-300 dark:border-stone-700 shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15)]'}
+                    className={revenueView === 'sales' ? 'bg-primary text-primary-foreground' : ''}
                   >
                     Sales Revenue
                   </Button>
@@ -176,7 +176,7 @@ const Dashboard = () => {
                     variant={revenueView === 'projects' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setRevenueView('projects')}
-                    className={revenueView === 'projects' ? 'bg-gradient-to-br from-rose-700 to-rose-800 hover:from-rose-800 hover:to-rose-900 text-white shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1)] active:shadow-[inset_2px_2px_6px_rgba(0,0,0,0.3)]' : 'border-stone-300 dark:border-stone-700 shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_3px_rgba(255,255,255,0.8)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15)]'}
+                    className={revenueView === 'projects' ? 'bg-primary text-primary-foreground' : ''}
                   >
                     Project Budgets
                   </Button>
@@ -298,14 +298,14 @@ const Dashboard = () => {
 
 const StatCard = memo(({ title, value, subtitle, icon: Icon, trend, loading, color }: any) => {
   const colorClasses = {
-    blue: 'border-rose-200/50 dark:border-rose-700/50 from-rose-50 to-white dark:from-slate-800 dark:to-slate-700',
-    purple: 'border-amber-200/50 dark:border-amber-700/50 from-amber-50 to-white dark:from-slate-800 dark:to-slate-700',
-    green: 'border-emerald-200/50 dark:border-emerald-700/50 from-emerald-50 to-white dark:from-slate-800 dark:to-slate-700',
-    orange: 'border-orange-200/50 dark:border-orange-700/50 from-orange-50 to-white dark:from-slate-800 dark:to-slate-700'
+    blue: 'bg-card border border-border',
+    purple: 'bg-card border border-border',
+    green: 'bg-card border border-border',
+    orange: 'bg-card border border-border'
   };
 
   return (
-    <Card className={`bg-gradient-to-br ${colorClasses[color]} border ${colorClasses[color].split(' ')[0]} shadow-[6px_6px_12px_rgba(0,0,0,0.1),-3px_-3px_8px_rgba(255,255,255,0.9)] dark:shadow-[6px_6px_12px_rgba(0,0,0,0.2),-3px_-3px_8px_rgba(255,255,255,0.01)] hover:shadow-[8px_8px_16px_rgba(0,0,0,0.15),-4px_-4px_10px_rgba(255,255,255,1)] dark:hover:shadow-[8px_8px_16px_rgba(0,0,0,0.25),-4px_-4px_10px_rgba(255,255,255,0.02)] transition-all duration-300 hover:-translate-y-1`}>
+    <Card className={`${colorClasses[color]} hover:border-primary/50 transition-colors`}>
       <CardContent className="p-6">
         {loading ? (
           <div className="space-y-3">
@@ -316,10 +316,10 @@ const StatCard = memo(({ title, value, subtitle, icon: Icon, trend, loading, col
         ) : (
           <>
             <div className="flex justify-between items-start mb-3">
-              <p className="text-sm font-medium text-stone-600 dark:text-slate-400">{title}</p>
+              <p className="text-sm font-medium text-muted-foreground">{title}</p>
               <Icon className="h-5 w-5 text-stone-500 dark:text-slate-400" />
             </div>
-            <h3 className="text-3xl font-bold mb-2 text-stone-900 dark:text-slate-100">{value}</h3>
+            <h3 className="text-3xl font-bold mb-2 text-foreground">{value}</h3>
             <div className="flex items-center gap-2">
               {trend && (
                 <Badge className={`text-xs gap-1 ${trend.direction === 'up' ? 'bg-emerald-600 text-white' : 'bg-stone-400 dark:bg-stone-600 text-white'}`}>
@@ -327,7 +327,7 @@ const StatCard = memo(({ title, value, subtitle, icon: Icon, trend, loading, col
                   {trend.value}%
                 </Badge>
               )}
-              <p className="text-xs text-stone-600 dark:text-slate-400">{subtitle}</p>
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
             </div>
           </>
         )}
@@ -339,27 +339,27 @@ StatCard.displayName = 'StatCard';
 
 const FinanceCard = memo(({ title, value, subtitle, icon: Icon, color }: any) => {
   const colorClasses = {
-    green: 'border-l-emerald-500 from-emerald-50 via-emerald-50/50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-700',
-    blue: 'border-l-rose-700 from-rose-50 via-rose-50/50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-700',
-    orange: 'border-l-orange-500 from-orange-50 via-orange-50/50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-700',
-    purple: 'border-l-amber-600 from-amber-50 via-amber-50/50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-700',
-    red: 'border-l-rose-800 from-rose-50 via-rose-50/50 to-white dark:from-slate-800 dark:via-slate-700 dark:to-slate-700'
+    green: 'border-l-green-500 bg-card',
+    blue: 'border-l-blue-500 bg-card',
+    orange: 'border-l-orange-500 bg-card',
+    purple: 'border-l-purple-500 bg-card',
+    red: 'border-l-red-500 bg-card'
   };
 
   const iconColors = {
-    green: 'text-emerald-600 dark:text-emerald-300',
-    blue: 'text-rose-700 dark:text-rose-300',
-    orange: 'text-orange-600 dark:text-orange-300',
-    purple: 'text-amber-600 dark:text-amber-300',
-    red: 'text-rose-800 dark:text-rose-300'
+    green: 'text-green-600',
+    blue: 'text-blue-600',
+    orange: 'text-orange-600',
+    purple: 'text-purple-600',
+    red: 'text-red-600'
   };
 
   return (
-    <div className={`border-l-4 rounded-xl p-5 bg-gradient-to-br ${colorClasses[color]} shadow-[6px_6px_12px_rgba(0,0,0,0.1),-3px_-3px_8px_rgba(255,255,255,0.9)] dark:shadow-[6px_6px_12px_rgba(0,0,0,0.2),-3px_-3px_8px_rgba(255,255,255,0.01)] hover:shadow-[8px_8px_16px_rgba(0,0,0,0.15),-4px_-4px_10px_rgba(255,255,255,1)] dark:hover:shadow-[8px_8px_16px_rgba(0,0,0,0.25),-4px_-4px_10px_rgba(255,255,255,0.02)] transition-all duration-300`}>
+    <div className={`border-l-4 rounded-lg p-5 ${colorClasses[color]} hover:border-primary/50 transition-colors`}>
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-xs font-medium text-stone-600 dark:text-slate-400 mb-2">{title}</p>
-          <h3 className="text-2xl font-bold mb-1 text-stone-900 dark:text-slate-100">{value}</h3>
+          <p className="text-xs font-medium text-muted-foreground mb-2">{title}</p>
+          <h3 className="text-2xl font-bold mb-1 text-foreground">{value}</h3>
           <p className="text-xs text-stone-600 dark:text-slate-400">{subtitle}</p>
         </div>
         <Icon className={`h-9 w-9 ${iconColors[color]}`} />

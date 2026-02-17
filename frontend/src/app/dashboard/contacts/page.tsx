@@ -575,38 +575,37 @@ export default function ContactsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Contacts
-          </h1>
-          <p className="text-muted-foreground mt-1">Manage your contact database with advanced filtering and search</p>
-        </div>
-        <div className="flex gap-3">
-          <input
-            type="file"
-            accept=".csv"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-          />
+    <div className="min-h-screen bg-background">
+      <div className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card rounded-lg p-6 border border-border">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold text-foreground">Contacts</h1>
+            <p className="text-muted-foreground">Manage your contact database with advanced filtering and search</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+            />
 
-          {selectedContacts.length > 0 && (
-            <div className="flex gap-2 mr-2">
-              <Button variant="outline" size="sm" onClick={exportSelectedContacts}>
-                <Download className="mr-2 h-4 w-4" /> Export Selected ({selectedContacts.length})
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
-                <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
-              </Button>
-            </div>
-          )}
+            {selectedContacts.length > 0 && (
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={exportSelectedContacts}>
+                  <Download className="mr-2 h-4 w-4" /> Export ({selectedContacts.length})
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                </Button>
+              </div>
+            )}
 
-          <DropdownMenu>
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="hover:bg-primary/5">
+              <Button variant="outline" size="sm">
                 <Download className="mr-2 h-4 w-4" /> Export
               </Button>
             </DropdownMenuTrigger>
@@ -624,26 +623,26 @@ export default function ContactsPage() {
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
 
-          <Button variant="outline" onClick={handleImportClick} className="hover:bg-primary/5">
-            <Upload className="mr-2 h-4 w-4" /> Import
-          </Button>
+            <Button variant="outline" size="sm" onClick={handleImportClick}>
+              <Upload className="mr-2 h-4 w-4" /> Import
+            </Button>
 
-          <div className="flex items-center gap-2 mr-3">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-            <span className="text-xs text-muted-foreground">
-              {isConnected ? 'Live' : 'Offline'}
-            </span>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-xs text-muted-foreground">
+                {isConnected ? 'Live' : 'Offline'}
+              </span>
+            </div>
+            <Button size="sm" onClick={() => router.push('/dashboard/contacts/new')}>
+              <Plus className="mr-2 h-4 w-4" /> Add Contact
+            </Button>
           </div>
-          <Button onClick={() => router.push('/dashboard/contacts/new')} className="btn-primary-gradient">
-            <Plus className="mr-2 h-4 w-4" /> Add Contact
-          </Button>
         </div>
-      </div>
 
-      {/* Contact Type Tabs */}
-      <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)} className="w-full">
+        {/* Contact Type Tabs */}
+        <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)} className="w-full">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="all" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -671,78 +670,62 @@ export default function ContactsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={currentView} className="space-y-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="card-modern hover-lift border-l-4 border-l-blue-500">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Contacts</p>
-                    <p className="text-3xl font-bold text-foreground">{allContacts.length}</p>
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      {contacts.length !== allContacts.length ? `${contacts.length} filtered` : 'Active database'}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
-                    <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="card-modern hover-lift border-l-4 border-l-green-500">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Companies</p>
-                    <p className="text-3xl font-bold text-foreground">{filterOptions.company.length}</p>
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">Organizations</p>
-                  </div>
-                  <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
-                    <Building2 className="h-6 w-6 text-green-600 dark:text-green-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="card-modern hover-lift border-l-4 border-l-purple-500">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Unique Tags</p>
-                    <p className="text-3xl font-bold text-foreground">{filterOptions.tags.length}</p>
-                    <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">Categories</p>
-                  </div>
-                  <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl">
-                    <Tag className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {selectedContacts.length > 0 && (
-              <Card className="card-modern hover-lift border-l-4 border-l-orange-500">
+          <TabsContent value={currentView} className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card className="bg-card border border-border hover:border-primary/50 transition-colors">
                 <CardContent className="p-6">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Selected</p>
-                      <p className="text-3xl font-bold text-foreground">{selectedContacts.length}</p>
-                      <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Ready for action</p>
-                    </div>
-                    <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-xl">
-                      <Checkbox className="h-6 w-6 text-orange-600 dark:text-orange-400" checked />
-                    </div>
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-sm font-medium text-muted-foreground">Total Contacts</p>
+                    <Users className="h-5 w-5 text-muted-foreground" />
                   </div>
+                  <h3 className="text-3xl font-bold mb-2 text-foreground">{allContacts.length}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {contacts.length !== allContacts.length ? `${contacts.length} filtered` : 'Active database'}
+                  </p>
                 </CardContent>
               </Card>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
 
-      {/* Error/Success Alerts */}
-      {error && (
+              <Card className="bg-card border border-border hover:border-primary/50 transition-colors">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-sm font-medium text-muted-foreground">Companies</p>
+                    <Building2 className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-3xl font-bold mb-2 text-foreground">{filterOptions.company.length}</h3>
+                  <p className="text-xs text-muted-foreground">Organizations</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card border border-border hover:border-primary/50 transition-colors">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-sm font-medium text-muted-foreground">Unique Tags</p>
+                    <Tag className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-3xl font-bold mb-2 text-foreground">{filterOptions.tags.length}</h3>
+                  <p className="text-xs text-muted-foreground">Categories</p>
+                </CardContent>
+              </Card>
+
+              {selectedContacts.length > 0 && (
+                <Card className="bg-card border border-border hover:border-primary/50 transition-colors">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <p className="text-sm font-medium text-muted-foreground">Selected</p>
+                      <Checkbox className="h-5 w-5" checked />
+                    </div>
+                    <h3 className="text-3xl font-bold mb-2 text-foreground">{selectedContacts.length}</h3>
+                    <p className="text-xs text-muted-foreground">Ready for action</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Error/Success Alerts */}
+        {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="flex justify-between items-center">
@@ -765,9 +748,9 @@ export default function ContactsPage() {
         </Alert>
       )}
 
-      {/* Selected Contacts Summary */}
-      {selectedContacts.length > 0 && (
-        <Card className="card-modern border-orange-200 bg-orange-50/50 dark:bg-orange-900/10">
+        {/* Selected Contacts Summary */}
+        {selectedContacts.length > 0 && (
+          <Card className="bg-card border border-border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -796,11 +779,11 @@ export default function ContactsPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
-      )}
+          </Card>
+        )}
 
-      {/* Search and Filters */}
-      <Card className="card-modern">
+        {/* Search and Filters */}
+        <Card className="bg-card border border-border">
         <CardHeader className="pb-4">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search Bar */}
@@ -924,26 +907,23 @@ export default function ContactsPage() {
                 </div>
               )}
 
-              <Button
-                variant="outline"
-                onClick={refreshData}
-                disabled={isRefreshing}
-                className="hover:bg-primary/5"
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refreshData}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
 
               <DropdownMenu open={showFilterMenu} onOpenChange={setShowFilterMenu}>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={`hover:bg-primary/5 ${countActiveFilters() > 0 ? 'border-primary text-primary bg-primary/5' : ''}`}
-                  >
+                  <Button variant="outline" size="sm">
                     <Filter className="mr-2 h-4 w-4" />
                     Filters
                     {countActiveFilters() > 0 && (
-                      <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs bg-primary text-primary-foreground">
+                      <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
                         {countActiveFilters()}
                       </Badge>
                     )}
@@ -1052,11 +1032,11 @@ export default function ContactsPage() {
         </CardHeader>
       </Card>
 
-      {/* Loading State */}
-      {isLoading ? (
-        <SectionLoader text="Loading contacts..." />
-      ) : error ? (
-        <Card className="card-modern">
+        {/* Loading State */}
+        {isLoading ? (
+          <SectionLoader text="Loading contacts..." />
+        ) : error ? (
+          <Card className="bg-card border border-border">
           <CardContent className="py-16">
             <div className="text-center">
               <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
@@ -1067,7 +1047,7 @@ export default function ContactsPage() {
                 {error}
               </p>
               <div className="flex gap-3 justify-center mb-6">
-                <Button onClick={refreshData} className="btn-primary-gradient">
+                <Button onClick={refreshData}>
                   <RefreshCw className="mr-2 h-4 w-4" /> Try Again
                 </Button>
                 <Button variant="outline" onClick={() => setError(null)}>
@@ -1077,12 +1057,12 @@ export default function ContactsPage() {
               <ContactsDiagnostic />
             </div>
           </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Contacts Grid */}
-          {contacts.length === 0 ? (
-            <Card className="card-modern">
+          </Card>
+        ) : (
+          <>
+            {/* Contacts Grid */}
+            {contacts.length === 0 ? (
+              <Card className="bg-card border border-border">
               <CardContent className="py-16">
                 <div className="text-center">
                   <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
@@ -1095,16 +1075,16 @@ export default function ContactsPage() {
                       : 'Get started by adding your first contact to build your network'
                     }
                   </p>
-                  <Button onClick={() => router.push('/dashboard/contacts/new')} className="btn-primary-gradient">
+                  <Button onClick={() => router.push('/dashboard/contacts/new')}>
                     <Plus className="mr-2 h-4 w-4" /> Add Your First Contact
                   </Button>
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {contacts.map((contact) => (
-                <Card key={contact._id} className={`card-modern hover-lift group cursor-pointer transition-all ${selectedContacts.includes(contact._id!) ? 'ring-2 ring-primary bg-primary/5' : ''
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {contacts.map((contact) => (
+                  <Card key={contact._id} className={`bg-card border border-border hover:border-primary/50 transition-colors group cursor-pointer ${selectedContacts.includes(contact._id!) ? 'ring-2 ring-primary' : ''}
                   }`} onClick={() => router.push(`/dashboard/contacts/${contact._id}`)}>
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
@@ -1346,15 +1326,15 @@ export default function ContactsPage() {
                       </div>
                     )}
                   </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!contactToDelete} onOpenChange={() => setContactToDelete(null)}>
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!contactToDelete} onOpenChange={() => setContactToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Contact</AlertDialogTitle>
@@ -1371,8 +1351,9 @@ export default function ContactsPage() {
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 }

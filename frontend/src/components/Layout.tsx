@@ -227,17 +227,17 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-stone-50 via-rose-50/20 to-amber-50/10 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <div
         className={`${isMobile
-          ? `fixed inset-y-0 left-0 z-30 w-64 bg-gradient-to-b from-stone-100 via-stone-50 to-white dark:from-slate-800 dark:via-slate-800 dark:to-slate-900 border-r border-stone-200/50 dark:border-slate-700/50 shadow-[8px_0_24px_rgba(0,0,0,0.1)] dark:shadow-[8px_0_24px_rgba(0,0,0,0.2)] transform transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          ? `fixed inset-y-0 left-0 z-30 w-64 bg-card border-r border-border transform transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`
-          : `${collapsed ? "w-16" : "w-64"} bg-gradient-to-b from-stone-100 via-stone-50 to-white dark:from-slate-800 dark:via-slate-800 dark:to-slate-900 border-r border-stone-200/50 dark:border-slate-700/50 shadow-[8px_0_24px_rgba(0,0,0,0.08)] dark:shadow-[8px_0_24px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out`
-          } flex flex-col h-full relative before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_top,rgba(136,19,55,0.05),transparent_50%)] dark:before:bg-[radial-gradient(ellipse_at_top,rgba(136,19,55,0.08),transparent_50%)] before:pointer-events-none`}
+          : `${collapsed ? "w-16" : "w-64"} bg-card border-r border-border transition-all duration-200`
+          } flex flex-col h-full`}
       >
         {/* Header */}
-        <div className="p-4 border-b border-stone-200/50 dark:border-slate-700/50 bg-gradient-to-br from-white/80 to-stone-50/80 dark:from-slate-800/80 dark:to-slate-800/60 backdrop-blur-sm shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+        <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
             {!collapsed && (
               <div className="flex items-center space-x-3">
@@ -256,7 +256,7 @@ export default function Layout({ children }: LayoutProps) {
                     variant="ghost"
                     size="sm"
                     onClick={toggleSidebar}
-                    className="p-2 hover:bg-stone-200 dark:hover:bg-slate-700 rounded-lg transition-all shadow-[2px_2px_4px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.2),-1px_-1px_2px_rgba(255,255,255,0.02)] active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15)] dark:active:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3)]"
+                    className="p-2 hover:bg-accent rounded-md transition-colors"
                   >
                     {collapsed ? (
                       <ChevronRight className="w-4 h-4" />
@@ -274,13 +274,13 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-thin scrollbar-thumb-stone-300 dark:scrollbar-thumb-slate-600 scrollbar-track-stone-100 dark:scrollbar-track-slate-800">
+        <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-thin">
           <TooltipProvider>
             <div className="space-y-6">
               {menuSections.map((section) => (
                 <div key={section.title}>
                   {!collapsed && (
-                    <h3 className="px-3 text-xs font-semibold text-stone-500 dark:text-slate-400 uppercase tracking-wider mb-3 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]">
+                    <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                       {section.title}
                     </h3>
                   )}
@@ -298,9 +298,9 @@ export default function Layout({ children }: LayoutProps) {
                           {hasSubItems ? (
                             <button
                               onClick={() => toggleMenu(item.path)}
-                              className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl group transition-all ${isActive
-                                ? "bg-gradient-to-r from-rose-700 to-rose-800 text-white shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1),inset_0_1px_2px_rgba(255,255,255,0.2)]"
-                                : "text-stone-700 dark:text-slate-300 hover:bg-stone-200 dark:hover:bg-slate-700 hover:text-stone-900 dark:hover:text-slate-100 shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.15),-1px_-1px_2px_rgba(255,255,255,0.02)] hover:shadow-[3px_3px_6px_rgba(0,0,0,0.12),-1px_-1px_3px_rgba(255,255,255,0.9)] dark:hover:shadow-[3px_3px_6px_rgba(0,0,0,0.2),-1px_-1px_3px_rgba(255,255,255,0.03)]"
+                              className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md transition-colors ${isActive
+                                ? "bg-primary text-primary-foreground"
+                                : "text-foreground hover:bg-accent"
                                 }`}
                             >
                               <div className="flex items-center">
@@ -322,9 +322,9 @@ export default function Layout({ children }: LayoutProps) {
                           ) : (
                             <Link href={item.path} prefetch={false}>
                               <div
-                                className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-xl group cursor-pointer transition-all ${isActive
-                                  ? "bg-gradient-to-r from-rose-700 to-rose-800 text-white shadow-[3px_3px_8px_rgba(136,19,55,0.4),-1px_-1px_4px_rgba(255,255,255,0.1),inset_0_1px_2px_rgba(255,255,255,0.2)]"
-                                  : "text-stone-700 dark:text-slate-300 hover:bg-stone-200 dark:hover:bg-slate-700 hover:text-stone-900 dark:hover:text-slate-100 shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.15),-1px_-1px_2px_rgba(255,255,255,0.02)] hover:shadow-[3px_3px_6px_rgba(0,0,0,0.12),-1px_-1px_3px_rgba(255,255,255,0.9)] dark:hover:shadow-[3px_3px_6px_rgba(0,0,0,0.2),-1px_-1px_3px_rgba(255,255,255,0.03)]"
+                                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer transition-colors ${isActive
+                                  ? "bg-primary text-primary-foreground"
+                                  : "text-foreground hover:bg-accent"
                                   }`}
                               >
                                 <Icon className={`w-5 h-5 ${collapsed ? 'mx-auto' : ''}`} />
@@ -337,16 +337,16 @@ export default function Layout({ children }: LayoutProps) {
 
                           {/* Sub Items */}
                           {hasSubItems && isExpanded && !collapsed && item.subItems && (
-                            <div className="ml-8 mt-1 space-y-1">
+                            <div className="ml-6 mt-1 space-y-1">
                               {item.subItems.map((subItem: SubMenuItem) => (
                                 <Link key={subItem.path} href={subItem.path} prefetch={false}>
                                   <div
-                                    className={`flex items-center px-3 py-2 text-sm rounded-lg transition-all ${pathname === subItem.path
-                                      ? "bg-gradient-to-r from-rose-100 to-rose-50 dark:from-rose-900/20 dark:to-rose-800/20 text-rose-700 dark:text-rose-300 font-medium shadow-[inset_2px_2px_4px_rgba(136,19,55,0.15)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2)]"
-                                      : "text-stone-600 dark:text-slate-400 hover:bg-stone-200 dark:hover:bg-slate-700 hover:text-stone-900 dark:hover:text-slate-200"
+                                    className={`flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${pathname === subItem.path
+                                      ? "bg-accent text-primary font-medium"
+                                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
                                       }`}
                                   >
-                                    <div className="w-2 h-2 rounded-full bg-current opacity-50 mr-3" />
+                                    <div className="w-1.5 h-1.5 rounded-full bg-current opacity-60 mr-2" />
                                     {subItem.name}
                                   </div>
                                 </Link>
@@ -383,29 +383,27 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* User Profile */}
         {user && (
-          <div className="p-4 border-t border-stone-200/50 dark:border-slate-700/50 bg-gradient-to-br from-white/80 to-stone-50/80 dark:from-slate-800/80 dark:to-slate-800/60 backdrop-blur-sm shadow-[0_-4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.2)]">
+          <div className="p-4 border-t border-border">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className={`flex items-center space-x-3 p-2 rounded-xl hover:bg-stone-200 dark:hover:bg-slate-700 transition-all cursor-pointer shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.8)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.15),-1px_-1px_2px_rgba(255,255,255,0.02)] hover:shadow-[3px_3px_6px_rgba(0,0,0,0.12),-1px_-1px_3px_rgba(255,255,255,0.9)] dark:hover:shadow-[3px_3px_6px_rgba(0,0,0,0.2),-1px_-1px_3px_rgba(255,255,255,0.03)] ${collapsed ? 'justify-center' : ''}`}>
+                  <div className={`flex items-center space-x-3 p-2 rounded-md hover:bg-accent transition-colors cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
                     <div className="relative">
-                      <Avatar className="w-10 h-10 border-2 border-rose-300 dark:border-rose-700/50 shadow-[2px_2px_6px_rgba(136,19,55,0.3)] dark:shadow-[2px_2px_6px_rgba(136,19,55,0.3)]">
-                        <AvatarFallback className={`${getRoleColor(user.role)} text-white text-sm font-semibold shadow-inner`}>
+                      <Avatar className="w-9 h-9">
+                        <AvatarFallback className={`${getRoleColor(user.role)} text-white text-sm font-semibold`}>
                           {user.name?.charAt(0).toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-to-br from-emerald-400 to-emerald-600 border-2 border-white dark:border-slate-800 rounded-full shadow-[0_2px_4px_rgba(16,185,129,0.5)]" />
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-card rounded-full" />
                     </div>
                     {!collapsed && (
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-stone-900 dark:text-slate-100 truncate drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {user.name}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-stone-200 dark:bg-slate-700 text-stone-700 dark:text-slate-300 border border-stone-300 dark:border-slate-600 shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1)] dark:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.2)]">
-                            {typeof user.role === 'string' ? user.role : user.role?.name || 'User'}
-                          </Badge>
-                        </div>
+                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                          {typeof user.role === 'string' ? user.role : user.role?.name || 'User'}
+                        </Badge>
                       </div>
                     )}
                   </div>
@@ -437,7 +435,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="sticky top-0 z-10">
           <Navbar toggleSidebar={toggleSidebar} isMobile={isMobile} />
         </div>
-        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-stone-50 via-rose-50/20 to-amber-50/10 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <main className="flex-1 overflow-y-auto bg-secondary/30">
           <div className="p-4">
             <BackendStatus />
           </div>
