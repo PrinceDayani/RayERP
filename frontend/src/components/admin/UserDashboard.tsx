@@ -72,9 +72,9 @@ const Dashboard = () => {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) return undefined;
     const socket = getSocket();
-    if (!socket) return;
+    if (!socket) return undefined;
     const handleActivity = (activity: any) => {
       setAnalytics(prev => ({
         ...prev,

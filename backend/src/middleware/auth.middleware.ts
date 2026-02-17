@@ -23,8 +23,8 @@ interface JwtPayload {
 }
 
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
+  let token: string | undefined;
   try {
-    let token: string | undefined;
 
     // Check for token in authorization header first, then cookies
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
