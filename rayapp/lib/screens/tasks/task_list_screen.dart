@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
 import '../../models/task.dart';
 import '../../services/task_service.dart';
-import '../../services/auth_provider.dart';
 import 'task_detail_screen.dart';
 import 'task_form_screen.dart';
 import 'task_analytics_screen.dart';
 import 'task_calendar_screen.dart';
 import 'task_kanban_screen.dart';
+import 'task_templates_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
   final String? projectId;
@@ -145,6 +144,17 @@ class _TaskListScreenState extends State<TaskListScreen> {
                     ),
                   ),
                 ),
+                if (widget.projectId != null)
+                  IconButton(
+                    icon: const Icon(Icons.folder_copy_outlined),
+                    tooltip: 'Templates',
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TaskTemplatesScreen(projectId: widget.projectId),
+                      ),
+                    ).then((created) { if (created == true) _load(); }),
+                  ),
               ],
             ),
       body: Column(
@@ -184,13 +194,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         onPressed: () {
-          final auth = context.read<AuthProvider>();
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => TaskFormScreen(
                 projectId: widget.projectId,
-                currentUserId: auth.user?.id,
               ),
             ),
           ).then((created) {

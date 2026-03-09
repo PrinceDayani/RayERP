@@ -489,7 +489,7 @@ class _FilterBar extends StatelessWidget {
 
   Widget _dropdown(String hint, String value, List<String> options, ValueChanged<String?> onChange) =>
       DropdownButtonFormField<String>(
-        value: value.isEmpty ? null : value,
+        initialValue: value.isEmpty ? null : value,
         isDense: true,
         decoration: InputDecoration(
           hintText: hint,

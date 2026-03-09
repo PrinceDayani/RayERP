@@ -286,7 +286,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final email = _profile?['user']?['email'] ?? auth.user?.email ?? '';
     final role = (_profile?['user']?['role'] is Map ? _profile!['user']['role']['name'] : null) ?? auth.user?.role ?? '';
     final status = _profile?['user']?['status'] ?? 'active';
-    final initials = name.trim().split(' ').where((w) => w.isNotEmpty).take(2).map((w) => w[0].toUpperCase()).join();
+    final initials = name.trim().split(' ').where((String w) => w.isNotEmpty).take(2).map((String w) => w[0].toUpperCase()).join();
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(

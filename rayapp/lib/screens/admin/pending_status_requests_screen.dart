@@ -145,6 +145,27 @@ class _PendingStatusRequestsScreenState extends State<PendingStatusRequestsScree
     );
   }
 
+  Widget _errView(String e, VoidCallback retry) => Center(child: Padding(
+    padding: const EdgeInsets.all(24),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.error_outline, size: 40, color: AppTheme.red),
+      const SizedBox(height: 12),
+      Text(e, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+      const SizedBox(height: 16),
+      FilledButton(onPressed: retry, child: const Text('Retry')),
+    ]),
+  ));
+
+  Widget _emptyView(IconData icon, String msg, {String? subtitle}) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+    Icon(icon, size: 48, color: AppTheme.textMuted),
+    const SizedBox(height: 12),
+    Text(msg, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+    if (subtitle != null) Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(subtitle, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+    ),
+  ]));
+
   Widget _card(dynamic req) {
     final current = req['currentStatus'] ?? '';
     final requested = req['requestedStatus'] ?? '';

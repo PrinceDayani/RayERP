@@ -1,24 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
 import '../../models/task.dart';
 import '../../models/employee.dart';
 import '../../services/task_service.dart';
 import '../../services/employee_service.dart';
 import '../../services/project_service.dart';
-import '../../services/auth_provider.dart';
 import '../../models/project.dart';
 
 class TaskFormScreen extends StatefulWidget {
   final Task? task;
   final String? projectId;
-  final String? currentUserId;
 
   const TaskFormScreen({
     super.key,
     this.task,
     this.projectId,
-    this.currentUserId,
   });
 
   @override
@@ -40,7 +36,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   DateTime? _dueDate;
   String? _projectId;
   String? _assignedToId;
-  String? _assignedById;
+  String? _assignedById;  // Employee ID — NOT User ID
 
   List<Employee> _employees = [];
   List<Project> _projects = [];
@@ -100,8 +96,11 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       return;
     }
 
-    final auth = context.read<AuthProvider>();
-    final assignedBy = _assignedById ?? auth.user?.id ?? '';
+    final assignedBy = _assignedById;
+    if (assignedBy == null) {
+      _err('Please select who is assigning this task');
+      return;
+    }
 
     setState(() => _saving = true);
     try {
@@ -209,6 +208,21 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                                   style: const TextStyle(fontSize: 13))))
                           .toList(),
                       onChanged: (v) => setState(() => _assignedToId = v),
+                      validator: (v) => v == null ? 'Required' : null,
+                    ),
+                  ),
+                  _field(
+                    child: DropdownButtonFormField<String>(
+                      value: _assignedById,
+                      decoration:
+                          const InputDecoration(labelText: 'Assigned By *'),
+                      items: _employees
+                          .map((e) => DropdownMenuItem(
+                              value: e.id,
+                              child: Text(e.fullName,
+                                  style: const TextStyle(fontSize: 13))))
+                          .toList(),
+                      onChanged: (v) => setState(() => _assignedById = v),
                       validator: (v) => v == null ? 'Required' : null,
                     ),
                   ),

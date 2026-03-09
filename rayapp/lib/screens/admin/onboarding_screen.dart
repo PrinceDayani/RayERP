@@ -36,7 +36,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       final data = await _svc.getOnboardingData();
       if (!mounted) return;
       setState(() {
-        _roles = (data['roles'] as List? ?? []).where((r) => (r['name'] ?? '').toLowerCase() != 'root').toList();
+        _roles = (data['roles'] as List? ?? []).where((r) => ((r as Map)['name'] ?? '').toString().toLowerCase() != 'root').toList();
         _projects = data['projects'] as List? ?? [];
         _loadingData = false;
       });
@@ -207,6 +207,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 }),
     );
   }
+
+  Widget _errView(String e, VoidCallback retry) => Center(child: Padding(
+    padding: const EdgeInsets.all(24),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.error_outline, size: 40, color: AppTheme.red),
+      const SizedBox(height: 12),
+      Text(e, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+      const SizedBox(height: 16),
+      FilledButton(onPressed: retry, child: const Text('Retry')),
+    ]),
+  ));
 
   Widget _nameField() => TextFormField(
         controller: _nameCtrl,

@@ -108,8 +108,8 @@ class UserManagementService {
 
   Future<List<UserSession>> getActiveSessions() async {
     final data = await _api.get('/users/active-sessions');
-    final list = data['sessions'] ?? data;
-    return (list as List).map((e) => UserSession.fromJson(e)).toList();
+    final list = data is List ? data : (data is Map ? (data['sessions'] ?? data['data'] ?? []) : []);
+    return (list as List).map((e) => UserSession.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<void> revokeSession(String sessionId) => _api.delete('/users/sessions/$sessionId');

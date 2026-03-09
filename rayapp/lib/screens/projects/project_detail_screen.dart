@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/project.dart';
+import '../../models/task.dart';
 import '../../services/project_service.dart';
-import '../../services/task_service.dart';
 import '../../services/project_budget_service.dart';
-import 'project_analytics_screen.dart';
-import 'project_budget_screen.dart';
-import 'project_financial_screen.dart';
-import 'project_timeline_screen.dart';
-import 'project_ledger_screen.dart';
-import 'project_settings_screen.dart';
-import 'project_reports_screen.dart';
-import 'project_milestones_screen.dart';
-import 'project_risks_screen.dart';
-import 'project_templates_screen.dart';
+import '../../services/task_service.dart';
+import 'project_form_screen.dart';
+import '../tasks/task_list_screen.dart';
+import '../tasks/task_kanban_screen.dart';
+import '../tasks/task_analytics_screen.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final String id;
@@ -43,10 +38,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final p = await ProjectService().getById(widget.id);
-      _project = p;
-      _milestones = p.milestones.map((e) => ProjectMilestone.fromJson(e)).toList();
-      _risks = p.risks.map((e) => ProjectRisk.fromJson(e)).toList();
+      final results = await Future.wait([
+        ProjectService().getById(widget.id),
+        ProjectMilestoneService().getByProject(widget.id),
+        ProjectRiskService().getByProject(widget.id),
+      ]);
+      _project = results[0] as Project;
+      _milestones = results[1] as List<ProjectMilestone>;
+      _risks = results[2] as List<ProjectRisk>;
     } catch (_) {}
     setState(() => _loading = false);
   }
@@ -55,6 +54,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     'active' => AppTheme.green, 'planning' => AppTheme.blue,
     'on-hold' => AppTheme.amber, 'completed' => AppTheme.cyan, _ => AppTheme.red,
   };
+
   Color _priorityColor(String p) => switch (p) {
     'critical' => AppTheme.red, 'high' => AppTheme.amber,
     'medium' => AppTheme.blue, _ => AppTheme.green,
@@ -70,47 +70,27 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
           IconButton(
             icon: const Icon(Icons.bar_chart_outlined),
             tooltip: 'Analytics',
+            onPressed: () { if (_project != null) _tabs.animateTo(6); },
+          ),
+          IconButton(
+            icon: const Icon(Icons.view_kanban_outlined),
+            tooltip: 'Kanban',
             onPressed: () {
-              if (_project != null) Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectAnalyticsScreen(project: _project!)));
+              if (_project != null)
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => TaskKanbanScreen(projectId: _project!.id, projectName: _project!.name),
+                )).then((_) => _load());
             },
           ),
           if (_project != null)
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              tooltip: 'More',
-              onSelected: (v) {
-                final p = _project!;
-                switch (v) {
-                  case 'budget': Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectBudgetScreen(project: p)));
-                  case 'timeline': Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectTimelineScreen(project: p)));
-                  case 'financial': Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectFinancialScreen(project: p)));
-                  case 'ledger': Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectLedgerScreen(project: p)));
-                  case 'reports':
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectReportsScreen(project: p)));
-                  case 'milestones':
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectMilestonesScreen(project: p)))
-                        .then((_) => _load());
-                  case 'risks':
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectRisksScreen(project: p)))
-                        .then((_) => _load());
-                  case 'templates':
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectTemplatesScreen(project: p)));
-                  case 'settings':
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectSettingsScreen(project: p)))
-                        .then((_) => _load());
-                }
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Settings',
+              onPressed: () async {
+                final updated = await Navigator.push<bool>(context,
+                    MaterialPageRoute(builder: (_) => ProjectFormScreen(project: _project)));
+                if (updated == true) _load();
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'budget', child: ListTile(leading: Icon(Icons.account_balance_wallet_outlined), title: Text('Budget'), dense: true, contentPadding: EdgeInsets.zero)),
-                PopupMenuItem(value: 'timeline', child: ListTile(leading: Icon(Icons.timeline_outlined), title: Text('Timeline'), dense: true, contentPadding: EdgeInsets.zero)),
-                PopupMenuItem(value: 'financial', child: ListTile(leading: Icon(Icons.account_balance_outlined), title: Text('Financial'), dense: true, contentPadding: EdgeInsets.zero)),
-                PopupMenuItem(value: 'ledger', child: ListTile(leading: Icon(Icons.receipt_long_outlined), title: Text('Ledger'), dense: true, contentPadding: EdgeInsets.zero)),
-                PopupMenuItem(value: 'reports', child: ListTile(leading: Icon(Icons.summarize_outlined), title: Text('Reports'), dense: true, contentPadding: EdgeInsets.zero)),
-                PopupMenuItem(value: 'milestones', child: ListTile(leading: Icon(Icons.flag_outlined), title: Text('Milestones'), dense: true, contentPadding: EdgeInsets.zero)),
-                PopupMenuItem(value: 'risks', child: ListTile(leading: Icon(Icons.warning_amber_outlined), title: Text('Risks'), dense: true, contentPadding: EdgeInsets.zero)),
-                PopupMenuItem(value: 'templates', child: ListTile(leading: Icon(Icons.folder_copy_outlined), title: Text('Templates'), dense: true, contentPadding: EdgeInsets.zero)),
-                PopupMenuItem(value: 'settings', child: ListTile(leading: Icon(Icons.settings_outlined), title: Text('Settings'), dense: true, contentPadding: EdgeInsets.zero)),
-              ],
             ),
         ],
       ),
@@ -137,21 +117,21 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
         // ── Quick Analytics Row ──────────────────────────────────────────────
         SliverToBoxAdapter(
           child: SizedBox(
-            height: 70,
+            height: 76,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               children: [
                 _QuickCard(
                   label: 'Budget Health',
                   color: budgetUsed > 0.9 ? AppTheme.red : AppTheme.amber,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${(budgetUsed * 100).toStringAsFixed(0)}% used',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
                             color: budgetUsed > 0.9 ? AppTheme.red : AppTheme.amber)),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     ClipRRect(borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(value: budgetUsed, minHeight: 3,
+                      child: LinearProgressIndicator(value: budgetUsed, minHeight: 4,
                           backgroundColor: AppTheme.border,
                           valueColor: AlwaysStoppedAnimation(budgetUsed > 0.9 ? AppTheme.red : AppTheme.amber))),
                     const SizedBox(height: 2),
@@ -164,9 +144,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                   color: eff >= 1.0 ? AppTheme.green : eff >= 0.8 ? AppTheme.amber : AppTheme.red,
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${(eff * 100).toStringAsFixed(0)}% eff.',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
                             color: eff >= 1.0 ? AppTheme.green : eff >= 0.8 ? AppTheme.amber : AppTheme.red)),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                       decoration: BoxDecoration(
@@ -185,10 +165,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       _MiniChip(p.priority, _priorityColor(p.priority)),
-                      const SizedBox(width: 3),
+                      const SizedBox(width: 4),
                       _MiniChip(p.status, _statusColor(p.status)),
                     ]),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text('${p.team.length} members · ${remaining}d left',
                         style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
                   ]),
@@ -206,25 +186,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
               Container(
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.border)),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: LayoutBuilder(builder: (ctx, bc) {
-                  final narrow = bc.maxWidth < 320;
-                  return narrow
-                    ? Wrap(children: [
-                        _CStat('Status', p.status, _statusColor(p.status)),
-                        _CStat('Progress', '${p.progress}%', AppTheme.primary),
-                        _CStat('Budget', '${p.currency} ${p.budget.toStringAsFixed(0)}', AppTheme.amber),
-                        _CStat('Team', '${p.team.length}', AppTheme.purple),
-                      ])
-                    : Row(children: [
-                        _CStat('Status', p.status, _statusColor(p.status)),
-                        _vDivider(),
-                        _CStat('Progress', '${p.progress}%', AppTheme.primary),
-                        _vDivider(),
-                        _CStat('Budget', '${p.currency} ${p.budget.toStringAsFixed(0)}', AppTheme.amber),
-                        _vDivider(),
-                        _CStat('Team', '${p.team.length}', AppTheme.purple),
-                      ]);
-                }),
+                child: Row(children: [
+                  _CStat('Status', p.status, _statusColor(p.status)),
+                  _vDivider(),
+                  _CStat('Progress', '${p.progress}%', AppTheme.primary),
+                  _vDivider(),
+                  _CStat('Budget', '${p.currency} ${p.budget.toStringAsFixed(0)}', AppTheme.amber),
+                  _vDivider(),
+                  _CStat('Team', '${p.team.length}', AppTheme.purple),
+                ]),
               ),
               const SizedBox(height: 6),
               // Progress bar
@@ -373,7 +343,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       body: TabBarView(
         controller: _tabs,
         children: [
-          _TasksTab(projectId: p.id),
+          _TasksTab(projectId: p.id, projectName: p.name),
           _BudgetTab(project: p),
           _GanttTab(project: p),
           _FilesTab(projectId: p.id),
@@ -394,14 +364,14 @@ class _QuickCard extends StatelessWidget {
   const _QuickCard({required this.label, required this.color, required this.child});
   @override
   Widget build(BuildContext context) => Container(
-    width: 136, height: 62,
+    width: 140, height: 66,
     margin: const EdgeInsets.only(right: 8),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withOpacity(0.25))),
-    padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withOpacity(0.25))),
+    padding: const EdgeInsets.all(8),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
-      const SizedBox(height: 3),
-      child,
+      const SizedBox(height: 4),
+      Expanded(child: child),
     ]),
   );
 }
@@ -516,185 +486,16 @@ class _Stat extends StatelessWidget {
 
 // ── Tasks Tab ─────────────────────────────────────────────────────────────────
 
-class _TasksTab extends StatefulWidget {
+class _TasksTab extends StatelessWidget {
   final String projectId;
-  const _TasksTab({required this.projectId});
-  @override
-  State<_TasksTab> createState() => _TasksTabState();
-}
-
-class _TasksTabState extends State<_TasksTab> {
-  List<ProjectTask> _tasks = [];
-  bool _loading = true;
-  String _filter = 'all';
+  final String projectName;
+  const _TasksTab({required this.projectId, required this.projectName});
 
   @override
-  void initState() { super.initState(); _load(); }
-
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    try { _tasks = await TaskService().getByProject(widget.projectId); } catch (_) {}
-    setState(() => _loading = false);
-  }
-
-  Color _sc(String s) => switch (s) {
-    'completed' => AppTheme.green, 'in-progress' => AppTheme.blue,
-    'review' => AppTheme.amber, _ => AppTheme.textSecondary,
-  };
-  Color _pc(String p) => switch (p) {
-    'critical' => AppTheme.red, 'high' => AppTheme.amber,
-    'medium' => AppTheme.blue, _ => AppTheme.textSecondary,
-  };
-
-  Future<void> _updateStatus(ProjectTask t, String status) async {
-    try {
-      await TaskService().updateStatus(t.id, status);
-      setState(() {
-        final i = _tasks.indexWhere((x) => x.id == t.id);
-        if (i >= 0) _tasks[i] = ProjectTask(id: t.id, title: t.title, description: t.description,
-            status: status, priority: t.priority, dueDate: t.dueDate, assigneeName: t.assigneeName);
-      });
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-  }
-
-  void _showCreate(BuildContext context) {
-    final ctrl = TextEditingController();
-    String priority = 'medium';
-    DateTime due = DateTime.now().add(const Duration(days: 7));
-    showModalBottomSheet(
-      context: context, isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setS) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 16, right: 16, top: 16),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('New Task', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          TextField(controller: ctrl, autofocus: true, decoration: const InputDecoration(labelText: 'Task title')),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(child: DropdownButtonFormField<String>(
-              initialValue: priority,
-              decoration: const InputDecoration(labelText: 'Priority'),
-              items: ['low', 'medium', 'high', 'critical'].map((p) => DropdownMenuItem(value: p, child: Text(p, style: const TextStyle(fontSize: 13)))).toList(),
-              onChanged: (v) => setS(() => priority = v!),
-            )),
-            const SizedBox(width: 12),
-            Expanded(child: GestureDetector(
-              onTap: () async {
-                final d = await showDatePicker(context: ctx, initialDate: due, firstDate: DateTime.now(), lastDate: DateTime(2030),
-                    builder: (c, child) => Theme(data: Theme.of(c).copyWith(colorScheme: const ColorScheme.light(primary: AppTheme.primary)), child: child!));
-                if (d != null) setS(() => due = d);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppTheme.border)),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Due Date', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                  Text(AppTheme.fmtDate(due), style: const TextStyle(fontSize: 13)),
-                ]),
-              ),
-            )),
-          ]),
-          const SizedBox(height: 16),
-          SizedBox(width: double.infinity, height: 46,
-            child: ElevatedButton(
-              onPressed: () async {
-                if (ctrl.text.trim().isEmpty) return;
-                Navigator.pop(ctx);
-                try {
-                  final task = await TaskService().create({'title': ctrl.text.trim(), 'project': widget.projectId,
-                      'priority': priority, 'dueDate': due.toIso8601String(), 'status': 'todo'});
-                  if (!mounted) return;
-                  setState(() => _tasks.insert(0, task));
-                } catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
-              },
-              child: const Text('Create Task'),
-            )),
-          const SizedBox(height: 16),
-        ]),
-      )),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-    final filtered = _filter == 'all' ? _tasks : _tasks.where((t) => t.status == _filter).toList();
-    return Stack(children: [
-      Column(children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-          child: Row(children: ['all', 'todo', 'in-progress', 'review', 'completed'].map((s) {
-            final sel = _filter == s;
-            return GestureDetector(
-              onTap: () => setState(() => _filter = s),
-              child: Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(color: sel ? AppTheme.primary : Colors.white,
-                    borderRadius: BorderRadius.circular(20), border: Border.all(color: sel ? AppTheme.primary : AppTheme.border)),
-                child: Text(s == 'all' ? 'All' : s, style: TextStyle(fontSize: 12, color: sel ? Colors.white : AppTheme.textSecondary)),
-              ),
-            );
-          }).toList()),
-        ),
-        Expanded(
-          child: filtered.isEmpty
-              ? Center(child: Text('No tasks', style: TextStyle(color: AppTheme.textSecondary)))
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) {
-                    final t = filtered[i];
-                    return Container(
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.border)),
-                      padding: const EdgeInsets.all(12),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Row(children: [
-                          Expanded(child: Text(t.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-                          Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(color: _pc(t.priority).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                              child: Text(t.priority, style: TextStyle(fontSize: 10, color: _pc(t.priority)))),
-                        ]),
-                        if (t.description.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(t.description, maxLines: 2, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                        ],
-                        const SizedBox(height: 8),
-                        Row(children: [
-                          Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(color: _sc(t.status).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                              child: Text(t.status, style: TextStyle(fontSize: 10, color: _sc(t.status)))),
-                          const Spacer(),
-                          if (t.assigneeName.isNotEmpty) Text(t.assigneeName, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                          const SizedBox(width: 4),
-                          PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, size: 16, color: AppTheme.textSecondary),
-                            onSelected: (s) => _updateStatus(t, s),
-                            itemBuilder: (_) => ['todo', 'in-progress', 'review', 'completed']
-                                .map((s) => PopupMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13)))).toList()),
-                        ]),
-                      ]),
-                    );
-                  }),
-        ),
-      ]),
-      Positioned(right: 16, bottom: 16,
-        child: FloatingActionButton(
-          heroTag: 'create_task', mini: true,
-          backgroundColor: AppTheme.primary, foregroundColor: Colors.white,
-          onPressed: () => _showCreate(context),
-          child: const Icon(Icons.add))),
-    ]);
-  }
+  Widget build(BuildContext context) => TaskListScreen(
+        projectId: projectId,
+        projectName: projectName,
+      );
 }
 
 // ── Budget Tab ────────────────────────────────────────────────────────────────
@@ -756,20 +557,7 @@ class _BudgetTabState extends State<_BudgetTab> {
             child: Text('Budget: ${b.status.toUpperCase()}',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _bsc(b.status)))),
         LayoutBuilder(builder: (_, c) {
-          final cols = c.maxWidth < 360 ? 2 : 3;
-          final gap = (cols - 1) * 10.0;
-          final w = (c.maxWidth - gap) / cols;
-          if (cols == 2) {
-            return Column(children: [
-              Row(children: [
-                _BTile('Total', '$currency ${total.toStringAsFixed(0)}', AppTheme.blue, w),
-                const SizedBox(width: 10),
-                _BTile('Spent', '$currency ${spent.toStringAsFixed(0)}', AppTheme.red, w),
-              ]),
-              const SizedBox(height: 10),
-              _BTile('Left', '$currency ${remaining.toStringAsFixed(0)}', AppTheme.green, double.infinity),
-            ]);
-          }
+          final w = (c.maxWidth - 20) / 3;
           return Row(children: [
             _BTile('Total', '$currency ${total.toStringAsFixed(0)}', AppTheme.blue, w),
             const SizedBox(width: 10),
@@ -929,7 +717,7 @@ class _GanttTab extends StatefulWidget {
 }
 
 class _GanttTabState extends State<_GanttTab> {
-  List<ProjectTask> _tasks = [];
+  List<Task> _tasks = [];
   bool _loading = true;
 
   @override
@@ -937,7 +725,7 @@ class _GanttTabState extends State<_GanttTab> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _tasks = await TaskService().getByProject(widget.project.id); } catch (_) {}
+    try { _tasks = await TaskService().getAll(projectId: widget.project.id); } catch (_) {}
     setState(() => _loading = false);
   }
 
@@ -981,10 +769,9 @@ class _GanttTabState extends State<_GanttTab> {
         ]),
         const SizedBox(height: 4),
         ..._tasks.map((t) {
-          // Use project start→task dueDate as the bar span (tasks have no startDate)
-          final taskEnd = t.dueDate.isAfter(end) ? end : t.dueDate.isBefore(start) ? start : t.dueDate;
+          final due = t.dueDate ?? widget.project.endDate;
+          final taskEnd = due.isAfter(end) ? end : due.isBefore(start) ? start : due;
           final barEnd = taskEnd.difference(start).inDays.clamp(0, totalDays.toInt()).toDouble();
-          // barStart is 0 (project start) since ProjectTask has no startDate field
           const barStart = 0.0;
 
           return Padding(
@@ -1347,7 +1134,7 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _analytics = await ProjectAnalyticsService().getByProject(widget.projectId, risks: widget.project.risks); } catch (_) {}
+    try { _analytics = await ProjectAnalyticsService().getByProject(widget.projectId); } catch (_) {}
     setState(() => _loading = false);
   }
 
@@ -1369,20 +1156,7 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         LayoutBuilder(builder: (_, c) {
-          final cols = c.maxWidth < 360 ? 2 : 3;
-          final gap = (cols - 1) * 10.0;
-          final w = (c.maxWidth - gap) / cols;
-          if (cols == 2) {
-            return Column(children: [
-              Row(children: [
-                _ATile('Efficiency', '${(eff * 100).toStringAsFixed(0)}%', eff >= 1.0 ? AppTheme.green : eff >= 0.8 ? AppTheme.amber : AppTheme.red, w),
-                const SizedBox(width: 10),
-                _ATile('CPI', a != null ? a.cpi.toStringAsFixed(2) : '-', a != null ? _ic(a.cpi) : AppTheme.textSecondary, w),
-              ]),
-              const SizedBox(height: 10),
-              _ATile('SPI', a != null ? a.spi.toStringAsFixed(2) : '-', a != null ? _ic(a.spi) : AppTheme.textSecondary, double.infinity),
-            ]);
-          }
+          final w = (c.maxWidth - 20) / 3;
           return Row(children: [
             _ATile('Efficiency', '${(eff * 100).toStringAsFixed(0)}%', eff >= 1.0 ? AppTheme.green : eff >= 0.8 ? AppTheme.amber : AppTheme.red, w),
             const SizedBox(width: 10),

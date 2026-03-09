@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/project.dart';
+import '../../models/task.dart';
 import '../../services/project_service.dart';
 import '../../services/task_service.dart';
 import 'project_detail_screen.dart';
@@ -547,7 +548,7 @@ class _AllTasksTab extends StatefulWidget {
 }
 
 class _AllTasksTabState extends State<_AllTasksTab> {
-  List<ProjectTask> _tasks = [];
+  List<Task> _tasks = [];
   bool _loading = true;
   String _statusFilter = 'all';
   String _priorityFilter = 'all';
@@ -557,7 +558,7 @@ class _AllTasksTabState extends State<_AllTasksTab> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _tasks = await TaskService().getAllMyTasks(); } catch (_) {}
+    try { _tasks = await TaskService().getMyTasks(); } catch (_) {}
     setState(() => _loading = false);
   }
 
@@ -578,7 +579,7 @@ class _AllTasksTabState extends State<_AllTasksTab> {
       final mp = _priorityFilter == 'all' || t.priority == _priorityFilter;
       return ms && mp;
     }).toList();
-    final overdue = _tasks.where((t) => t.dueDate.isBefore(DateTime.now()) && t.status != 'completed').length;
+    final overdue = _tasks.where((t) => t.dueDate != null && t.dueDate!.isBefore(DateTime.now()) && t.status != 'completed').length;
 
     return Column(children: [
       Padding(
@@ -641,7 +642,7 @@ class _AllTasksTabState extends State<_AllTasksTab> {
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
                   final t = filtered[i];
-                  final isOverdue = t.dueDate.isBefore(DateTime.now()) && t.status != 'completed';
+                  final isOverdue = t.dueDate != null && t.dueDate!.isBefore(DateTime.now()) && t.status != 'completed';
                   return Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -668,7 +669,7 @@ class _AllTasksTabState extends State<_AllTasksTab> {
                         const Spacer(),
                         Icon(Icons.calendar_today_outlined, size: 11, color: isOverdue ? AppTheme.red : AppTheme.textSecondary),
                         const SizedBox(width: 3),
-                        Text(AppTheme.fmtDate(t.dueDate), style: TextStyle(fontSize: 11, color: isOverdue ? AppTheme.red : AppTheme.textSecondary)),
+                        Text(t.dueDate != null ? AppTheme.fmtDate(t.dueDate!) : '—', style: TextStyle(fontSize: 11, color: isOverdue ? AppTheme.red : AppTheme.textSecondary)),
                       ]),
                     ]),
                   );

@@ -290,9 +290,12 @@ class _SkillMatrixScreenState extends State<SkillMatrixScreen> {
                 return SizedBox(
                   width: colW,
                   height: rowH,
-                  child: Center(child: skill == null
-                      ? Container(width: 8, height: 8, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.15), shape: BoxShape.circle))
-                      : _levelBadge(skill.level)),
+                  child: Center(child: GestureDetector(
+                    onTap: () => _showSkillEditor(emp, s),
+                    child: skill == null
+                        ? Container(width: 8, height: 8, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.15), shape: BoxShape.circle))
+                        : _levelBadge(skill.level),
+                  )),
                 );
               }),
             ]),
@@ -316,6 +319,79 @@ class _SkillMatrixScreenState extends State<SkillMatrixScreen> {
       decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle,
           border: Border.all(color: color.withOpacity(0.4))),
       child: Center(child: Text(abbr, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color))),
+    );
+  }
+
+  void _showSkillEditor(Employee emp, String skillName) {
+    final current = _getSkill(emp, skillName);
+    String? selectedLevel = current?.level;
+    int? years = current?.yearsOfExperience;
+    final yearsCtrl = TextEditingController(text: years?.toString() ?? '');
+    bool saving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setModal) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 14),
+              Text('Edit Skill: $skillName', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              Text(emp.fullName, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String?>(
+                value: selectedLevel,
+                decoration: const InputDecoration(labelText: 'Proficiency Level'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Remove skill', style: TextStyle(color: AppTheme.red))),
+                  ...SkillEnhanced.levels.map((l) => DropdownMenuItem(value: l, child: Text(l))),
+                ],
+                onChanged: (v) => setModal(() => selectedLevel = v),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: yearsCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Years of Experience (optional)'),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: saving ? null : () async {
+                    setModal(() => saving = true);
+                    try {
+                      await _svc.updateSkill(
+                        emp.id,
+                        skillName,
+                        selectedLevel,
+                        yearsOfExperience: int.tryParse(yearsCtrl.text),
+                      );
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      _load(); // Refresh matrix
+                    } catch (e) {
+                      setModal(() => saving = false);
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red),
+                        );
+                      }
+                    }
+                  },
+                  child: saving
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text(selectedLevel == null ? 'Remove Skill' : 'Save'),
+                ),
+              ),
+            ]),
+          ),
+        );
+      }),
     );
   }
 }

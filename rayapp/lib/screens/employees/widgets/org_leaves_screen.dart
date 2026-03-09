@@ -24,10 +24,12 @@ class _OrgLeavesScreenState extends State<OrgLeavesScreen> {
   void initState() { super.initState(); _load(); }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() { _loading = true; _error = null; });
     try {
       final results = await Future.wait([_svc.getAll(), _empSvc.getAll()]);
-      if (mounted) setState(() {
+      if (!mounted) return;
+      setState(() {
         _all = results[0] as List<Leave>;
         _employees = results[1] as List<Employee>;
         _loading = false;
@@ -75,7 +77,6 @@ class _OrgLeavesScreenState extends State<OrgLeavesScreen> {
                   TextButton(onPressed: _load, child: const Text('Retry')),
                 ]))
               : Column(children: [
-                  // ── 4 stat cards ──────────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: LayoutBuilder(builder: (_, c) {
@@ -97,7 +98,6 @@ class _OrgLeavesScreenState extends State<OrgLeavesScreen> {
                       );
                     }),
                   ),
-                  // ── filter chips ──────────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
                     child: SingleChildScrollView(
@@ -113,7 +113,6 @@ class _OrgLeavesScreenState extends State<OrgLeavesScreen> {
                       ]),
                     ),
                   ),
-                  // ── list ──────────────────────────────────────────────
                   Expanded(
                     child: _filtered.isEmpty
                         ? const Center(child: Text('No leave requests', style: TextStyle(color: Color(0xFF6B7280))))

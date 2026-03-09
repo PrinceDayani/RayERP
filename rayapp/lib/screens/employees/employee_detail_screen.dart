@@ -73,12 +73,12 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppTheme.primary)));
-    if (_emp == null) return Scaffold(body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+    if (_emp == null) { return Scaffold(body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 36),
       const SizedBox(height: 8),
       Text(_error ?? 'Failed to load', style: const TextStyle(color: Color(0xFFDC2626))),
       TextButton(onPressed: _load, child: const Text('Retry')),
-    ])));
+    ]))); }
 
     final emp = _emp!;
     final initials = emp.firstName[0].toUpperCase() + (emp.lastName.isNotEmpty ? emp.lastName[0].toUpperCase() : '');
@@ -503,7 +503,7 @@ class _LeavesTabState extends State<_LeavesTab> {
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: widget.leaves.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
               itemBuilder: (_, i) => LeaveCard(
                 leave: widget.leaves[i],
                 onUpdateStatus: (status) => _updateStatus(widget.leaves[i].id, status),

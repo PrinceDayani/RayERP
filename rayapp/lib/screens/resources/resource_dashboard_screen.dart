@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../services/resource_service.dart';
-import '../../models/project.dart';
 import '../../services/project_service.dart';
+import '../../models/project.dart';
 import '../employees/employee_detail_screen.dart';
 import '../projects/project_detail_screen.dart';
 import 'allocation_calendar_screen.dart';
@@ -11,6 +11,11 @@ import 'available_employees_screen.dart';
 import 'capacity_planning_screen.dart';
 import 'conflict_detection_screen.dart';
 import 'skill_matrix_screen.dart';
+import 'skill_gap_screen.dart';
+import 'project_skill_match_screen.dart';
+import 'skill_analytics_screen.dart';
+import 'allocation_summary_screen.dart';
+import 'allocation_form_screen.dart';
 
 class ResourceDashboardScreen extends StatefulWidget {
   const ResourceDashboardScreen({super.key});
@@ -30,13 +35,25 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
   int _availableCount = 0;
   int _skillGapsCount = 0;
   int _overallocatedCount = 0;
+  double _avgUtilization = 0;
   bool _loading = true;
   String? _error;
+
+  // Allocation filters
+  String _filterStatus = 'all';
+  DateTime? _filterStart;
+  DateTime? _filterEnd;
+
+  static const _tabLabels = [
+    'Overview', 'Calendar', 'Workload', 'Available',
+    'Capacity', 'Conflicts', 'Skill Matrix',
+    'Skill Gaps', 'Project Match', 'Analytics', 'Summary',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 7, vsync: this);
+    _tabs = TabController(length: _tabLabels.length, vsync: this);
     _load();
   }
 
@@ -47,25 +64,43 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
   }
 
   Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
     try {
+      final now = DateTime.now();
+      final start = now.toIso8601String();
+      final end = now.add(const Duration(days: 90)).toIso8601String();
+
       final results = await Future.wait([
-        _svc.getAllocations(),
+        _svc.getAllocations(
+          status: _filterStatus == 'all' ? null : _filterStatus,
+          startDate: _filterStart?.toIso8601String(),
+          endDate: _filterEnd?.toIso8601String(),
+        ),
         _projSvc.getAll(),
         _svc.getAvailableCount(),
         _svc.getSkillGapsCount(),
-        _svc.getCapacities(),
+        _svc.getCapacities(startDate: start, endDate: end),
       ]);
-      if (mounted) {
-        final capacities = results[4] as List<EmployeeCapacity>;
-        setState(() {
-          _allocations = results[0] as List<ResourceAllocation>;
-          _projects = results[1] as List<Project>;
-          _availableCount = results[2] as int;
-          _skillGapsCount = results[3] as int;
-          _overallocatedCount = capacities.where((c) => c.utilizationPct > 100).length;
-          _loading = false;
-        });
+
+      if (!mounted) return;
+      final capacities = results[4] as List<EmployeeCapacity>;
+      final allocs = results[0] as List<ResourceAllocation>;
+
+      // Avg utilization from capacities
+      double avgUtil = 0;
+      if (capacities.isNotEmpty) {
+        avgUtil = capacities.fold(0.0, (s, c) => s + c.utilizationPct) / capacities.length;
       }
+
+      setState(() {
+        _allocations = allocs;
+        _projects = results[1] as List<Project>;
+        _availableCount = results[2] as int;
+        _skillGapsCount = results[3] as int;
+        _overallocatedCount = capacities.where((c) => c.utilizationPct > 100).length;
+        _avgUtilization = avgUtil;
+        _loading = false;
+      });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
@@ -75,15 +110,6 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
     final ids = <String>{};
     for (final a in _allocations) ids.add(a.employeeId);
     return ids.length;
-  }
-
-  double get _avgUtilization {
-    if (_allocations.isEmpty) return 0;
-    final Map<String, double> empUtil = {};
-    for (final a in _allocations) {
-      empUtil[a.employeeId] = (empUtil[a.employeeId] ?? 0) + a.utilizationPct;
-    }
-    return empUtil.values.fold(0.0, (s, v) => s + v) / empUtil.length;
   }
 
   List<ResourceAllocation> get _recentAllocations {
@@ -103,22 +129,44 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-    if (_error != null) return Center(child: Text(_error!, style: const TextStyle(color: AppTheme.red)));
+    if (_error != null) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.error_outline, color: AppTheme.red, size: 40),
+      const SizedBox(height: 8),
+      Text(_error!, style: const TextStyle(color: AppTheme.red), textAlign: TextAlign.center),
+      const SizedBox(height: 12),
+      ElevatedButton(onPressed: _load, child: const Text('Retry')),
+    ]));
 
-    return Column(children: [
-      _buildTabBar(),
-      Expanded(
-        child: TabBarView(controller: _tabs, children: [
-          _buildOverviewTab(),
-          const AllocationCalendarScreen(),
-          WorkloadTimelineScreen(allocations: _allocations),
-          AvailableEmployeesScreen(allocations: _allocations),
-          const CapacityPlanningScreen(),
-          const ConflictDetectionScreen(),
-          const SkillMatrixScreen(),
-        ]),
+    return Scaffold(
+      body: Column(children: [
+        _buildTabBar(),
+        Expanded(
+          child: TabBarView(controller: _tabs, children: [
+            _buildOverviewTab(),
+            const AllocationCalendarScreen(),
+            WorkloadTimelineScreen(allocations: _allocations),
+            AvailableEmployeesScreen(allocations: _allocations),
+            const CapacityPlanningScreen(),
+            const ConflictDetectionScreen(),
+            const SkillMatrixScreen(),
+            const SkillGapScreen(),
+            const ProjectSkillMatchScreen(),
+            const SkillAnalyticsScreen(),
+            const AllocationSummaryScreen(),
+          ]),
+        ),
+      ]),
+      floatingActionButton: FloatingActionButton.small(
+        onPressed: () async {
+          final result = await Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const AllocationFormScreen()));
+          if (result == true) _load();
+        },
+        backgroundColor: AppTheme.primary,
+        tooltip: 'New Allocation',
+        child: const Icon(Icons.add, color: Colors.white),
       ),
-    ]);
+    );
   }
 
   Widget _buildTabBar() {
@@ -132,37 +180,179 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
         unselectedLabelColor: AppTheme.textSecondary,
         indicatorColor: AppTheme.primary,
         labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        tabs: const [
-          Tab(text: 'Overview'),
-          Tab(text: 'Calendar'),
-          Tab(text: 'Workload'),
-          Tab(text: 'Available'),
-          Tab(text: 'Capacity'),
-          Tab(text: 'Conflicts'),
-          Tab(text: 'Skill Matrix'),
-        ],
+        tabs: _tabLabels.map((t) => Tab(text: t)).toList(),
       ),
     );
   }
 
   Widget _buildOverviewTab() {
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _statsRow(),
-          const SizedBox(height: 20),
-          _sectionTitle('Recent Allocations'),
-          const SizedBox(height: 8),
-          ..._recentAllocations.map(_allocationCard),
-          if (_recentAllocations.isEmpty) _emptyState('No active allocations'),
-          const SizedBox(height: 20),
-          _sectionTitle('Upcoming Deadlines'),
-          const SizedBox(height: 8),
-          ..._upcomingDeadlines.map(_deadlineCard),
-          if (_upcomingDeadlines.isEmpty) _emptyState('No deadlines in next 30 days'),
+    final screenW = MediaQuery.of(context).size.width;
+    final hPad = screenW < 400 ? 12.0 : 16.0;
+    return Column(children: [
+      _buildFilterBar(hPad),
+      Expanded(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 80),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _statsRow(),
+              const SizedBox(height: 20),
+              _sectionTitle('Recent Allocations'),
+              const SizedBox(height: 8),
+              ..._recentAllocations.map(_allocationCard),
+              if (_recentAllocations.isEmpty) _emptyState('No allocations match filters'),
+              const SizedBox(height: 20),
+              _sectionTitle('Upcoming Deadlines (30 days)'),
+              const SizedBox(height: 8),
+              ..._upcomingDeadlines.map(_deadlineCard),
+              if (_upcomingDeadlines.isEmpty) _emptyState('No deadlines in next 30 days'),
+            ]),
+          ),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildFilterBar(double hPad) {
+    final screenW = MediaQuery.of(context).size.width;
+    final compact = screenW < 480;
+    final hasFilters = _filterStatus != 'all' || _filterStart != null || _filterEnd != null;
+
+    return Container(
+      color: Theme.of(context).cardColor,
+      padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Status chips
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            _filterChip('All', 'all'),
+            const SizedBox(width: 6),
+            _filterChip('Active', 'active'),
+            const SizedBox(width: 6),
+            _filterChip('Planned', 'planned'),
+            const SizedBox(width: 6),
+            _filterChip('Completed', 'completed'),
+            const SizedBox(width: 6),
+            _filterChip('On Hold', 'on_hold'),
+          ]),
+        ),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(
+            child: _datePicker(
+              label: compact ? 'From' : 'Start Date',
+              date: _filterStart,
+              onPick: (d) { setState(() => _filterStart = d); _load(); },
+              onClear: () { setState(() => _filterStart = null); _load(); },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _datePicker(
+              label: compact ? 'To' : 'End Date',
+              date: _filterEnd,
+              onPick: (d) { setState(() => _filterEnd = d); _load(); },
+              onClear: () { setState(() => _filterEnd = null); _load(); },
+            ),
+          ),
+          if (hasFilters) ...[  
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _filterStatus = 'all';
+                  _filterStart = null;
+                  _filterEnd = null;
+                });
+                _load();
+              },
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                foregroundColor: AppTheme.red,
+              ),
+              child: Text(compact ? 'Clear' : 'Clear All',
+                  style: const TextStyle(fontSize: 12)),
+            ),
+          ],
+        ]),
+      ]),
+    );
+  }
+
+  Widget _filterChip(String label, String value) {
+    final active = _filterStatus == value;
+    return GestureDetector(
+      onTap: () { setState(() => _filterStatus = value); _load(); },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? AppTheme.primary : AppTheme.primary.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: active ? AppTheme.primary : AppTheme.primary.withOpacity(0.2)),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: active ? Colors.white : AppTheme.primary)),
+      ),
+    );
+  }
+
+  Widget _datePicker({
+    required String label,
+    required DateTime? date,
+    required ValueChanged<DateTime> onPick,
+    required VoidCallback onClear,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: date ?? DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2030),
+        );
+        if (picked != null) onPick(picked);
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(
+              color: date != null ? AppTheme.primary : AppTheme.border),
+          borderRadius: BorderRadius.circular(8),
+          color: date != null
+              ? AppTheme.primary.withOpacity(0.04)
+              : Theme.of(context).inputDecorationTheme.fillColor,
+        ),
+        child: Row(children: [
+          Icon(Icons.calendar_today_outlined,
+              size: 13,
+              color: date != null ? AppTheme.primary : AppTheme.textSecondary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              date != null ? AppTheme.fmtDate(date) : label,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: date != null
+                      ? AppTheme.primary
+                      : AppTheme.textSecondary,
+                  fontWeight: date != null ? FontWeight.w600 : FontWeight.normal),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (date != null)
+            GestureDetector(
+              onTap: onClear,
+              child: const Icon(Icons.close, size: 14, color: AppTheme.textSecondary),
+            ),
         ]),
       ),
     );
@@ -175,7 +365,7 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
       ('Overallocated', '$_overallocatedCount', AppTheme.red, Icons.warning_amber_outlined),
       ('Avg Utilization', '${_avgUtilization.toStringAsFixed(0)}%', AppTheme.amber, Icons.speed_outlined),
       ('Active Projects', '${_projects.where((p) => p.status == 'active').length}', AppTheme.primary, Icons.folder_outlined),
-      ('Skill Gaps', '$_skillGapsCount', const Color(0xFF7C3AED), Icons.psychology_outlined),
+      ('Skill Gaps', '$_skillGapsCount', AppTheme.purple, Icons.psychology_outlined),
     ];
     return LayoutBuilder(builder: (_, c) {
       final cols = c.maxWidth < 360 ? 2 : 3;
@@ -226,24 +416,30 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
             GestureDetector(
               onTap: () => Navigator.push(context, MaterialPageRoute(
                   builder: (_) => ProjectDetailScreen(id: a.projectId))),
-              child: Text(a.projectName, style: const TextStyle(
+              child: Text('${a.projectName} · ${a.role}', style: const TextStyle(
                   fontSize: 12, color: AppTheme.blue,
                   decoration: TextDecoration.underline)),
             ),
-            Text('From ${_fmt(a.startDate)}', style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+            Text('${AppTheme.fmtDate(a.startDate)} – ${AppTheme.fmtDate(a.endDate)}',
+                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
           ])),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: isHigh ? AppTheme.redBg : AppTheme.greenBg,
-              borderRadius: BorderRadius.circular(12),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isHigh ? AppTheme.redBg : AppTheme.greenBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${a.utilizationPct.toStringAsFixed(0)}%',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                    color: isHigh ? AppTheme.red : AppTheme.green),
+              ),
             ),
-            child: Text(
-              '${a.utilizationPct.toStringAsFixed(0)}%',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                  color: isHigh ? AppTheme.red : AppTheme.green),
-            ),
-          ),
+            const SizedBox(height: 4),
+            Text('${a.allocatedHours.toStringAsFixed(0)}h/wk',
+                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+          ]),
         ]),
       ),
     );
@@ -267,7 +463,7 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
               Row(children: [
                 _priorityBadge(p.priority),
                 const SizedBox(width: 6),
-                Text('Due ${_fmt(p.endDate)}', style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                Text('Due ${AppTheme.fmtDate(p.endDate)}', style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
               ]),
             ])),
             Container(
@@ -296,6 +492,4 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
     padding: const EdgeInsets.symmetric(vertical: 16),
     child: Center(child: Text(msg, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13))),
   );
-
-  String _fmt(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 }

@@ -4,6 +4,7 @@ import '../../config/app_theme.dart';
 import '../../services/resource_service.dart';
 import '../../services/employee_service.dart';
 import '../../models/employee.dart';
+import 'allocation_form_screen.dart';
 
 class AllocationCalendarScreen extends StatefulWidget {
   const AllocationCalendarScreen({super.key});
@@ -33,7 +34,10 @@ class _AllocationCalendarScreenState extends State<AllocationCalendarScreen> {
 
   Future<void> _load() async {
     try {
-      final results = await Future.wait([_svc.getAllocations(), _empSvc.getAll()]);
+      final results = await Future.wait([
+        _svc.getAllocations(),
+        _empSvc.getAll(),
+      ]);
       if (mounted) {
         setState(() {
           _allocations = results[0] as List<ResourceAllocation>;
@@ -66,7 +70,7 @@ class _AllocationCalendarScreenState extends State<AllocationCalendarScreen> {
     final dayAllocations = _allocationsForDay(_selectedDay);
 
     return Column(children: [
-      // Format toggle
+      // Format toggle + FAB
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: Row(children: [
@@ -79,6 +83,23 @@ class _AllocationCalendarScreenState extends State<AllocationCalendarScreen> {
           _fmtBtn('Week', CalendarFormat.week),
           const Spacer(),
           Text('${_allocations.length} allocations', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () async {
+              final result = await Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const AllocationFormScreen()));
+              if (result == true) _load();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(6)),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.add, size: 14, color: Colors.white),
+                SizedBox(width: 4),
+                Text('New', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          ),
         ]),
       ),
       TableCalendar(
@@ -164,7 +185,7 @@ class _AllocationCalendarScreenState extends State<AllocationCalendarScreen> {
               style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700, fontSize: 13)),
         ),
         title: Text(a.employeeName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        subtitle: Text(a.projectName, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+        subtitle: Text('${a.projectName} · ${a.role}', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -172,7 +193,46 @@ class _AllocationCalendarScreenState extends State<AllocationCalendarScreen> {
             child: Text('${util.toStringAsFixed(0)}%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
           ),
           const SizedBox(width: 4),
-          Icon(Icons.swap_horiz, size: 18, color: AppTheme.textSecondary),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, size: 18, color: AppTheme.textSecondary),
+            onSelected: (v) async {
+              if (v == 'edit') {
+                final result = await Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => AllocationFormScreen(existing: a)));
+                if (result == true) _load();
+              } else if (v == 'delete') {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Delete Allocation'),
+                    content: Text('Remove ${a.employeeName} from ${a.projectName}?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                      TextButton(onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Delete', style: TextStyle(color: AppTheme.red))),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  try {
+                    await ResourceService().deleteAllocation(a.id);
+                    _load();
+                  } catch (e) {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red),
+                    );
+                  }
+                }
+              } else if (v == 'reassign') {
+                _showReassignSheet(a);
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 16), SizedBox(width: 8), Text('Edit')])),
+              const PopupMenuItem(value: 'reassign', child: Row(children: [Icon(Icons.swap_horiz, size: 16), SizedBox(width: 8), Text('Reassign')])),
+              const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline, size: 16, color: AppTheme.red), SizedBox(width: 8), Text('Delete', style: TextStyle(color: AppTheme.red))])),
+            ],
+          ),
         ]),
         onTap: () => _showReassignSheet(a),
       ),
@@ -198,13 +258,19 @@ class _AllocationCalendarScreenState extends State<AllocationCalendarScreen> {
             final idx = _allocations.indexOf(alloc);
             if (idx != -1) {
               _allocations[idx] = ResourceAllocation(
+                id: alloc.id,
                 employeeId: emp.id,
                 employeeName: emp.fullName,
                 projectId: alloc.projectId,
                 projectName: alloc.projectName,
+                projectStatus: alloc.projectStatus,
                 startDate: alloc.startDate,
                 endDate: alloc.endDate,
+                allocatedHours: alloc.allocatedHours,
                 utilizationPct: alloc.utilizationPct,
+                role: alloc.role,
+                status: alloc.status,
+                priority: alloc.priority,
               );
             }
           });

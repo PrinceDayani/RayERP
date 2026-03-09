@@ -5,6 +5,8 @@ import '../../models/task.dart';
 import '../../services/task_service.dart';
 import '../../services/auth_provider.dart';
 import 'task_form_screen.dart';
+import 'task_recurring_screen.dart';
+import 'task_dependencies_screen.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final String taskId;
@@ -83,6 +85,39 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     }
   }
 
+  void _openRecurring() => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => TaskRecurringScreen(task: _task!)),
+      ).then((updated) { if (updated == true) _load(); });
+
+  void _openDependencies() => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => TaskDependenciesScreen(task: _task!)),
+      ).then((updated) { if (updated == true) _load(); });
+
+  Future<void> _addSubtask(String title) async {
+    try {
+      await _svc.addSubtask(widget.taskId, {
+        'title': title,
+        'project': _task!.projectId,
+      });
+      await _load();
+      _ok('Subtask added');
+    } catch (e) {
+      _err(e.toString());
+    }
+  }
+
+  Future<void> _addTag(String name, String color) async {
+    try {
+      await _svc.addTag(widget.taskId, name, color: color);
+      await _load();
+      _ok('Tag added');
+    } catch (e) {
+      _err(e.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,7 +153,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                   builder: (_) => TaskFormScreen(
                     task: _task,
                     projectId: _task!.projectId,
-                    currentUserId: context.read<AuthProvider>().user?.id,
                   ),
                 ),
               ).then((updated) { if (updated == true) _load(); }),
@@ -163,13 +197,84 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
       body: TabBarView(
         controller: _tabs,
         children: [
-          _DetailsTab(task: t, sc: _sc, pc: _pc),
+          _DetailsTab(
+            task: t,
+            sc: _sc,
+            pc: _pc,
+            onAddSubtask: _addSubtask,
+            onManageRecurring: _openRecurring,
+          ),
           _ChecklistTab(task: t, svc: _svc, onRefresh: _load, ctrl: _checkCtrl),
           _CommentsTab(task: t, svc: _svc, onRefresh: _load, ctrl: _commentCtrl),
           _TimeTab(task: t, svc: _svc, onRefresh: _load),
           _AttachmentsTab(task: t),
-          _DependenciesTab(task: t, svc: _svc, onRefresh: _load),
+          _DependenciesTab(
+            task: t,
+            svc: _svc,
+            onRefresh: _load,
+            onManage: _openDependencies,
+          ),
         ],
+      ),
+    );
+  }
+
+  void _showAddTagDialog() {
+    final ctrl = TextEditingController();
+    const colors = [
+      '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+      '#8b5cf6', '#06b6d4', '#ec4899', '#6b7280',
+    ];
+    String selected = colors[0];
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Add Tag', style: TextStyle(fontSize: 15)),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Tag name',
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: colors.map((c) => GestureDetector(
+                onTap: () => setS(() => selected = c),
+                child: Container(
+                  width: 24, height: 24,
+                  decoration: BoxDecoration(
+                    color: _hexColor(c),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected == c ? Colors.black54 : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                ),
+              )).toList(),
+            ),
+          ]),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final name = ctrl.text.trim();
+                if (name.isEmpty) return;
+                Navigator.pop(ctx);
+                _addTag(name, selected);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -226,27 +331,47 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
           _InfoItem(Icons.access_time_outlined, 'Logged',
               '${(t.totalLoggedMinutes / 60).toStringAsFixed(1)}h'),
         ]),
-        if (t.tags.isNotEmpty) ...[
+        if (t.tags.isNotEmpty || true) ...[
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: t.tags
-                .map((tag) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: _hexColor(tag.color).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: _hexColor(tag.color).withOpacity(0.3)),
-                      ),
-                      child: Text(tag.name,
-                          style: TextStyle(
-                              fontSize: 11, color: _hexColor(tag.color))),
-                    ))
-                .toList(),
-          ),
+          Row(children: [
+            Expanded(
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: t.tags
+                    .map((tag) => Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: _hexColor(tag.color).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: _hexColor(tag.color).withOpacity(0.3)),
+                          ),
+                          child: Text(tag.name,
+                              style: TextStyle(
+                                  fontSize: 11, color: _hexColor(tag.color))),
+                        ))
+                    .toList(),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _showAddTagDialog(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.add, size: 12, color: AppTheme.primary),
+                  SizedBox(width: 3),
+                  Text('Tag', style: TextStyle(fontSize: 11, color: AppTheme.primary)),
+                ]),
+              ),
+            ),
+          ]),
         ],
         if (t.checklist.isNotEmpty) ...[
           const SizedBox(height: 10),
@@ -280,17 +405,31 @@ class _DetailsTab extends StatelessWidget {
   final Task task;
   final Color Function(String) sc;
   final Color Function(String) pc;
-  const _DetailsTab({required this.task, required this.sc, required this.pc});
+  final Future<void> Function(String) onAddSubtask;
+  final VoidCallback onManageRecurring;
+  const _DetailsTab({
+    required this.task,
+    required this.sc,
+    required this.pc,
+    required this.onAddSubtask,
+    required this.onManageRecurring,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (task.subtasks.isNotEmpty) ...[
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const Text('Subtasks',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
+          _AddInlineButton(
+            label: 'Add Subtask',
+            onSubmit: onAddSubtask,
+          ),
+        ]),
+        const SizedBox(height: 8),
+        if (task.subtasks.isNotEmpty) ...[
           ...task.subtasks.map((s) => Container(
                 margin: const EdgeInsets.only(bottom: 6),
                 padding:
@@ -313,8 +452,13 @@ class _DetailsTab extends StatelessWidget {
                   _Chip(s.status, sc(s.status)),
                 ]),
               )),
-          const SizedBox(height: 16),
-        ],
+        ] else
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text('No subtasks yet',
+                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+          ),
+        const SizedBox(height: 8),
         if (task.customFields.isNotEmpty) ...[
           const Text('Custom Fields',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -358,10 +502,28 @@ class _DetailsTab extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
-        if (task.recurrencePattern != null) ...[
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const Text('Recurrence',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: onManageRecurring,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppTheme.purple.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.purple.withOpacity(0.3)),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.settings_outlined, size: 12, color: AppTheme.purple),
+                SizedBox(width: 3),
+                Text('Manage', style: TextStyle(fontSize: 11, color: AppTheme.purple)),
+              ]),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        if (task.recurrencePattern != null) ...[
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -372,13 +534,23 @@ class _DetailsTab extends StatelessWidget {
             child: Row(children: [
               const Icon(Icons.repeat, size: 16, color: AppTheme.purple),
               const SizedBox(width: 8),
-              Text(task.recurrencePattern!,
-                  style: const TextStyle(
-                      fontSize: 13, color: AppTheme.purple)),
+              Text(
+                task.isRecurring
+                    ? task.recurrencePattern!
+                    : 'Disabled — ${task.recurrencePattern!}',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: task.isRecurring ? AppTheme.purple : AppTheme.textSecondary),
+              ),
             ]),
           ),
-          const SizedBox(height: 16),
-        ],
+        ] else
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text('Not recurring',
+                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+          ),
+        const SizedBox(height: 16),
         const Text('Activity',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
@@ -958,56 +1130,91 @@ class _DependenciesTab extends StatelessWidget {
   final Task task;
   final TaskService svc;
   final VoidCallback onRefresh;
-  const _DependenciesTab(
-      {required this.task, required this.svc, required this.onRefresh});
+  final VoidCallback onManage;
+  const _DependenciesTab({
+    required this.task,
+    required this.svc,
+    required this.onRefresh,
+    required this.onManage,
+  });
 
   @override
   Widget build(BuildContext context) {
     final deps = task.dependencies;
-    if (deps.isEmpty) {
-      return Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.account_tree_outlined,
-            size: 48, color: AppTheme.textMuted),
-        const SizedBox(height: 12),
-        const Text('No dependencies',
-            style: TextStyle(color: AppTheme.textSecondary)),
-      ]));
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: deps.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        final d = deps[i];
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppTheme.border),
-          ),
-          child: Row(children: [
-            const Icon(Icons.link, size: 16, color: AppTheme.textSecondary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      d.taskTitle.isNotEmpty ? d.taskTitle : d.taskId,
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                    Text(d.type,
-                        style: const TextStyle(
-                            fontSize: 10, color: AppTheme.textSecondary)),
-                  ]),
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('${deps.length} dependenc${deps.length == 1 ? 'y' : 'ies'}',
+              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+          ElevatedButton.icon(
+            onPressed: onManage,
+            icon: const Icon(Icons.add, size: 14),
+            label: const Text('Manage', style: TextStyle(fontSize: 12)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-          ]),
-        );
-      },
-    );
+          ),
+        ]),
+      ),
+      Expanded(
+        child: deps.isEmpty
+            ? Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.account_tree_outlined,
+                    size: 48, color: AppTheme.textMuted),
+                const SizedBox(height: 12),
+                const Text('No dependencies',
+                    style: TextStyle(color: AppTheme.textSecondary)),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: onManage,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add Dependency'),
+                ),
+              ]))
+            : ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: deps.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (_, i) {
+                  final d = deps[i];
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppTheme.border),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.link,
+                          size: 16, color: AppTheme.textSecondary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                d.taskTitle.isNotEmpty ? d.taskTitle : d.taskId,
+                                style: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
+                              Text(d.type,
+                                  style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppTheme.textSecondary)),
+                            ]),
+                      ),
+                    ]),
+                  );
+                },
+              ),
+      ),
+    ]);
   }
 }
 
@@ -1071,6 +1278,100 @@ class _InfoRow extends StatelessWidget {
                   fontSize: 12, fontWeight: FontWeight.w500)),
         ]),
       );
+}
+
+// ── Add Inline Button ────────────────────────────────────────────────────────
+
+class _AddInlineButton extends StatefulWidget {
+  final String label;
+  final Future<void> Function(String) onSubmit;
+  const _AddInlineButton({required this.label, required this.onSubmit});
+
+  @override
+  State<_AddInlineButton> createState() => _AddInlineButtonState();
+}
+
+class _AddInlineButtonState extends State<_AddInlineButton> {
+  bool _expanded = false;
+  bool _saving = false;
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _saving = true);
+    await widget.onSubmit(text);
+    _ctrl.clear();
+    if (mounted) setState(() { _saving = false; _expanded = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_expanded) {
+      return GestureDetector(
+        onTap: () => setState(() => _expanded = true),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.add, size: 12, color: AppTheme.primary),
+            const SizedBox(width: 3),
+            Text(widget.label,
+                style: const TextStyle(fontSize: 11, color: AppTheme.primary)),
+          ]),
+        ),
+      );
+    }
+    return Row(children: [
+      Expanded(
+        child: TextField(
+          controller: _ctrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: widget.label,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            isDense: true,
+          ),
+          style: const TextStyle(fontSize: 12),
+          onSubmitted: (_) => _submit(),
+        ),
+      ),
+      const SizedBox(width: 6),
+      _saving
+          ? const SizedBox(
+              width: 20, height: 20,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppTheme.primary))
+          : IconButton(
+              icon: const Icon(Icons.check_circle,
+                  color: AppTheme.green, size: 22),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: _submit,
+            ),
+      IconButton(
+        icon: const Icon(Icons.cancel_outlined,
+            color: AppTheme.textSecondary, size: 22),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+        onPressed: () {
+          _ctrl.clear();
+          setState(() => _expanded = false);
+        },
+      ),
+    ]);
+  }
 }
 
 Color _hexColor(String hex) {

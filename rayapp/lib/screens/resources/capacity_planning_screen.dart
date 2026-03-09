@@ -25,7 +25,11 @@ class _CapacityPlanningScreenState extends State<CapacityPlanningScreen> {
 
   Future<void> _load() async {
     try {
-      final data = await _svc.getCapacities();
+      final now = DateTime.now();
+      final data = await _svc.getCapacities(
+        startDate: now.toIso8601String(),
+        endDate: now.add(const Duration(days: 90)).toIso8601String(),
+      );
       if (mounted) setState(() { _capacities = data; _loading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
@@ -34,13 +38,13 @@ class _CapacityPlanningScreenState extends State<CapacityPlanningScreen> {
 
   List<String> get _roles {
     final roles = {'All'};
-    for (final c in _capacities) roles.add(c.employee.position);
+    for (final c in _capacities) roles.add(c.position);
     return roles.toList();
   }
 
   List<EmployeeCapacity> get _filtered {
     if (_roleFilter == 'All') return _capacities;
-    return _capacities.where((c) => c.employee.position == _roleFilter).toList();
+    return _capacities.where((c) => c.position == _roleFilter).toList();
   }
 
   @override
@@ -101,18 +105,19 @@ class _CapacityPlanningScreenState extends State<CapacityPlanningScreen> {
           Row(children: [
             GestureDetector(
               onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => EmployeeDetailScreen(id: cap.employee.id))),
+                  builder: (_) => EmployeeDetailScreen(id: cap.employeeId))),
               child: CircleAvatar(
                 radius: 16,
                 backgroundColor: AppTheme.primary.withOpacity(0.1),
-                child: Text(cap.employee.firstName.isNotEmpty ? cap.employee.firstName[0] : '?',
+                child: Text(cap.employeeName.isNotEmpty ? cap.employeeName[0] : '?',
                     style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700, fontSize: 13)),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(cap.employee.fullName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              Text(cap.employee.position, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+              Text(cap.employeeName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              Text('${cap.position}${cap.department != null ? ' · ${cap.department}' : ''}',
+                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
             ])),
             Text('${util.toStringAsFixed(0)}%', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: color)),
           ]),
@@ -128,18 +133,19 @@ class _CapacityPlanningScreenState extends State<CapacityPlanningScreen> {
           ),
           const SizedBox(height: 8),
           Row(children: [
-            _hoursChip('Allocated', '${cap.totalAllocatedHours.toStringAsFixed(0)}h/wk', color),
+            _hoursChip('Allocated', '${cap.allocated}h/wk', color),
             const SizedBox(width: 8),
-            _hoursChip('Available', '${cap.availableHours.toStringAsFixed(0)}h/wk', AppTheme.green),
+            _hoursChip('Available', '${cap.available}h/wk', AppTheme.green),
             const SizedBox(width: 8),
-            _hoursChip('Capacity', '40h/wk', AppTheme.blue),
+            _hoursChip('Capacity', '${cap.capacity}h/wk', AppTheme.blue),
           ]),
-          if (cap.projects.isNotEmpty) ...[
+          if (cap.allocations.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Wrap(spacing: 6, runSpacing: 4, children: cap.projects.map((p) => Container(
+            Wrap(spacing: 6, runSpacing: 4, children: cap.allocations.map((a) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(4)),
-              child: Text(p.projectName, style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+              child: Text('${a['project'] is Map ? a['project']['name'] : a['project'] ?? ''} · ${a['hours'] ?? 0}h',
+                  style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
             )).toList()),
           ],
         ]),

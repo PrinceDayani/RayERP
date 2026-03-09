@@ -18,7 +18,10 @@ class _RoleListScreenState extends State<RoleListScreen> {
   String? _error;
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
 
   Future<void> _load() async {
     if (!mounted) return;
@@ -167,7 +170,7 @@ class _RoleListScreenState extends State<RoleListScreen> {
               const SizedBox(height: 6),
               Text(r.description, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
             ],
-            const Spacer(),
+            const SizedBox(height: 8),
             const Divider(height: 16),
             Row(children: [
               Icon(Icons.shield_outlined, size: 13, color: AppTheme.blue),

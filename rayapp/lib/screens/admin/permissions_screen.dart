@@ -127,6 +127,23 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     );
   }
 
+  Widget _errView(String e, VoidCallback retry) => Center(child: Padding(
+    padding: const EdgeInsets.all(24),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.error_outline, size: 40, color: AppTheme.red),
+      const SizedBox(height: 12),
+      Text(e, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+      const SizedBox(height: 16),
+      FilledButton(onPressed: retry, child: const Text('Retry')),
+    ]),
+  ));
+
+  Widget _emptyView(IconData icon, String msg) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+    Icon(icon, size: 48, color: AppTheme.textMuted),
+    const SizedBox(height: 12),
+    Text(msg, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+  ]));
+
   Widget _statChip(String label, Color color) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: color.withOpacity(0.2))),

@@ -122,15 +122,20 @@ class UserSession {
   });
 
   factory UserSession.fromJson(Map<String, dynamic> j) {
-    final deviceInfo = j['deviceInfo'] as Map<String, dynamic>?;
+    final deviceInfo = j['deviceInfo'] is Map ? j['deviceInfo'] as Map : null;
+    DateTime _parseDate(dynamic v) {
+      if (v == null) return DateTime.now();
+      if (v is int) return DateTime.fromMillisecondsSinceEpoch(v);
+      return DateTime.tryParse(v.toString()) ?? DateTime.now();
+    }
     return UserSession(
-      id: j['_id'] ?? '',
-      device: deviceInfo?['deviceType'],
-      browser: deviceInfo?['browser'],
-      os: deviceInfo?['os'],
-      ipAddress: j['ipAddress'] ?? '',
-      lastActive: j['lastActive'] != null ? DateTime.tryParse(j['lastActive']) ?? DateTime.now() : DateTime.now(),
-      createdAt: j['createdAt'] != null ? DateTime.tryParse(j['createdAt']) ?? DateTime.now() : DateTime.now(),
+      id: j['_id']?.toString() ?? '',
+      device: deviceInfo?['deviceType']?.toString(),
+      browser: deviceInfo?['browser']?.toString(),
+      os: deviceInfo?['os']?.toString(),
+      ipAddress: j['ipAddress']?.toString() ?? '',
+      lastActive: _parseDate(j['lastActive']),
+      createdAt: _parseDate(j['createdAt']),
       isCurrent: j['isCurrent'] ?? false,
     );
   }

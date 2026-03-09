@@ -242,7 +242,7 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
             )).toList()),
           if (_selectedDepts.isNotEmpty) const SizedBox(height: 6),
           DropdownButtonFormField<String>(
-            value: null,
+            initialValue: null,
             isDense: true,
             decoration: const InputDecoration(hintText: 'Add department', contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
             items: _allDepts.where((d) => !_selectedDepts.contains(d)).map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13)))).toList(),
