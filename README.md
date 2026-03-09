@@ -106,7 +106,6 @@ NODE_ENV=development
 
 - **Employee Management** - Directory, attendance, leave management
 - **Project Management** - Projects, tasks, team collaboration
-- **Inventory Management** - Products, stock tracking, alerts
 - **Order Management** - Order processing and tracking
 - **Finance & Accounting** - Chart of accounts, ledger, reports
 - **Authentication & Security** - JWT, RBAC, permissions

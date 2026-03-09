@@ -14,9 +14,6 @@ export const initializeDefaultRoles = async () => {
       description: 'Full system access with all permissions',
       permissions: [
         'view_users', 'create_user', 'update_user', 'delete_user',
-        'view_products', 'create_product', 'update_product', 'delete_product',
-        'view_orders', 'create_order', 'update_order', 'delete_order',
-        'view_inventory', 'manage_inventory',
         'view_customers', 'create_customer', 'update_customer', 'delete_customer',
         'view_reports', 'export_data',
         'manage_roles', 'system_settings', 'view_logs',
@@ -32,9 +29,6 @@ export const initializeDefaultRoles = async () => {
       description: 'Management level access with most permissions',
       permissions: [
         'view_users', 'create_user', 'update_user',
-        'view_products', 'create_product', 'update_product',
-        'view_orders', 'create_order', 'update_order',
-        'view_inventory', 'manage_inventory',
         'view_customers', 'create_customer', 'update_customer',
         'view_reports', 'export_data',
         'users.view', 'users.edit'
@@ -46,9 +40,7 @@ export const initializeDefaultRoles = async () => {
       name: 'Employee',
       description: 'Standard employee access for daily operations',
       permissions: [
-        'view_products', 'update_product',
-        'view_orders', 'create_order', 'update_order',
-        'view_inventory',
+
         'view_customers', 'create_customer', 'update_customer',
         'view_reports'
       ],
@@ -58,10 +50,7 @@ export const initializeDefaultRoles = async () => {
     {
       name: 'Viewer',
       description: 'Read-only access to view data',
-      permissions: [
-        'view_products',
-        'view_orders',
-        'view_inventory',
+      permissions: [,
         'view_customers',
         'view_reports'
       ],

@@ -50,7 +50,6 @@ export class RealTimeEmitter {
     this.ioInstance.emit('metrics_update', {
       activeUsers: Math.floor(Math.random() * 50) + 10,
       totalRevenue: data.totalRevenue || 0,
-      ordersToday: data.ordersToday || 0,
       systemLoad: Math.floor(Math.random() * 100),
       lastUpdated: new Date().toISOString()
     });

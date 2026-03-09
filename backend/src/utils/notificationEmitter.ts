@@ -91,58 +91,6 @@ export class NotificationEmitter {
   }
 
   // Order-related notifications
-  static orderCreated(order: any, userId?: string) {
-    const notification: NotificationData = {
-      type: 'order',
-      title: 'New Order Created',
-      message: `Order #${order.orderNumber} has been created successfully.`,
-      priority: 'medium',
-      actionUrl: `/dashboard/orders/${order._id}`,
-      metadata: { orderId: order._id, orderNumber: order.orderNumber }
-    };
-
-    if (userId) {
-      this.sendToUser(userId, notification);
-    } else {
-      this.sendToAll(notification);
-    }
-  }
-
-  static orderUpdated(order: any, userId?: string) {
-    const notification: NotificationData = {
-      type: 'order',
-      title: 'Order Updated',
-      message: `Order #${order.orderNumber} status changed to ${order.status}.`,
-      priority: 'medium',
-      actionUrl: `/dashboard/orders/${order._id}`,
-      metadata: { orderId: order._id, orderNumber: order.orderNumber, status: order.status }
-    };
-
-    if (userId) {
-      this.sendToUser(userId, notification);
-    } else {
-      this.sendToAll(notification);
-    }
-  }
-
-  // Inventory notifications
-  static lowStockAlert(inventory: any) {
-    const productName = inventory.productId?.name || 'Unknown product';
-    const notification: NotificationData = {
-      type: 'inventory',
-      title: 'Low Stock Alert',
-      message: `${productName} is running low (${inventory.quantity} remaining)`,
-      priority: 'high',
-      actionUrl: '/dashboard/inventory',
-      metadata: { 
-        productId: inventory.productId?._id, 
-        quantity: inventory.quantity,
-        productName 
-      }
-    };
-
-    this.sendToAll(notification);
-  }
 
   // Project notifications
   static projectUpdated(project: any, userId?: string) {

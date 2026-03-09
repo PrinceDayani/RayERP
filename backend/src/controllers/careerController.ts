@@ -8,7 +8,6 @@ export const getEmployeeCareer = async (req: Request, res: Response) => {
         const { employeeId } = req.params;
 
         let career = await EmployeeCareer.findOne({ employee: employeeId })
-            .populate('events.project', 'name')
             .populate('events.createdBy', 'username email');
 
         if (!career) {
@@ -82,7 +81,6 @@ export const addCareerEvent = async (req: Request, res: Response) => {
         await career.save();
 
         const updated = await EmployeeCareer.findById(career._id)
-            .populate('events.project', 'name')
             .populate('events.createdBy', 'username email');
 
         res.status(201).json(updated);
@@ -110,7 +108,6 @@ export const updateCareerEvent = async (req: Request, res: Response) => {
         await career.save();
 
         const updated = await EmployeeCareer.findById(career._id)
-            .populate('events.project', 'name')
             .populate('events.createdBy', 'username email');
 
         res.json(updated);

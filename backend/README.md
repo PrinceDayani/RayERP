@@ -58,8 +58,6 @@ src/
 │   ├── project.routes.ts         # Project routes
 │   ├── task.routes.ts            # Task routes
 │   ├── attendance.routes.ts      # Attendance routes
-│   ├── inventory.routes.ts       # Inventory routes
-│   ├── order.routes.ts           # Order routes
 │   ├── customer.routes.ts        # Customer routes
 │   ├── supplier.routes.ts        # Supplier routes
 │   ├── contact.routes.ts         # Contact routes
@@ -137,18 +135,6 @@ GET    /:id/timeline      # Get task timeline
 GET    /my-tasks          # Get current user's tasks
 ```
 
-### Inventory Management (`/api/inventory`)
-```
-GET    /                  # Get inventory items
-POST   /                  # Add inventory item
-GET    /:id               # Get inventory item by ID
-PUT    /:id               # Update inventory item
-DELETE /:id               # Delete inventory item
-PUT    /:id/adjust        # Adjust inventory levels
-GET    /low-stock         # Get low stock items
-GET    /transactions      # Get inventory transactions
-```
-
 ### Product Management (`/api/products`)
 ```
 GET    /                  # Get all products
@@ -160,17 +146,6 @@ GET    /categories        # Get product categories
 GET    /search            # Search products
 ```
 
-### Order Management (`/api/orders`)
-```
-GET    /                  # Get all orders
-POST   /                  # Create new order
-GET    /:id               # Get order by ID
-PUT    /:id               # Update order
-DELETE /:id               # Delete order
-PATCH  /:id/status        # Update order status
-GET    /:id/items         # Get order items
-POST   /:id/items         # Add order item
-```
 
 ### Customer Management (`/api/customers`)
 ```
@@ -179,19 +154,7 @@ POST   /                  # Create new customer
 GET    /:id               # Get customer by ID
 PUT    /:id               # Update customer
 DELETE /:id               # Delete customer
-GET    /:id/orders        # Get customer orders
 GET    /:id/history       # Get customer history
-```
-
-### Supplier Management (`/api/suppliers`)
-```
-GET    /                  # Get all suppliers
-POST   /                  # Create new supplier
-GET    /:id               # Get supplier by ID
-PUT    /:id               # Update supplier
-DELETE /:id               # Delete supplier
-GET    /:id/products      # Get supplier products
-GET    /:id/orders        # Get supplier orders
 ```
 
 ### User Management (`/api/users`)
@@ -209,7 +172,6 @@ PUT    /:id/permissions   # Update user permissions (admin only)
 ```
 GET    /reports/employees      # Employee reports
 GET    /reports/projects       # Project reports
-GET    /reports/inventory      # Inventory reports
 GET    /reports/sales          # Sales reports
 GET    /analytics/dashboard    # Dashboard statistics
 GET    /analytics/trends       # Business trends
@@ -249,7 +211,6 @@ const permissions = {
   'write:users': 'Can create/update users',
   'delete:users': 'Can delete users',
   'manage:projects': 'Can manage projects',
-  'manage:inventory': 'Can manage inventory'
 };
 ```
 

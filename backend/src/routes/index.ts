@@ -79,6 +79,9 @@ import permissionManagementRoutes from './permissionManagement.routes';
 import salesReportRoutes from './salesReport.routes';
 import approvalRoutes from './approval.routes';
 import referencePaymentRoutes from './referencePayment.routes';
+import salaryRoutes from './salary.routes';
+import careerRoutes from './career.routes';
+import achievementRoutes from './achievement.routes';
 import { invalidateCacheOnMutation } from '../middleware/cacheInvalidation.middleware';
 
 const router = express.Router();
@@ -131,6 +134,9 @@ router.use('/permission-management', permissionManagementRoutes);
 router.use('/sales-reports', salesReportRoutes);
 router.use('/approvals', approvalRoutes);
 router.use('/reference-payments', referencePaymentRoutes);
+router.use('/salary', salaryRoutes);
+router.use('/career', careerRoutes);
+router.use('/achievements', achievementRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);
