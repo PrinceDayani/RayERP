@@ -15,6 +15,7 @@ class Employee {
   final DateTime? hireDate;
   final String? bio;
   final List<String> skills;
+  final List<SkillEnhanced> skillsEnhanced;
   final Address? address;
   final EmergencyContact? emergencyContact;
 
@@ -35,6 +36,7 @@ class Employee {
     this.hireDate,
     this.bio,
     this.skills = const [],
+    this.skillsEnhanced = const [],
     this.address,
     this.emergencyContact,
   });
@@ -58,6 +60,7 @@ class Employee {
         hireDate: json['hireDate'] != null ? DateTime.tryParse(json['hireDate']) : null,
         bio: json['bio'],
         skills: json['skills'] != null ? List<String>.from(json['skills']) : [],
+        skillsEnhanced: (json['skillsEnhanced'] as List? ?? []).map((e) => SkillEnhanced.fromJson(e)).toList(),
         address: json['address'] != null ? Address.fromJson(json['address']) : null,
         emergencyContact: json['emergencyContact'] != null ? EmergencyContact.fromJson(json['emergencyContact']) : null,
       );
@@ -98,4 +101,28 @@ class EmergencyContact {
       );
 
   bool get isEmpty => (name ?? '').isEmpty && (phone ?? '').isEmpty;
+}
+
+class SkillEnhanced {
+  final String skill;
+  final String level; // Beginner | Intermediate | Advanced | Expert
+  final int? yearsOfExperience;
+
+  SkillEnhanced({required this.skill, required this.level, this.yearsOfExperience});
+
+  factory SkillEnhanced.fromJson(Map<String, dynamic> j) => SkillEnhanced(
+        skill: j['skill'] ?? '',
+        level: j['level'] ?? 'Beginner',
+        yearsOfExperience: j['yearsOfExperience'] != null ? (j['yearsOfExperience'] as num).toInt() : null,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'skill': skill,
+        'level': level,
+        if (yearsOfExperience != null) 'yearsOfExperience': yearsOfExperience,
+      };
+
+  static const levels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
+
+  int get levelIndex => levels.indexOf(level).clamp(0, 3);
 }

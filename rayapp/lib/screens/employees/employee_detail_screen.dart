@@ -86,151 +86,144 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      body: Column(
-        children: [
-          // ── Fixed header ──────────────────────────────────────────────
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.primary, Color(0xFFCD2E4F)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+      body: Column(children: [
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppTheme.primary, Color(0xFFCD2E4F)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  // AppBar row
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        Expanded(
-                          child: Text(emp.fullName,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
-                              overflow: TextOverflow.ellipsis),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.share_outlined, color: Colors.white),
-                          tooltip: 'Share Profile',
-                          onPressed: () => ProfileSharer.shareEmployee(emp),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined, color: Colors.white),
-                          onPressed: () async {
-                            await Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeeFormScreen(employee: emp)));
-                            _load();
-                          },
-                        ),
-                      ],
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Column(children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
+                child: Row(children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  Expanded(
+                    child: Text(emp.fullName,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.share_outlined, color: Colors.white),
+                    onPressed: () => ProfileSharer.shareEmployee(emp),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, color: Colors.white),
+                    onPressed: () async {
+                      await Navigator.push(context, MaterialPageRoute(builder: (_) => EmployeeFormScreen(employee: emp)));
+                      _load();
+                    },
+                  ),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                  Container(
+                    width: 52, height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
                     ),
+                    child: Center(child: Text(initials, style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold))),
                   ),
-                  // Profile row
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                      Container(
-                        width: 56, height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
-                        ),
-                        child: Center(child: Text(initials, style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold))),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(emp.position, style: const TextStyle(fontSize: 13, color: Colors.white70)),
-                        const SizedBox(height: 6),
-                        Row(children: [
-                          _heroPill(emp.employeeId, Icons.badge_outlined),
-                          if ((emp.department ?? '').isNotEmpty) ...[
-                            const SizedBox(width: 6),
-                            _heroPill(emp.department!, Icons.business_outlined),
-                          ],
-                        ]),
-                      ])),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: isActive ? const Color(0xFF16A34A).withOpacity(0.25) : const Color(0xFFDC2626).withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: isActive ? const Color(0xFF4ADE80).withOpacity(0.6) : const Color(0xFFF87171).withOpacity(0.6)),
-                        ),
-                        child: Text(emp.status, style: TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.w600,
-                          color: isActive ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
-                        )),
-                      ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(emp.position,
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 5),
+                    Wrap(spacing: 6, runSpacing: 4, children: [
+                      _heroPill(emp.employeeId, Icons.badge_outlined),
+                      if ((emp.department ?? '').isNotEmpty)
+                        _heroPill(emp.department!, Icons.business_outlined),
                     ]),
+                  ])),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isActive ? const Color(0xFF16A34A).withValues(alpha: 0.25) : const Color(0xFFDC2626).withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: isActive ? const Color(0xFF4ADE80).withValues(alpha: 0.6) : const Color(0xFFF87171).withValues(alpha: 0.6)),
+                    ),
+                    child: Text(emp.status, style: TextStyle(
+                      fontSize: 10, fontWeight: FontWeight.w600,
+                      color: isActive ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
+                    )),
                   ),
-                  // Tab bar
-                  TabBar(
-                    controller: _tabs,
-                    labelColor: Colors.white,
-                    unselectedLabelColor: Colors.white60,
-                    indicatorColor: Colors.white,
-                    indicatorWeight: 2,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    tabs: const [
-                      Tab(text: 'Info'),
-                      Tab(text: 'Attendance'),
-                      Tab(text: 'Leaves'),
-                      Tab(text: 'Projects'),
-                      Tab(text: 'Skills'),
-                      Tab(text: 'Salary'),
-                      Tab(text: 'Performance'),
-                      Tab(text: 'Career'),
-                      Tab(text: 'Achievements'),
-                      Tab(text: 'Resources'),
-                      Tab(text: 'Reports'),
-                    ],
-                  ),
+                ]),
+              ),
+              TabBar(
+                controller: _tabs,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white60,
+                indicatorColor: Colors.white,
+                indicatorWeight: 2,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+                unselectedLabelStyle: const TextStyle(fontSize: 11),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: const [
+                  Tab(text: 'Info'),
+                  Tab(text: 'Attendance'),
+                  Tab(text: 'Leaves'),
+                  Tab(text: 'Projects'),
+                  Tab(text: 'Skills'),
+                  Tab(text: 'Salary'),
+                  Tab(text: 'Performance'),
+                  Tab(text: 'Career'),
+                  Tab(text: 'Achievements'),
+                  Tab(text: 'Resources'),
+                  Tab(text: 'Reports'),
                 ],
               ),
-            ),
+            ]),
           ),
-          // ── Tab content ───────────────────────────────────────────────
-          Expanded(
-            child: TabBarView(
-              controller: _tabs,
-              children: [
-                _InfoTab(employee: emp, attendanceCount: _attendance.length, leaveCount: _leaves.length),
-                _AttendanceTab(records: _attendance, employeeId: widget.id),
-                _LeavesTab(leaves: _leaves, employeeId: widget.id, onRefresh: _load),
-                ProjectsTab(employeeId: widget.id),
-                SkillsTab(employee: emp),
-                SalaryTab(employee: emp),
-                PerformanceTab(employeeId: widget.id),
-                CareerTab(employee: emp),
-                AchievementsTab(employeeId: widget.id),
-                ResourceAllocationTab(employeeId: widget.id),
-                const ReportsTab(),
-              ],
-            ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              _InfoTab(employee: emp, attendanceCount: _attendance.length, leaveCount: _leaves.length),
+              _AttendanceTab(records: _attendance),
+              _LeavesTab(leaves: _leaves, employeeId: widget.id, onRefresh: _load),
+              ProjectsTab(employeeId: widget.id),
+              SkillsTab(employee: emp),
+              SalaryTab(employee: emp),
+              PerformanceTab(employeeId: widget.id),
+              CareerTab(employee: emp),
+              AchievementsTab(employeeId: widget.id),
+              ResourceAllocationTab(employeeId: widget.id),
+              const ReportsTab(),
+            ],
           ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 
   Widget _heroPill(String label, IconData icon) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
+          color: Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 10, color: Colors.white70),
           const SizedBox(width: 3),
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w500)),
+          Flexible(child: Text(label,
+              style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis)),
         ]),
       );
 }
@@ -247,23 +240,71 @@ class _InfoTab extends StatelessWidget {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(children: [
-        // Quick stats row
-        Row(children: [
-          _quickStat('Attendance', '$attendanceCount records', Icons.access_time_outlined, const Color(0xFF2563EB)),
-          const SizedBox(width: 10),
-          _quickStat('Leaves', '$leaveCount requests', Icons.event_note_outlined, const Color(0xFFD97706)),
-          if (employee.salary != null) ...[
-            const SizedBox(width: 10),
-            _quickStat('Salary', '₹${(employee.salary! / 1000).toStringAsFixed(0)}k', Icons.currency_rupee_outlined, const Color(0xFF059669)),
-          ],
-        ]),
+        LayoutBuilder(builder: (_, c) {
+          final narrow = c.maxWidth < 340;
+          final stats1 = [
+            _quickStat('Attendance', '$attendanceCount records', Icons.access_time_outlined, const Color(0xFF2563EB)),
+            if (!narrow) const SizedBox(width: 8),
+            _quickStat('Leaves', '$leaveCount requests', Icons.event_note_outlined, const Color(0xFFD97706)),
+            if (employee.salary != null && !narrow) ...[
+              const SizedBox(width: 8),
+              _quickStat('Salary', '₹${(employee.salary! / 1000).toStringAsFixed(0)}k', Icons.currency_rupee_outlined, const Color(0xFF059669)),
+            ],
+          ];
+          if (narrow) {
+            return Column(children: [
+              Row(children: [
+                _quickStat('Attendance', '$attendanceCount records', Icons.access_time_outlined, const Color(0xFF2563EB)),
+                const SizedBox(width: 8),
+                _quickStat('Leaves', '$leaveCount requests', Icons.event_note_outlined, const Color(0xFFD97706)),
+              ]),
+              if (employee.salary != null) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  _quickStat('Salary', '₹${(employee.salary! / 1000).toStringAsFixed(0)}k', Icons.currency_rupee_outlined, const Color(0xFF059669)),
+                  const SizedBox(width: 8),
+                  Expanded(child: const SizedBox()),
+                ]),
+              ],
+            ]);
+          }
+          return Row(children: stats1);
+        }),
+        if (employee.hireDate != null) ...[
+          const SizedBox(height: 8),
+          LayoutBuilder(builder: (_, c) {
+            final narrow = c.maxWidth < 340;
+            if (narrow) {
+              return Column(children: [
+                Row(children: [
+                  _quickStat('Tenure', _tenure(employee.hireDate!), Icons.calendar_today_outlined, const Color(0xFF7C3AED)),
+                  const SizedBox(width: 8),
+                  _quickStat('Hire Date', AppTheme.fmtDate(employee.hireDate!), Icons.work_history_outlined, const Color(0xFF0891B2)),
+                ]),
+                const SizedBox(height: 8),
+                Row(children: [
+                  _quickStat('Skills', '${employee.skills.length} listed', Icons.psychology_outlined, const Color(0xFF059669)),
+                  const SizedBox(width: 8),
+                  Expanded(child: const SizedBox()),
+                ]),
+              ]);
+            }
+            return Row(children: [
+              _quickStat('Tenure', _tenure(employee.hireDate!), Icons.calendar_today_outlined, const Color(0xFF7C3AED)),
+              const SizedBox(width: 8),
+              _quickStat('Hire Date', AppTheme.fmtDate(employee.hireDate!), Icons.work_history_outlined, const Color(0xFF0891B2)),
+              const SizedBox(width: 8),
+              _quickStat('Skills', '${employee.skills.length} listed', Icons.psychology_outlined, const Color(0xFF059669)),
+            ]);
+          }),
+        ],
         const SizedBox(height: 14),
         _section('Work', [
           _tile('Employee ID', employee.employeeId, Icons.badge_outlined),
           _tile('Position', employee.position, Icons.work_outline),
           if ((employee.jobTitle ?? '').isNotEmpty) _tile('Job Title', employee.jobTitle!, Icons.title_outlined),
           if ((employee.department ?? '').isNotEmpty) _tile('Department', employee.department!, Icons.business_outlined),
-          if (employee.hireDate != null) _tile('Hire Date', _fmt(employee.hireDate!), Icons.calendar_today_outlined),
+          if (employee.hireDate != null) _tile('Hire Date', AppTheme.fmtDate(employee.hireDate!), Icons.calendar_today_outlined),
         ]),
         const SizedBox(height: 10),
         _section('Contact', [
@@ -299,9 +340,9 @@ class _InfoTab extends StatelessWidget {
               child: Wrap(spacing: 6, runSpacing: 6, children: employee.skills.map((s) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.07),
+                  color: AppTheme.primary.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
                 ),
                 child: Text(s, style: const TextStyle(fontSize: 12, color: AppTheme.primary)),
               )).toList()),
@@ -312,19 +353,28 @@ class _InfoTab extends StatelessWidget {
     );
   }
 
+  String _tenure(DateTime hireDate) {
+    final diff = DateTime.now().difference(hireDate);
+    final years = (diff.inDays / 365).floor();
+    final months = ((diff.inDays % 365) / 30).floor();
+    if (years > 0) return '${years}y ${months}m';
+    return '${months}m';
+  }
+
   Widget _quickStat(String label, String value, IconData icon, Color color) => Expanded(
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(height: 6),
-            Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
-            Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+            Icon(icon, size: 13, color: color),
+            const SizedBox(height: 4),
+            FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
+                child: Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color))),
+            Text(label, style: const TextStyle(fontSize: 9, color: Color(0xFF6B7280))),
           ]),
         ),
       );
@@ -347,24 +397,24 @@ class _InfoTab extends StatelessWidget {
       );
 
   Widget _tile(String label, String value, IconData icon) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(children: [
-          Icon(icon, size: 16, color: AppTheme.primary),
-          const SizedBox(width: 12),
-          SizedBox(width: 90, child: Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF111827)))),
+          Icon(icon, size: 15, color: AppTheme.primary),
+          const SizedBox(width: 10),
+          Flexible(flex: 2, child: Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
+          const SizedBox(width: 8),
+          Flexible(flex: 3, child: Text(value,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF111827)),
+              textAlign: TextAlign.end)),
         ]),
       );
-
-  String _fmt(DateTime d) => AppTheme.fmtDate(d);
 }
 
 // ─── Attendance Tab ───────────────────────────────────────────────────────────
 
 class _AttendanceTab extends StatelessWidget {
   final List<Attendance> records;
-  final String employeeId;
-  const _AttendanceTab({required this.records, required this.employeeId});
+  const _AttendanceTab({required this.records});
 
   @override
   Widget build(BuildContext context) {
@@ -378,20 +428,20 @@ class _AttendanceTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        GridView.count(
-          crossAxisCount: 2,
+        LayoutBuilder(builder: (_, c) => GridView.count(
+          crossAxisCount: c.maxWidth < 320 ? 1 : 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
-          childAspectRatio: 2.4,
+          childAspectRatio: ((c.maxWidth < 320 ? c.maxWidth : (c.maxWidth - 10) / 2)) / 48,
           children: [
             _statCard('Present', '$present days', Icons.check_circle_outline, const Color(0xFF16A34A)),
             _statCard('Late', '$late days', Icons.schedule_outlined, const Color(0xFFD97706)),
             _statCard('Half Day', '$halfDay days', Icons.timelapse_outlined, const Color(0xFF2563EB)),
             _statCard('Total Hours', '${totalHours.toStringAsFixed(0)}h', Icons.timer_outlined, AppTheme.primary),
           ],
-        ),
+        )),
         const SizedBox(height: 12),
         ...records.map((r) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -402,19 +452,20 @@ class _AttendanceTab extends StatelessWidget {
   }
 
   Widget _statCard(String label, String value, IconData icon, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE5E7EB))),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE5E7EB))),
         child: Row(children: [
           Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-            child: Icon(icon, size: 14, color: color),
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+            child: Icon(icon, size: 11, color: color),
           ),
-          const SizedBox(width: 8),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
-            Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
-          ]),
+          const SizedBox(width: 6),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+            FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
+                child: Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color))),
+            Text(label, style: const TextStyle(fontSize: 9, color: Color(0xFF6B7280))),
+          ])),
         ]),
       );
 }

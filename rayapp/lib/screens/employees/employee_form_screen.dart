@@ -14,17 +14,15 @@ class EmployeeFormScreen extends StatefulWidget {
 class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _svc = EmployeeService();
-  final _deptSvc = DepartmentService();
   bool _loading = false;
-  List<String> _departments = [];
-  String? _selectedDept;
-  List<String> _selectedDepts = [];
-  late final TextEditingController _skills;
+
   late final TextEditingController _firstName, _lastName, _email, _phone,
-      _position, _jobTitle, _department, _salary, _bio,
+      _position, _jobTitle, _salary, _bio, _skills,
       _street, _city, _state, _country, _ecName, _ecRel, _ecPhone;
   String _status = 'active';
   DateTime? _hireDate;
+  List<String> _selectedDepts = [];
+  List<String> _allDepts = [];
 
   bool get _isEdit => widget.employee != null;
 
@@ -38,9 +36,9 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
     _phone     = TextEditingController(text: e?.phone ?? '');
     _position  = TextEditingController(text: e?.position ?? '');
     _jobTitle  = TextEditingController(text: e?.jobTitle ?? '');
-    _department= TextEditingController(text: e?.department ?? '');
     _salary    = TextEditingController(text: e?.salary?.toStringAsFixed(0) ?? '');
     _bio       = TextEditingController(text: e?.bio ?? '');
+    _skills    = TextEditingController(text: e?.skills.join(', ') ?? '');
     _street    = TextEditingController(text: e?.address?.street ?? '');
     _city      = TextEditingController(text: e?.address?.city ?? '');
     _state     = TextEditingController(text: e?.address?.state ?? '');
@@ -48,23 +46,23 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
     _ecName    = TextEditingController(text: e?.emergencyContact?.name ?? '');
     _ecRel     = TextEditingController(text: e?.emergencyContact?.relationship ?? '');
     _ecPhone   = TextEditingController(text: e?.emergencyContact?.phone ?? '');
-    _skills    = TextEditingController(text: e?.skills.join(', ') ?? '');
     _status    = e?.status ?? 'active';
     _hireDate  = e?.hireDate;
-    _selectedDept = e?.department;
-    _selectedDepts = List<String>.from(e?.departments ?? []);
-    if (_selectedDepts.isEmpty && (e?.department ?? '').isNotEmpty) {
-      _selectedDepts = [e!.department!];
-    }
-    _deptSvc.getNames().then((d) {
-      if (mounted) setState(() => _departments = d);
-    }).catchError((_) {});
+    _selectedDepts = List<String>.from(e?.departments ?? (e?.department != null ? [e!.department!] : []));
+    _loadDepts();
+  }
+
+  Future<void> _loadDepts() async {
+    try {
+      final names = await DepartmentService().getNames();
+      if (mounted) setState(() => _allDepts = names);
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     for (final c in [_firstName,_lastName,_email,_phone,_position,_jobTitle,
-        _department,_salary,_bio,_street,_city,_state,_country,_ecName,_ecRel,_ecPhone,_skills]) {
+        _salary,_bio,_skills,_street,_city,_state,_country,_ecName,_ecRel,_ecPhone]) {
       c.dispose();
     }
     super.dispose();
@@ -90,6 +88,7 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
     }
     setState(() => _loading = true);
     try {
+      final skillsList = _skills.text.trim().isEmpty ? <String>[] : _skills.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
       final body = <String, dynamic>{
         'firstName': _firstName.text.trim(), 'lastName': _lastName.text.trim(),
         'email': _email.text.trim(), 'phone': _phone.text.trim(),
@@ -99,8 +98,7 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
         if (_jobTitle.text.trim().isNotEmpty) 'jobTitle': _jobTitle.text.trim(),
         if (_selectedDepts.isNotEmpty) 'departments': _selectedDepts,
         if (_selectedDepts.isNotEmpty) 'department': _selectedDepts.first,
-        if (_skills.text.trim().isNotEmpty)
-          'skills': _skills.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+        if (skillsList.isNotEmpty) 'skills': skillsList,
         if (_bio.text.trim().isNotEmpty) 'bio': _bio.text.trim(),
         if (_street.text.trim().isNotEmpty || _city.text.trim().isNotEmpty || _country.text.trim().isNotEmpty)
           'address': {'street': _street.text.trim(), 'city': _city.text.trim(), 'state': _state.text.trim(), 'country': _country.text.trim()},
@@ -123,56 +121,61 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
       appBar: AppBar(title: Text(_isEdit ? 'Edit Employee' : 'Add Employee')),
       body: Form(
         key: _formKey,
-        child: Column(children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                _section(1, 'Basic Info', [
-                  _row2(_f(_firstName, 'First Name', req: true), _f(_lastName, 'Last Name', req: true)),
-                  _f(_email, 'Email', kb: TextInputType.emailAddress, req: true),
-                  _f(_phone, 'Phone', kb: TextInputType.phone, req: true),
-                  _f(_position, 'Position', req: true),
-                  _row2(_f(_jobTitle, 'Job Title'), _deptDropdown()),
-                  _multiDeptChips(),
-                  _f(_skills, 'Skills (comma-separated)'),
-                  _statusDropdown(),
-                ]),
-                const SizedBox(height: 12),
-                _section(2, 'Employment', [
-                  _f(_salary, 'Salary', kb: TextInputType.number, req: true),
-                  _datePicker(),
-                  _f(_bio, 'Bio', lines: 2),
-                ]),
-                const SizedBox(height: 12),
-                _section(3, 'Address', [
-                  _f(_street, 'Street'),
-                  _row2(_f(_city, 'City'), _f(_state, 'State')),
-                  _f(_country, 'Country'),
-                ]),
-                const SizedBox(height: 12),
-                _section(4, 'Emergency Contact', [
-                  _f(_ecName, 'Name'),
-                  _row2(_f(_ecRel, 'Relationship'), _f(_ecPhone, 'Phone', kb: TextInputType.phone)),
-                ]),
-                const SizedBox(height: 16),
-              ]),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Color(0xFFE5E7EB)))),
-            child: SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _submit,
-                child: _loading
-                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Text(_isEdit ? 'Save Changes' : 'Add Employee', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Column(children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    _section(1, 'Basic Info', [
+                      _row2(_f(_firstName, 'First Name', req: true), _f(_lastName, 'Last Name', req: true)),
+                      _f(_email, 'Email', kb: TextInputType.emailAddress, req: true),
+                      _f(_phone, 'Phone', kb: TextInputType.phone, req: true),
+                      _f(_position, 'Position', req: true),
+                      _f(_jobTitle, 'Job Title'),
+                      _deptSelector(),
+                      _dropdown(),
+                    ]),
+                    const SizedBox(height: 12),
+                    _section(2, 'Employment', [
+                      _f(_salary, 'Salary', kb: TextInputType.number, req: true),
+                      _datePicker(),
+                      _f(_skills, 'Skills (comma-separated)'),
+                      _f(_bio, 'Bio', lines: 2),
+                    ]),
+                    const SizedBox(height: 12),
+                    _section(3, 'Address', [
+                      _f(_street, 'Street'),
+                      _row2(_f(_city, 'City'), _f(_state, 'State')),
+                      _f(_country, 'Country'),
+                    ]),
+                    const SizedBox(height: 12),
+                    _section(4, 'Emergency Contact', [
+                      _f(_ecName, 'Name'),
+                      _row2(_f(_ecRel, 'Relationship'), _f(_ecPhone, 'Phone', kb: TextInputType.phone)),
+                    ]),
+                    const SizedBox(height: 16),
+                  ]),
+                ),
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Color(0xFFE5E7EB)))),
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _loading ? null : _submit,
+                    child: _loading
+                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Text(_isEdit ? 'Save Changes' : 'Add Employee', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ),
+            ]),
           ),
-        ]),
+        ),
       ),
     );
   }
@@ -204,10 +207,15 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
         ]),
       );
 
-  Widget _row2(Widget a, Widget b) => Row(children: [
-        Expanded(child: Padding(padding: const EdgeInsets.only(right: 6), child: a)),
-        Expanded(child: Padding(padding: const EdgeInsets.only(left: 6), child: b)),
-      ]);
+  Widget _row2(Widget a, Widget b) => LayoutBuilder(builder: (_, c) {
+        if (c.maxWidth < 360) {
+          return Column(children: [a, b]);
+        }
+        return Row(children: [
+          Expanded(child: Padding(padding: const EdgeInsets.only(right: 6), child: a)),
+          Expanded(child: Padding(padding: const EdgeInsets.only(left: 6), child: b)),
+        ]);
+      });
 
   Widget _f(TextEditingController ctrl, String label, {TextInputType? kb, bool req = false, int lines = 1}) =>
       Padding(
@@ -219,57 +227,36 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
         ),
       );
 
-  Widget _multiDeptChips() {
-    if (_departments.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Departments', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6, runSpacing: 6,
-          children: _departments.map((d) {
-            final sel = _selectedDepts.contains(d);
-            return GestureDetector(
-              onTap: () => setState(() => sel ? _selectedDepts.remove(d) : _selectedDepts.add(d)),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: sel ? AppTheme.primary.withOpacity(0.1) : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: sel ? AppTheme.primary : const Color(0xFFE5E7EB)),
-                ),
-                child: Text(d, style: TextStyle(fontSize: 12, color: sel ? AppTheme.primary : const Color(0xFF6B7280), fontWeight: sel ? FontWeight.w600 : FontWeight.normal)),
-              ),
-            );
-          }).toList(),
-        ),
-      ]),
-    );
-  }
-
-  Widget _deptDropdown() => Padding(
+  Widget _deptSelector() => Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: _departments.isEmpty
-            ? _f(_department, 'Department')
-            : DropdownButtonFormField<String>(
-                value: _departments.contains(_selectedDept) ? _selectedDept : null,
-                decoration: const InputDecoration(labelText: 'Department'),
-                items: _departments
-                    .map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)))
-                    .toList(),
-                onChanged: (v) => setState(() => _selectedDept = v),
-              ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Departments', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          const SizedBox(height: 6),
+          if (_selectedDepts.isNotEmpty)
+            Wrap(spacing: 6, runSpacing: 4, children: _selectedDepts.map((d) => Chip(
+              label: Text(d, style: const TextStyle(fontSize: 12)),
+              deleteIcon: const Icon(Icons.close, size: 14),
+              onDeleted: () => setState(() => _selectedDepts.remove(d)),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+            )).toList()),
+          if (_selectedDepts.isNotEmpty) const SizedBox(height: 6),
+          DropdownButtonFormField<String>(
+            value: null,
+            isDense: true,
+            decoration: const InputDecoration(hintText: 'Add department', contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+            items: _allDepts.where((d) => !_selectedDepts.contains(d)).map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13)))).toList(),
+            onChanged: (v) { if (v != null) setState(() => _selectedDepts.add(v)); },
+          ),
+        ]),
       );
 
-  Widget _statusDropdown() => Padding(
+  Widget _dropdown() => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: DropdownButtonFormField<String>(
-          value: _status,
+          initialValue: _status,
           decoration: const InputDecoration(labelText: 'Status'),
-          items: ['active', 'inactive', 'terminated']
-              .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-              .toList(),
+          items: ['active', 'inactive', 'terminated'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
           onChanged: (v) => setState(() => _status = v!),
         ),
       );

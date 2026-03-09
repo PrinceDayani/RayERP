@@ -2,7 +2,6 @@ import '../models/employee_stats.dart';
 import '../models/project.dart';
 import 'api_service.dart';
 
-
 class EmployeeStatsService extends ApiService {
   Future<AttendanceStats> getAttendanceStats(String employeeId, {int? month, int? year}) async {
     final now = DateTime.now();
@@ -37,11 +36,6 @@ class EmployeeStatsService extends ApiService {
         .toList();
   }
 
-  Future<List<DeptSummary>> getDeptSummary() async {
-    final data = await get('/employee-reports/department-summary');
-    return (data as List).map((e) => DeptSummary.fromJson(e)).toList();
-  }
-
   Future<List<CareerEvent>> getCareerEvents(String employeeId) async {
     final data = await get('/career/$employeeId');
     final list = (data is Map ? data['events'] : data) as List? ?? [];
@@ -68,6 +62,11 @@ class EmployeeStatsService extends ApiService {
     } catch (_) {
       return TaskStats();
     }
+  }
+
+  Future<List<DeptSummary>> getDeptSummary() async {
+    final data = await get('/employee-reports/department-summary');
+    return (data as List).map((e) => DeptSummary.fromJson(e)).toList();
   }
 
   Future<List<AttendanceSummaryItem>> getAttendanceSummary({int? month, int? year}) async {
@@ -104,8 +103,9 @@ class ProjectWithTeam {
     List<String> ids = [];
     if (j['team'] is List) {
       for (final t in j['team'] as List) {
-        if (t is String) ids.add(t);
-        else if (t is Map) ids.add(t['_id']?.toString() ?? '');
+        if (t is String) {
+          ids.add(t);
+        } else if (t is Map) ids.add(t['_id']?.toString() ?? '');
       }
     }
     return ProjectWithTeam(

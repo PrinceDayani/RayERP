@@ -5,7 +5,8 @@ import '../services/auth_provider.dart';
 import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool sessionExpired;
+  const LoginScreen({super.key, this.sessionExpired = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -116,6 +117,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
                               ),
                               const SizedBox(height: 28),
+                              // Session expired banner
+                              if (widget.sessionExpired) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFFBEB),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFFCD34D)),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.access_time_outlined, color: Color(0xFFD97706), size: 16),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Your session has expired. Please sign in again.',
+                                          style: TextStyle(color: Color(0xFFD97706), fontSize: 13),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
                               // Error
                               if (auth.error != null) ...[
                                 Container(

@@ -1,6 +1,7 @@
 class Attendance {
   final String id;
   final String employeeId;
+  final String employeeName;
   final DateTime date;
   final DateTime checkIn;
   final DateTime? checkOut;
@@ -14,6 +15,7 @@ class Attendance {
   Attendance({
     required this.id,
     required this.employeeId,
+    this.employeeName = '',
     required this.date,
     required this.checkIn,
     this.checkOut,
@@ -25,17 +27,25 @@ class Attendance {
     this.notes,
   });
 
-  factory Attendance.fromJson(Map<String, dynamic> json) => Attendance(
-        id: json['_id'] ?? '',
-        employeeId: json['employee'] is Map ? json['employee']['_id'] : json['employee'] ?? '',
-        date: DateTime.tryParse(json['date'] ?? '') ?? DateTime.now(),
-        checkIn: DateTime.tryParse(json['checkIn'] ?? '') ?? DateTime.now(),
-        checkOut: json['checkOut'] != null ? DateTime.tryParse(json['checkOut']) : null,
-        totalHours: (json['totalHours'] ?? 0).toDouble(),
-        breakTime: (json['breakTime'] ?? 0).toDouble(),
-        status: json['status'] ?? 'present',
-        approvalStatus: json['approvalStatus'] ?? 'auto-approved',
-        entrySource: json['entrySource'] ?? 'manual',
-        notes: json['notes'],
-      );
+  factory Attendance.fromJson(Map<String, dynamic> json) {
+    final emp = json['employee'];
+    final empId = emp is Map ? emp['_id'] ?? '' : emp ?? '';
+    final empName = emp is Map
+        ? '${emp['firstName'] ?? ''} ${emp['lastName'] ?? ''}'.trim()
+        : '';
+    return Attendance(
+      id: json['_id'] ?? '',
+      employeeId: empId,
+      employeeName: empName,
+      date: DateTime.tryParse(json['date'] ?? '') ?? DateTime.now(),
+      checkIn: DateTime.tryParse(json['checkIn'] ?? '') ?? DateTime.now(),
+      checkOut: json['checkOut'] != null ? DateTime.tryParse(json['checkOut']) : null,
+      totalHours: (json['totalHours'] ?? 0).toDouble(),
+      breakTime: (json['breakTime'] ?? 0).toDouble(),
+      status: json['status'] ?? 'present',
+      approvalStatus: json['approvalStatus'] ?? 'auto-approved',
+      entrySource: json['entrySource'] ?? 'manual',
+      notes: json['notes'],
+    );
+  }
 }

@@ -49,6 +49,10 @@ class HomeTab extends StatelessWidget {
           _tile(Icons.folder_outlined, 'Projects', 'Track project progress', () => onNavigate(2)),
           const SizedBox(height: 8),
           _tile(Icons.access_time_outlined, 'Attendance', 'View attendance records', () => onNavigate(3)),
+          const SizedBox(height: 8),
+          _tile(Icons.groups_outlined, 'Resources', 'Allocations, capacity & conflicts', () => onNavigate(4)),
+          const SizedBox(height: 8),
+          _tile(Icons.admin_panel_settings_outlined, 'Admin', 'Users, roles & permissions', () => onNavigate(5)),
         ],
       ),
     );

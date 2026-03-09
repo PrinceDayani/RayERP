@@ -9,13 +9,68 @@ import 'employee_form_screen.dart';
 import 'widgets/org_attendance_screen.dart';
 import 'widgets/org_leaves_screen.dart';
 
+// ── Tab shell: Directory / Attendance / Leaves ────────────────────────────────
+
 class EmployeeListScreen extends StatefulWidget {
   const EmployeeListScreen({super.key});
   @override
   State<EmployeeListScreen> createState() => _EmployeeListScreenState();
 }
 
-class _EmployeeListScreenState extends State<EmployeeListScreen> {
+class _EmployeeListScreenState extends State<EmployeeListScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      Container(
+        color: Theme.of(context).cardColor,
+        child: TabBar(
+          controller: _tabs,
+          labelColor: AppTheme.primary,
+          unselectedLabelColor: AppTheme.textSecondary,
+          indicatorColor: AppTheme.primary,
+          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          tabs: const [
+            Tab(icon: Icon(Icons.people_outline, size: 16), text: 'Directory'),
+            Tab(icon: Icon(Icons.access_time_outlined, size: 16), text: 'Attendance'),
+            Tab(icon: Icon(Icons.event_note_outlined, size: 16), text: 'Leaves'),
+          ],
+        ),
+      ),
+      Expanded(
+        child: TabBarView(controller: _tabs, children: const [
+          _EmployeeDirectoryScreen(),
+          OrgAttendanceScreen(),
+          OrgLeavesScreen(),
+        ]),
+      ),
+    ]);
+  }
+}
+
+// ── Employee Directory ────────────────────────────────────────────────────────
+
+class _EmployeeDirectoryScreen extends StatefulWidget {
+  const _EmployeeDirectoryScreen();
+  @override
+  State<_EmployeeDirectoryScreen> createState() => _EmployeeDirectoryScreenState();
+}
+
+class _EmployeeDirectoryScreenState extends State<_EmployeeDirectoryScreen> {
   final _service = EmployeeService();
   final _attSvc = AttendanceService();
   final _lvSvc = LeaveService();
@@ -137,6 +192,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'emp_list_fab',
         backgroundColor: AppTheme.primary,
         onPressed: () async {
           await Navigator.push(context, MaterialPageRoute(builder: (_) => const EmployeeFormScreen()));
@@ -158,20 +214,20 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                   color: AppTheme.primary,
                   child: CustomScrollView(
                     slivers: [
-                      // ── Stats ────────────────────────────────────────────
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                           child: Column(children: [
-                            LayoutBuilder(builder: (_, c) {
-                              final tileW = (c.maxWidth - 24) / 4;
-                              final aspect = tileW / (tileW * 1.1);
+                            LayoutBuilder(builder: (ctx, c) {
+                              final cols = c.maxWidth < 340 ? 2 : 4;
+                              final spacing = 8.0 * (cols - 1);
+                              final tileW = (c.maxWidth - spacing) / cols;
                               return GridView.count(
-                                crossAxisCount: 4,
+                                crossAxisCount: cols,
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 crossAxisSpacing: 8,
-                                childAspectRatio: aspect,
+                                childAspectRatio: tileW / 64,
                                 children: [
                                   _statTile('Total', _all.length, AppTheme.primary),
                                   _statTile('Active', _active, const Color(0xFF16A34A)),
@@ -182,17 +238,15 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                             }),
                             const SizedBox(height: 8),
                             Row(children: [
-                              Expanded(child: _actionStatTile('Present Today', _presentToday, const Color(0xFF0891B2), Icons.login_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrgAttendanceScreen())))),
+                              Expanded(child: _actionStatTile('Present Today', _presentToday, const Color(0xFF0891B2), Icons.login_outlined)),
                               const SizedBox(width: 8),
-                              Expanded(child: _actionStatTile('On Leave', _onLeaveToday, const Color(0xFF7C3AED), Icons.event_busy_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrgLeavesScreen())))),
+                              Expanded(child: _actionStatTile('On Leave', _onLeaveToday, const Color(0xFF7C3AED), Icons.event_busy_outlined)),
                             ]),
                           ]),
                         ),
                       ),
-                      // ── Sticky filter bar ─────────────────────────────────
-                      SliverPersistentHeader(
-                        pinned: true,
-                        delegate: _FilterBarDelegate(
+                      SliverToBoxAdapter(
+                        child: _FilterBar(
                           searchCtrl: _searchCtrl,
                           deptFilter: _deptFilter,
                           positionFilter: _positionFilter,
@@ -209,7 +263,6 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                           onYearChanged: (v) { setState(() => _yearFilter = v); },
                         ),
                       ),
-                      // ── List ─────────────────────────────────────────────
                       _filtered.isEmpty
                           ? SliverFillRemaining(
                               child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -246,26 +299,22 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
         ]),
       );
 
-  Widget _actionStatTile(String label, int count, Color color, IconData icon, VoidCallback onTap) =>
-      GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.07),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.2)),
-          ),
-          child: Row(children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 8),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('$count', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
-              Text(label, style: TextStyle(fontSize: 10, color: color.withOpacity(0.8), fontWeight: FontWeight.w500)),
-            ])),
-            Icon(Icons.chevron_right, size: 14, color: color.withOpacity(0.5)),
-          ]),
+  Widget _actionStatTile(String label, int count, Color color, IconData icon) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
+        child: Row(children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('$count', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+            Text(label, style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.8), fontWeight: FontWeight.w500)),
+          ])),
+        ]),
       );
 
   Widget _card(Employee e) {
@@ -284,39 +333,39 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Row(children: [
-              Container(width: 3, height: 68, color: _sc(e.status)),
-              const SizedBox(width: 12),
+              Container(width: 3, color: _sc(e.status)),
+              const SizedBox(width: 10),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                   child: Center(child: Text(
                     e.firstName[0].toUpperCase() + (e.lastName.isNotEmpty ? e.lastName[0].toUpperCase() : ''),
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
                   )),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Text(e.fullName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF111827))),
+                    Text(e.fullName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF111827))),
                     const SizedBox(height: 1),
-                    Text(e.position, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                    const SizedBox(height: 4),
+                    Text(e.position, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                    const SizedBox(height: 3),
                     Row(children: [
-                      const Icon(Icons.badge_outlined, size: 10, color: Color(0xFF9CA3AF)),
+                      const Icon(Icons.badge_outlined, size: 9, color: Color(0xFF9CA3AF)),
                       const SizedBox(width: 2),
-                      Text(e.employeeId, style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+                      Text(e.employeeId, style: const TextStyle(fontSize: 9, color: Color(0xFF9CA3AF))),
                       if ((e.department ?? '').isNotEmpty || e.departments.isNotEmpty) ...[
-                        const SizedBox(width: 6),
-                        const Icon(Icons.business_outlined, size: 10, color: Color(0xFF9CA3AF)),
+                        const SizedBox(width: 5),
+                        const Icon(Icons.business_outlined, size: 9, color: Color(0xFF9CA3AF)),
                         const SizedBox(width: 2),
                         Flexible(child: Text(
                           e.departments.isNotEmpty ? e.departments.join(', ') : e.department!,
-                          style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+                          style: const TextStyle(fontSize: 9, color: Color(0xFF9CA3AF)),
                           overflow: TextOverflow.ellipsis,
                         )),
                       ],
@@ -325,7 +374,7 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(0, 10, 10, 10),
+                padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
                 child: Column(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.end, children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -359,9 +408,9 @@ class _EmployeeListScreenState extends State<EmployeeListScreen> {
       );
 }
 
-// ── Filter bar delegate ───────────────────────────────────────────────────────
+// ── Filter bar ────────────────────────────────────────────────────────────────
 
-class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
+class _FilterBar extends StatelessWidget {
   final TextEditingController searchCtrl;
   final String deptFilter, positionFilter, statusFilter, yearFilter;
   final List<String> deptOptions, positionOptions, yearOptions;
@@ -370,7 +419,7 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
   final ValueChanged<String?> onDeptChanged, onPositionChanged;
   final ValueChanged<String> onStatusChanged, onYearChanged;
 
-  const _FilterBarDelegate({
+  const _FilterBar({
     required this.searchCtrl,
     required this.deptFilter,
     required this.positionFilter,
@@ -387,29 +436,12 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
     required this.onYearChanged,
   });
 
-  // search(44) + gap(6) + dropdowns(40) + gap(6) + chips(32) + v-padding(12)
-  static const double _h = 140.0;
-
-  @override double get minExtent => _h;
-  @override double get maxExtent => _h;
-
   @override
-  bool shouldRebuild(_FilterBarDelegate old) =>
-      old.deptFilter != deptFilter ||
-      old.positionFilter != positionFilter ||
-      old.statusFilter != statusFilter ||
-      old.yearFilter != yearFilter ||
-      old.deptOptions.length != deptOptions.length ||
-      old.positionOptions.length != positionOptions.length ||
-      old.yearOptions.length != yearOptions.length;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFFF8F9FA),
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // Search
         TextField(
           controller: searchCtrl,
           onChanged: onSearch,
@@ -428,14 +460,12 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
           ),
         ),
         const SizedBox(height: 6),
-        // Dept + Position dropdowns
         Row(children: [
           Expanded(child: _dropdown('Department', deptFilter, deptOptions, onDeptChanged)),
           const SizedBox(width: 8),
           Expanded(child: _dropdown('Position', positionFilter, positionOptions, onPositionChanged)),
         ]),
         const SizedBox(height: 6),
-        // Status + year chips
         SizedBox(
           height: 32,
           child: ListView(

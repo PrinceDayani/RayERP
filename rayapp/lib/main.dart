@@ -7,6 +7,7 @@ import 'screens/dashboard_screen.dart';
 import 'config/app_theme.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MultiProvider(
       providers: [
@@ -33,7 +34,7 @@ class RayApp extends StatelessWidget {
       home: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           if (auth.isLoggedIn) return const DashboardScreen();
-          return const LoginScreen();
+          return LoginScreen(sessionExpired: auth.sessionExpired);
         },
       ),
     );

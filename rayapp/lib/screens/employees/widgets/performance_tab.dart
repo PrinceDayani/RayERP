@@ -25,7 +25,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
 
   Future<void> _load() async {
     try {
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         _svc.getAttendanceStats(widget.employeeId),
         _svc.getTaskStats(widget.employeeId),
         _svc.getAchievements(widget.employeeId),
@@ -54,20 +54,20 @@ class _PerformanceTabState extends State<PerformanceTab> {
         _rateCard(s),
         const SizedBox(height: 12),
         // Attendance stats grid
-        GridView.count(
+        LayoutBuilder(builder: (_, c) => GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
-          childAspectRatio: 2.2,
+          childAspectRatio: ((c.maxWidth - 10) / 2) / 52,
           children: [
             _statCard('Present Days', '${s.presentDays}', Icons.check_circle_outline, AppTheme.green),
             _statCard('Late Days', '${s.lateDays}', Icons.schedule_outlined, AppTheme.amber),
             _statCard('Half Days', '${s.halfDays}', Icons.timelapse_outlined, AppTheme.blue),
             _statCard('Total Hours', '${s.totalHours.toStringAsFixed(0)}h', Icons.timer_outlined, AppTheme.purple),
           ],
-        ),
+        )),
         const SizedBox(height: 12),
         // Task breakdown
         _taskCard(t),

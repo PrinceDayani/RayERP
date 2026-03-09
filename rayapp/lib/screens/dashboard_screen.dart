@@ -4,10 +4,14 @@ import '../config/app_theme.dart';
 import '../services/auth_provider.dart';
 import '../services/theme_provider.dart';
 import 'login_screen.dart';
+import 'change_password_screen.dart';
 import 'home_tab.dart';
 import 'employees/employee_list_screen.dart';
 import 'projects/project_list_screen.dart';
 import 'attendance/attendance_list_screen.dart';
+import 'resources/resource_dashboard_screen.dart';
+import 'departments/department_list_screen.dart';
+import 'admin/admin_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -28,6 +32,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       const EmployeeListScreen(),
       const ProjectListScreen(),
       const AttendanceListScreen(),
+      const ResourceDashboardScreen(),
+      const DepartmentListScreen(),
+      const AdminScreen(),
     ];
   }
 
@@ -36,7 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    const titles = ['Dashboard', 'Employees', 'Projects', 'Attendance'];
+    const titles = ['Dashboard', 'Employees', 'Projects', 'Attendance', 'Resources', 'Departments', 'Admin'];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -55,27 +62,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: () => context.read<ThemeProvider>().toggle(),
             tooltip: 'Toggle theme',
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () async {
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: 'Account',
+            onSelected: (value) async {
+              if (value == 'change_password') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen()));
+              } else if (value == 'logout') {
                 await auth.logout();
-                if (context.mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                  borderRadius: BorderRadius.circular(20),
+                if (context.mounted) {
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                }
+              }
+            },
+            itemBuilder: (_) => [
+              if (auth.user != null)
+                PopupMenuItem(
+                  enabled: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(auth.user!.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.textPrimary)),
+                      Text(auth.user!.email,
+                          style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                    ],
+                  ),
                 ),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.logout_outlined, size: 15, color: Color(0xFF6B7280)),
-                  SizedBox(width: 4),
-                  Text('Logout', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              if (auth.user != null) const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'change_password',
+                child: Row(children: [
+                  Icon(Icons.lock_reset_outlined, size: 16, color: AppTheme.textSecondary),
+                  SizedBox(width: 10),
+                  Text('Change Password', style: TextStyle(fontSize: 13)),
                 ]),
               ),
-            ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(children: [
+                  Icon(Icons.logout_outlined, size: 16, color: AppTheme.red),
+                  SizedBox(width: 10),
+                  Text('Logout', style: TextStyle(fontSize: 13, color: AppTheme.red)),
+                ]),
+              ),
+            ],
           ),
         ],
       ),
@@ -108,6 +139,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icon(Icons.access_time_outlined),
             selectedIcon: Icon(Icons.access_time_filled, color: AppTheme.primary),
             label: 'Attendance',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.groups_outlined),
+            selectedIcon: Icon(Icons.groups, color: AppTheme.primary),
+            label: 'Resources',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.business_outlined),
+            selectedIcon: Icon(Icons.business, color: AppTheme.primary),
+            label: 'Departments',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.admin_panel_settings_outlined),
+            selectedIcon: Icon(Icons.admin_panel_settings, color: AppTheme.primary),
+            label: 'Admin',
           ),
         ],
       ),

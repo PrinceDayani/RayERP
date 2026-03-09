@@ -36,6 +36,7 @@ class ApiService {
       _cache[path] = (data: data, at: DateTime.now());
       return data;
     }
+    if (res.statusCode == 401) throw UnauthorizedException();
     throw Exception('Error ${res.statusCode}: ${res.body}');
   }
 
@@ -44,6 +45,7 @@ class ApiService {
         .post(Uri.parse('${ApiConfig.baseUrl}$path'),
             headers: await headers(), body: jsonEncode(body))
         .timeout(ApiConfig.timeout);
+    if (res.statusCode == 401) throw UnauthorizedException();
     final data = jsonDecode(res.body);
     if (res.statusCode == 200 || res.statusCode == 201) {
       _invalidate(path);
@@ -57,6 +59,7 @@ class ApiService {
         .put(Uri.parse('${ApiConfig.baseUrl}$path'),
             headers: await headers(), body: jsonEncode(body))
         .timeout(ApiConfig.timeout);
+    if (res.statusCode == 401) throw UnauthorizedException();
     final data = jsonDecode(res.body);
     if (res.statusCode == 200) {
       _invalidate(path);
@@ -69,7 +72,38 @@ class ApiService {
     final res = await http
         .delete(Uri.parse('${ApiConfig.baseUrl}$path'), headers: await headers())
         .timeout(ApiConfig.timeout);
+    if (res.statusCode == 401) throw UnauthorizedException();
     if (res.statusCode != 200) throw Exception('Error ${res.statusCode}');
     _invalidate(path);
   }
+
+  Future<dynamic> http_patch(String path, Map<String, dynamic> body) async {
+    final req = http.Request('PATCH', Uri.parse('${ApiConfig.baseUrl}$path'));
+    req.headers.addAll(await headers());
+    req.body = jsonEncode(body);
+    final streamed = await req.send().timeout(ApiConfig.timeout);
+    final res = await http.Response.fromStream(streamed);
+    if (res.statusCode == 401) throw UnauthorizedException();
+    final data = jsonDecode(res.body);
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      _invalidate(path);
+      return data;
+    }
+    throw Exception(data['message'] ?? 'Error ${res.statusCode}');
+  }
+
+  Future<void> delete_with_body(String path, Map<String, dynamic> body) async {
+    final req = http.Request('DELETE', Uri.parse('${ApiConfig.baseUrl}$path'));
+    req.headers.addAll(await headers());
+    req.body = jsonEncode(body);
+    final streamed = await req.send().timeout(ApiConfig.timeout);
+    final res = await http.Response.fromStream(streamed);
+    if (res.statusCode == 401) throw UnauthorizedException();
+    if (res.statusCode != 200) throw Exception('Error ${res.statusCode}');
+    _invalidate(path);
+  }
+}
+
+class UnauthorizedException implements Exception {
+  const UnauthorizedException();
 }

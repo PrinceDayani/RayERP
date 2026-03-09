@@ -136,12 +136,15 @@ class _SalaryTabState extends State<SalaryTab> {
       );
 
   Widget _tile(String label, String value, IconData icon, Color color) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 12),
-          SizedBox(width: 90, child: Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary))),
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 10),
+          Flexible(flex: 2, child: Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))),
+          const SizedBox(width: 8),
+          Flexible(flex: 3, child: Text(value,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+              textAlign: TextAlign.end)),
         ]),
       );
 }

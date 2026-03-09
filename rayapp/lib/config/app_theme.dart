@@ -37,6 +37,25 @@ class AppTheme {
     _ => redBg,
   };
 
+  // ── Responsive helpers ──────────────────────────────────────────────────
+  /// Returns column count based on available width.
+  /// 300–479 → 2, 480–767 → 3, 768–1023 → 4, 1024+ → 6
+  static int cols(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    if (w < 480) return 2;
+    if (w < 768) return 3;
+    if (w < 1024) return 4;
+    return 6;
+  }
+
+  /// Horizontal padding that scales with screen width.
+  static double hPad(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    if (w < 480) return 12;
+    if (w < 768) return 16;
+    return 24;
+  }
+
   static String fmtDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
