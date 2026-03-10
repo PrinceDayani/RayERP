@@ -47,6 +47,7 @@ class _GlobalTimelineScreenState extends State<GlobalTimelineScreen> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
+    final pad = AppTheme.hPad(context);
     return Scaffold(
       backgroundColor: AppTheme.bg,
       appBar: AppBar(
@@ -59,9 +60,8 @@ class _GlobalTimelineScreenState extends State<GlobalTimelineScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : Column(children: [
-              // Search + filter
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                padding: EdgeInsets.fromLTRB(pad, 10, pad, 0),
                 child: TextField(
                   onChanged: (v) => setState(() => _search = v),
                   decoration: InputDecoration(
@@ -77,7 +77,7 @@ class _GlobalTimelineScreenState extends State<GlobalTimelineScreen> {
               ),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                padding: EdgeInsets.fromLTRB(pad, 8, pad, 4),
                 child: Row(children: ['all', 'active', 'planning', 'on-hold', 'completed'].map((s) {
                   final sel = _status == s;
                   return GestureDetector(
@@ -96,9 +96,8 @@ class _GlobalTimelineScreenState extends State<GlobalTimelineScreen> {
                   );
                 }).toList()),
               ),
-              // Stats
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: EdgeInsets.fromLTRB(pad, 0, pad, 8),
                 child: Row(children: [
                   _StatChip('Showing', '${filtered.length}', AppTheme.primary),
                   const SizedBox(width: 8),
@@ -113,7 +112,6 @@ class _GlobalTimelineScreenState extends State<GlobalTimelineScreen> {
                   }).length}', AppTheme.red),
                 ]),
               ),
-              // Gantt
               Expanded(child: filtered.isEmpty
                   ? Center(child: Text('No projects', style: TextStyle(color: AppTheme.textSecondary)))
                   : _GlobalGantt(projects: filtered, statusColor: _sc)),
@@ -140,6 +138,10 @@ class _GlobalGantt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (projects.isEmpty || projects.every((p) => p.startDate == p.endDate)) {
+      return const Center(child: Text('No timeline data'));
+    }
+    final labelW = AppTheme.isWide(context) ? 180.0 : 130.0;
     // Compute global date range
     final allStarts = projects.map((p) => p.startDate);
     final allEnds = projects.map((p) => p.endDate);
@@ -148,13 +150,13 @@ class _GlobalGantt extends StatelessWidget {
     final totalDays = globalEnd.difference(globalStart).inDays.clamp(1, 99999).toDouble();
     final now = DateTime.now();
     final todayOffset = now.difference(globalStart).inDays.clamp(0, totalDays.toInt()).toDouble();
+    final pad = AppTheme.hPad(context);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: EdgeInsets.fromLTRB(pad, 0, pad, 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Date axis
         Row(children: [
-          const SizedBox(width: 130),
+          SizedBox(width: labelW),
           Expanded(child: LayoutBuilder(builder: (_, c) {
             final w = c.maxWidth;
             return Stack(children: [
@@ -177,7 +179,7 @@ class _GlobalGantt extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(children: [
-              SizedBox(width: 130, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SizedBox(width: labelW, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
                 Text('${p.progress}%', style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
@@ -193,7 +195,6 @@ class _GlobalGantt extends StatelessWidget {
                   Positioned(left: left, width: barW, top: 3, bottom: 3,
                     child: Stack(children: [
                       Container(decoration: BoxDecoration(color: color.withOpacity(0.25), borderRadius: BorderRadius.circular(4))),
-                      // Progress fill
                       FractionallySizedBox(
                         widthFactor: p.progress / 100,
                         child: Container(decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4))),

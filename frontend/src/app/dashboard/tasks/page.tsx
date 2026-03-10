@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Download } from 'lucide-react';
-import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { Task } from '@/lib/api/tasksAPI';
 import TaskStats from '@/components/tasks/TaskStats';
@@ -168,14 +167,10 @@ export default function TaskManagementPage() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                New Task
-              </Button>
-            </DialogTrigger>
-          </Dialog>
+          <Button className="flex items-center gap-2" onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4" />
+            New Task
+          </Button>
         </div>
       </div>
 

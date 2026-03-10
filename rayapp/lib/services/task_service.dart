@@ -223,4 +223,14 @@ class TaskService extends ApiService {
     final data = await post('/tasks/$id/clone', {});
     return Task.fromJson(data);
   }
+
+  // ── Attachments ────────────────────────────────────────────────────────────
+
+  Future<Task> uploadAttachment(String id, String filePath) async {
+    final data = await multipartPost('/tasks/$id/attachments', filePath, 'file');
+    return Task.fromJson(data);
+  }
+
+  Future<void> removeAttachment(String id, String attachmentId) =>
+      delete('/tasks/$id/attachments/$attachmentId');
 }

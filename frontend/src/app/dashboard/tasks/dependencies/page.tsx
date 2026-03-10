@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react';
 import { PageLoader } from '@/components/PageLoader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Network, AlertCircle } from 'lucide-react';
 import tasksAPI from '@/lib/api/tasksAPI';
+import TaskDependencyManager from '@/components/tasks/TaskDependencyManager';
 
 export default function TaskDependenciesPage() {
   const [graph, setGraph] = useState<any[]>([]);
@@ -46,23 +45,22 @@ export default function TaskDependenciesPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {task.dependencies?.length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Depends on:</p>
-                  {task.dependencies.map((dep: any, idx: number) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm p-2 bg-muted rounded">
-                      <Network className="w-4 h-4" />
-                      <span>{dep.id?.title || 'Unknown'}</span>
-                      <Badge variant="outline" className="text-xs">{dep.type}</Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">No dependencies</p>
-              )}
+              <TaskDependencyManager
+                taskId={task.id}
+                dependencies={task.dependencies || []}
+                onUpdate={fetchGraph}
+              />
             </CardContent>
           </Card>
         ))}
+
+        {graph.length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-center text-gray-500">
+              No tasks found. Create tasks with dependencies to see them here.
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

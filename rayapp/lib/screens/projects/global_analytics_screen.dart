@@ -42,6 +42,7 @@ class _GlobalAnalyticsScreenState extends State<GlobalAnalyticsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final wide = AppTheme.isWide(context);
     return Scaffold(
       backgroundColor: AppTheme.bg,
       appBar: AppBar(
@@ -50,7 +51,8 @@ class _GlobalAnalyticsScreenState extends State<GlobalAnalyticsScreen>
         bottom: TabBar(
           controller: _tabs,
           labelColor: AppTheme.primary, unselectedLabelColor: AppTheme.textSecondary,
-          indicatorColor: AppTheme.primary, indicatorSize: TabBarIndicatorSize.label,
+          indicatorColor: AppTheme.primary,
+          indicatorSize: wide ? TabBarIndicatorSize.tab : TabBarIndicatorSize.label,
           labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           tabs: const [Tab(text: 'Overview'), Tab(text: 'Performance'), Tab(text: 'Budget')],
         ),
@@ -91,25 +93,36 @@ class _OverviewTab extends StatelessWidget {
         // Stats tiles
         if (s != null) ...[
           LayoutBuilder(builder: (_, c) {
-            final cols = c.maxWidth < 360 ? 2 : 4;
+            final w = c.maxWidth;
+            final cols = w < 360 ? 2 : w < 768 ? 4 : 5;
             final gap = (cols - 1) * 10.0;
-            final w = (c.maxWidth - gap) / cols;
+            final tw = (w - gap) / cols;
             final tiles = [
-              _Tile('Total', '${s.totalProjects}', AppTheme.primary, w),
-              _Tile('Active', '${s.activeProjects}', AppTheme.green, w),
-              _Tile('At Risk', '${s.atRiskProjects}', AppTheme.amber, w),
-              _Tile('Overdue', '${s.overdueTasks}', AppTheme.red, w),
+              _Tile('Total', '${s.totalProjects}', AppTheme.primary, tw),
+              _Tile('Active', '${s.activeProjects}', AppTheme.green, tw),
+              _Tile('Completed', '${s.completedProjects}', AppTheme.cyan, tw),
+              _Tile('At Risk', '${s.atRiskProjects}', AppTheme.amber, tw),
+              _Tile('Overdue', '${s.overdueTasks}', AppTheme.red, tw),
             ];
             if (cols == 2) {
               return Column(children: [
                 Row(children: [tiles[0], const SizedBox(width: 10), tiles[1]]),
                 const SizedBox(height: 10),
                 Row(children: [tiles[2], const SizedBox(width: 10), tiles[3]]),
+                const SizedBox(height: 10),
+                tiles[4],
+              ]);
+            }
+            if (cols == 4) {
+              return Column(children: [
+                Row(children: [tiles[0], const SizedBox(width: 10), tiles[1], const SizedBox(width: 10), tiles[2], const SizedBox(width: 10), tiles[3]]),
+                const SizedBox(height: 10),
+                Row(children: [tiles[4], const SizedBox(width: 10), Expanded(child: const SizedBox())]),
               ]);
             }
             return Row(children: [
-              tiles[0], const SizedBox(width: 10), tiles[1],
-              const SizedBox(width: 10), tiles[2], const SizedBox(width: 10), tiles[3],
+              tiles[0], const SizedBox(width: 10), tiles[1], const SizedBox(width: 10),
+              tiles[2], const SizedBox(width: 10), tiles[3], const SizedBox(width: 10), tiles[4],
             ]);
           }),
           const SizedBox(height: 12),

@@ -159,76 +159,77 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
               child: CircularProgressIndicator(color: AppTheme.primary))
           : Form(
               key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _field(
-                    child: TextFormField(
-                      controller: _titleCtrl,
-                      decoration: const InputDecoration(labelText: 'Title *'),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Required' : null,
+              child: AppTheme.constrain(
+                ListView(
+                  padding: EdgeInsets.all(AppTheme.hPad(context)),
+                  children: [
+                    _field(
+                      child: TextFormField(
+                        controller: _titleCtrl,
+                        decoration: const InputDecoration(labelText: 'Title *'),
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Required' : null,
+                      ),
                     ),
-                  ),
-                  _field(
-                    child: TextFormField(
-                      controller: _descCtrl,
-                      decoration:
-                          const InputDecoration(labelText: 'Description *'),
-                      maxLines: 3,
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Required' : null,
+                    _field(
+                      child: TextFormField(
+                        controller: _descCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'Description *'),
+                        maxLines: 3,
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Required' : null,
+                      ),
                     ),
-                  ),
-                  if (_projectId == null)
+                    if (_projectId == null)
+                      _field(
+                        child: DropdownButtonFormField<String>(
+                          value: _projectId,
+                          decoration:
+                              const InputDecoration(labelText: 'Project *'),
+                          items: _projects
+                              .map((p) => DropdownMenuItem(
+                                  value: p.id,
+                                  child: Text(p.name,
+                                      style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (v) => setState(() => _projectId = v),
+                          validator: (v) => v == null ? 'Required' : null,
+                        ),
+                      ),
                     _field(
                       child: DropdownButtonFormField<String>(
-                        value: _projectId,
+                        value: _assignedToId,
                         decoration:
-                            const InputDecoration(labelText: 'Project *'),
-                        items: _projects
-                            .map((p) => DropdownMenuItem(
-                                value: p.id,
-                                child: Text(p.name,
+                            const InputDecoration(labelText: 'Assign To *'),
+                        items: _employees
+                            .map((e) => DropdownMenuItem(
+                                value: e.id,
+                                child: Text(e.fullName,
                                     style: const TextStyle(fontSize: 13))))
                             .toList(),
-                        onChanged: (v) => setState(() => _projectId = v),
+                        onChanged: (v) => setState(() => _assignedToId = v),
                         validator: (v) => v == null ? 'Required' : null,
                       ),
                     ),
-                  _field(
-                    child: DropdownButtonFormField<String>(
-                      value: _assignedToId,
-                      decoration:
-                          const InputDecoration(labelText: 'Assign To *'),
-                      items: _employees
-                          .map((e) => DropdownMenuItem(
-                              value: e.id,
-                              child: Text(e.fullName,
-                                  style: const TextStyle(fontSize: 13))))
-                          .toList(),
-                      onChanged: (v) => setState(() => _assignedToId = v),
-                      validator: (v) => v == null ? 'Required' : null,
+                    _field(
+                      child: DropdownButtonFormField<String>(
+                        value: _assignedById,
+                        decoration:
+                            const InputDecoration(labelText: 'Assigned By *'),
+                        items: _employees
+                            .map((e) => DropdownMenuItem(
+                                value: e.id,
+                                child: Text(e.fullName,
+                                    style: const TextStyle(fontSize: 13))))
+                            .toList(),
+                        onChanged: (v) => setState(() => _assignedById = v),
+                        validator: (v) => v == null ? 'Required' : null,
+                      ),
                     ),
-                  ),
-                  _field(
-                    child: DropdownButtonFormField<String>(
-                      value: _assignedById,
-                      decoration:
-                          const InputDecoration(labelText: 'Assigned By *'),
-                      items: _employees
-                          .map((e) => DropdownMenuItem(
-                              value: e.id,
-                              child: Text(e.fullName,
-                                  style: const TextStyle(fontSize: 13))))
-                          .toList(),
-                      onChanged: (v) => setState(() => _assignedById = v),
-                      validator: (v) => v == null ? 'Required' : null,
-                    ),
-                  ),
-                  Row(children: [
-                    Expanded(
-                      child: _field(
+                    LayoutBuilder(builder: (context, constraints) {
+                      final narrow = constraints.maxWidth < 400;
+                      final statusField = _field(
                         child: DropdownButtonFormField<String>(
                           value: _status,
                           decoration:
@@ -243,11 +244,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                           onChanged: (v) =>
                               setState(() => _status = v ?? _status),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _field(
+                      );
+                      final priorityField = _field(
                         child: DropdownButtonFormField<String>(
                           value: _priority,
                           decoration:
@@ -262,12 +260,19 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                           onChanged: (v) =>
                               setState(() => _priority = v ?? _priority),
                         ),
-                      ),
-                    ),
-                  ]),
-                  Row(children: [
-                    Expanded(
-                      child: _field(
+                      );
+                      if (narrow) {
+                        return Column(children: [statusField, priorityField]);
+                      }
+                      return Row(children: [
+                        Expanded(child: statusField),
+                        const SizedBox(width: 12),
+                        Expanded(child: priorityField),
+                      ]);
+                    }),
+                    LayoutBuilder(builder: (context, constraints) {
+                      final narrow = constraints.maxWidth < 400;
+                      final dateField = _field(
                         child: GestureDetector(
                           onTap: () async {
                             final d = await showDatePicker(
@@ -288,7 +293,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: AppTheme.border),
                             ),
@@ -311,21 +316,26 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                             ]),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _field(
+                      );
+                      final hoursField = _field(
                         child: TextFormField(
                           controller: _estCtrl,
                           decoration: const InputDecoration(
                               labelText: 'Est. Hours'),
                           keyboardType: TextInputType.number,
                         ),
-                      ),
-                    ),
-                  ]),
-                ],
+                      );
+                      if (narrow) {
+                        return Column(children: [dateField, hoursField]);
+                      }
+                      return Row(children: [
+                        Expanded(child: dateField),
+                        const SizedBox(width: 12),
+                        Expanded(child: hoursField),
+                      ]);
+                    }),
+                  ],
+                ),
               ),
             ),
     );

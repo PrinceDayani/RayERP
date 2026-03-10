@@ -137,19 +137,31 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final wide = MediaQuery.of(context).size.width >= 600;
+    final pad = AppTheme.hPad(context);
     return Scaffold(
       backgroundColor: AppTheme.bg,
       appBar: AppBar(title: Text(_isEdit ? 'Edit Project' : 'New Project')),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(pad),
           children: [
-            _field(_name, 'Project Name', required: true),
-            const SizedBox(height: 12),
-            _field(_description, 'Description', maxLines: 3),
-            const SizedBox(height: 12),
-            _field(_client, 'Client'),
+            if (wide) ...[
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: _field(_name, 'Project Name', required: true)),
+                const SizedBox(width: 12),
+                Expanded(child: _field(_client, 'Client')),
+              ]),
+              const SizedBox(height: 12),
+              _field(_description, 'Description', maxLines: 3),
+            ] else ...[
+              _field(_name, 'Project Name', required: true),
+              const SizedBox(height: 12),
+              _field(_description, 'Description', maxLines: 3),
+              const SizedBox(height: 12),
+              _field(_client, 'Client'),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [
@@ -182,21 +194,41 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
               onChanged: (s) => setState(() => _requiredSkills = s),
             ),
             const SizedBox(height: 12),
-            _MultiPicker(
-              label: 'Managers',
-              icon: Icons.manage_accounts_outlined,
-              selectedIds: _selectedManagers,
-              employees: _allEmployees,
-              onChanged: (ids) => setState(() => _selectedManagers = ids),
-            ),
-            const SizedBox(height: 12),
-            _MultiPicker(
-              label: 'Team Members',
-              icon: Icons.group_outlined,
-              selectedIds: _selectedTeam,
-              employees: _allEmployees,
-              onChanged: (ids) => setState(() => _selectedTeam = ids),
-            ),
+            if (wide)
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: _MultiPicker(
+                  label: 'Managers',
+                  icon: Icons.manage_accounts_outlined,
+                  selectedIds: _selectedManagers,
+                  employees: _allEmployees,
+                  onChanged: (ids) => setState(() => _selectedManagers = ids),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: _MultiPicker(
+                  label: 'Team Members',
+                  icon: Icons.group_outlined,
+                  selectedIds: _selectedTeam,
+                  employees: _allEmployees,
+                  onChanged: (ids) => setState(() => _selectedTeam = ids),
+                )),
+              ])
+            else ...[
+              _MultiPicker(
+                label: 'Managers',
+                icon: Icons.manage_accounts_outlined,
+                selectedIds: _selectedManagers,
+                employees: _allEmployees,
+                onChanged: (ids) => setState(() => _selectedManagers = ids),
+              ),
+              const SizedBox(height: 12),
+              _MultiPicker(
+                label: 'Team Members',
+                icon: Icons.group_outlined,
+                selectedIds: _selectedTeam,
+                employees: _allEmployees,
+                onChanged: (ids) => setState(() => _selectedTeam = ids),
+              ),
+            ],
             const SizedBox(height: 12),
             _DeptPicker(
               selected: _selectedDepts,

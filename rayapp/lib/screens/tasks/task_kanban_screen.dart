@@ -88,8 +88,8 @@ class _TaskKanbanScreenState extends State<TaskKanbanScreen> {
           timeEntries: task.timeEntries, attachments: task.attachments,
           customFields: task.customFields, dependencies: task.dependencies,
           subtasks: task.subtasks, isRecurring: task.isRecurring,
-          isTemplate: task.isTemplate, createdAt: task.createdAt,
-          updatedAt: DateTime.now(),
+          isTemplate: task.isTemplate, watchers: task.watchers,
+          createdAt: task.createdAt, updatedAt: DateTime.now(),
         );
         _columns[newStatus]?.insert(0, updated);
       });
@@ -100,12 +100,7 @@ class _TaskKanbanScreenState extends State<TaskKanbanScreen> {
     }
   }
 
-  Color _pc(String p) => switch (p) {
-        'critical' => AppTheme.red,
-        'high' => AppTheme.amber,
-        'medium' => AppTheme.blue,
-        _ => AppTheme.green,
-      };
+  Color _pc(String p) => AppTheme.taskPriorityColor(p);
 
   @override
   Widget build(BuildContext context) {
@@ -122,27 +117,35 @@ class _TaskKanbanScreenState extends State<TaskKanbanScreen> {
           : RefreshIndicator(
               onRefresh: _load,
               color: AppTheme.primary,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.all(12),
-                children: _columns.keys.map((status) {
-                  final tasks = _columns[status]!;
-                  final color = _colColors[status]!;
-                  return _KanbanColumn(
-                    status: status,
-                    label: _colLabels[status]!,
-                    color: color,
-                    tasks: tasks,
-                    allStatuses: _columns.keys.toList(),
-                    onMove: _moveTask,
-                    onTap: (t) => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => TaskDetailScreen(taskId: t.id)),
-                    ).then((_) => _load()),
-                    priorityColor: _pc,
+              child: AppTheme.constrain(
+                LayoutBuilder(builder: (context, constraints) {
+                  final colW = constraints.maxWidth >= 600
+                      ? 280.0
+                      : (constraints.maxWidth * 0.78).clamp(200.0, 280.0);
+                  return ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.all(12),
+                    children: _columns.keys.map((status) {
+                      final tasks = _columns[status]!;
+                      final color = _colColors[status]!;
+                      return _KanbanColumn(
+                        status: status,
+                        label: _colLabels[status]!,
+                        color: color,
+                        tasks: tasks,
+                        colWidth: colW,
+                        allStatuses: _columns.keys.toList(),
+                        onMove: _moveTask,
+                        onTap: (t) => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => TaskDetailScreen(taskId: t.id)),
+                        ).then((_) => _load()),
+                        priorityColor: _pc,
+                      );
+                    }).toList(),
                   );
-                }).toList(),
+                }),
               ),
             ),
     );
@@ -153,6 +156,7 @@ class _KanbanColumn extends StatelessWidget {
   final String status, label;
   final Color color;
   final List<Task> tasks;
+  final double colWidth;
   final List<String> allStatuses;
   final Future<void> Function(Task, String) onMove;
   final void Function(Task) onTap;
@@ -163,6 +167,7 @@ class _KanbanColumn extends StatelessWidget {
     required this.label,
     required this.color,
     required this.tasks,
+    required this.colWidth,
     required this.allStatuses,
     required this.onMove,
     required this.onTap,
@@ -172,15 +177,15 @@ class _KanbanColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 240,
+      width: colWidth,
       margin: const EdgeInsets.only(right: 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.3)),
+            color: color.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withOpacity(0.25)),
           ),
           child: Row(children: [
             Container(
@@ -230,14 +235,22 @@ class _KanbanColumn extends StatelessWidget {
                     return GestureDetector(
                       onTap: () => onTap(t),
                       child: Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                              color: isOverdue
-                                  ? AppTheme.red.withOpacity(0.4)
-                                  : AppTheme.border),
+                            color: isOverdue
+                                ? const Color(0xFFFCA5A5)
+                                : const Color(0xFFE5E7EB),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,7 +267,9 @@ class _KanbanColumn extends StatelessWidget {
                                 Container(
                                   width: 8, height: 8,
                                   decoration: BoxDecoration(
-                                      color: pc, shape: BoxShape.circle),
+                                    color: AppTheme.taskPriorityColor(t.priority),
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ]),
                               if (t.dueDate != null) ...[

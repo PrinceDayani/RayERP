@@ -98,7 +98,7 @@ const ProjectDetailPage = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
     if (tabParam) {
-      setActiveTab(tabParam);
+      setActiveTab(tabParam === 'finance' ? 'accounting' : tabParam);
     }
   }, []);
 
@@ -138,23 +138,18 @@ const ProjectDetailPage = () => {
       const token = localStorage.getItem('auth-token');
       if (!token) return;
 
-      console.log('Fetching budget for project:', projectId);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/budget`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      console.log('Budget response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Budget data:', data);
         const budgetData = Array.isArray(data) ? data[0] : data;
         setBudget(budgetData || null);
-      } else {
-        console.error('Failed to fetch budget, status:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching budget:', error);
+      // silently handled
     }
   };
 
@@ -164,7 +159,6 @@ const ProjectDetailPage = () => {
       const data = await getProjectById(projectId);
       setProject(data);
     } catch (error) {
-      console.error("Error fetching project:", error);
       toast({
         title: "Error",
         description: "Failed to load project details",
@@ -180,7 +174,7 @@ const ProjectDetailPage = () => {
       const data = await tasksAPI.getTasksByProject(projectId);
       setTasks(data);
     } catch (error) {
-      console.error("Error fetching tasks:", error);
+      // silently handled
     }
   };
 
@@ -619,7 +613,7 @@ const ProjectDetailPage = () => {
             <TabsTrigger value="budget">Budget</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
-            <TabsTrigger value="finance">Finance</TabsTrigger>
+            <TabsTrigger value="accounting">Accounting</TabsTrigger>
             <TabsTrigger value="permissions">Permissions</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
@@ -759,7 +753,7 @@ const ProjectDetailPage = () => {
             <ProjectFiles projectId={projectId} />
           </TabsContent>
 
-          <TabsContent value="finance">
+          <TabsContent value="accounting">
             <Tabs defaultValue="profit-loss" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="profit-loss">Profit & Loss</TabsTrigger>

@@ -20,8 +20,8 @@ export default function RecurringTasksPage() {
 
   const fetchRecurringTasks = async () => {
     try {
-      const allTasks = await tasksAPI.getAll();
-      setTasks(allTasks.filter((t: any) => t.isRecurring));
+      const data = await tasksAPI.getRecurring();
+      setTasks(Array.isArray(data) ? data : data.tasks || []);
     } catch (error) {
       console.error('Fetch error:', error);
     } finally {

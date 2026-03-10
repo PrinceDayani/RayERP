@@ -74,7 +74,7 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
           : Column(children: [
               Container(
                 color: Colors.white,
-                child: TableCalendar<Task>(
+                child: AppTheme.constrain(TableCalendar<Task>(
                   firstDay: DateTime(2020),
                   lastDay: DateTime(2035),
                   focusedDay: _focused,
@@ -103,7 +103,7 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                   onPageChanged: (focused) {
                     setState(() => _focused = focused);
                   },
-                ),
+                )),
               ),
               const Divider(height: 1),
               Expanded(
@@ -123,8 +123,8 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                                 color: AppTheme.textSecondary),
                           ),
                         ]))
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(16),
+                    : AppTheme.constrain(ListView.separated(
+                        padding: EdgeInsets.all(AppTheme.hPad(context)),
                         itemCount: selectedTasks.length,
                         separatorBuilder: (_, __) =>
                             const SizedBox(height: 8),
@@ -143,7 +143,14 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppTheme.border),
+                                border: Border.all(color: const Color(0xFFE5E7EB)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               child: Row(children: [
                                 Container(
@@ -188,7 +195,7 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                             ),
                           );
                         },
-                      ),
+                      )),
               ),
             ]),
     );

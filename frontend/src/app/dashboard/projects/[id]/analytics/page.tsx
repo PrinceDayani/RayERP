@@ -24,7 +24,7 @@ export default function ProjectAnalyticsPage() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const token = localStorage.getItem('auth-token') || localStorage.getItem('token');
+        const token = localStorage.getItem('auth-token');
         if (!token) {
           setError('Authentication required');
           setLoading(false);
@@ -41,51 +41,32 @@ export default function ProjectAnalyticsPage() {
         const headers = { Authorization: `Bearer ${token}` };
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
-        console.log('Fetching analytics for project:', projectId);
-        console.log('Base URL:', baseUrl);
-
-        // Fetch each endpoint individually to identify which one is failing
         const endpoints = [
           { name: 'project', url: `${baseUrl}/api/projects/${projectId}` },
-          { name: 'burndown', url: `${baseUrl}/api/projects/${projectId}/analytics/burndown` },
-          { name: 'velocity', url: `${baseUrl}/api/projects/${projectId}/analytics/velocity` },
-          { name: 'utilization', url: `${baseUrl}/api/projects/${projectId}/analytics/resource-utilization` },
-          { name: 'performance', url: `${baseUrl}/api/projects/${projectId}/analytics/performance-indices` },
-          { name: 'risk', url: `${baseUrl}/api/projects/${projectId}/analytics/risk-assessment` }
+          { name: 'burndown', url: `${baseUrl}/api/projects/${projectId}/finance/analytics/burndown` },
+          { name: 'velocity', url: `${baseUrl}/api/projects/${projectId}/finance/analytics/velocity` },
+          { name: 'utilization', url: `${baseUrl}/api/projects/${projectId}/finance/analytics/resource-utilization` },
+          { name: 'performance', url: `${baseUrl}/api/projects/${projectId}/finance/analytics/performance-indices` },
+          { name: 'risk', url: `${baseUrl}/api/projects/${projectId}/finance/analytics/risk-assessment` }
         ];
 
         const results: any = {};
         
+        const fallback: Record<string, any> = {
+          project: { currency: 'INR' },
+          burndown: { burndownData: [], totalTasks: 0 },
+          velocity: { velocityData: [], avgVelocity: 0 },
+          utilization: { utilizationData: [] },
+          performance: { cpi: 0, spi: 0 },
+          risk: { risks: [], overallRisk: 'low' }
+        };
+
         for (const endpoint of endpoints) {
           try {
-            console.log(`Fetching ${endpoint.name} from:`, endpoint.url);
             const response = await fetch(endpoint.url, { headers });
-            
-            if (!response.ok) {
-              console.error(`${endpoint.name} failed:`, response.status, response.statusText);
-              const errorText = await response.text();
-              console.error(`${endpoint.name} error response:`, errorText);
-              
-              // Provide fallback data
-              results[endpoint.name] = endpoint.name === 'project' ? { currency: 'INR' } :
-                                     endpoint.name === 'burndown' ? { burndownData: [], totalTasks: 0 } :
-                                     endpoint.name === 'velocity' ? { velocityData: [], avgVelocity: 0 } :
-                                     endpoint.name === 'utilization' ? { utilizationData: [] } :
-                                     endpoint.name === 'performance' ? { cpi: 0, spi: 0 } :
-                                     { risks: [], overallRisk: 'low' };
-            } else {
-              results[endpoint.name] = await response.json();
-              console.log(`${endpoint.name} success:`, results[endpoint.name]);
-            }
-          } catch (err) {
-            console.error(`${endpoint.name} request failed:`, err);
-            // Provide fallback data
-            results[endpoint.name] = endpoint.name === 'project' ? { currency: 'INR' } :
-                                   endpoint.name === 'burndown' ? { burndownData: [], totalTasks: 0 } :
-                                   endpoint.name === 'velocity' ? { velocityData: [], avgVelocity: 0 } :
-                                   endpoint.name === 'utilization' ? { utilizationData: [] } :
-                                   endpoint.name === 'performance' ? { cpi: 0, spi: 0 } :
-                                   { risks: [], overallRisk: 'low' };
+            results[endpoint.name] = response.ok ? await response.json() : fallback[endpoint.name];
+          } catch {
+            results[endpoint.name] = fallback[endpoint.name];
           }
         }
 
@@ -97,7 +78,6 @@ export default function ProjectAnalyticsPage() {
         setRisk(results.risk);
         setError(null);
       } catch (error) {
-        console.error('Error fetching analytics:', error);
         setError(`Failed to load analytics data: ${error instanceof Error ? error.message : 'Unknown error'}`);
       } finally {
         setLoading(false);
@@ -121,7 +101,6 @@ export default function ProjectAnalyticsPage() {
           <p className="text-sm">{error}</p>
           <div className="mt-4 text-xs text-gray-500">
             <p>Project ID: {projectId}</p>
-            <p>Check browser console for detailed logs</p>
           </div>
         </div>
         <div className="flex gap-2 justify-center">

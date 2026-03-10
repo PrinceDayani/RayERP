@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/project.dart';
@@ -8,7 +9,7 @@ import '../../services/task_service.dart';
 import 'project_form_screen.dart';
 import '../tasks/task_list_screen.dart';
 import '../tasks/task_kanban_screen.dart';
-import '../tasks/task_analytics_screen.dart';
+
 
 class ProjectDetailScreen extends StatefulWidget {
   final String id;
@@ -24,6 +25,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
   List<ProjectMilestone> _milestones = [];
   List<ProjectRisk> _risks = [];
   bool _loading = true;
+  String? _currency;
 
   @override
   void initState() {
@@ -67,7 +69,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
       appBar: AppBar(
         title: Text(_project?.name ?? 'Project'),
         actions: [
+          if (_project != null)
           IconButton(
+            icon: const Icon(Icons.currency_exchange_outlined),
+            tooltip: 'Currency',
+            onPressed: _showCurrencyPicker,
+          ),
+        IconButton(
             icon: const Icon(Icons.bar_chart_outlined),
             tooltip: 'Analytics',
             onPressed: () { if (_project != null) _tabs.animateTo(6); },
@@ -102,6 +110,38 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     );
   }
 
+  void _showCurrencyPicker() {
+    const currencies = ['USD', 'EUR', 'GBP', 'INR', 'JPY', 'AUD', 'CAD', 'SGD'];
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Project Currency', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          Wrap(spacing: 8, runSpacing: 8, children: currencies.map((c) {
+            final sel = c == (_currency ?? _project!.currency);
+            return GestureDetector(
+              onTap: () { setState(() => _currency = c); Navigator.pop(context); },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: sel ? AppTheme.primary : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: sel ? AppTheme.primary : AppTheme.border),
+                ),
+                child: Text(c, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
+                    color: sel ? Colors.white : AppTheme.textSecondary)),
+              ),
+            );
+          }).toList()),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
+
   Widget _buildBody() {
     final p = _project!;
     final now = DateTime.now();
@@ -113,74 +153,87 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
     final eff = timeProgress > 0 ? (p.progress / 100) / timeProgress : 0.0;
 
     return NestedScrollView(
-      headerSliverBuilder: (context, _) => [
+      headerSliverBuilder: (context, _) {
+        final wide = AppTheme.isWide(context);
+        final pad = AppTheme.hPad(context);
+        final quickCards = [
+          _QuickCard(
+            label: 'Budget Health',
+            color: budgetUsed > 0.9 ? AppTheme.red : AppTheme.amber,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${(budgetUsed * 100).toStringAsFixed(0)}% used',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
+                      color: budgetUsed > 0.9 ? AppTheme.red : AppTheme.amber)),
+              const SizedBox(height: 2),
+              ClipRRect(borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(value: budgetUsed, minHeight: 4,
+                    backgroundColor: AppTheme.border,
+                    valueColor: AlwaysStoppedAnimation(budgetUsed > 0.9 ? AppTheme.red : AppTheme.amber))),
+              const SizedBox(height: 1),
+              Text('${_currency ?? p.currency} ${(p.budget - p.spentBudget).toStringAsFixed(0)} left',
+                  style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary),
+                  overflow: TextOverflow.ellipsis),
+            ]),
+          ),
+          _QuickCard(
+            label: 'Performance',
+            color: eff >= 1.0 ? AppTheme.green : eff >= 0.8 ? AppTheme.amber : AppTheme.red,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${(eff * 100).toStringAsFixed(0)}% eff.',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
+                      color: eff >= 1.0 ? AppTheme.green : eff >= 0.8 ? AppTheme.amber : AppTheme.red)),
+              const SizedBox(height: 2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(
+                  color: (eff >= 0.8 ? AppTheme.green : AppTheme.red).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(eff >= 0.8 ? 'On Track' : 'At Risk',
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600,
+                        color: eff >= 0.8 ? AppTheme.green : AppTheme.red)),
+              ),
+            ]),
+          ),
+          _QuickCard(
+            label: 'Quick Stats',
+            color: AppTheme.primary,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                _MiniChip(p.priority, _priorityColor(p.priority)),
+                const SizedBox(width: 4),
+                _MiniChip(p.status, _statusColor(p.status)),
+              ]),
+              const SizedBox(height: 2),
+              Text('${p.team.length} members · ${remaining}d left',
+                  style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary),
+                  overflow: TextOverflow.ellipsis),
+            ]),
+          ),
+        ];
+        return [
         // ── Quick Analytics Row ──────────────────────────────────────────────
         SliverToBoxAdapter(
-          child: SizedBox(
-            height: 76,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              children: [
-                _QuickCard(
-                  label: 'Budget Health',
-                  color: budgetUsed > 0.9 ? AppTheme.red : AppTheme.amber,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${(budgetUsed * 100).toStringAsFixed(0)}% used',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
-                            color: budgetUsed > 0.9 ? AppTheme.red : AppTheme.amber)),
-                    const SizedBox(height: 3),
-                    ClipRRect(borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(value: budgetUsed, minHeight: 4,
-                          backgroundColor: AppTheme.border,
-                          valueColor: AlwaysStoppedAnimation(budgetUsed > 0.9 ? AppTheme.red : AppTheme.amber))),
-                    const SizedBox(height: 2),
-                    Text('${p.currency} ${(p.budget - p.spentBudget).toStringAsFixed(0)} left',
-                        style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
-                  ]),
+          child: wide
+              ? Padding(
+                  padding: EdgeInsets.fromLTRB(pad, 10, pad, 0),
+                  child: Row(children: quickCards
+                      .map((c) => Expanded(child: Padding(padding: const EdgeInsets.only(right: 8), child: c)))
+                      .toList()),
+                )
+              : SizedBox(
+                  height: 76,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.fromLTRB(pad, 10, pad, 0),
+                    children: quickCards,
+                  ),
                 ),
-                _QuickCard(
-                  label: 'Performance',
-                  color: eff >= 1.0 ? AppTheme.green : eff >= 0.8 ? AppTheme.amber : AppTheme.red,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${(eff * 100).toStringAsFixed(0)}% eff.',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold,
-                            color: eff >= 1.0 ? AppTheme.green : eff >= 0.8 ? AppTheme.amber : AppTheme.red)),
-                    const SizedBox(height: 3),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: (eff >= 0.8 ? AppTheme.green : AppTheme.red).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(eff >= 0.8 ? 'On Track' : 'At Risk',
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600,
-                              color: eff >= 0.8 ? AppTheme.green : AppTheme.red)),
-                    ),
-                  ]),
-                ),
-                _QuickCard(
-                  label: 'Quick Stats',
-                  color: AppTheme.primary,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      _MiniChip(p.priority, _priorityColor(p.priority)),
-                      const SizedBox(width: 4),
-                      _MiniChip(p.status, _statusColor(p.status)),
-                    ]),
-                    const SizedBox(height: 3),
-                    Text('${p.team.length} members · ${remaining}d left',
-                        style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
-                  ]),
-                ),
-              ],
-            ),
-          ),
         ),
         // ── Overview Cards ───────────────────────────────────────────────────
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: EdgeInsets.fromLTRB(pad, 8, pad, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // ── Compact stats row ──────────────────────────────────────
               Container(
@@ -191,7 +244,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                   _vDivider(),
                   _CStat('Progress', '${p.progress}%', AppTheme.primary),
                   _vDivider(),
-                  _CStat('Budget', '${p.currency} ${p.budget.toStringAsFixed(0)}', AppTheme.amber),
+                  _CStat('Budget', '${_currency ?? p.currency} ${p.budget.toStringAsFixed(0)}', AppTheme.amber),
                   _vDivider(),
                   _CStat('Team', '${p.team.length}', AppTheme.purple),
                 ]),
@@ -329,9 +382,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
             controller: _tabs, isScrollable: true,
             labelColor: AppTheme.primary, unselectedLabelColor: AppTheme.textSecondary,
             indicatorColor: AppTheme.primary, indicatorSize: TabBarIndicatorSize.label,
-            labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-            unselectedLabelStyle: const TextStyle(fontSize: 11),
-            labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+            labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 12),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+            tabAlignment: TabAlignment.start,
             tabs: const [
               Tab(text: 'Tasks'), Tab(text: 'Budget'), Tab(text: 'Timeline'),
               Tab(text: 'Files'), Tab(text: 'Finance'), Tab(text: 'Permissions'),
@@ -339,12 +393,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
             ],
           ),
         ),
-      ],
+        ];
+      },
       body: TabBarView(
         controller: _tabs,
         children: [
           _TasksTab(projectId: p.id, projectName: p.name),
-          _BudgetTab(project: p),
+          _BudgetTab(project: p, currency: _currency),
           _GanttTab(project: p),
           _FilesTab(projectId: p.id),
           _FinanceTab(projectId: p.id),
@@ -363,17 +418,21 @@ class _QuickCard extends StatelessWidget {
   final String label; final Color color; final Widget child;
   const _QuickCard({required this.label, required this.color, required this.child});
   @override
-  Widget build(BuildContext context) => Container(
-    width: 140, height: 66,
-    margin: const EdgeInsets.only(right: 8),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withOpacity(0.25))),
-    padding: const EdgeInsets.all(8),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
-      const SizedBox(height: 4),
-      Expanded(child: child),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final wide = AppTheme.isWide(context);
+    return Container(
+      width: wide ? null : 140,
+      height: 66,
+      margin: wide ? EdgeInsets.zero : const EdgeInsets.only(right: 8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withOpacity(0.25))),
+      padding: const EdgeInsets.all(8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+        const SizedBox(height: 4),
+        Expanded(child: child),
+      ]),
+    );
+  }
 }
 
 class _MiniChip extends StatelessWidget {
@@ -498,11 +557,13 @@ class _TasksTab extends StatelessWidget {
       );
 }
 
+
 // ── Budget Tab ────────────────────────────────────────────────────────────────
 
 class _BudgetTab extends StatefulWidget {
   final Project project;
-  const _BudgetTab({required this.project});
+  final String? currency;
+  const _BudgetTab({required this.project, this.currency});
   @override
   State<_BudgetTab> createState() => _BudgetTabState();
 }
@@ -542,7 +603,7 @@ class _BudgetTabState extends State<_BudgetTab> {
     final total = b?.totalBudget ?? p.budget;
     final spent = b?.totalSpent ?? p.spentBudget;
     final remaining = total - spent;
-    final currency = b?.currency ?? p.currency;
+    final currency = widget.currency ?? b?.currency ?? p.currency;
     final used = total > 0 ? (spent / total).clamp(0.0, 1.0) : 0.0;
 
     return SingleChildScrollView(
@@ -855,6 +916,7 @@ class _FilesTab extends StatefulWidget {
 class _FilesTabState extends State<_FilesTab> {
   List<ProjectFile> _files = [];
   bool _loading = true;
+  bool _uploading = false;
 
   @override
   void initState() { super.initState(); _load(); }
@@ -865,36 +927,69 @@ class _FilesTabState extends State<_FilesTab> {
     setState(() => _loading = false);
   }
 
+  Future<void> _upload() async {
+    final result = await FilePicker.platform.pickFiles(withData: true);
+    if (result == null || result.files.isEmpty) return;
+    final f = result.files.first;
+    if (f.bytes == null) return;
+    setState(() => _uploading = true);
+    try {
+      await ProjectFilesService().upload(
+        widget.projectId, f.bytes!, f.name, f.extension ?? 'application/octet-stream');
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+    }
+    if (mounted) setState(() => _uploading = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-    if (_files.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.folder_open, size: 48, color: AppTheme.textMuted),
-      const SizedBox(height: 12),
-      Text('No files uploaded', style: TextStyle(color: AppTheme.textSecondary)),
-    ]));
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _files.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        final f = _files[i];
-        return Container(
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.border)),
-          padding: const EdgeInsets.all(12),
-          child: Row(children: [
-            Container(width: 34, height: 34,
-                decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(7)),
-                child: Icon(_fileIcon(f.iconName), color: AppTheme.primary, size: 17)),
-            const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(f.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
-              Text('${f.sizeLabel} · ${f.uploaderName.isNotEmpty ? f.uploaderName : 'Unknown'} · ${AppTheme.fmtDate(f.createdAt)}',
-                  style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
-            ])),
-          ]),
-        );
-      },
+    return Stack(
+      children: [
+        _files.isEmpty
+            ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.folder_open, size: 48, color: AppTheme.textMuted),
+                const SizedBox(height: 12),
+                Text('No files uploaded', style: TextStyle(color: AppTheme.textSecondary)),
+              ]))
+            : ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                itemCount: _files.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (_, i) {
+                  final f = _files[i];
+                  return Container(
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.border)),
+                    padding: const EdgeInsets.all(12),
+                    child: Row(children: [
+                      Container(width: 34, height: 34,
+                          decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(7)),
+                          child: Icon(_fileIcon(f.iconName), color: AppTheme.primary, size: 17)),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(f.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text('${f.sizeLabel} · ${f.uploaderName.isNotEmpty ? f.uploaderName : 'Unknown'} · ${AppTheme.fmtDate(f.createdAt)}',
+                            style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                      ])),
+                    ]),
+                  );
+                },
+              ),
+        Positioned(
+          bottom: 16, right: 16,
+          child: FloatingActionButton(
+            heroTag: 'files_upload_fab',
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.white,
+            onPressed: _uploading ? null : _upload,
+            child: _uploading
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.upload_file_outlined),
+          ),
+        ),
+      ],
     );
   }
 }

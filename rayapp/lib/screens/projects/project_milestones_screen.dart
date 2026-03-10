@@ -142,10 +142,9 @@ class _ProjectMilestonesScreenState extends State<ProjectMilestonesScreen> {
         child: const Icon(Icons.add),
       ),
       body: Column(children: [
-        // Progress summary
         Container(
           color: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: AppTheme.hPad(context), vertical: 10),
           child: Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('$completed / ${_milestones.length} completed',
@@ -171,7 +170,7 @@ class _ProjectMilestonesScreenState extends State<ProjectMilestonesScreen> {
                   ElevatedButton(onPressed: () => _showForm(), child: const Text('Add Milestone')),
                 ]))
               : ReorderableListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                  padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 12, AppTheme.hPad(context), 80),
                   itemCount: _milestones.length,
                   onReorder: (oldIndex, newIndex) {
                     setState(() {

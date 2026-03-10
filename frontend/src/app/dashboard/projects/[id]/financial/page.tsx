@@ -30,16 +30,17 @@ export default function ProjectFinancialPage() {
   const fetchDashboard = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const { data } = await axios.get(
+      const token = localStorage.getItem('auth-token');
+      const response = await axios.get(
         `${API_URL}/api/project-ledger/${projectId}/financial-dashboard`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      const data = response.data;
       setDashboard(data);
       setBudgetActual(data.budgetActual);
       setProfitability(data.profitability);
     } catch (error) {
-      console.error('Error fetching dashboard:', error);
+      // silently handled
     } finally {
       setLoading(false);
     }
@@ -47,29 +48,29 @@ export default function ProjectFinancialPage() {
 
   const recalculateActuals = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       await axios.post(
         `${API_URL}/api/project-ledger/${projectId}/recalculate-actuals`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchDashboard();
-    } catch (error) {
-      console.error('Error recalculating:', error);
+    } catch {
+      // silently handled
     }
   };
 
   const calculateProfitability = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth-token');
       await axios.post(
         `${API_URL}/api/project-ledger/${projectId}/calculate-profitability`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchDashboard();
-    } catch (error) {
-      console.error('Error calculating:', error);
+    } catch {
+      // silently handled
     }
   };
 

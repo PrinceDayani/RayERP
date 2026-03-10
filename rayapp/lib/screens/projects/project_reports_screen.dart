@@ -329,7 +329,17 @@ class _Row3 extends StatelessWidget {
   final Widget a, b, c;
   const _Row3(this.a, this.b, this.c);
   @override
-  Widget build(BuildContext context) => Row(children: [a, b, c]);
+  Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    if (w < 360) {
+      return Column(children: [
+        Row(children: [a, b]),
+        const SizedBox(height: 8),
+        Row(children: [c, Expanded(child: const SizedBox())]),
+      ]);
+    }
+    return Row(children: [a, b, c]);
+  }
 }
 
 class _PRow extends StatelessWidget {

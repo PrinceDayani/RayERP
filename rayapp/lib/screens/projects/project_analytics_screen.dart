@@ -44,6 +44,7 @@ class _ProjectAnalyticsScreenState extends State<ProjectAnalyticsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final wide = AppTheme.isWide(context);
     return Scaffold(
       backgroundColor: AppTheme.bg,
       appBar: AppBar(
@@ -51,7 +52,8 @@ class _ProjectAnalyticsScreenState extends State<ProjectAnalyticsScreen>
         bottom: TabBar(
           controller: _tabs,
           labelColor: AppTheme.primary, unselectedLabelColor: AppTheme.textSecondary,
-          indicatorColor: AppTheme.primary, indicatorSize: TabBarIndicatorSize.label,
+          indicatorColor: AppTheme.primary,
+          indicatorSize: wide ? TabBarIndicatorSize.tab : TabBarIndicatorSize.label,
           labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           tabs: const [Tab(text: 'Performance'), Tab(text: 'Burndown'), Tab(text: 'Velocity'), Tab(text: 'Resources')],
         ),

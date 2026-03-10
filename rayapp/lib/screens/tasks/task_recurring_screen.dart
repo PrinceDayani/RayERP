@@ -72,15 +72,22 @@ class _TaskRecurringScreenState extends State<TaskRecurringScreen> {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: AppTheme.constrain(ListView(
+        padding: EdgeInsets.all(AppTheme.hPad(context)),
         children: [
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.border),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(children: [
               const Icon(Icons.repeat, color: AppTheme.purple, size: 20),
@@ -155,7 +162,7 @@ class _TaskRecurringScreenState extends State<TaskRecurringScreen> {
             }),
           ],
         ],
-      ),
+      )),
     );
   }
 }

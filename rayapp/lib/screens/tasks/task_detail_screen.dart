@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../config/app_theme.dart';
 import '../../models/task.dart';
 import '../../services/task_service.dart';
@@ -59,20 +60,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         SnackBar(content: Text(msg), backgroundColor: AppTheme.green),
       );
 
-  Color _sc(String s) => switch (s) {
-        'completed' => AppTheme.green,
-        'in-progress' => AppTheme.blue,
-        'review' => AppTheme.amber,
-        'blocked' => AppTheme.red,
-        _ => AppTheme.textSecondary,
-      };
-
-  Color _pc(String p) => switch (p) {
-        'critical' => AppTheme.red,
-        'high' => AppTheme.amber,
-        'medium' => AppTheme.blue,
-        _ => AppTheme.green,
-      };
+  Color _sc(String s) => AppTheme.taskStatusColor(s);
+  Color _pc(String p) => AppTheme.taskPriorityColor(p);
 
   Future<void> _changeStatus(String status) async {
     final auth = context.read<AuthProvider>();
@@ -118,6 +107,33 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     }
   }
 
+  Future<void> _clone() async {
+    try {
+      await _svc.clone(widget.taskId);
+      if (mounted) { _ok('Task cloned'); Navigator.pop(context, true); }
+    } catch (e) { _err(e.toString()); }
+  }
+
+  Future<void> _delete() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Task', style: TextStyle(fontSize: 15)),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete', style: TextStyle(color: AppTheme.red))),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _svc.deleteTask(widget.taskId);
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) { _err(e.toString()); }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -157,6 +173,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 ),
               ).then((updated) { if (updated == true) _load(); }),
             ),
+            IconButton(
+              icon: const Icon(Icons.copy_outlined),
+              tooltip: 'Clone',
+              onPressed: _clone,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: AppTheme.red),
+              tooltip: 'Delete',
+              onPressed: _delete,
+            ),
           ],
         ],
       ),
@@ -164,7 +190,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _task == null
               ? const Center(child: Text('Task not found'))
-              : _buildBody(),
+              : AppTheme.constrain(_buildBody()),
     );
   }
 
@@ -203,11 +229,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
             pc: _pc,
             onAddSubtask: _addSubtask,
             onManageRecurring: _openRecurring,
+            svc: _svc,
+            onRefresh: _load,
           ),
           _ChecklistTab(task: t, svc: _svc, onRefresh: _load, ctrl: _checkCtrl),
           _CommentsTab(task: t, svc: _svc, onRefresh: _load, ctrl: _commentCtrl),
           _TimeTab(task: t, svc: _svc, onRefresh: _load),
-          _AttachmentsTab(task: t),
+          _AttachmentsTab(task: t, svc: _svc, onRefresh: _load),
           _DependenciesTab(
             task: t,
             svc: _svc,
@@ -286,20 +314,32 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
         t.dueDate!.isBefore(DateTime.now()) &&
         t.status != 'completed';
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(AppTheme.hPad(context)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          _Chip(t.status, sc),
+          _WebBadge(t.status, AppTheme.taskStatusColor(t.status), AppTheme.taskStatusBg(t.status)),
           const SizedBox(width: 8),
-          _Chip(t.priority, pc),
+          _WebBadge(t.priority, AppTheme.taskPriorityColor(t.priority), AppTheme.taskPriorityBg(t.priority)),
           if (t.isRecurring) ...[
             const SizedBox(width: 8),
-            _Chip('recurring', AppTheme.purple),
+            _WebBadge('recurring', AppTheme.purple, AppTheme.purple.withOpacity(0.1)),
           ],
           if (t.isTemplate) ...[
             const SizedBox(width: 8),
-            _Chip('template', AppTheme.cyan),
+            _WebBadge('template', AppTheme.cyan, AppTheme.cyan.withOpacity(0.1)),
           ],
         ]),
         const SizedBox(height: 10),
@@ -407,18 +447,22 @@ class _DetailsTab extends StatelessWidget {
   final Color Function(String) pc;
   final Future<void> Function(String) onAddSubtask;
   final VoidCallback onManageRecurring;
+  final TaskService svc;
+  final VoidCallback onRefresh;
   const _DetailsTab({
     required this.task,
     required this.sc,
     required this.pc,
     required this.onAddSubtask,
     required this.onManageRecurring,
+    required this.svc,
+    required this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppTheme.hPad(context)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const Text('Subtasks',
@@ -435,9 +479,16 @@ class _DetailsTab extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.border),
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(children: [
                   Container(
@@ -558,7 +609,28 @@ class _DetailsTab extends StatelessWidget {
         _InfoRow('Updated', AppTheme.fmtDate(task.updatedAt)),
         _InfoRow('Est. Hours', '${task.estimatedHours.toStringAsFixed(1)}h'),
         _InfoRow('Actual Hours', '${task.actualHours.toStringAsFixed(1)}h'),
-        _InfoRow('Watchers', '—'),
+        const SizedBox(height: 12),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('Watchers (${task.watchers.length})',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          _WatchButton(task: task, svc: svc, onRefresh: onRefresh),
+        ]),
+        const SizedBox(height: 6),
+        if (task.watchers.isNotEmpty)
+          Wrap(
+            spacing: 6, runSpacing: 4,
+            children: task.watchers.map((w) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppTheme.blue.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.blue.withOpacity(0.2)),
+              ),
+              child: Text(w.name, style: const TextStyle(fontSize: 11, color: AppTheme.blue)),
+            )).toList(),
+          )
+        else
+          const Text('No watchers', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
       ]),
     );
   }
@@ -638,16 +710,16 @@ class _ChecklistTabState extends State<_ChecklistTab> {
                     style: TextStyle(color: AppTheme.textSecondary)),
               ]))
             : ListView.separated(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(AppTheme.hPad(context)),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 6),
                 itemBuilder: (_, i) {
                   final item = items[i];
                   return Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.border),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
                     child: ListTile(
                       dense: true,
@@ -776,7 +848,7 @@ class _CommentsTabState extends State<_CommentsTab> {
                     style: TextStyle(color: AppTheme.textSecondary)),
               ]))
             : ListView.separated(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(AppTheme.hPad(context)),
                 itemCount: comments.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (_, i) {
@@ -801,9 +873,9 @@ class _CommentsTabState extends State<_CommentsTab> {
                           child: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppTheme.border),
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
                             ),
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -920,14 +992,21 @@ class _TimeTabState extends State<_TimeTab> {
     final hasActive = widget.task.hasActiveTimer;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppTheme.hPad(context)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.border),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Row(children: [
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -992,12 +1071,19 @@ class _TimeTabState extends State<_TimeTab> {
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                       color: e.isActive
                           ? AppTheme.green.withOpacity(0.4)
-                          : AppTheme.border),
+                          : const Color(0xFFE5E7EB)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(children: [
                   Icon(
@@ -1049,78 +1135,114 @@ class _TimeTabState extends State<_TimeTab> {
 
 // ── Attachments Tab ───────────────────────────────────────────────────────────
 
-class _AttachmentsTab extends StatelessWidget {
+class _AttachmentsTab extends StatefulWidget {
   final Task task;
-  const _AttachmentsTab({required this.task});
+  final TaskService svc;
+  final VoidCallback onRefresh;
+  const _AttachmentsTab({required this.task, required this.svc, required this.onRefresh});
+
+  @override
+  State<_AttachmentsTab> createState() => _AttachmentsTabState();
+}
+
+class _AttachmentsTabState extends State<_AttachmentsTab> {
+  bool _uploading = false;
+
+  Future<void> _upload() async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null || result.files.single.path == null) return;
+    setState(() => _uploading = true);
+    try {
+      await widget.svc.uploadAttachment(widget.task.id, result.files.single.path!);
+      widget.onRefresh();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+    }
+    if (mounted) setState(() => _uploading = false);
+  }
 
   IconData _icon(String mime) {
     if (mime.contains('image')) return Icons.image_outlined;
     if (mime.contains('pdf')) return Icons.picture_as_pdf_outlined;
-    if (mime.contains('sheet') || mime.contains('excel'))
-      return Icons.table_chart_outlined;
-    if (mime.contains('word') || mime.contains('document'))
-      return Icons.description_outlined;
-    if (mime.contains('zip') || mime.contains('rar'))
-      return Icons.folder_zip_outlined;
+    if (mime.contains('sheet') || mime.contains('excel')) return Icons.table_chart_outlined;
+    if (mime.contains('word') || mime.contains('document')) return Icons.description_outlined;
+    if (mime.contains('zip') || mime.contains('rar')) return Icons.folder_zip_outlined;
     return Icons.insert_drive_file_outlined;
   }
 
   @override
   Widget build(BuildContext context) {
-    final attachments = task.attachments;
-    if (attachments.isEmpty) {
-      return Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.attach_file, size: 48, color: AppTheme.textMuted),
-        const SizedBox(height: 12),
-        const Text('No attachments',
-            style: TextStyle(color: AppTheme.textSecondary)),
-      ]));
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: attachments.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        final a = attachments[i];
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppTheme.border),
-          ),
-          child: Row(children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(_icon(a.mimetype),
-                  color: AppTheme.primary, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(a.originalName,
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w500),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    Text(
-                      '${a.sizeLabel} · ${AppTheme.fmtDate(a.uploadedAt)}',
-                      style: const TextStyle(
-                          fontSize: 10, color: AppTheme.textSecondary),
+    final attachments = widget.task.attachments;
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+          _uploading
+              ? const SizedBox(width: 24, height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary))
+              : ElevatedButton.icon(
+                  onPressed: _upload,
+                  icon: const Icon(Icons.upload_outlined, size: 16),
+                  label: const Text('Upload', style: TextStyle(fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+        ]),
+      ),
+      Expanded(
+        child: attachments.isEmpty
+            ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.attach_file, size: 48, color: AppTheme.textMuted),
+                const SizedBox(height: 12),
+                const Text('No attachments', style: TextStyle(color: AppTheme.textSecondary)),
+              ]))
+            : ListView.separated(
+                padding: EdgeInsets.all(AppTheme.hPad(context)),
+                itemCount: attachments.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (_, i) {
+                  final a = attachments[i];
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                  ]),
-            ),
-          ]),
-        );
-      },
-    );
+                    child: Row(children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(_icon(a.mimetype), color: AppTheme.primary, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(a.originalName,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text('${a.sizeLabel} · ${AppTheme.fmtDate(a.uploadedAt)}',
+                            style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                      ])),
+                    ]),
+                  );
+                },
+              ),
+      ),
+    ]);
   }
 }
 
@@ -1178,7 +1300,7 @@ class _DependenciesTab extends StatelessWidget {
                 ),
               ]))
             : ListView.separated(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(AppTheme.hPad(context)),
                 itemCount: deps.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
@@ -1186,9 +1308,16 @@ class _DependenciesTab extends StatelessWidget {
                   return Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.border),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Row(children: [
                       const Icon(Icons.link,
@@ -1218,24 +1347,85 @@ class _DependenciesTab extends StatelessWidget {
   }
 }
 
+// ── Watch Button ─────────────────────────────────────────────────────────────
+
+class _WatchButton extends StatefulWidget {
+  final Task task;
+  final TaskService svc;
+  final VoidCallback onRefresh;
+  const _WatchButton({required this.task, required this.svc, required this.onRefresh});
+  @override
+  State<_WatchButton> createState() => _WatchButtonState();
+}
+
+class _WatchButtonState extends State<_WatchButton> {
+  bool _busy = false;
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    final userId = auth.user?.id ?? '';
+    final watching = widget.task.watchers.any((w) => w.id == userId);
+    return GestureDetector(
+      onTap: _busy ? null : () async {
+        setState(() => _busy = true);
+        try {
+          if (watching) {
+            await widget.svc.removeWatcher(widget.task.id, userId);
+          } else {
+            await widget.svc.addWatcher(widget.task.id, userId);
+          }
+          widget.onRefresh();
+        } catch (e) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+        }
+        if (mounted) setState(() => _busy = false);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: (watching ? AppTheme.blue : AppTheme.primary).withOpacity(0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: (watching ? AppTheme.blue : AppTheme.primary).withOpacity(0.3)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(watching ? Icons.visibility : Icons.visibility_outlined,
+              size: 12, color: watching ? AppTheme.blue : AppTheme.primary),
+          const SizedBox(width: 3),
+          Text(watching ? 'Unwatch' : 'Watch',
+              style: TextStyle(fontSize: 11, color: watching ? AppTheme.blue : AppTheme.primary)),
+        ]),
+      ),
+    );
+  }
+}
+
 // ── Shared Widgets ────────────────────────────────────────────────────────────
 
-class _Chip extends StatelessWidget {
+/// Web-style badge: rounded-full px-2.5 py-0.5 text-xs font-semibold
+class _WebBadge extends StatelessWidget {
   final String label;
   final Color color;
-  const _Chip(this.label, this.color);
+  final Color bg;
+  const _WebBadge(this.label, this.color, this.bg);
 
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
-        ),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
         child: Text(label,
-            style: TextStyle(
-                fontSize: 11, color: color, fontWeight: FontWeight.w500)),
+            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
       );
+}
+
+// Alias so existing _Chip(label, color) calls still compile
+class _Chip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _Chip(this.label, this.color);
+  @override
+  Widget build(BuildContext context) =>
+      _WebBadge(label, color, color.withOpacity(0.12));
 }
 
 class _InfoItem extends StatelessWidget {
@@ -1268,14 +1458,16 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(children: [
-          SizedBox(
-              width: 100,
-              child: Text(label,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppTheme.textSecondary))),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w500)),
+          Expanded(
+            flex: 2,
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 12, color: AppTheme.textSecondary))),
+          Expanded(
+            flex: 3,
+            child: Text(value,
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w500))),
         ]),
       );
 }

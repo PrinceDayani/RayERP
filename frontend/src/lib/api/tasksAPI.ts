@@ -6,7 +6,7 @@ export interface Task {
   _id: string;
   title: string;
   description: string;
-  status: 'todo' | 'in-progress' | 'review' | 'completed';
+  status: 'todo' | 'in-progress' | 'review' | 'completed' | 'blocked';
   priority: 'low' | 'medium' | 'high' | 'critical';
   project: {
     _id: string;
@@ -28,10 +28,17 @@ export interface Task {
     firstName: string;
     lastName: string;
   };
-  dueDate: string;
+  dueDate?: string;
   estimatedHours?: number;
   actualHours?: number;
+  isRecurring?: boolean;
+  recurrencePattern?: string;
+  nextRecurrence?: string;
   tags?: string[] | { name: string; color: string }[];
+  checklist?: Array<{ _id: string; text: string; completed: boolean }>;
+  subtasks?: Array<{ _id: string; title: string; status: string }>;
+  dependencies?: Array<{ _id: string; taskId: { _id: string; title: string }; type: string }>;
+  watchers?: Array<{ _id: string; firstName: string; lastName: string }>;
   timeEntries?: Array<{
     user: string;
     startTime: string;
@@ -308,6 +315,29 @@ export const tasksAPI = {
 
   deleteSavedSearch: async (id: string) => {
     const response = await api.delete(`/tasks/search/saved/${id}`);
+    return response.data;
+  },
+
+  // Recurring (server-side filter)
+  getRecurring: async () => {
+    const response = await api.get('/tasks?isRecurring=true');
+    return response.data;
+  },
+
+  // Clone
+  clone: async (id: string) => {
+    const response = await api.post(`/tasks/${id}/clone`);
+    return response.data;
+  },
+
+  // Watchers
+  addWatcher: async (id: string, userId: string) => {
+    const response = await api.post(`/tasks/${id}/watchers`, { userId });
+    return response.data;
+  },
+
+  removeWatcher: async (id: string, userId: string) => {
+    const response = await api.delete(`/tasks/${id}/watchers/${userId}`);
     return response.data;
   }
 };

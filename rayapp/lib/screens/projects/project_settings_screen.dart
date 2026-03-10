@@ -68,7 +68,7 @@ class _ProjectSettingsScreenState extends State<ProjectSettingsScreen> {
       body: _saving
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(AppTheme.hPad(context)),
               children: [
                 // Project info summary
                 _Card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

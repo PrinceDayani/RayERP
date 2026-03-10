@@ -135,7 +135,7 @@ class _ProjectRisksScreenState extends State<ProjectRisksScreen> {
         // Summary bar
         Container(
           color: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: AppTheme.hPad(context), vertical: 10),
           child: Row(children: [
             _SummaryChip('${_risks.length} Total', AppTheme.primary),
             const SizedBox(width: 8),
@@ -157,7 +157,7 @@ class _ProjectRisksScreenState extends State<ProjectRisksScreen> {
                   ElevatedButton(onPressed: () => _showForm(), child: const Text('Add Risk')),
                 ]))
               : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                  padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 12, AppTheme.hPad(context), 80),
                   itemCount: _risks.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (_, i) {

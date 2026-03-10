@@ -76,10 +76,10 @@ class _TaskAnalyticsScreenState extends State<TaskAnalyticsScreen>
           : TabBarView(
               controller: _tabs,
               children: [
-                _OverviewTab(analytics: _analytics),
-                _BurndownTab(data: _burndown),
-                _VelocityTab(data: _velocity),
-                _TeamTab(data: _team),
+                AppTheme.constrain(_OverviewTab(analytics: _analytics)),
+                AppTheme.constrain(_BurndownTab(data: _burndown)),
+                AppTheme.constrain(_VelocityTab(data: _velocity)),
+                AppTheme.constrain(_TeamTab(data: _team)),
               ],
             ),
     );
@@ -102,17 +102,19 @@ class _OverviewTab extends StatelessWidget {
     }
     final completionPct = a.total > 0 ? a.completed / a.total : 0.0;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppTheme.hPad(context)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         LayoutBuilder(builder: (_, c) {
-          final w = (c.maxWidth - 10) / 2;
-          return Wrap(spacing: 10, runSpacing: 10, children: [
-            _StatCard('Total', '${a.total}', AppTheme.primary, w),
-            _StatCard('Completed', '${a.completed}', AppTheme.green, w),
-            _StatCard('In Progress', '${a.inProgress}', AppTheme.blue, w),
-            _StatCard('Overdue', '${a.overdue}', AppTheme.red, w),
-            _StatCard('Blocked', '${a.blocked}', AppTheme.amber, w),
-            _StatCard('Todo', '${a.todo}', AppTheme.textSecondary, w),
+          final cols = c.maxWidth >= 900 ? 3 : (c.maxWidth >= 500 ? 3 : 2);
+          final spacing = 10.0;
+          final w = ((c.maxWidth - spacing * (cols - 1)) / cols).clamp(80.0, double.infinity);
+          return Wrap(spacing: spacing, runSpacing: spacing, children: [
+            _StatCard('Total', '${a.total}', AppTheme.primary, w, Icons.list_alt_outlined),
+            _StatCard('Completed', '${a.completed}', AppTheme.green, w, Icons.check_circle_outline),
+            _StatCard('In Progress', '${a.inProgress}', AppTheme.blue, w, Icons.trending_up),
+            _StatCard('Overdue', '${a.overdue}', AppTheme.red, w, Icons.warning_amber_outlined),
+            _StatCard('Blocked', '${a.blocked}', AppTheme.amber, w, Icons.block_outlined),
+            _StatCard('Todo', '${a.todo}', AppTheme.textSecondary, w, Icons.radio_button_unchecked),
           ]);
         }),
         const SizedBox(height: 16),
@@ -191,7 +193,7 @@ class _BurndownTab extends StatelessWidget {
         .toDouble();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppTheme.hPad(context)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Burndown Chart',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -269,7 +271,7 @@ class _VelocityTab extends StatelessWidget {
         .toDouble();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppTheme.hPad(context)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Velocity',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -342,7 +344,7 @@ class _TeamTab extends StatelessWidget {
               style: TextStyle(color: AppTheme.textSecondary)));
     }
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppTheme.hPad(context)),
       itemCount: data.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
@@ -417,25 +419,47 @@ class _StatCard extends StatelessWidget {
   final String label, value;
   final Color color;
   final double width;
-  const _StatCard(this.label, this.value, this.color, this.width);
+  final IconData icon;
+  const _StatCard(this.label, this.value, this.color, this.width, this.icon);
 
   @override
   Widget build(BuildContext context) => Container(
         width: width,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.2)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: Column(children: [
-          Text(value,
-              style: TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.bold, color: color)),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 11, color: AppTheme.textSecondary)),
-        ]),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppTheme.textSecondary)),
+              const SizedBox(height: 4),
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+            ]),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+          ],
+        ),
       );
 }
 

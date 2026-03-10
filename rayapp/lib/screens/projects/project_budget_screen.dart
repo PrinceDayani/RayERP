@@ -42,6 +42,19 @@ class _ProjectBudgetScreenState extends State<ProjectBudgetScreen>
     setState(() => _loading = false);
   }
 
+  void _showBudgetForm(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => _BudgetFormSheet(
+        project: widget.project,
+        existing: _budget,
+        onSaved: _load,
+      ),
+    );
+  }
+
   Future<void> _submitAction(String budgetId, String action) async {
     try {
       await ProjectBudgetService().budgetAction(budgetId, action);
@@ -58,17 +71,24 @@ class _ProjectBudgetScreenState extends State<ProjectBudgetScreen>
 
   @override
   Widget build(BuildContext context) {
+    final wide = AppTheme.isWide(context);
     return Scaffold(
       backgroundColor: AppTheme.bg,
       appBar: AppBar(
         title: Text('Budget · ${widget.project.name}'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh_outlined), onPressed: _load),
+          IconButton(
+            icon: const Icon(Icons.add_outlined),
+            tooltip: _budget == null ? 'Create Budget' : 'Edit Budget',
+            onPressed: () => _showBudgetForm(context),
+          ),
         ],
         bottom: TabBar(
           controller: _tabs,
           labelColor: AppTheme.primary, unselectedLabelColor: AppTheme.textSecondary,
-          indicatorColor: AppTheme.primary, indicatorSize: TabBarIndicatorSize.label,
+          indicatorColor: AppTheme.primary,
+          indicatorSize: wide ? TabBarIndicatorSize.tab : TabBarIndicatorSize.label,
           labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           tabs: const [Tab(text: 'Overview'), Tab(text: 'Categories'), Tab(text: 'Items'), Tab(text: 'Approvals')],
         ),
@@ -126,26 +146,26 @@ class _OverviewTab extends StatelessWidget {
         ],
         // Summary tiles
         LayoutBuilder(builder: (_, c) {
-          final cols = c.maxWidth < 360 ? 2 : 3;
-          final gap = (cols - 1) * 10.0;
-          final w = (c.maxWidth - gap) / cols;
+          final w = c.maxWidth;
+          final cols = w < 360 ? 2 : 3;
+          final tw = (w - (cols - 1) * 10.0) / cols;
           if (cols == 2) {
             return Column(children: [
               Row(children: [
-                _BTile('Total', '$currency ${total.toStringAsFixed(0)}', AppTheme.blue, w),
+                _BTile('Total', '$currency ${total.toStringAsFixed(0)}', AppTheme.blue, tw),
                 const SizedBox(width: 10),
-                _BTile('Spent', '$currency ${spent.toStringAsFixed(0)}', AppTheme.red, w),
+                _BTile('Spent', '$currency ${spent.toStringAsFixed(0)}', AppTheme.red, tw),
               ]),
               const SizedBox(height: 10),
               _BTile('Left', '$currency ${remaining.toStringAsFixed(0)}', remaining < 0 ? AppTheme.red : AppTheme.green, double.infinity),
             ]);
           }
           return Row(children: [
-            _BTile('Total', '$currency ${total.toStringAsFixed(0)}', AppTheme.blue, w),
+            _BTile('Total', '$currency ${total.toStringAsFixed(0)}', AppTheme.blue, tw),
             const SizedBox(width: 10),
-            _BTile('Spent', '$currency ${spent.toStringAsFixed(0)}', AppTheme.red, w),
+            _BTile('Spent', '$currency ${spent.toStringAsFixed(0)}', AppTheme.red, tw),
             const SizedBox(width: 10),
-            _BTile('Left', '$currency ${remaining.toStringAsFixed(0)}', remaining < 0 ? AppTheme.red : AppTheme.green, w),
+            _BTile('Left', '$currency ${remaining.toStringAsFixed(0)}', remaining < 0 ? AppTheme.red : AppTheme.green, tw),
           ]);
         }),
         const SizedBox(height: 12),
@@ -406,3 +426,94 @@ Widget _empty(String msg) => Center(child: Column(mainAxisSize: MainAxisSize.min
   const SizedBox(height: 12),
   Text(msg, style: const TextStyle(color: AppTheme.textSecondary)),
 ]));
+
+// ── Budget Form Sheet ───────────────────────────────────────────────────────────────
+
+class _BudgetFormSheet extends StatefulWidget {
+  final dynamic project;
+  final ProjectBudget? existing;
+  final VoidCallback onSaved;
+  const _BudgetFormSheet({required this.project, required this.existing, required this.onSaved});
+  @override
+  State<_BudgetFormSheet> createState() => _BudgetFormSheetState();
+}
+
+class _BudgetFormSheetState extends State<_BudgetFormSheet> {
+  final _totalCtrl = TextEditingController();
+  String _currency = 'USD';
+  bool _saving = false;
+
+  static const _currencies = ['USD', 'EUR', 'GBP', 'INR', 'JPY', 'AUD', 'CAD', 'SGD'];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existing != null) {
+      _totalCtrl.text = widget.existing!.totalBudget.toStringAsFixed(0);
+      _currency = widget.existing!.currency;
+    } else {
+      _currency = widget.project.currency ?? 'USD';
+    }
+  }
+
+  @override
+  void dispose() { _totalCtrl.dispose(); super.dispose(); }
+
+  Future<void> _save() async {
+    final total = double.tryParse(_totalCtrl.text.trim());
+    if (total == null || total <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid total budget')));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final body = {'totalBudget': total, 'currency': _currency};
+      final svc = ProjectBudgetService();
+      if (widget.existing != null) {
+        await svc.update(widget.existing!.id, body);
+      } else {
+        await svc.create(widget.project.id, body);
+      }
+      widget.onSaved();
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+    if (mounted) setState(() => _saving = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(widget.existing != null ? 'Edit Budget' : 'Create Budget',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _totalCtrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Total Budget *', border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: _currency,
+          decoration: const InputDecoration(labelText: 'Currency', border: OutlineInputBorder()),
+          items: _currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          onChanged: (v) => setState(() => _currency = v ?? _currency),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _saving ? null : _save,
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
+            child: _saving
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : Text(widget.existing != null ? 'Update' : 'Create'),
+          ),
+        ),
+      ]),
+    );
+  }
+}

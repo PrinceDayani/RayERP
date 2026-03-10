@@ -91,8 +91,8 @@ const ProjectManagementDashboard: React.FC = () => {
       setLoading(true);
       const [statsData, projectsData, tasksData] = await Promise.all([
         getProjectStats().catch(() => ({
-          totalProjects: 8, activeProjects: 5, completedProjects: 3,
-          overdueTasks: 2, totalTasks: 24, completedTasks: 18
+          totalProjects: 0, activeProjects: 0, completedProjects: 0,
+          overdueTasks: 0, totalTasks: 0, completedTasks: 0
         })),
         getAllProjects().catch(() => []),
         tasksAPI.getAll().catch(() => [])
@@ -100,8 +100,8 @@ const ProjectManagementDashboard: React.FC = () => {
       if (statsData) setStats(statsData);
       setProjects(projectsData || []);
       setAllTasks(tasksData || []);
-    } catch (error) {
-      console.error("Error fetching project data:", error);
+    } catch {
+      // silently handled
     } finally {
       setLoading(false);
     }
@@ -622,17 +622,12 @@ const MyTasksContent: React.FC = () => {
 
   const fetchMyTasks = async () => {
     try {
-      console.log('Fetching tasks for user:', user?._id);
       const allTasks = await tasksAPI.getAll();
-      console.log('All tasks received:', allTasks);
-      
       const myTasks = allTasks.filter((task: Task) => 
         task.assignedTo && (typeof task.assignedTo === 'object' ? task.assignedTo._id === user?._id : task.assignedTo === user?._id)
       );
-      console.log('Filtered my tasks:', myTasks);
       setTasks(myTasks);
-    } catch (error: any) {
-      console.error('Error fetching tasks:', error);
+    } catch {
       setTasks([]);
     } finally {
       setLoading(false);
@@ -643,8 +638,8 @@ const MyTasksContent: React.FC = () => {
     try {
       const projectsData = await getAllProjects();
       setProjects(projectsData);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
+    } catch {
+      // silently handled
     }
   };
 
@@ -652,8 +647,8 @@ const MyTasksContent: React.FC = () => {
     try {
       const employeesData = await employeesAPI.getAll();
       setEmployees(Array.isArray(employeesData) ? employeesData : employeesData?.data || []);
-    } catch (error) {
-      console.error('Error fetching employees:', error);
+    } catch {
+      // silently handled
     }
   };
 
@@ -674,16 +669,12 @@ const MyTasksContent: React.FC = () => {
         dueDate: taskForm.dueDate
       };
       
-      console.log('Creating task with data:', createData);
       const newTask = await tasksAPI.create(createData);
-      console.log('Task created successfully:', newTask);
-      
       setTasks(prev => [newTask, ...prev]);
       setIsCreateModalOpen(false);
       setTaskForm({ title: '', description: '', project: '', assignedTo: '', priority: 'medium', status: 'todo', dueDate: '' });
       toast({ title: "Task created successfully" });
     } catch (error: any) {
-      console.error('Error creating task:', error);
       toast({ 
         title: "Failed to create task", 
         description: error?.response?.data?.message || error?.message || "Unknown error",
@@ -695,13 +686,10 @@ const MyTasksContent: React.FC = () => {
   const handleUpdateTaskStatus = async (taskId: string, newStatus: string) => {
     try {
       const validStatus = newStatus as 'todo' | 'in-progress' | 'review' | 'completed';
-      console.log('Updating task status:', { taskId, newStatus: validStatus });
-      
       await tasksAPI.update(taskId, { status: validStatus });
       setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: validStatus } : t));
       toast({ title: "Task status updated" });
     } catch (error: any) {
-      console.error('Error updating task status:', error);
       toast({ 
         title: "Failed to update task", 
         description: error?.response?.data?.message || error?.message || "Unknown error",
@@ -713,12 +701,10 @@ const MyTasksContent: React.FC = () => {
   const handleDeleteTask = async (taskId: string) => {
     if (!confirm('Are you sure you want to delete this task?')) return;
     try {
-      console.log('Deleting task:', taskId);
       await tasksAPI.delete(taskId);
       setTasks(prev => prev.filter(t => t._id !== taskId));
       toast({ title: "Task deleted successfully" });
     } catch (error: any) {
-      console.error('Error deleting task:', error);
       toast({ 
         title: "Failed to delete task", 
         description: error?.response?.data?.message || error?.message || "Unknown error",
@@ -1084,33 +1070,24 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
 
   const fetchBudgetData = async () => {
     try {
-      console.log('Fetching budget data...');
       const [budgetsData, analyticsData] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets/all`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('auth-token')}` }
         }).then(async r => {
           if (!r.ok) throw new Error('Failed to fetch budgets');
           return r.json();
-        }).catch(err => {
-          console.error('Error fetching budgets:', err);
-          return [];
-        }),
+        }).catch(() => []),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets/analytics`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('auth-token')}` }
         }).then(async r => {
           if (!r.ok) throw new Error('Failed to fetch analytics');
           return r.json();
-        }).catch(err => {
-          console.error('Error fetching analytics:', err);
-          return null;
-        })
+        }).catch(() => null)
       ]);
-      
-      console.log('Budget data received:', { budgetsData, analyticsData });
       setBudgets(budgetsData);
       setAnalytics(analyticsData);
-    } catch (error: any) {
-      console.error('Error fetching budget data:', error);
+    } catch {
+      // silently handled
     } finally {
       setLoading(false);
     }
@@ -1123,7 +1100,6 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
         return;
       }
       
-      console.log('Creating budget with data:', budgetForm);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets`, {
         method: 'POST',
         headers: {
@@ -1146,7 +1122,6 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
       setBudgetForm({ projectName: '', project: '', totalBudget: '', currency: 'INR', description: '', startDate: '', endDate: '' });
       fetchBudgetData();
     } catch (error: any) {
-      console.error('Error creating budget:', error);
       toast({ 
         title: "Failed to create budget", 
         description: error?.message || "Unknown error",
@@ -1158,7 +1133,6 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
   const handleDeleteBudget = async (budgetId: string) => {
     if (!confirm('Are you sure you want to delete this budget?')) return;
     try {
-      console.log('Deleting budget:', budgetId);
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets/${budgetId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('auth-token')}` }
@@ -1172,7 +1146,6 @@ const BudgetOverview = ({ projects }: { projects: Project[] }) => {
       toast({ title: "Budget deleted successfully" });
       fetchBudgetData();
     } catch (error: any) {
-      console.error('Error deleting budget:', error);
       toast({ 
         title: "Failed to delete budget", 
         description: error?.message || "Unknown error",

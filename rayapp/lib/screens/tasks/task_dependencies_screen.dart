@@ -91,8 +91,8 @@ class _TaskDependenciesScreenState extends State<TaskDependenciesScreen> {
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(color: AppTheme.primary))
-          : ListView(
-              padding: const EdgeInsets.all(16),
+          : AppTheme.constrain(ListView(
+              padding: EdgeInsets.all(AppTheme.hPad(context)),
               children: [
                 if (existing.isNotEmpty) ...[
                   const Text('Current Dependencies',
@@ -105,7 +105,14 @@ class _TaskDependenciesScreenState extends State<TaskDependenciesScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppTheme.border),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(children: [
                           const Icon(Icons.link,
@@ -188,7 +195,7 @@ class _TaskDependenciesScreenState extends State<TaskDependenciesScreen> {
                   ),
                 ),
               ],
-            ),
+            )),
     );
   }
 }

@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { getAllProjects } from '@/lib/api/projectsAPI';
 import employeesAPI, { Employee } from '@/lib/api/employeesAPI';
-import { Task } from '@/lib/api/tasksAPI';
+import { tasksAPI, Task } from '@/lib/api/tasksAPI';
 
 interface Project {
   _id: string;
@@ -170,9 +170,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
 
     setLoading(true);
     try {
-      // This would need to be implemented in the task API
-      // await tasksAPI.addComment(commentDialog.task._id, newComment, user._id);
-      
+      await tasksAPI.addComment(commentDialog.task._id, newComment, user._id);
       setNewComment('');
       commentDialog.onOpenChange(false);
     } catch (error) {

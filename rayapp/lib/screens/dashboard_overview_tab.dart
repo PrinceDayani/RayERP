@@ -5,6 +5,10 @@ import '../config/app_theme.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_provider.dart';
 import '../services/socket_service.dart';
+import 'employees/employee_list_screen.dart';
+import 'attendance/attendance_list_screen.dart';
+import 'projects/project_form_screen.dart';
+import 'tasks/task_form_screen.dart';
 
 class DashboardOverviewTab extends StatefulWidget {
   final void Function(int) onNavigate;
@@ -100,6 +104,34 @@ class _DashboardOverviewTabState extends State<DashboardOverviewTab> {
     final auth = context.watch<AuthProvider>();
     final w = MediaQuery.of(context).size.width;
     final pad = w < 400 ? 12.0 : w < 600 ? 16.0 : 20.0;
+    final isWide = w >= 768;
+
+    final projects = (_analytics['projectProgress'] as List? ?? [])
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+
+    final leftCol = [
+      _StatsGrid(stats: _stats, trends: _trends, loading: _loading),
+      SizedBox(height: pad),
+      _FinancialCard(
+        stats: _stats,
+        loading: _loading,
+        isSalesView: _revenueView,
+        onToggle: (v) => setState(() => _revenueView = v),
+      ),
+    ];
+
+    final rightCol = [
+      _ActiveProjectsCard(
+        projects: projects,
+        loading: _loading,
+        onViewAll: () => widget.onNavigate(0),
+      ),
+      SizedBox(height: pad),
+      _ActivityFeedCard(activity: _activity, loading: _loading),
+      SizedBox(height: pad),
+      _QuickActionsRow(onNavigate: widget.onNavigate),
+    ];
 
     return RefreshIndicator(
       color: AppTheme.primary,
@@ -111,39 +143,37 @@ class _DashboardOverviewTabState extends State<DashboardOverviewTab> {
             padding: EdgeInsets.all(pad),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                _Header(
-                  user: auth.user,
-                  socketConnected: socket.isConnected,
-                  onRefresh: _load,
-                  loading: _loading,
-                ),
-                SizedBox(height: pad),
-                if (_error != null) _ErrorBanner(message: _error!, onRetry: _load),
-                if (_error != null) SizedBox(height: pad),
-                _StatsGrid(stats: _stats, trends: _trends, loading: _loading, pad: pad),
-                SizedBox(height: pad),
-                _FinancialCard(
-                  stats: _stats,
-                  loading: _loading,
-                  isSalesView: _revenueView,
-                  onToggle: (v) => setState(() => _revenueView = v),
-                ),
-                SizedBox(height: pad),
-                _ActiveProjectsCard(
-                  projects: (_analytics['projectProgress'] as List? ?? [])
-                      .map((e) => Map<String, dynamic>.from(e))
-                      .toList(),
-                  loading: _loading,
-                  onViewAll: () => widget.onNavigate(2),
-                ),
-                SizedBox(height: pad),
-                _ActivityFeedCard(
-                  activity: _activity,
-                  loading: _loading,
-                ),
-                SizedBox(height: pad),
-                _QuickActionsRow(onNavigate: widget.onNavigate),
-                const SizedBox(height: 24),
+                AppTheme.constrain(Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _CompactHeader(
+                      user: auth.user,
+                      socketConnected: socket.isConnected,
+                      onRefresh: _load,
+                      loading: _loading,
+                    ),
+                    SizedBox(height: pad),
+                    if (_error != null) ...[
+                      _ErrorBanner(message: _error!, onRetry: _load),
+                      SizedBox(height: pad),
+                    ],
+                    if (isWide)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 5, child: Column(children: leftCol)),
+                          SizedBox(width: pad),
+                          Expanded(flex: 4, child: Column(children: rightCol)),
+                        ],
+                      )
+                    else ...[
+                      ...leftCol,
+                      SizedBox(height: pad),
+                      ...rightCol,
+                    ],
+                    const SizedBox(height: 24),
+                  ],
+                )),
               ]),
             ),
           ),
@@ -154,16 +184,16 @@ class _DashboardOverviewTabState extends State<DashboardOverviewTab> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Header
+// Compact Header
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _Header extends StatelessWidget {
+class _CompactHeader extends StatelessWidget {
   final dynamic user;
   final bool socketConnected;
   final VoidCallback onRefresh;
   final bool loading;
 
-  const _Header({
+  const _CompactHeader({
     required this.user,
     required this.socketConnected,
     required this.onRefresh,
@@ -172,129 +202,89 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final role = (user?.role ?? '').toString().toUpperCase();
-    final w = MediaQuery.of(context).size.width;
-    final isNarrow = w < 400;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final role = (user?.role ?? '').toString().replaceAll('_', ' ');
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    final now = DateTime.now();
+    final weekdays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    final dateStr = '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]}';
+    final initial = user?.name?.isNotEmpty == true ? user!.name[0].toUpperCase() : '?';
 
     return Container(
-      padding: EdgeInsets.all(isNarrow ? 14 : 18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppTheme.primary, AppTheme.primaryHover],
-        ),
+        color: isDark ? const Color(0xFF1F2937) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome back,',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: isNarrow ? 12 : 13,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      user?.name ?? '',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: isNarrow ? 18 : 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              if (loading)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              else
-                GestureDetector(
-                  onTap: onRefresh,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              if (role.isNotEmpty)
-                _Chip(
-                  icon: role == 'ROOT' || role == 'SUPER_ADMIN'
-                      ? Icons.shield_rounded
-                      : Icons.manage_accounts_rounded,
-                  label: role.replaceAll('_', ' '),
-                ),
-              const SizedBox(width: 8),
-              _Chip(
-                icon: socketConnected ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-                label: socketConnected ? 'Live' : 'Polling',
-                color: socketConnected ? Colors.greenAccent : Colors.orangeAccent,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _Chip({
-    required this.icon,
-    required this.label,
-    this.color = Colors.white,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.18),
-        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB)),
+        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
+            ),
+            child: Center(
+              child: Text(initial, style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w800, fontSize: 18)),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$greeting, ${user?.name?.split(' ').first ?? ''}',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppTheme.textPrimary),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    if (role.isNotEmpty) ...[
+                      Text(role, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                      const Text('  ·  ', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                    ],
+                    Text(dateStr, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: socketConnected ? AppTheme.green.withOpacity(0.1) : AppTheme.amber.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: socketConnected ? AppTheme.green.withOpacity(0.3) : AppTheme.amber.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 6, height: 6,
+                  decoration: BoxDecoration(color: socketConnected ? AppTheme.green : AppTheme.amber, shape: BoxShape.circle)),
+                const SizedBox(width: 4),
+                Text(
+                  socketConnected ? 'Live' : 'Polling',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: socketConnected ? AppTheme.green : AppTheme.amber),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          loading
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary))
+              : IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  onPressed: onRefresh,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  color: AppTheme.textSecondary,
+                ),
         ],
       ),
     );
@@ -353,22 +343,15 @@ class _StatsGrid extends StatelessWidget {
   final Map<String, dynamic> stats;
   final Map<String, dynamic> trends;
   final bool loading;
-  final double pad;
 
   const _StatsGrid({
     required this.stats,
     required this.trends,
     required this.loading,
-    required this.pad,
   });
 
   @override
   Widget build(BuildContext context) {
-    final w = MediaQuery.of(context).size.width - pad * 2;
-    final cols = w < 320 ? 1 : 2;
-    final gap = 10.0;
-    final cardW = cols == 1 ? w : (w - gap) / 2;
-
     final totalTasks = (stats['totalTasks'] ?? 0) as num;
     final completedTasks = (stats['completedTasks'] ?? 0) as num;
     final rate = totalTasks > 0 ? (completedTasks / totalTasks * 100).round() : 0;
@@ -409,14 +392,18 @@ class _StatsGrid extends StatelessWidget {
       ),
     ];
 
-    return Wrap(
-      spacing: gap,
-      runSpacing: gap,
-      children: items.map((item) => SizedBox(
-        width: cardW,
-        child: _StatCard(item: item, loading: loading),
-      )).toList(),
-    );
+    return LayoutBuilder(builder: (context, constraints) {
+      const gap = 10.0;
+      final cardW = (constraints.maxWidth - gap * 3) / 4;
+      return Row(
+        children: items.map((item) => Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(left: item == items.first ? 0 : gap),
+            child: _StatCard(item: item, loading: loading),
+          ),
+        )).toList(),
+      );
+    });
   }
 }
 
@@ -449,82 +436,40 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1F2937) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
-        ),
-        boxShadow: isDark
-            ? []
-            : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        border: Border.all(color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB)),
+        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: loading
           ? _Skeleton.card()
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      item.title,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? const Color(0xFF9CA3AF) : AppTheme.textSecondary,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: item.color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(item.icon, size: 16, color: item.color),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  item.value,
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : AppTheme.textPrimary,
+                Row(children: [
+                  Container(
+                    width: 8, height: 8,
+                    decoration: BoxDecoration(color: item.color, shape: BoxShape.circle),
                   ),
-                ),
+                  const SizedBox(width: 5),
+                  Expanded(child: Text(item.title, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isDark ? const Color(0xFF9CA3AF) : AppTheme.textSecondary), overflow: TextOverflow.ellipsis)),
+                ]),
                 const SizedBox(height: 4),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    if (item.trend != null) ...[
-                      _TrendBadge(trend: item.trend),
-                      const SizedBox(width: 6),
-                    ],
-                    Expanded(
-                      child: Text(
-                        item.subtitle,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? const Color(0xFF6B7280) : AppTheme.textMuted,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+                    Expanded(child: Text(item.value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppTheme.textPrimary))),
+                    if (item.trend != null) _TrendBadge(trend: item.trend),
                   ],
                 ),
+                const SizedBox(height: 2),
+                Text(item.subtitle, style: TextStyle(fontSize: 10, color: isDark ? const Color(0xFF6B7280) : AppTheme.textSecondary), overflow: TextOverflow.ellipsis),
                 if (item.progress != null) ...[
                   const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: item.progress,
-                      minHeight: 4,
-                      backgroundColor: item.color.withOpacity(0.15),
-                      valueColor: AlwaysStoppedAnimation(item.color),
-                    ),
-                  ),
+                  ClipRRect(borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(value: item.progress, minHeight: 4, backgroundColor: item.color.withOpacity(0.15), valueColor: AlwaysStoppedAnimation(item.color))),
                 ],
               ],
             ),
@@ -664,21 +609,14 @@ class _FinancialCard extends StatelessWidget {
           else
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-              child: w < 500
-                  ? Column(
-                      children: tiles.map((t) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _FinTileWidget(tile: t),
-                      )).toList(),
-                    )
-                  : Row(
-                      children: tiles.map((t) => Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: _FinTileWidget(tile: t),
-                        ),
-                      )).toList(),
-                    ),
+              child: Row(
+                children: tiles.map((t) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _FinTileWidget(tile: t),
+                  ),
+                )).toList(),
+              ),
             ),
         ],
       ),
@@ -707,23 +645,17 @@ class _FinTileWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: tile.color.withOpacity(isDark ? 0.08 : 0.05),
         borderRadius: BorderRadius.circular(10),
-        border: Border(left: BorderSide(color: tile.color, width: 3)),
+        border: Border.all(color: tile.color.withOpacity(0.2)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(tile.icon, color: tile.color, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(tile.label, style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF9CA3AF) : AppTheme.textSecondary)),
-                const SizedBox(height: 2),
-                Text(tile.value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppTheme.textPrimary)),
-                Text(tile.sub, style: TextStyle(fontSize: 10, color: isDark ? const Color(0xFF6B7280) : AppTheme.textMuted)),
-              ],
-            ),
-          ),
+          const SizedBox(height: 8),
+          Text(tile.label, style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF9CA3AF) : AppTheme.textSecondary), overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 2),
+          Text(tile.value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppTheme.textPrimary), overflow: TextOverflow.ellipsis),
+          Text(tile.sub, style: TextStyle(fontSize: 10, color: isDark ? const Color(0xFF6B7280) : AppTheme.textMuted), overflow: TextOverflow.ellipsis),
         ],
       ),
     );
@@ -838,8 +770,14 @@ class _ActiveProjectsCard extends StatelessWidget {
                   children: projects.take(5).map((p) {
                     final progress = (p['progress'] ?? 0) as num;
                     final status = (p['status'] ?? '').toString();
+                    final endDate = p['endDate'] != null
+                        ? DateTime.tryParse(p['endDate'].toString())
+                        : null;
+                    final daysLeft = endDate != null
+                        ? endDate.difference(DateTime.now()).inDays
+                        : null;
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.only(bottom: 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -857,24 +795,47 @@ class _ActiveProjectsCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.statusBg(status),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  status,
+                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.statusColor(status)),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: AppTheme.statusBg(status),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
                                   '${progress.toInt()}%',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.statusColor(status),
-                                  ),
+                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppTheme.statusColor(status)),
                                 ),
                               ),
                             ],
                           ),
+                          const SizedBox(height: 2),
+                          if (daysLeft != null)
+                            Text(
+                              daysLeft < 0
+                                  ? '${daysLeft.abs()}d overdue'
+                                  : '$daysLeft days left',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: daysLeft < 0
+                                    ? AppTheme.red
+                                    : daysLeft <= 7
+                                        ? AppTheme.amber
+                                        : AppTheme.textMuted,
+                              ),
+                            ),
                           const SizedBox(height: 6),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
@@ -883,11 +844,7 @@ class _ActiveProjectsCard extends StatelessWidget {
                               minHeight: 5,
                               backgroundColor: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
                               valueColor: AlwaysStoppedAnimation(
-                                progress >= 80
-                                    ? AppTheme.green
-                                    : progress >= 40
-                                        ? AppTheme.blue
-                                        : AppTheme.amber,
+                                progress >= 80 ? AppTheme.green : progress >= 40 ? AppTheme.blue : AppTheme.amber,
                               ),
                             ),
                           ),
@@ -1018,17 +975,27 @@ class _QuickActionsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final actions = [
-      (Icons.people_rounded, 'Employees', AppTheme.blue, 1),
-      (Icons.folder_rounded, 'Projects', AppTheme.purple, 2),
-      (Icons.task_alt_rounded, 'Tasks', AppTheme.green, 3),
-      (Icons.access_time_rounded, 'Attendance', AppTheme.amber, 4),
+      (Icons.add_circle_outline_rounded, 'New Project', AppTheme.purple, () =>
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const ProjectFormScreen()))),
+      (Icons.playlist_add_rounded, 'New Task', AppTheme.green, () =>
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const TaskFormScreen()))),
+      (Icons.people_rounded, 'Employees', AppTheme.blue, () =>
+          Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('Employees')),
+            body: const EmployeeListScreen(),
+          )))),
+      (Icons.access_time_rounded, 'Attendance', AppTheme.amber, () =>
+          Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('Attendance')),
+            body: const AttendanceListScreen(),
+          )))),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Quick Access',
+          'Quick Actions',
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
@@ -1037,21 +1004,14 @@ class _QuickActionsRow extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         LayoutBuilder(builder: (context, constraints) {
-          final w = constraints.maxWidth;
-          final cols = w < 320 ? 2 : 4;
           final gap = 8.0;
-          final itemW = (w - gap * (cols - 1)) / cols;
+          final itemW = (constraints.maxWidth - gap * 3) / 4;
           return Wrap(
             spacing: gap,
             runSpacing: gap,
             children: actions.map((a) => SizedBox(
               width: itemW,
-              child: _QuickActionTile(
-                icon: a.$1,
-                label: a.$2,
-                color: a.$3,
-                onTap: () => onNavigate(a.$4),
-              ),
+              child: _QuickActionTile(icon: a.$1, label: a.$2, color: a.$3, onTap: a.$4),
             )).toList(),
           );
         }),

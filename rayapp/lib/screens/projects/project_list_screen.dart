@@ -168,10 +168,16 @@ class _ProjectListScreenState extends State<ProjectListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final wide = AppTheme.isWide(context);
     return Scaffold(
       backgroundColor: AppTheme.bg,
       appBar: AppBar(
-        title: const Text('Projects'),
+        title: ShaderMask(
+          shaderCallback: (b) => const LinearGradient(
+            colors: [AppTheme.primary, AppTheme.primaryHover],
+          ).createShader(b),
+          child: const Text('Projects', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.currency_exchange_outlined),
@@ -189,7 +195,7 @@ class _ProjectListScreenState extends State<ProjectListScreen>
           labelColor: AppTheme.primary,
           unselectedLabelColor: AppTheme.textSecondary,
           indicatorColor: AppTheme.primary,
-          indicatorSize: TabBarIndicatorSize.label,
+          indicatorSize: wide ? TabBarIndicatorSize.tab : TabBarIndicatorSize.label,
           tabs: const [
             Tab(text: 'Projects'),
             Tab(text: 'Tasks'),
@@ -254,7 +260,7 @@ class _ProjectListScreenState extends State<ProjectListScreen>
 
 // ── Projects Tab ──────────────────────────────────────────────────────────────
 
-class _ProjectsTab extends StatelessWidget {
+class _ProjectsTab extends StatefulWidget {
   final bool loading;
   final List<Project> filtered;
   final ProjectStats? stats;
@@ -274,19 +280,53 @@ class _ProjectsTab extends StatelessWidget {
   });
 
   @override
+  State<_ProjectsTab> createState() => _ProjectsTabState();
+}
+
+class _ProjectsTabState extends State<_ProjectsTab> {
+  bool _grid = false;
+
+  int _gridCols(BuildContext ctx) {
+    final w = MediaQuery.of(ctx).size.width;
+    if (w < 480) return 1;
+    if (w < 768) return 2;
+    if (w < 1024) return 3;
+    return 4;
+  }
+
+  int _listCols(BuildContext ctx) {
+    final w = MediaQuery.of(ctx).size.width;
+    if (w < 768) return 1;
+    if (w < 1024) return 2;
+    return 3;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+    if (widget.loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
     return RefreshIndicator(
-      onRefresh: onRefresh,
+      onRefresh: widget.onRefresh,
       color: AppTheme.primary,
       child: CustomScrollView(
         slivers: [
-          if (stats != null) _StatsGrid(stats: stats!),
-          _FilterBar(
-            search: search, status: status, priority: priority, sort: sort,
-            onSearch: onSearch, onStatus: onStatus, onPriority: onPriority, onSort: onSort,
+          if (widget.stats != null) _StatsGrid(stats: widget.stats!),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 4, AppTheme.hPad(context), 0),
+              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                GestureDetector(
+                  onTap: () => setState(() => _grid = !_grid),
+                  child: Icon(_grid ? Icons.view_list_outlined : Icons.grid_view_outlined,
+                      size: 22, color: AppTheme.primary),
+                ),
+              ]),
+            ),
           ),
-          filtered.isEmpty
+          _FilterBar(
+            search: widget.search, status: widget.status, priority: widget.priority, sort: widget.sort,
+            onSearch: widget.onSearch, onStatus: widget.onStatus, onPriority: widget.onPriority, onSort: widget.onSort,
+          ),
+          widget.filtered.isEmpty
               ? SliverFillRemaining(
                   child: Center(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -296,31 +336,68 @@ class _ProjectsTab extends StatelessWidget {
                     ]),
                   ),
                 )
-              : SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, i) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _ProjectCard(
-                          project: filtered[i],
-                          statusColor: statusColor, statusBg: statusBg, priorityColor: priorityColor,
-                          onTap: () => onTap(filtered[i]),
-                          onEdit: () => onEdit(filtered[i]),
-                          onDelete: () => onDelete(filtered[i]),
+              : _grid
+                  ? SliverPadding(
+                      padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 0, AppTheme.hPad(context), 100),
+                      sliver: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: _gridCols(context),
+                          crossAxisSpacing: 10, mainAxisSpacing: 10,
+                          childAspectRatio: AppTheme.isDesktop(context) ? 1.3 : 1.05,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, i) => _ProjectCard(
+                            project: widget.filtered[i],
+                            statusColor: widget.statusColor, statusBg: widget.statusBg, priorityColor: widget.priorityColor,
+                            onTap: () => widget.onTap(widget.filtered[i]),
+                            onEdit: () => widget.onEdit(widget.filtered[i]),
+                            onDelete: () => widget.onDelete(widget.filtered[i]),
+                          ),
+                          childCount: widget.filtered.length,
                         ),
                       ),
-                      childCount: filtered.length,
+                    )
+                  : SliverPadding(
+                      padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 0, AppTheme.hPad(context), 100),
+                      sliver: AppTheme.isWide(context)
+                          ? SliverGrid(
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: _listCols(context),
+                                crossAxisSpacing: 10, mainAxisSpacing: 10,
+                                childAspectRatio: AppTheme.isDesktop(context) ? 2.8 : 2.2,
+                              ),
+                              delegate: SliverChildBuilderDelegate(
+                                (context, i) => _ProjectCard(
+                                  project: widget.filtered[i],
+                                  statusColor: widget.statusColor, statusBg: widget.statusBg, priorityColor: widget.priorityColor,
+                                  onTap: () => widget.onTap(widget.filtered[i]),
+                                  onEdit: () => widget.onEdit(widget.filtered[i]),
+                                  onDelete: () => widget.onDelete(widget.filtered[i]),
+                                ),
+                                childCount: widget.filtered.length,
+                              ),
+                            )
+                          : SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, i) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: _ProjectCard(
+                                    project: widget.filtered[i],
+                                    statusColor: widget.statusColor, statusBg: widget.statusBg, priorityColor: widget.priorityColor,
+                                    onTap: () => widget.onTap(widget.filtered[i]),
+                                    onEdit: () => widget.onEdit(widget.filtered[i]),
+                                    onDelete: () => widget.onDelete(widget.filtered[i]),
+                                  ),
+                                ),
+                                childCount: widget.filtered.length,
+                              ),
+                            ),
                     ),
-                  ),
-                ),
         ],
       ),
     );
   }
 }
-
-// ── Stats Grid ────────────────────────────────────────────────────────────────
 
 class _StatsGrid extends StatelessWidget {
   final ProjectStats stats;
@@ -328,21 +405,31 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tiles = [
+      _StatTile(label: 'Total', value: '${stats.totalProjects}', icon: Icons.folder_outlined, color: AppTheme.primary),
+      _StatTile(label: 'Active', value: '${stats.activeProjects}', icon: Icons.play_circle_outline, color: AppTheme.green),
+      _StatTile(label: 'Completed', value: '${stats.completedProjects}', icon: Icons.check_circle_outline, color: AppTheme.cyan),
+      _StatTile(label: 'At Risk', value: '${stats.atRiskProjects}', icon: Icons.warning_amber_outlined, color: AppTheme.amber),
+      _StatTile(label: 'Overdue', value: '${stats.overdueTasks}', icon: Icons.alarm_outlined, color: AppTheme.red),
+    ];
+    final wide = AppTheme.isWide(context);
     return SliverToBoxAdapter(
-      child: SizedBox(
-        height: 60,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          children: [
-            _StatTile(label: 'Total', value: '${stats.totalProjects}', icon: Icons.folder_outlined, color: AppTheme.primary),
-            _StatTile(label: 'Active', value: '${stats.activeProjects}', icon: Icons.play_circle_outline, color: AppTheme.green),
-            _StatTile(label: 'Completed', value: '${stats.completedProjects}', icon: Icons.check_circle_outline, color: AppTheme.cyan),
-            _StatTile(label: 'At Risk', value: '${stats.atRiskProjects}', icon: Icons.warning_amber_outlined, color: AppTheme.amber),
-            _StatTile(label: 'Overdue', value: '${stats.overdueTasks}', icon: Icons.alarm_outlined, color: AppTheme.red),
-          ],
-        ),
-      ),
+      child: wide
+          ? Padding(
+              padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 12, AppTheme.hPad(context), 0),
+              child: Row(children: tiles.map((t) => Expanded(child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: t,
+              ))).toList()),
+            )
+          : SizedBox(
+              height: 72,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                children: tiles,
+              ),
+            ),
     );
   }
 }
@@ -355,21 +442,32 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final wide = AppTheme.isWide(context);
     return Container(
-      width: 96,
-      margin: const EdgeInsets.only(right: 8),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppTheme.border)),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      width: wide ? null : 110,
+      margin: wide ? EdgeInsets.zero : const EdgeInsets.only(right: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       child: Row(children: [
         Container(
-          width: 24, height: 24,
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(5)),
-          child: Icon(icon, color: color, size: 13),
+          width: 32, height: 32,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [color, color.withOpacity(0.75)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: Colors.white, size: 16),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 8),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-          FittedBox(child: Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color))),
-          Text(label, style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
+          FittedBox(child: ShaderMask(
+            shaderCallback: (b) => LinearGradient(colors: [color, color.withOpacity(0.7)]).createShader(b),
+            child: Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          )),
+          Text(label.toUpperCase(), style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: color, letterSpacing: 0.5)),
         ])),
       ]),
     );
@@ -390,7 +488,7 @@ class _FilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+        padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 4, AppTheme.hPad(context), 12),
         child: Column(children: [
           TextField(
             onChanged: onSearch,
@@ -478,6 +576,7 @@ class _ProjectCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = project;
+    final pc = priorityColor(p.priority);
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(12),
@@ -485,10 +584,22 @@ class _ProjectCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Container(
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.border)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: AppTheme.primary.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 3))],
+          ),
           padding: const EdgeInsets.all(12),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [pc, pc.withOpacity(0.7)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.folder_outlined, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 8),
               Expanded(child: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.textPrimary))),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -500,12 +611,12 @@ class _ProjectCard extends StatelessWidget {
               const SizedBox(width: 4),
               GestureDetector(onTap: onDelete, child: const Icon(Icons.delete_outline, size: 18, color: AppTheme.red)),
             ]),
-            const SizedBox(height: 2),
+            const SizedBox(height: 6),
             Text(p.description, maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
             const SizedBox(height: 8),
             Row(children: [
-              Text('${p.progress}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+              Text('${p.progress}%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.primary)),
               const SizedBox(width: 6),
               Expanded(child: ClipRRect(
                 borderRadius: BorderRadius.circular(3),
@@ -520,8 +631,8 @@ class _ProjectCard extends StatelessWidget {
             Row(children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(color: priorityColor(p.priority).withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
-                child: Text(p.priority, style: TextStyle(color: priorityColor(p.priority), fontSize: 10, fontWeight: FontWeight.w500)),
+                decoration: BoxDecoration(color: pc.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
+                child: Text(p.priority, style: TextStyle(color: pc, fontSize: 10, fontWeight: FontWeight.w500)),
               ),
               const Spacer(),
               const Icon(Icons.calendar_today_outlined, size: 11, color: AppTheme.textSecondary),
@@ -583,7 +694,7 @@ class _AllTasksTabState extends State<_AllTasksTab> {
 
     return Column(children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 12, AppTheme.hPad(context), 0),
         child: Row(children: [
           _TStat('Total', '${_tasks.length}', AppTheme.primary),
           _TStat('In Progress', '${_tasks.where((t) => t.status == 'in-progress').length}', AppTheme.blue),
@@ -593,7 +704,7 @@ class _AllTasksTabState extends State<_AllTasksTab> {
       ),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 10, AppTheme.hPad(context), 0),
         child: Row(children: [
           ...[('all', 'All'), ('todo', 'Todo'), ('in-progress', 'Active'), ('review', 'Review'), ('completed', 'Done')].map((e) {
             final sel = _statusFilter == e.$1;
@@ -637,7 +748,7 @@ class _AllTasksTabState extends State<_AllTasksTab> {
         child: filtered.isEmpty
             ? Center(child: Text('No tasks', style: TextStyle(color: AppTheme.textSecondary)))
             : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                  padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 4, AppTheme.hPad(context), 80),
                 itemCount: filtered.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
@@ -712,9 +823,8 @@ class _BudgetsTab extends StatelessWidget {
     final overallUsed = totalBudget > 0 ? (totalSpent / totalBudget).clamp(0.0, 1.0) : 0.0;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(AppTheme.hPad(context)),
       children: [
-        // Summary row
         LayoutBuilder(builder: (_, c) {
           final cols = c.maxWidth < 360 ? 2 : 3;
           final gap = (cols - 1) * 10.0;
@@ -805,11 +915,18 @@ class _BudgetTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: w, padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppTheme.border)),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2))],
+    ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+      Text(label.toUpperCase(), style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color, letterSpacing: 0.4)),
       const SizedBox(height: 4),
-      FittedBox(child: Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color))),
+      FittedBox(child: ShaderMask(
+        shaderCallback: (b) => LinearGradient(colors: [color, color.withOpacity(0.7)]).createShader(b),
+        child: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+      )),
     ]),
   );
 }
@@ -860,9 +977,8 @@ class _ReportsTabState extends State<_ReportsTab> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(AppTheme.hPad(context)),
         children: [
-          // Global reports
           const _ReportSectionHeader('Global Reports'),
           const SizedBox(height: 8),
           ...globalReports.map((r) => _ReportCard(

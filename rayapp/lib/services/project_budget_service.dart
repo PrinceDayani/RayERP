@@ -1,3 +1,8 @@
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
+import '../utils/constants.dart';
 import 'api_service.dart';
 
 class BudgetCategory {
@@ -87,6 +92,12 @@ class ProjectBudgetService extends ApiService {
       return null;
     }
   }
+
+  Future<void> create(String projectId, Map<String, dynamic> body) =>
+      post('/projects/$projectId/budget', body);
+
+  Future<void> update(String budgetId, Map<String, dynamic> body) =>
+      put('/budget/$budgetId', body);
 }
 
 class ProjectActivityService extends ApiService {
@@ -174,6 +185,20 @@ class ProjectFilesService extends ApiService {
       return (list as List).map((e) => ProjectFile.fromJson(e)).toList();
     } catch (_) {
       return [];
+    }
+  }
+
+  Future<void> upload(String projectId, Uint8List bytes, String filename, String mimeType) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(AppConstants.tokenKey) ?? '';
+    final req = http.MultipartRequest(
+      'POST', Uri.parse('${ApiConfig.baseUrl}/projects/$projectId/files'),
+    );
+    req.headers['Authorization'] = 'Bearer $token';
+    req.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    final res = await req.send().timeout(ApiConfig.timeout);
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception('Upload failed: ${res.statusCode}');
     }
   }
 }

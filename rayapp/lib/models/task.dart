@@ -213,6 +213,7 @@ class Task {
   final String? recurrencePattern;
   final bool isTemplate;
   final String? templateName;
+  final List<TaskAssignee> watchers;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -244,6 +245,7 @@ class Task {
     this.recurrencePattern,
     required this.isTemplate,
     this.templateName,
+    required this.watchers,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -284,6 +286,7 @@ class Task {
       recurrencePattern: json['recurrencePattern'],
       isTemplate: json['isTemplate'] ?? false,
       templateName: json['templateName'],
+      watchers: (json['watchers'] as List? ?? []).map((e) => TaskAssignee.fromJson(e)).toList(),
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
     );

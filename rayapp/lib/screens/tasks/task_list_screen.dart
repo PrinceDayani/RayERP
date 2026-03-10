@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../config/app_theme.dart';
 import '../../models/task.dart';
 import '../../services/task_service.dart';
@@ -82,26 +85,25 @@ class _TaskListScreenState extends State<TaskListScreen> {
     setState(() => _filtered = list);
   }
 
+  Future<void> _exportCsv() async {
+    final rows = [
+      'Title,Status,Priority,Assignee,Project,Due Date',
+      ..._filtered.map((t) => '"${t.title}","${t.status}","${t.priority}","${t.assignedTo?.name ?? ''}","${t.projectName}","${t.dueDate != null ? AppTheme.fmtDate(t.dueDate!) : ''}"'),
+    ];
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/tasks.csv');
+    await file.writeAsString(rows.join('\n'));
+    await Share.shareXFiles([XFile(file.path)], text: 'Tasks Export');
+  }
+
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: AppTheme.red),
     );
   }
 
-  Color _statusColor(String s) => switch (s) {
-    'completed' => AppTheme.green,
-    'in-progress' => AppTheme.blue,
-    'review' => AppTheme.amber,
-    'blocked' => AppTheme.red,
-    _ => AppTheme.textSecondary,
-  };
-
-  Color _priorityColor(String p) => switch (p) {
-    'critical' => AppTheme.red,
-    'high' => AppTheme.amber,
-    'medium' => AppTheme.blue,
-    _ => AppTheme.green,
-  };
+  Color _statusColor(String s) => AppTheme.taskStatusColor(s);
+  Color _priorityColor(String p) => AppTheme.taskPriorityColor(p);
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +115,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
           : AppBar(
               title: Text(_myTasks ? 'My Tasks' : 'Tasks'),
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.download_outlined),
+                  tooltip: 'Export CSV',
+                  onPressed: _exportCsv,
+                ),
                 IconButton(
                   icon: const Icon(Icons.view_kanban_outlined),
                   tooltip: 'Kanban',
@@ -169,21 +176,51 @@ class _TaskListScreenState extends State<TaskListScreen> {
                     color: AppTheme.primary,
                     child: _filtered.isEmpty
                         ? _buildEmpty()
-                        : ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                            itemCount: _filtered.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (_, i) => _TaskCard(
-                              task: _filtered[i],
-                              statusColor: _statusColor,
-                              priorityColor: _priorityColor,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => TaskDetailScreen(taskId: _filtered[i].id),
+                        : AppTheme.constrain(
+                            LayoutBuilder(builder: (context, constraints) {
+                              final wide = constraints.maxWidth >= 600;
+                              if (wide) {
+                                final h = AppTheme.hPad(context);
+                                return GridView.builder(
+                                  padding: EdgeInsets.fromLTRB(h, 8, h, 80),
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: constraints.maxWidth >= 900 ? 3 : 2,
+                                    crossAxisSpacing: 10,
+                                    mainAxisSpacing: 10,
+                                    childAspectRatio: 1.6,
+                                  ),
+                                  itemCount: _filtered.length,
+                                  itemBuilder: (_, i) => _TaskCard(
+                                    task: _filtered[i],
+                                    statusColor: _statusColor,
+                                    priorityColor: _priorityColor,
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => TaskDetailScreen(taskId: _filtered[i].id),
+                                      ),
+                                    ).then((_) => _load()),
+                                  ),
+                                );
+                              }
+                              final h = AppTheme.hPad(context);
+                              return ListView.separated(
+                                padding: EdgeInsets.fromLTRB(h, 8, h, 80),
+                                itemCount: _filtered.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                itemBuilder: (_, i) => _TaskCard(
+                                  task: _filtered[i],
+                                  statusColor: _statusColor,
+                                  priorityColor: _priorityColor,
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => TaskDetailScreen(taskId: _filtered[i].id),
+                                    ),
+                                  ).then((_) => _load()),
                                 ),
-                              ).then((_) => _load()),
-                            ),
+                              );
+                            }),
                           ),
                   ),
           ),
@@ -211,7 +248,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
   }
 
   Widget _buildSearchBar() => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 12, AppTheme.hPad(context), 0),
         child: TextField(
           controller: _searchCtrl,
           decoration: InputDecoration(
@@ -238,7 +275,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
   Widget _buildFilterRow() => SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+        padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 10, AppTheme.hPad(context), 4),
         child: Row(
           children: [
             // My Tasks toggle
@@ -320,7 +357,7 @@ class _FilterChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
-            color: selected ? color : Colors.white,
+            color: selected ? color : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: selected ? color : AppTheme.border),
           ),
@@ -336,7 +373,7 @@ class _FilterChip extends StatelessWidget {
       );
 }
 
-class _TaskCard extends StatelessWidget {
+class _TaskCard extends StatefulWidget {
   final Task task;
   final Color Function(String) statusColor;
   final Color Function(String) priorityColor;
@@ -350,168 +387,190 @@ class _TaskCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final sc = statusColor(task.status);
-    final pc = priorityColor(task.priority);
-    final isOverdue = task.dueDate != null &&
-        task.dueDate!.isBefore(DateTime.now()) &&
-        task.status != 'completed';
+  State<_TaskCard> createState() => _TaskCardState();
+}
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isOverdue ? AppTheme.red.withOpacity(0.4) : AppTheme.border,
-          ),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    task.title,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _Chip(task.priority, pc),
-              ],
-            ),
-            if (task.description.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                task.description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-              ),
-            ],
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _Chip(task.status, sc),
-                const SizedBox(width: 6),
-                if (task.projectName.isNotEmpty) ...[
-                  Icon(Icons.folder_outlined, size: 11, color: AppTheme.textMuted),
-                  const SizedBox(width: 3),
-                  Flexible(
+class _TaskCardState extends State<_TaskCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.task;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOverdue = t.dueDate != null &&
+        t.dueDate!.isBefore(DateTime.now()) &&
+        t.status != 'completed';
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          decoration: isDark
+              ? AppTheme.taskCardDark(overdue: isOverdue)
+              : AppTheme.taskCard(overdue: isOverdue, hover: _hovered),
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
                     child: Text(
-                      task.projectName,
-                      style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                      t.title,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  _WebBadge(t.priority,
+                      AppTheme.taskPriorityColor(t.priority),
+                      AppTheme.taskPriorityBg(t.priority)),
                 ],
-                const Spacer(),
-                if (task.dueDate != null)
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 11,
-                        color: isOverdue ? AppTheme.red : AppTheme.textMuted,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        AppTheme.fmtDate(task.dueDate!),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isOverdue ? AppTheme.red : AppTheme.textMuted,
-                          fontWeight: isOverdue ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-            if (task.tags.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 4,
-                children: task.tags
-                    .take(4)
-                    .map((t) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _hexColor(t.color).withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            t.name,
-                            style: TextStyle(fontSize: 10, color: _hexColor(t.color)),
-                          ),
-                        ))
-                    .toList(),
               ),
-            ],
-            if (task.checklist.isNotEmpty || task.subtasks.isNotEmpty || task.hasActiveTimer) ...[
-              const SizedBox(height: 6),
+              if (t.description.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  t.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+                ),
+              ],
+              const SizedBox(height: 10),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              const SizedBox(height: 8),
               Row(
                 children: [
-                  if (task.checklist.isNotEmpty) ...[
-                    Icon(Icons.checklist_outlined, size: 12, color: AppTheme.textMuted),
+                  _WebBadge(t.status,
+                      AppTheme.taskStatusColor(t.status),
+                      AppTheme.taskStatusBg(t.status)),
+                  const SizedBox(width: 6),
+                  if (t.projectName.isNotEmpty) ...[
+                    const Icon(Icons.folder_outlined, size: 11, color: AppTheme.textMuted),
                     const SizedBox(width: 3),
-                    Text(
-                      '${task.checklistDone}/${task.checklist.length}',
-                      style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                    Flexible(
+                      child: Text(
+                        t.projectName,
+                        style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                  ],
-                  if (task.subtasks.isNotEmpty) ...[
-                    Icon(Icons.account_tree_outlined, size: 12, color: AppTheme.textMuted),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${task.subtasks.length}',
-                      style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  if (task.hasActiveTimer) ...[
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(color: AppTheme.green, shape: BoxShape.circle),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text('Timer running', style: TextStyle(fontSize: 10, color: AppTheme.green)),
                   ],
                   const Spacer(),
-                  if (task.assignedTo != null)
-                    Text(
-                      task.assignedTo!.name,
-                      style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                  if (t.dueDate != null)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 11,
+                          color: isOverdue ? AppTheme.red : AppTheme.textMuted,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          AppTheme.fmtDate(t.dueDate!),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isOverdue ? AppTheme.red : AppTheme.textMuted,
+                            fontWeight: isOverdue ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ],
                     ),
                 ],
               ),
+              if (t.tags.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 4,
+                  children: t.tags
+                      .take(4)
+                      .map((tag) => _WebBadge(
+                            tag.name,
+                            _hexColor(tag.color),
+                            _hexColor(tag.color).withOpacity(0.12),
+                          ))
+                      .toList(),
+                ),
+              ],
+              if (t.checklist.isNotEmpty || t.subtasks.isNotEmpty || t.hasActiveTimer) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    if (t.checklist.isNotEmpty) ...[
+                      const Icon(Icons.checklist_outlined, size: 12, color: AppTheme.textMuted),
+                      const SizedBox(width: 3),
+                      Text('${t.checklistDone}/${t.checklist.length}',
+                          style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                      const SizedBox(width: 8),
+                    ],
+                    if (t.subtasks.isNotEmpty) ...[
+                      const Icon(Icons.account_tree_outlined, size: 12, color: AppTheme.textMuted),
+                      const SizedBox(width: 3),
+                      Text('${t.subtasks.length}',
+                          style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
+                      const SizedBox(width: 8),
+                    ],
+                    if (t.hasActiveTimer) ...[
+                      Container(
+                        width: 6, height: 6,
+                        decoration: const BoxDecoration(color: AppTheme.green, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text('Timer running',
+                          style: TextStyle(fontSize: 10, color: AppTheme.green)),
+                    ],
+                    const Spacer(),
+                    if (t.assignedTo != null)
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 9,
+                            backgroundColor: AppTheme.primary.withOpacity(0.12),
+                            child: Text(
+                              t.assignedTo!.name.isNotEmpty
+                                  ? t.assignedTo!.name[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.primary),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(t.assignedTo!.name,
+                              style: const TextStyle(
+                                  fontSize: 10, color: AppTheme.textSecondary)),
+                        ],
+                      ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _Chip extends StatelessWidget {
+/// Web-style badge: rounded-full px-2.5 py-0.5 text-xs font-semibold
+class _WebBadge extends StatelessWidget {
   final String label;
   final Color color;
-  const _Chip(this.label, this.color);
+  final Color bg;
+  const _WebBadge(this.label, this.color, this.bg);
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500)),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+        child: Text(label,
+            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
       );
 }
 
