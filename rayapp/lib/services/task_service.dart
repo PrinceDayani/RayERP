@@ -242,7 +242,8 @@ class TaskService extends ApiService {
 
   Future<void> removeAttachment(String id, String attachmentId) =>
       delete('/tasks/$id/attachments/$attachmentId');
-}
+
+  // ── Project Task Methods ──────────────────────────────────────────────────
 
   Future<Task> addProjectTaskComment(String projectId, String taskId, String comment, String userId) async {
     final data = await post('/projects/$projectId/tasks/$taskId/comments', {'comment': comment, 'user': userId});

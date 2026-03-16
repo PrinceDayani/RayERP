@@ -126,7 +126,7 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                     : AppTheme.constrain(ListView.separated(
                         padding: EdgeInsets.all(AppTheme.hPad(context)),
                         itemCount: selectedTasks.length,
-                        separatorBuilder: (_, __) =>
+                        separatorBuilder: (_, _) =>
                             const SizedBox(height: 8),
                         itemBuilder: (_, i) {
                           final t = selectedTasks[i];
@@ -172,9 +172,9 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                                                 fontSize: 13,
                                                 fontWeight:
                                                     FontWeight.w600)),
-                                        if (t.projectName?.isNotEmpty ?? false)
-                                          Text(t.projectName,
-                                          Text(t.projectName ?? '',
+                                        if (t.projectName != null && t.projectName!.isNotEmpty)
+                                          Text(t.projectName!,
+                                              style: const TextStyle(
                                                   fontSize: 11,
                                                   color: AppTheme
                                                       .textSecondary)),

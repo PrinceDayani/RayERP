@@ -35,7 +35,9 @@ export default function ProjectTaskCreator({ projectId, projectName, onTaskCreat
     assignedTo: '',
     priority: 'medium',
     dueDate: '',
-    estimatedHours: ''
+    estimatedHours: '',
+    taskType: 'project' as const,
+    assignmentType: 'assigned' as 'assigned' | 'self-assigned'
   });
 
   useEffect(() => {
@@ -74,7 +76,9 @@ export default function ProjectTaskCreator({ projectId, projectName, onTaskCreat
         dueDate: taskData.dueDate,
         estimatedHours: taskData.estimatedHours ? parseFloat(taskData.estimatedHours) : 0,
         assignedBy: user?._id || '',
-        status: 'todo' as const
+        status: 'todo' as const,
+        taskType: taskData.taskType,
+        assignmentType: taskData.assignmentType
       };
 
       const createdTask = await createProjectTask(projectId, newTaskData as any);
@@ -88,7 +92,9 @@ export default function ProjectTaskCreator({ projectId, projectName, onTaskCreat
         assignedTo: '',
         priority: 'medium',
         dueDate: '',
-        estimatedHours: ''
+        estimatedHours: '',
+        taskType: 'project',
+        assignmentType: 'assigned'
       });
       
       toast({
@@ -120,6 +126,19 @@ export default function ProjectTaskCreator({ projectId, projectName, onTaskCreat
           <DialogTitle>Create Task for {projectName}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="assignmentType">Assignment Type</Label>
+            <Select onValueChange={(value: any) => setTaskData(prev => ({ ...prev, assignmentType: value }))} value={taskData.assignmentType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="assigned">Assigned by Manager</SelectItem>
+                <SelectItem value="self-assigned">Self-Assigned</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           <div>
             <Label htmlFor="title">Title *</Label>
             <Input

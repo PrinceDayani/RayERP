@@ -18,6 +18,9 @@ interface Task {
   dueDate: string;
   order: number;
   column: string;
+  taskType?: 'individual' | 'project';
+  assignmentType?: 'assigned' | 'self-assigned';
+  tags?: { name: string; color: string }[];
 }
 
 interface TaskKanbanProps {
@@ -39,7 +42,8 @@ const TaskKanban: React.FC<TaskKanbanProps> = ({
     { id: 'todo', title: 'To Do', color: 'bg-gray-100' },
     { id: 'in-progress', title: 'In Progress', color: 'bg-blue-100' },
     { id: 'review', title: 'Review', color: 'bg-yellow-100' },
-    { id: 'completed', title: 'Completed', color: 'bg-green-100' }
+    { id: 'completed', title: 'Completed', color: 'bg-green-100' },
+    { id: 'blocked', title: 'Blocked', color: 'bg-red-100' }
   ]);
 
   const [tasksByColumn, setTasksByColumn] = useState<Record<string, Task[]>>({});
@@ -175,10 +179,34 @@ const TaskKanban: React.FC<TaskKanbanProps> = ({
                     </p>
                   )}
                   
+                  {task.tags && task.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {task.tags.slice(0, 3).map((tag, idx) => (
+                        <Badge key={idx} style={{ backgroundColor: tag.color }} className="text-white text-xs px-1 py-0">
+                          {tag.name}
+                        </Badge>
+                      ))}
+                      {task.tags.length > 3 && (
+                        <Badge variant="secondary" className="text-xs px-1 py-0">+{task.tags.length - 3}</Badge>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="flex items-center justify-between">
-                    <Badge className={getPriorityColor(task.priority)}>
-                      {task.priority}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      <Badge className={getPriorityColor(task.priority)}>
+                        {task.priority}
+                      </Badge>
+                      {task.assignmentType === 'self-assigned' && (
+                        <Badge variant="outline" className="text-xs">Self</Badge>
+                      )}
+                      {(task as any).isRecurring && (
+                        <Badge variant="outline" className="text-xs">🔄</Badge>
+                      )}
+                      {(task as any).isTemplate && (
+                        <Badge variant="outline" className="text-xs">📋</Badge>
+                      )}
+                    </div>
                     
                     {task.assignedTo && (
                       <Avatar className="h-6 w-6">
@@ -192,12 +220,35 @@ const TaskKanban: React.FC<TaskKanbanProps> = ({
                     )}
                   </div>
                   
-                  {task.dueDate && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(task.dueDate).toLocaleDateString()}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {task.dueDate && (
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(task.dueDate).toLocaleDateString()}
+                      </div>
+                    )}
+                    {(task as any).timeEntries && (task as any).timeEntries.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {(task as any).timeEntries.reduce((sum: number, e: any) => sum + (e.duration || 0), 0)}m
+                      </div>
+                    )}
+                    {(task as any).attachments && (task as any).attachments.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        📎 {(task as any).attachments.length}
+                      </div>
+                    )}
+                    {(task as any).comments && (task as any).comments.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        💬 {(task as any).comments.length}
+                      </div>
+                    )}
+                    {(task as any).checklist && (task as any).checklist.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        ✓ {(task as any).checklist.filter((c: any) => c.completed).length}/{(task as any).checklist.length}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}

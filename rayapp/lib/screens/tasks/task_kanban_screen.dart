@@ -64,9 +64,10 @@ class _TaskKanbanScreenState extends State<TaskKanbanScreen> {
       }
       setState(() => _columns = cols);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -81,6 +82,7 @@ class _TaskKanbanScreenState extends State<TaskKanbanScreen> {
           id: task.id, title: task.title, description: task.description,
           taskType: task.taskType, assignmentType: task.assignmentType,
           status: newStatus, priority: task.priority,
+          projectId: task.projectId, projectName: task.projectName,
           assignedTo: task.assignedTo, assignedBy: task.assignedBy,
           dueDate: task.dueDate, estimatedHours: task.estimatedHours,
           actualHours: task.actualHours, column: newStatus, order: task.order,
@@ -94,9 +96,10 @@ class _TaskKanbanScreenState extends State<TaskKanbanScreen> {
         _columns[newStatus]?.insert(0, updated);
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
   }
 
@@ -225,7 +228,7 @@ class _KanbanColumn extends StatelessWidget {
                 )
               : ListView.separated(
                   itemCount: tasks.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (_, i) {
                     final t = tasks[i];
                     final pc = priorityColor(t.priority);

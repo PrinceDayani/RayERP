@@ -216,12 +216,14 @@ export const tasksAPI = {
   },
 
   // Attachments
-  addAttachment: async (id: string, data: { filename: string; originalName: string; mimetype: string; size: number; url: string; uploadedBy: string }) => {
-    const response = await api.post(`/tasks/${id}/attachments`, data);
+  uploadAttachment: async (id: string, formData: FormData) => {
+    const response = await api.post(`/tasks/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
   },
 
-  removeAttachment: async (id: string, attachmentId: string) => {
+  deleteAttachment: async (id: string, attachmentId: string) => {
     const response = await api.delete(`/tasks/${id}/attachments/${attachmentId}`);
     return response.data;
   },
@@ -338,6 +340,17 @@ export const tasksAPI = {
 
   removeWatcher: async (id: string, userId: string) => {
     const response = await api.delete(`/tasks/${id}/watchers/${userId}`);
+    return response.data;
+  },
+
+  // Custom Fields
+  addCustomField: async (id: string, field: { fieldName: string; fieldType: string; value: any }) => {
+    const response = await api.post(`/tasks/${id}/custom-fields`, field);
+    return response.data;
+  },
+
+  removeCustomField: async (id: string, fieldName: string) => {
+    const response = await api.delete(`/tasks/${id}/custom-fields/${fieldName}`);
     return response.data;
   }
 };

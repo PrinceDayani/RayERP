@@ -123,6 +123,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskCreate, onTa
       case 'completed': return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'in-progress': return <Clock className="h-4 w-4 text-blue-600" />;
       case 'review': return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+      case 'blocked': return <AlertCircle className="h-4 w-4 text-red-600" />;
       default: return <Clock className="h-4 w-4 text-gray-600" />;
     }
   };
@@ -132,6 +133,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskCreate, onTa
       case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'in-progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
       case 'review': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'blocked': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
     }
   };
@@ -182,6 +184,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({ projectId, onTaskCreate, onTa
               <SelectItem value="in-progress">In Progress</SelectItem>
               <SelectItem value="review">Review</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="blocked">Blocked</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -4,9 +4,10 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { AccessLevelIndicator } from "@/components/ui/access-level-indicator";
 import { AccessRequestDialog } from "@/components/ui/access-request-dialog";
-import { Calendar, User, Edit, Eye, Trash2, UserPlus } from "lucide-react";
+import { Calendar, User, Edit, Eye, Trash2, UserPlus, Tag, CheckSquare, Paperclip, Users as UsersIcon, Clock, Square } from "lucide-react";
 
 interface Task {
   _id: string;
@@ -18,6 +19,15 @@ interface Task {
   assignedTo?: { firstName: string; lastName: string };
   project?: { name: string };
   isBasicView?: boolean;
+  taskType?: 'individual' | 'project';
+  assignmentType?: 'assigned' | 'self-assigned';
+  tags?: Array<{ name: string; color: string } | string>;
+  checklist?: Array<{ text: string; completed: boolean }>;
+  attachments?: Array<any>;
+  watchers?: Array<any>;
+  estimatedHours?: number;
+  actualHours?: number;
+  isRecurring?: boolean;
 }
 
 interface TaskCardProps {
@@ -50,6 +60,16 @@ export default function TaskCard({ task, onView, onEdit, onDelete }: TaskCardPro
   const isBasicView = task.isBasicView;
   const [showAccessRequest, setShowAccessRequest] = useState(false);
   
+  const getChecklistProgress = () => {
+    if (!task.checklist || task.checklist.length === 0) return null;
+    const completed = task.checklist.filter(item => item.completed).length;
+    const total = task.checklist.length;
+    const percentage = (completed / total) * 100;
+    return { completed, total, percentage };
+  };
+  
+  const checklistProgress = getChecklistProgress();
+  
   return (
     <>
       <Card className={`group hover:shadow-lg transition-all duration-300 ${isBasicView ? 'border-dashed border-amber-200 bg-gradient-to-br from-amber-50/30 to-white' : 'hover:border-primary/20 hover:shadow-xl'}`}>
@@ -63,6 +83,15 @@ export default function TaskCard({ task, onView, onEdit, onDelete }: TaskCardPro
                 showRequestAccess={isBasicView}
                 onRequestAccess={() => setShowAccessRequest(true)}
               />
+              {task.taskType === 'individual' && (
+                <Badge variant="outline" className="text-xs"><User className="h-3 w-3 mr-1" />Individual</Badge>
+              )}
+              {task.assignmentType === 'self-assigned' && (
+                <Badge variant="outline" className="text-xs">Self</Badge>
+              )}
+              {task.isRecurring && (
+                <Badge variant="outline" className="text-xs"><Square className="h-3 w-3 mr-1" />Recurring</Badge>
+              )}
             </div>
             {task.project && (
               <p className="text-xs text-muted-foreground">{task.project.name}</p>
@@ -76,13 +105,43 @@ export default function TaskCard({ task, onView, onEdit, onDelete }: TaskCardPro
         {!isBasicView && task.description && (
           <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{task.description}</p>
         )}
+        
+        {!isBasicView && task.tags && task.tags.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap mb-3">
+            <Tag className="h-3 w-3 text-muted-foreground" />
+            {task.tags.slice(0, 3).map((tag, index) => {
+              const tagObj = typeof tag === 'object' ? tag : { name: tag, color: '#3b82f6' };
+              return (
+                <Badge key={index} style={{ backgroundColor: tagObj.color }} className="text-white text-xs">
+                  {tagObj.name}
+                </Badge>
+              );
+            })}
+            {task.tags.length > 3 && (
+              <span className="text-xs text-muted-foreground">+{task.tags.length - 3}</span>
+            )}
+          </div>
+        )}
+        
+        {!isBasicView && checklistProgress && (
+          <div className="space-y-1 mb-3">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1">
+                <CheckSquare className="h-3 w-3" />
+                <span>{checklistProgress.completed}/{checklistProgress.total}</span>
+              </div>
+              <span className="text-muted-foreground">{Math.round(checklistProgress.percentage)}%</span>
+            </div>
+            <Progress value={checklistProgress.percentage} className="h-1" />
+          </div>
+        )}
 
         <div className="space-y-2 mb-4">
           <Badge className={getStatusColor(task.status)}>
             {task.status}
           </Badge>
           
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-4 text-sm flex-wrap">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <span>{new Date(task.dueDate).toLocaleDateString()}</span>
@@ -91,6 +150,24 @@ export default function TaskCard({ task, onView, onEdit, onDelete }: TaskCardPro
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4 text-muted-foreground" />
                 <span>{task.assignedTo.firstName} {task.assignedTo.lastName}</span>
+              </div>
+            )}
+            {!isBasicView && task.estimatedHours && (
+              <div className="flex items-center gap-1">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span>{task.estimatedHours}h / {task.actualHours || 0}h</span>
+              </div>
+            )}
+            {!isBasicView && task.attachments && task.attachments.length > 0 && (
+              <div className="flex items-center gap-1">
+                <Paperclip className="w-4 h-4 text-muted-foreground" />
+                <span>{task.attachments.length}</span>
+              </div>
+            )}
+            {!isBasicView && task.watchers && task.watchers.length > 0 && (
+              <div className="flex items-center gap-1">
+                <UsersIcon className="w-4 h-4 text-muted-foreground" />
+                <span>{task.watchers.length}</span>
               </div>
             )}
           </div>

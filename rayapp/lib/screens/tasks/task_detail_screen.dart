@@ -25,7 +25,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   bool _loading = true;
   final _commentCtrl = TextEditingController();
   final _checkCtrl = TextEditingController();
-  bool _submitting = false;
+  final bool _submitting = false;
 
   @override
   void initState() {
@@ -197,7 +197,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
   Widget _buildBody() {
     final t = _task!;
     return NestedScrollView(
-      headerSliverBuilder: (_, __) => [
+      headerSliverBuilder: (_, _) => [
         SliverToBoxAdapter(child: _buildHeader(t)),
         SliverToBoxAdapter(
           child: TabBar(
@@ -364,8 +364,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
               AppTheme.fmtDate(t.dueDate!),
               color: isOverdue ? AppTheme.red : null,
             ),
-          if (t.projectName?.isNotEmpty ?? false)
-            _InfoItem(Icons.folder_outlined, 'Project', t.projectName ?? ''),
+          if (t.projectName != null && t.projectName!.isNotEmpty)
+            _InfoItem(Icons.folder_outlined, 'Project', t.projectName!),
           _InfoItem(Icons.timer_outlined, 'Est.',
               '${t.estimatedHours.toStringAsFixed(1)}h'),
           _InfoItem(Icons.access_time_outlined, 'Logged',
@@ -610,6 +610,33 @@ class _DetailsTab extends StatelessWidget {
         _InfoRow('Est. Hours', '${task.estimatedHours.toStringAsFixed(1)}h'),
         _InfoRow('Actual Hours', '${task.actualHours.toStringAsFixed(1)}h'),
         const SizedBox(height: 12),
+        if (task.status == 'blocked' && task.blockedBy != null && task.blockedBy!.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.red.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.red.withOpacity(0.3)),
+            ),
+            child: Row(children: [
+              const Icon(Icons.block, size: 16, color: AppTheme.red),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Blocked',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.red)),
+                  Text(task.blockedBy!,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppTheme.textSecondary)),
+                ]),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 12),
+        ],
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text('Watchers (${task.watchers.length})',
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -662,9 +689,10 @@ class _ChecklistTabState extends State<_ChecklistTab> {
           .updateChecklistItem(widget.task.id, item.id, !item.completed);
       widget.onRefresh();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
   }
 
@@ -677,9 +705,10 @@ class _ChecklistTabState extends State<_ChecklistTab> {
       widget.ctrl.clear();
       widget.onRefresh();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
     if (mounted) setState(() => _adding = false);
   }
@@ -689,9 +718,10 @@ class _ChecklistTabState extends State<_ChecklistTab> {
       await widget.svc.deleteChecklistItem(widget.task.id, itemId);
       widget.onRefresh();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
   }
 
@@ -712,7 +742,7 @@ class _ChecklistTabState extends State<_ChecklistTab> {
             : ListView.separated(
                 padding: EdgeInsets.all(AppTheme.hPad(context)),
                 itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 6),
+                separatorBuilder: (_, _) => const SizedBox(height: 6),
                 itemBuilder: (_, i) {
                   final item = items[i];
                   return Container(
@@ -826,9 +856,10 @@ class _CommentsTabState extends State<_CommentsTab> {
       widget.ctrl.clear();
       widget.onRefresh();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
     if (mounted) setState(() => _posting = false);
   }
@@ -850,7 +881,7 @@ class _CommentsTabState extends State<_CommentsTab> {
             : ListView.separated(
                 padding: EdgeInsets.all(AppTheme.hPad(context)),
                 itemCount: comments.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (_, i) {
                   final c = comments[i];
                   final name = c.user?.name ?? 'Unknown';
@@ -963,9 +994,10 @@ class _TimeTabState extends State<_TimeTab> {
       await widget.svc.startTimer(widget.task.id, auth.user!.id);
       widget.onRefresh();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -978,9 +1010,10 @@ class _TimeTabState extends State<_TimeTab> {
       await widget.svc.stopTimer(widget.task.id, auth.user!.id);
       widget.onRefresh();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -1101,8 +1134,7 @@ class _TimeTabState extends State<_TimeTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            AppTheme.fmtDate(e.startTime) +
-                                ' ${AppTheme.fmtTime(e.startTime)}',
+                            '${AppTheme.fmtDate(e.startTime)} ${AppTheme.fmtTime(e.startTime)}',
                             style: const TextStyle(fontSize: 12),
                           ),
                           if (e.description != null &&
@@ -1156,8 +1188,10 @@ class _AttachmentsTabState extends State<_AttachmentsTab> {
       await widget.svc.uploadAttachment(widget.task.id, result.files.single.path!);
       widget.onRefresh();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
     if (mounted) setState(() => _uploading = false);
   }
@@ -1203,7 +1237,7 @@ class _AttachmentsTabState extends State<_AttachmentsTab> {
             : ListView.separated(
                 padding: EdgeInsets.all(AppTheme.hPad(context)),
                 itemCount: attachments.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
                   final a = attachments[i];
                   return Container(
@@ -1302,7 +1336,7 @@ class _DependenciesTab extends StatelessWidget {
             : ListView.separated(
                 padding: EdgeInsets.all(AppTheme.hPad(context)),
                 itemCount: deps.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
                   final d = deps[i];
                   return Container(
@@ -1376,8 +1410,10 @@ class _WatchButtonState extends State<_WatchButton> {
           }
           widget.onRefresh();
         } catch (e) {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+          }
         }
         if (mounted) setState(() => _busy = false);
       },

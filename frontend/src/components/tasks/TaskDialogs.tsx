@@ -12,11 +12,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTaskContext } from '@/contexts/TaskContext';
 import { getAllProjects } from '@/lib/api/projectsAPI';
 import employeesAPI, { Employee } from '@/lib/api/employeesAPI';
 import { tasksAPI, Task } from '@/lib/api/tasksAPI';
-import { Plus, X, Tag, CheckSquare, Users, Link2, Square } from 'lucide-react';
+import { Plus, X, Tag, CheckSquare, Users, Link2, Square, Edit } from 'lucide-react';
 
 interface Project {
   _id: string;
@@ -38,11 +37,15 @@ interface TaskDialogsProps {
     onOpenChange: (open: boolean) => void;
     task: Task | null;
   };
+  viewDialog?: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    task: Task | null;
+  };
 }
 
-export default function TaskDialogs({ createDialog, editDialog, commentDialog }: TaskDialogsProps) {
+export default function TaskDialogs({ createDialog, editDialog, commentDialog, viewDialog }: TaskDialogsProps) {
   const { user } = useAuth();
-  const { actions } = useTaskContext();
   const [projects, setProjects] = useState<Project[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,7 +60,9 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
     priority: 'medium',
     status: 'todo',
     dueDate: '',
-    estimatedHours: ''
+    estimatedHours: '',
+    parentTask: '',
+    blockedBy: ''
   });
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -89,7 +94,9 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
         priority: task.priority,
         status: task.status,
         dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
-        estimatedHours: task.estimatedHours?.toString() || ''
+        estimatedHours: task.estimatedHours?.toString() || '',
+        parentTask: typeof task.parentTask === 'object' ? task.parentTask._id : task.parentTask || '',
+        blockedBy: (task as any).blockedBy || ''
       });
       setSelectedAssignees([
         typeof task.assignedTo === 'object' ? task.assignedTo._id : task.assignedTo
@@ -140,7 +147,9 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
       priority: 'medium',
       status: 'todo',
       dueDate: '',
-      estimatedHours: ''
+      estimatedHours: '',
+      parentTask: '',
+      blockedBy: ''
     });
     setSelectedAssignees([]);
     setNewComment('');
@@ -243,7 +252,9 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
         estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : 0,
         tags: tags,
         isRecurring,
-        recurrencePattern: isRecurring ? recurrencePattern : undefined
+        recurrencePattern: isRecurring ? recurrencePattern : undefined,
+        parentTask: formData.parentTask || undefined,
+        blockedBy: formData.blockedBy || undefined
       };
       
       if (formData.taskType === 'project') {
@@ -277,12 +288,14 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
 
     setLoading(true);
     try {
-      await actions.updateTask(editDialog.task._id, {
+      await tasksAPI.update(editDialog.task._id, {
         title: formData.title,
         description: formData.description,
         priority: formData.priority,
+        status: formData.status,
         dueDate: formData.dueDate,
-        estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : 0
+        estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : 0,
+        updatedBy: user?._id
       });
 
       editDialog.onOpenChange(false);
@@ -465,6 +478,29 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
                       onChange={(e) => setFormData(prev => ({ ...prev, estimatedHours: e.target.value }))}
                     />
                   </div>
+                  
+                  <div className="col-span-2">
+                    <Label htmlFor="parentTask">Parent Task (Optional)</Label>
+                    <Select onValueChange={(value) => setFormData(prev => ({ ...prev, parentTask: value }))} value={formData.parentTask}>
+                      <SelectTrigger><SelectValue placeholder="Select parent task" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {allTasks.filter(t => t._id !== editDialog.task?._id).map((task) => (
+                          <SelectItem key={task._id} value={task._id}>{task.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <Label htmlFor="blockedBy">Blocked By (Optional)</Label>
+                    <Input
+                      id="blockedBy"
+                      value={formData.blockedBy}
+                      onChange={(e) => setFormData(prev => ({ ...prev, blockedBy: e.target.value }))}
+                      placeholder="Reason for blocking"
+                    />
+                  </div>
                 </div>
               </TabsContent>
               
@@ -589,77 +625,266 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
 
       {/* Edit Task Dialog */}
       <Dialog open={editDialog.open} onOpenChange={editDialog.onOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleEditTask} className="space-y-4">
-            <div>
-              <Label htmlFor="edit-title">Title *</Label>
-              <Input
-                id="edit-title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                required
-              />
-            </div>
+          
+          <Tabs defaultValue="basic" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="basic">Basic Info</TabsTrigger>
+              <TabsTrigger value="features">Features</TabsTrigger>
+              <TabsTrigger value="checklist">Checklist</TabsTrigger>
+              <TabsTrigger value="team">Team</TabsTrigger>
+            </TabsList>
             
-            <div>
-              <Label htmlFor="edit-description">Description</Label>
-              <Textarea
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                rows={3}
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-priority">Priority</Label>
-                <Select onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))} value={formData.priority}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <ScrollArea className="flex-1 pr-4">
+              <TabsContent value="basic" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label>Task Type *</Label>
+                    <Select value={formData.taskType} onValueChange={(value: any) => setFormData(prev => ({ ...prev, taskType: value }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="individual">Individual Task</SelectItem>
+                        <SelectItem value="project">Project Task</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <Label>Assignment Type *</Label>
+                    <Select value={formData.assignmentType} onValueChange={(value: any) => setFormData(prev => ({ ...prev, assignmentType: value }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="assigned">Assigned by Manager</SelectItem>
+                        <SelectItem value="self-assigned">Self-Assigned</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-title">Title *</Label>
+                    <Input
+                      id="edit-title"
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-description">Description</Label>
+                    <Textarea
+                      id="edit-description"
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                    />
+                  </div>
+                  
+                  {formData.taskType === 'project' && (
+                    <div className="col-span-2">
+                      <Label htmlFor="edit-project">Project *</Label>
+                      <Select onValueChange={(value) => setFormData(prev => ({ ...prev, project: value }))} value={formData.project}>
+                        <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
+                        <SelectContent>
+                          {projects.map((project) => (
+                            <SelectItem key={project._id} value={project._id}>{project.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <Label htmlFor="edit-priority">Priority</Label>
+                    <Select onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))} value={formData.priority}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="edit-status">Status</Label>
+                    <Select onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))} value={formData.status}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todo">To Do</SelectItem>
+                        <SelectItem value="in-progress">In Progress</SelectItem>
+                        <SelectItem value="review">Review</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="blocked">Blocked</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="edit-dueDate">Due Date</Label>
+                    <Input
+                      id="edit-dueDate"
+                      type="date"
+                      value={formData.dueDate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="edit-estimatedHours">Est. Hours</Label>
+                    <Input
+                      id="edit-estimatedHours"
+                      type="number"
+                      value={formData.estimatedHours}
+                      onChange={(e) => setFormData(prev => ({ ...prev, estimatedHours: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-parentTask">Parent Task (Optional)</Label>
+                    <Select onValueChange={(value) => setFormData(prev => ({ ...prev, parentTask: value }))} value={formData.parentTask}>
+                      <SelectTrigger><SelectValue placeholder="Select parent task" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {allTasks.filter(t => t._id !== editDialog.task?._id).map((task) => (
+                          <SelectItem key={task._id} value={task._id}>{task.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <Label htmlFor="edit-blockedBy">Blocked By (Optional)</Label>
+                    <Input
+                      id="edit-blockedBy"
+                      value={formData.blockedBy}
+                      onChange={(e) => setFormData(prev => ({ ...prev, blockedBy: e.target.value }))}
+                      placeholder="Reason for blocking"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
               
-              <div>
-                <Label htmlFor="edit-estimatedHours">Est. Hours</Label>
-                <Input
-                  id="edit-estimatedHours"
-                  type="number"
-                  value={formData.estimatedHours}
-                  onChange={(e) => setFormData(prev => ({ ...prev, estimatedHours: e.target.value }))}
-                />
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="edit-dueDate">Due Date</Label>
-              <Input
-                id="edit-dueDate"
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-              />
-            </div>
-            
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => editDialog.onOpenChange(false)} disabled={loading}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Updating...' : 'Update Task'}
-              </Button>
-            </div>
-          </form>
+              <TabsContent value="features" className="space-y-4 mt-4">
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Tag className="h-4 w-4" />
+                    Tags
+                  </Label>
+                  <div className="flex gap-2 mb-2">
+                    <Input
+                      value={newTag.name}
+                      onChange={(e) => setNewTag(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Tag name"
+                      className="flex-1"
+                    />
+                    <Input
+                      type="color"
+                      value={newTag.color}
+                      onChange={(e) => setNewTag(prev => ({ ...prev, color: e.target.value }))}
+                      className="w-20"
+                    />
+                    <Button type="button" onClick={addTag} size="sm">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag, index) => (
+                      <Badge key={index} style={{ backgroundColor: tag.color }} className="text-white">
+                        {tag.name}
+                        <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => removeTag(tag.name)} />
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Square className="h-4 w-4" />
+                    Recurring Task
+                  </Label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Checkbox checked={isRecurring} onCheckedChange={(checked) => setIsRecurring(checked as boolean)} />
+                    <span className="text-sm">Enable recurring task</span>
+                  </div>
+                  {isRecurring && (
+                    <Select value={recurrencePattern} onValueChange={setRecurrencePattern}>
+                      <SelectTrigger><SelectValue placeholder="Select pattern" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="yearly">Yearly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="checklist" className="space-y-4 mt-4">
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <CheckSquare className="h-4 w-4" />
+                    Checklist Items
+                  </Label>
+                  <div className="flex gap-2 mb-3">
+                    <Input
+                      value={newChecklistItem}
+                      onChange={(e) => setNewChecklistItem(e.target.value)}
+                      placeholder="Add checklist item"
+                      className="flex-1"
+                      onKeyPress={(e) => e.key === 'Enter' && addChecklistItem()}
+                    />
+                    <Button type="button" onClick={addChecklistItem} size="sm">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {checklist.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                        <Checkbox checked={item.completed} onCheckedChange={() => toggleChecklistItem(index)} />
+                        <span className={item.completed ? 'line-through text-gray-500' : ''}>{item.text}</span>
+                        <X className="h-4 w-4 ml-auto cursor-pointer text-red-500" onClick={() => removeChecklistItem(index)} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="team" className="space-y-4 mt-4">
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Users className="h-4 w-4" />
+                    Watchers
+                  </Label>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {employees.map((employee) => (
+                      <div key={employee._id} className="flex items-center gap-2 p-2 border rounded">
+                        <Checkbox
+                          checked={watchers.includes(employee._id)}
+                          onCheckedChange={() => toggleWatcher(employee._id)}
+                        />
+                        <span>{`${employee.firstName} ${employee.lastName}`}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+            </ScrollArea>
+          </Tabs>
+          
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => editDialog.onOpenChange(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditTask} disabled={loading}>
+              {loading ? 'Updating...' : 'Update Task'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -714,6 +939,169 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
           </div>
         </DialogContent>
       </Dialog>
+      {/* View Task Dialog */}
+      {viewDialog && (
+        <Dialog open={viewDialog.open} onOpenChange={viewDialog.onOpenChange}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle>{viewDialog.task?.title}</DialogTitle>
+                <Button variant="outline" size="sm" onClick={() => {
+                  viewDialog.onOpenChange(false);
+                  if (viewDialog.task) {
+                    editDialog.onOpenChange(true);
+                  }
+                }}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              </div>
+            </DialogHeader>
+            
+            {viewDialog.task && (
+              <ScrollArea className="flex-1 pr-4">
+                <div className="space-y-6 py-4">
+                  {/* Badges */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline">{viewDialog.task.status}</Badge>
+                    <Badge variant="outline">{viewDialog.task.priority}</Badge>
+                    {(viewDialog.task as any).taskType && (
+                      <Badge variant="outline">
+                        {(viewDialog.task as any).taskType === 'individual' ? 'Individual' : 'Project'}
+                      </Badge>
+                    )}
+                    {(viewDialog.task as any).assignmentType === 'self-assigned' && (
+                      <Badge variant="outline">Self-Assigned</Badge>
+                    )}
+                    {(viewDialog.task as any).isRecurring && (
+                      <Badge variant="outline">Recurring</Badge>
+                    )}
+                  </div>
+                  
+                  {/* Description */}
+                  <div>
+                    <Label className="text-sm font-medium">Description</Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {viewDialog.task.description || 'No description'}
+                    </p>
+                  </div>
+                  
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Assigned To</Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {typeof viewDialog.task.assignedTo === 'object'
+                          ? `${viewDialog.task.assignedTo.firstName} ${viewDialog.task.assignedTo.lastName}`
+                          : 'Unassigned'}
+                      </p>
+                    </div>
+                    
+                    {viewDialog.task.dueDate && (
+                      <div>
+                        <Label className="text-sm font-medium">Due Date</Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {new Date(viewDialog.task.dueDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {viewDialog.task.estimatedHours && (
+                      <div>
+                        <Label className="text-sm font-medium">Estimated Hours</Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {viewDialog.task.estimatedHours}h
+                        </p>
+                      </div>
+                    )}
+                    
+                    {viewDialog.task.actualHours && (
+                      <div>
+                        <Label className="text-sm font-medium">Actual Hours</Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {viewDialog.task.actualHours}h
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Tags */}
+                  {viewDialog.task.tags && viewDialog.task.tags.length > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Tags</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {viewDialog.task.tags.map((tag, index) => {
+                          const tagObj = typeof tag === 'object' ? tag : { name: tag, color: '#3b82f6' };
+                          return (
+                            <Badge key={index} style={{ backgroundColor: tagObj.color }} className="text-white">
+                              {tagObj.name}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Checklist */}
+                  {viewDialog.task.checklist && viewDialog.task.checklist.length > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Checklist</Label>
+                      <div className="space-y-2">
+                        {viewDialog.task.checklist.map((item, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Checkbox checked={item.completed} disabled />
+                            <span className={item.completed ? 'line-through text-muted-foreground' : ''}>
+                              {item.text}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Watchers */}
+                  {viewDialog.task.watchers && viewDialog.task.watchers.length > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Watchers ({viewDialog.task.watchers.length})</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {viewDialog.task.watchers.map((watcher, index) => (
+                          <Badge key={index} variant="outline">
+                            {typeof watcher === 'object'
+                              ? `${watcher.firstName} ${watcher.lastName}`
+                              : 'User'}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Comments */}
+                  {viewDialog.task.comments && viewDialog.task.comments.length > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Comments ({viewDialog.task.comments.length})</Label>
+                      <div className="space-y-3">
+                        {viewDialog.task.comments.map((comment, index) => (
+                          <div key={index} className="p-3 border rounded">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-sm">
+                                {comment.user.firstName} {comment.user.lastName}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(comment.createdAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-sm">{comment.comment}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }

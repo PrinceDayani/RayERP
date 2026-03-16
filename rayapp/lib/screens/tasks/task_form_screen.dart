@@ -30,16 +30,21 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   final _estCtrl = TextEditingController();
+  final _blockedByCtrl = TextEditingController();
 
+  String _taskType = 'project';
+  String _assignmentType = 'assigned';
   String _status = 'todo';
   String _priority = 'medium';
   DateTime? _dueDate;
   String? _projectId;
   String? _assignedToId;
-  String? _assignedById;  // Employee ID — NOT User ID
+  String? _assignedById;
+  String? _parentTaskId;
 
   List<Employee> _employees = [];
   List<Project> _projects = [];
+  List<Task> _allTasks = [];
   bool _loading = true;
   bool _saving = false;
 
@@ -53,11 +58,15 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       final t = widget.task!;
       _titleCtrl.text = t.title;
       _descCtrl.text = t.description;
+      _taskType = t.taskType;
+      _assignmentType = t.assignmentType;
       _status = t.status;
       _priority = t.priority;
       _dueDate = t.dueDate;
       _assignedToId = t.assignedTo?.id;
       _assignedById = t.assignedBy?.id;
+      _parentTaskId = t.parentTaskId;
+      _blockedByCtrl.text = t.blockedBy ?? '';
       _estCtrl.text = t.estimatedHours > 0
           ? t.estimatedHours.toStringAsFixed(1)
           : '';
@@ -70,6 +79,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _estCtrl.dispose();
+    _blockedByCtrl.dispose();
     super.dispose();
   }
 
@@ -78,9 +88,11 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       final results = await Future.wait([
         _empSvc.getAll(),
         if (_projectId == null) _projSvc.getAll() else Future.value(<Project>[]),
+        _svc.getAll(),
       ]);
       _employees = results[0] as List<Employee>;
       if (_projectId == null) _projects = results[1] as List<Project>;
+      _allTasks = results[2] as List<Task>;
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -107,6 +119,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       final body = <String, dynamic>{
         'title': _titleCtrl.text.trim(),
         'description': _descCtrl.text.trim(),
+        'taskType': _taskType,
+        'assignmentType': _assignmentType,
         'status': _status,
         'priority': _priority,
         'project': _projectId,
@@ -115,6 +129,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         if (_dueDate != null) 'dueDate': _dueDate!.toIso8601String(),
         if (_estCtrl.text.isNotEmpty)
           'estimatedHours': double.tryParse(_estCtrl.text) ?? 0,
+        if (_parentTaskId != null) 'parentTask': _parentTaskId,
+        if (_blockedByCtrl.text.isNotEmpty) 'blockedBy': _blockedByCtrl.text.trim(),
       };
 
       if (_isEdit) {
@@ -163,6 +179,34 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                 ListView(
                   padding: EdgeInsets.all(AppTheme.hPad(context)),
                   children: [
+                    _field(
+                      child: DropdownButtonFormField<String>(
+                        value: _taskType,
+                        decoration:
+                            const InputDecoration(labelText: 'Task Type'),
+                        items: ['individual', 'project']
+                            .map((t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(t == 'individual' ? 'Individual Task' : 'Project Task',
+                                    style: const TextStyle(fontSize: 13))))
+                            .toList(),
+                        onChanged: (v) => setState(() => _taskType = v ?? _taskType),
+                      ),
+                    ),
+                    _field(
+                      child: DropdownButtonFormField<String>(
+                        value: _assignmentType,
+                        decoration:
+                            const InputDecoration(labelText: 'Assignment Type'),
+                        items: ['assigned', 'self-assigned']
+                            .map((t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(t == 'assigned' ? 'Assigned by Manager' : 'Self-Assigned',
+                                    style: const TextStyle(fontSize: 13))))
+                            .toList(),
+                        onChanged: (v) => setState(() => _assignmentType = v ?? _assignmentType),
+                      ),
+                    ),
                     _field(
                       child: TextFormField(
                         controller: _titleCtrl,
@@ -334,6 +378,37 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                         Expanded(child: hoursField),
                       ]);
                     }),
+                    _field(
+                      child: DropdownButtonFormField<String?>(
+                        value: _parentTaskId,
+                        decoration:
+                            const InputDecoration(labelText: 'Parent Task (Optional)'),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('None', style: TextStyle(fontSize: 13)),
+                          ),
+                          ..._allTasks
+                              .where((t) => t.id != widget.task?.id)
+                              .map((t) => DropdownMenuItem(
+                                  value: t.id,
+                                  child: Text(t.title,
+                                      style: const TextStyle(fontSize: 13),
+                                      overflow: TextOverflow.ellipsis)))
+                              .toList(),
+                        ],
+                        onChanged: (v) => setState(() => _parentTaskId = v),
+                      ),
+                    ),
+                    if (_status == 'blocked')
+                      _field(
+                        child: TextFormField(
+                          controller: _blockedByCtrl,
+                          decoration: const InputDecoration(
+                              labelText: 'Blocked By (Reason)'),
+                          maxLines: 2,
+                        ),
+                      ),
                   ],
                 ),
               ),

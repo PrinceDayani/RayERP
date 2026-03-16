@@ -213,6 +213,7 @@ class Task {
   final String? parentTaskId;
   final bool isRecurring;
   final String? recurrencePattern;
+  final String? blockedBy;
   final bool isTemplate;
   final String? templateName;
   final List<TaskAssignee> watchers;
@@ -247,6 +248,7 @@ class Task {
     this.parentTaskId,
     required this.isRecurring,
     this.recurrencePattern,
+    this.blockedBy,
     required this.isTemplate,
     this.templateName,
     required this.watchers,
@@ -293,6 +295,7 @@ class Task {
       parentTaskId: json['parentTask'] is Map ? json['parentTask']['_id'] : json['parentTask']?.toString(),
       isRecurring: json['isRecurring'] ?? false,
       recurrencePattern: json['recurrencePattern'],
+      blockedBy: json['blockedBy'],
       isTemplate: json['isTemplate'] ?? false,
       templateName: json['templateName'],
       watchers: (json['watchers'] as List? ?? []).map((e) => TaskAssignee.fromJson(e)).toList(),
