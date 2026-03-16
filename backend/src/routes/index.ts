@@ -31,6 +31,8 @@ import profileRoutes from './profile.routes';
 // --- Merged Financial & Ledger Routes ---
 import budgetRoutes from './budgetRoutes';
 import budgetForecastRoutes from './budgetForecast.routes';
+import budgetVarianceRoutes from './budgetVariance.routes';
+import budgetAlertRoutes from './budgetAlert.routes';
 import budgetTemplateRoutes from './budgetTemplateRoutes';
 import accountRoutes from './account.routes';
 import transactionRoutes from './transaction.routes';
@@ -141,6 +143,8 @@ router.use('/achievements', achievementRoutes);
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);
 router.use('/budget-forecasts', budgetForecastRoutes);
+router.use('/budget-variances', budgetVarianceRoutes);
+router.use('/budget-alerts', budgetAlertRoutes);
 router.use('/budget-templates', budgetTemplateRoutes);
 router.use('/accounts', accountRoutes);
 router.use('/transactions', transactionRoutes);

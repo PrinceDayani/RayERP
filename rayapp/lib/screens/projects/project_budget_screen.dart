@@ -246,7 +246,7 @@ class _CategoriesTab extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: cats.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final cat = cats[i];
         final used = cat.allocated > 0 ? (cat.spent / cat.allocated).clamp(0.0, 1.0) : 0.0;
@@ -307,7 +307,7 @@ class _ItemsTab extends StatelessWidget {
       const Divider(height: 1, color: AppTheme.border),
       Expanded(child: ListView.separated(
         itemCount: items.length + 1,
-        separatorBuilder: (_, __) => const Divider(height: 1, color: AppTheme.border),
+        separatorBuilder: (_, _) => const Divider(height: 1, color: AppTheme.border),
         itemBuilder: (_, i) {
           if (i == items.length) {
             return Container(
@@ -358,7 +358,7 @@ class _ApprovalsTab extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: approvals.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final a = approvals[i];
         return _Card(child: Row(children: [
@@ -411,7 +411,7 @@ class _BTile extends StatelessWidget {
 
 class _Card extends StatelessWidget {
   final Widget child; final EdgeInsets? margin;
-  const _Card({required this.child, this.margin});
+  const _Card({required this.child});
   @override
   Widget build(BuildContext context) => Container(
     margin: margin,
@@ -497,7 +497,7 @@ class _BudgetFormSheetState extends State<_BudgetFormSheet> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: _currency,
+          initialValue: _currency,
           decoration: const InputDecoration(labelText: 'Currency', border: OutlineInputBorder()),
           items: _currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
           onChanged: (v) => setState(() => _currency = v ?? _currency),

@@ -69,11 +69,13 @@ class _ActivityFeedScreenState extends State<ActivityFeedScreen> {
         resourceType: _typeFilter.isEmpty ? null : _typeFilter,
         status: _statusFilter.isEmpty ? null : _statusFilter,
       );
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _logs.addAll(list);
         _loadingMore = false;
         _hasMore = list.length == 30;
       });
+      }
     } catch (_) {
       if (mounted) setState(() => _loadingMore = false);
     }

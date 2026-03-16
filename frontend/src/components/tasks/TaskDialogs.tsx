@@ -9,11 +9,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { getAllProjects } from '@/lib/api/projectsAPI';
 import employeesAPI, { Employee } from '@/lib/api/employeesAPI';
 import { tasksAPI, Task } from '@/lib/api/tasksAPI';
+import { Plus, X, Tag, CheckSquare, Users, Link2, Square } from 'lucide-react';
 
 interface Project {
   _id: string;
@@ -48,13 +51,27 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    taskType: 'individual' as 'individual' | 'project',
+    assignmentType: 'assigned' as 'assigned' | 'self-assigned',
     project: '',
     priority: 'medium',
+    status: 'todo',
     dueDate: '',
     estimatedHours: ''
   });
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
+  
+  // Feature states
+  const [tags, setTags] = useState<{ name: string; color: string }[]>([]);
+  const [newTag, setNewTag] = useState({ name: '', color: '#3b82f6' });
+  const [checklist, setChecklist] = useState<{ text: string; completed: boolean }[]>([]);
+  const [newChecklistItem, setNewChecklistItem] = useState('');
+  const [watchers, setWatchers] = useState<string[]>([]);
+  const [dependencies, setDependencies] = useState<{ taskId: string; type: string }[]>([]);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrencePattern, setRecurrencePattern] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -62,28 +79,52 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
 
   useEffect(() => {
     if (editDialog.task) {
+      const task = editDialog.task;
       setFormData({
-        title: editDialog.task.title,
-        description: editDialog.task.description,
-        project: typeof editDialog.task.project === 'object' ? editDialog.task.project._id : editDialog.task.project,
-        priority: editDialog.task.priority,
-        dueDate: editDialog.task.dueDate ? new Date(editDialog.task.dueDate).toISOString().split('T')[0] : '',
-        estimatedHours: editDialog.task.estimatedHours?.toString() || ''
+        title: task.title,
+        description: task.description,
+        taskType: (task as any).taskType || 'project',
+        assignmentType: (task as any).assignmentType || 'assigned',
+        project: typeof task.project === 'object' ? task.project._id : task.project || '',
+        priority: task.priority,
+        status: task.status,
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+        estimatedHours: task.estimatedHours?.toString() || ''
       });
       setSelectedAssignees([
-        typeof editDialog.task.assignedTo === 'object' ? editDialog.task.assignedTo._id : editDialog.task.assignedTo
+        typeof task.assignedTo === 'object' ? task.assignedTo._id : task.assignedTo
       ]);
+      
+      if (task.tags && Array.isArray(task.tags)) {
+        setTags(task.tags.map(t => typeof t === 'object' ? t : { name: t, color: '#3b82f6' }));
+      }
+      if (task.checklist) {
+        setChecklist(task.checklist.map(c => ({ text: c.text, completed: c.completed })));
+      }
+      if (task.watchers) {
+        setWatchers(task.watchers.map(w => typeof w === 'object' ? w._id : w));
+      }
+      if (task.dependencies) {
+        setDependencies(task.dependencies.map(d => ({
+          taskId: typeof d.taskId === 'object' ? d.taskId._id : d.taskId,
+          type: d.type
+        })));
+      }
+      setIsRecurring(task.isRecurring || false);
+      setRecurrencePattern(task.recurrencePattern || '');
     }
   }, [editDialog.task]);
 
   const fetchData = async () => {
     try {
-      const [projectsData, employeesData] = await Promise.all([
+      const [projectsData, employeesData, tasksData] = await Promise.all([
         getAllProjects(),
-        employeesAPI.getAll()
+        employeesAPI.getAll(),
+        tasksAPI.getAll()
       ]);
       setProjects(projectsData || []);
       setEmployees(employeesData || []);
+      setAllTasks(tasksData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -93,13 +134,24 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
     setFormData({
       title: '',
       description: '',
+      taskType: 'individual',
+      assignmentType: 'assigned',
       project: '',
       priority: 'medium',
+      status: 'todo',
       dueDate: '',
       estimatedHours: ''
     });
     setSelectedAssignees([]);
     setNewComment('');
+    setTags([]);
+    setNewTag({ name: '', color: '#3b82f6' });
+    setChecklist([]);
+    setNewChecklistItem('');
+    setWatchers([]);
+    setDependencies([]);
+    setIsRecurring(false);
+    setRecurrencePattern('');
   };
 
   const toggleAssignee = (employeeId: string) => {
@@ -109,27 +161,105 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
         : [...prev, employeeId]
     );
   };
+  
+  const addTag = () => {
+    if (!newTag.name.trim()) return;
+    if (tags.some(t => t.name.toLowerCase() === newTag.name.toLowerCase())) {
+      alert('Tag already exists');
+      return;
+    }
+    setTags([...tags, { ...newTag }]);
+    setNewTag({ name: '', color: '#3b82f6' });
+  };
+
+  const removeTag = (name: string) => {
+    setTags(tags.filter(t => t.name !== name));
+  };
+
+  const addChecklistItem = () => {
+    if (!newChecklistItem.trim()) return;
+    setChecklist([...checklist, { text: newChecklistItem, completed: false }]);
+    setNewChecklistItem('');
+  };
+
+  const toggleChecklistItem = (index: number) => {
+    const updated = [...checklist];
+    updated[index].completed = !updated[index].completed;
+    setChecklist(updated);
+  };
+
+  const removeChecklistItem = (index: number) => {
+    setChecklist(checklist.filter((_, i) => i !== index));
+  };
+
+  const toggleWatcher = (userId: string) => {
+    setWatchers(prev => 
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const addDependency = (taskId: string, type: string) => {
+    if (dependencies.some(d => d.taskId === taskId)) {
+      alert('Dependency already exists');
+      return;
+    }
+    setDependencies([...dependencies, { taskId, type }]);
+  };
+
+  const removeDependency = (taskId: string) => {
+    setDependencies(dependencies.filter(d => d.taskId !== taskId));
+  };
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.project || selectedAssignees.length === 0 || !formData.title) {
-      alert('Please fill in all required fields and select at least one assignee');
+    if (!formData.title) {
+      alert('Task title is required');
+      return;
+    }
+    
+    if (formData.taskType === 'project' && !formData.project) {
+      alert('Project is required for project tasks');
+      return;
+    }
+    
+    if (selectedAssignees.length === 0) {
+      alert('Please assign the task');
       return;
     }
 
     setLoading(true);
     try {
-      await actions.createTask({
+      const taskData: any = {
         title: formData.title,
         description: formData.description,
-        project: formData.project,
+        taskType: formData.taskType,
+        assignmentType: formData.assignmentType,
         assignedTo: selectedAssignees[0],
         assignedBy: user?._id || '',
         priority: formData.priority,
+        status: formData.status,
         dueDate: formData.dueDate,
-        estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : 0
-      });
+        estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : 0,
+        tags: tags,
+        isRecurring,
+        recurrencePattern: isRecurring ? recurrencePattern : undefined
+      };
+      
+      if (formData.taskType === 'project') {
+        taskData.project = formData.project;
+      }
+      
+      const createdTask = await tasksAPI.create(taskData);
+      
+      // Add additional features
+      if (createdTask._id) {
+        await Promise.all([
+          ...checklist.map(item => tasksAPI.addChecklistItem(createdTask._id, item.text)),
+          ...watchers.map(userId => tasksAPI.addWatcher(createdTask._id, userId)),
+          ...dependencies.map(dep => tasksAPI.addDependency(createdTask._id, dep.taskId, dep.type))
+        ]);
+      }
       
       createDialog.onOpenChange(false);
       resetForm();
@@ -185,126 +315,275 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog }:
     <>
       {/* Create Task Dialog */}
       <Dialog open={createDialog.open} onOpenChange={createDialog.onOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateTask} className="space-y-4">
-            <div>
-              <Label htmlFor="title">Title *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                required
-              />
-            </div>
+          
+          <Tabs defaultValue="basic" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="basic">Basic Info</TabsTrigger>
+              <TabsTrigger value="features">Features</TabsTrigger>
+              <TabsTrigger value="checklist">Checklist</TabsTrigger>
+              <TabsTrigger value="team">Team</TabsTrigger>
+            </TabsList>
             
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                rows={3}
-              />
-            </div>
+            <ScrollArea className="flex-1 pr-4">
+              <TabsContent value="basic" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label>Task Type *</Label>
+                    <Select value={formData.taskType} onValueChange={(value: any) => setFormData(prev => ({ ...prev, taskType: value }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="individual">Individual Task</SelectItem>
+                        <SelectItem value="project">Project Task</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <Label>Assignment Type *</Label>
+                    <Select value={formData.assignmentType} onValueChange={(value: any) => setFormData(prev => ({ ...prev, assignmentType: value }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="assigned">Assigned by Manager</SelectItem>
+                        <SelectItem value="self-assigned">Self-Assigned</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="title">Title *</Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      required
+                    />
+                  </div>
             
-            <div>
-              <Label htmlFor="project">Project *</Label>
-              <Select onValueChange={(value) => setFormData(prev => ({ ...prev, project: value }))} value={formData.project}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project._id} value={project._id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label>Assign To (Select Multiple) *</Label>
-              <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
-                {employees.length > 0 ? (
-                  employees.map((employee) => (
-                    <div key={employee._id} className="flex items-center gap-2">
-                      <Checkbox
-                        checked={selectedAssignees.includes(employee._id)}
-                        onCheckedChange={() => toggleAssignee(employee._id)}
-                      />
-                      <label className="text-sm cursor-pointer" onClick={() => toggleAssignee(employee._id)}>
-                        {`${employee.firstName} ${employee.lastName}`}
-                      </label>
+                  <div className="col-span-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                    />
+                  </div>
+                  
+                  {formData.taskType === 'project' && (
+                    <div className="col-span-2">
+                      <Label htmlFor="project">Project *</Label>
+                      <Select onValueChange={(value) => setFormData(prev => ({ ...prev, project: value }))} value={formData.project}>
+                        <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
+                        <SelectContent>
+                          {projects.map((project) => (
+                            <SelectItem key={project._id} value={project._id}>{project.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500">No employees available</p>
-                )}
-              </div>
-              {selectedAssignees.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {selectedAssignees.map(id => {
-                    const emp = employees.find(e => e._id === id);
-                    return emp ? (
-                      <Badge key={id} variant="secondary" className="text-xs">
-                        {`${emp.firstName} ${emp.lastName}`}
-                      </Badge>
-                    ) : null;
-                  })}
+                  )}
+            
+                  <div className="col-span-2">
+                    <Label>Assign To (Select Multiple) *</Label>
+                    <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                      {employees.length > 0 ? (
+                        employees.map((employee) => (
+                          <div key={employee._id} className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedAssignees.includes(employee._id)}
+                              onCheckedChange={() => toggleAssignee(employee._id)}
+                            />
+                            <label className="text-sm cursor-pointer" onClick={() => toggleAssignee(employee._id)}>
+                              {`${employee.firstName} ${employee.lastName}`}
+                            </label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No employees available</p>
+                      )}
+                    </div>
+                    {selectedAssignees.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {selectedAssignees.map(id => {
+                          const emp = employees.find(e => e._id === id);
+                          return emp ? (
+                            <Badge key={id} variant="secondary" className="text-xs">
+                              {`${emp.firstName} ${emp.lastName}`}
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                  </div>
+            
+                  <div>
+                    <Label htmlFor="priority">Priority</Label>
+                    <Select onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))} value={formData.priority}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="status">Status</Label>
+                    <Select onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))} value={formData.status}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todo">To Do</SelectItem>
+                        <SelectItem value="in-progress">In Progress</SelectItem>
+                        <SelectItem value="review">Review</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="blocked">Blocked</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="dueDate">Due Date</Label>
+                    <Input
+                      id="dueDate"
+                      type="date"
+                      value={formData.dueDate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="estimatedHours">Est. Hours</Label>
+                    <Input
+                      id="estimatedHours"
+                      type="number"
+                      value={formData.estimatedHours}
+                      onChange={(e) => setFormData(prev => ({ ...prev, estimatedHours: e.target.value }))}
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="priority">Priority</Label>
-                <Select onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value }))} value={formData.priority}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              </TabsContent>
               
-              <div>
-                <Label htmlFor="estimatedHours">Est. Hours</Label>
-                <Input
-                  id="estimatedHours"
-                  type="number"
-                  value={formData.estimatedHours}
-                  onChange={(e) => setFormData(prev => ({ ...prev, estimatedHours: e.target.value }))}
-                />
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="dueDate">Due Date</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-              />
-            </div>
-            
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => createDialog.onOpenChange(false)} disabled={loading}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Creating...' : 'Create Task'}
-              </Button>
-            </div>
-          </form>
+              <TabsContent value="features" className="space-y-4 mt-4">
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Tag className="h-4 w-4" />
+                    Tags
+                  </Label>
+                  <div className="flex gap-2 mb-2">
+                    <Input
+                      value={newTag.name}
+                      onChange={(e) => setNewTag(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Tag name"
+                      className="flex-1"
+                    />
+                    <Input
+                      type="color"
+                      value={newTag.color}
+                      onChange={(e) => setNewTag(prev => ({ ...prev, color: e.target.value }))}
+                      className="w-20"
+                    />
+                    <Button type="button" onClick={addTag} size="sm">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((tag, index) => (
+                      <Badge key={index} style={{ backgroundColor: tag.color }} className="text-white">
+                        {tag.name}
+                        <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => removeTag(tag.name)} />
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Square className="h-4 w-4" />
+                    Recurring Task
+                  </Label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Checkbox checked={isRecurring} onCheckedChange={(checked) => setIsRecurring(checked as boolean)} />
+                    <span className="text-sm">Enable recurring task</span>
+                  </div>
+                  {isRecurring && (
+                    <Select value={recurrencePattern} onValueChange={setRecurrencePattern}>
+                      <SelectTrigger><SelectValue placeholder="Select pattern" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="yearly">Yearly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="checklist" className="space-y-4 mt-4">
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <CheckSquare className="h-4 w-4" />
+                    Checklist Items
+                  </Label>
+                  <div className="flex gap-2 mb-3">
+                    <Input
+                      value={newChecklistItem}
+                      onChange={(e) => setNewChecklistItem(e.target.value)}
+                      placeholder="Add checklist item"
+                      className="flex-1"
+                      onKeyPress={(e) => e.key === 'Enter' && addChecklistItem()}
+                    />
+                    <Button type="button" onClick={addChecklistItem} size="sm">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {checklist.map((item, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                        <Checkbox checked={item.completed} onCheckedChange={() => toggleChecklistItem(index)} />
+                        <span className={item.completed ? 'line-through text-gray-500' : ''}>{item.text}</span>
+                        <X className="h-4 w-4 ml-auto cursor-pointer text-red-500" onClick={() => removeChecklistItem(index)} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="team" className="space-y-4 mt-4">
+                <div>
+                  <Label className="flex items-center gap-2 mb-2">
+                    <Users className="h-4 w-4" />
+                    Watchers
+                  </Label>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {employees.map((employee) => (
+                      <div key={employee._id} className="flex items-center gap-2 p-2 border rounded">
+                        <Checkbox
+                          checked={watchers.includes(employee._id)}
+                          onCheckedChange={() => toggleWatcher(employee._id)}
+                        />
+                        <span>{`${employee.firstName} ${employee.lastName}`}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
+            </ScrollArea>
+          </Tabs>
+          
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => createDialog.onOpenChange(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateTask} disabled={loading}>
+              {loading ? 'Creating...' : 'Create Task'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

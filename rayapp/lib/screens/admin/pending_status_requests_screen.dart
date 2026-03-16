@@ -137,7 +137,7 @@ class _PendingStatusRequestsScreenState extends State<PendingStatusRequestsScree
                           return ListView.separated(
                             padding: EdgeInsets.all(pad),
                             itemCount: _requests.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            separatorBuilder: (_, _) => const SizedBox(height: 8),
                             itemBuilder: (_, i) => _card(_requests[i]),
                           );
                         }),

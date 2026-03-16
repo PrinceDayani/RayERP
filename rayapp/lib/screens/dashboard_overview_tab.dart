@@ -773,9 +773,7 @@ class _ActiveProjectsCard extends StatelessWidget {
                     final endDate = p['endDate'] != null
                         ? DateTime.tryParse(p['endDate'].toString())
                         : null;
-                    final daysLeft = endDate != null
-                        ? endDate.difference(DateTime.now()).inDays
-                        : null;
+                    final daysLeft = endDate?.difference(DateTime.now()).inDays;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Column(
@@ -1125,7 +1123,7 @@ class _SectionCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (trailing != null) trailing!,
+                ?trailing,
               ],
             ),
           ),

@@ -24,8 +24,10 @@ class _ProjectRisksScreenState extends State<ProjectRisksScreen> {
     setState(() => _saving = true);
     try {
       await ProjectService().updateRisks(widget.project.id, _risks);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Risks saved')));
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
@@ -55,7 +57,7 @@ class _ProjectRisksScreenState extends State<ProjectRisksScreen> {
           const SizedBox(height: 10),
           Row(children: [
             Expanded(child: DropdownButtonFormField<String>(
-              value: severity,
+              initialValue: severity,
               decoration: const InputDecoration(labelText: 'Severity'),
               items: ['low', 'medium', 'high', 'critical'].map((s) =>
                   DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13)))).toList(),
@@ -63,7 +65,7 @@ class _ProjectRisksScreenState extends State<ProjectRisksScreen> {
             )),
             const SizedBox(width: 12),
             Expanded(child: DropdownButtonFormField<String>(
-              value: status,
+              initialValue: status,
               decoration: const InputDecoration(labelText: 'Status'),
               items: ['identified', 'monitoring', 'mitigated', 'closed'].map((s) =>
                   DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13)))).toList(),
@@ -83,8 +85,11 @@ class _ProjectRisksScreenState extends State<ProjectRisksScreen> {
                   'status': status,
                 };
                 setState(() {
-                  if (index != null) _risks[index] = r;
-                  else _risks.add(r);
+                  if (index != null) {
+                    _risks[index] = r;
+                  } else {
+                    _risks.add(r);
+                  }
                 });
                 Navigator.pop(ctx);
               },
@@ -159,7 +164,7 @@ class _ProjectRisksScreenState extends State<ProjectRisksScreen> {
               : ListView.separated(
                   padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 12, AppTheme.hPad(context), 80),
                   itemCount: _risks.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (_, i) {
                     final r = _risks[i];
                     final title = r['title'] ?? r['description'] ?? '';

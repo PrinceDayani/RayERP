@@ -218,9 +218,11 @@ class _AllocationCalendarScreenState extends State<AllocationCalendarScreen> {
                     await ResourceService().deleteAllocation(a.id);
                     _load();
                   } catch (e) {
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red),
                     );
+                    }
                   }
                 }
               } else if (v == 'reassign') {

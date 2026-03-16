@@ -84,10 +84,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
             icon: const Icon(Icons.view_kanban_outlined),
             tooltip: 'Kanban',
             onPressed: () {
-              if (_project != null)
+              if (_project != null) {
                 Navigator.push(context, MaterialPageRoute(
                   builder: (_) => TaskKanbanScreen(projectId: _project!.id, projectName: _project!.name),
                 )).then((_) => _load());
+              }
             },
           ),
           if (_project != null)
@@ -957,7 +958,7 @@ class _FilesTabState extends State<_FilesTab> {
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
                 itemCount: _files.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
                   final f = _files[i];
                   return Container(
@@ -1068,11 +1069,13 @@ class _FinanceReportViewState extends State<_FinanceReportView> with AutomaticKe
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-    if (_data.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+    if (_data.isEmpty) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Icon(Icons.receipt_long_outlined, size: 48, color: AppTheme.textMuted),
       const SizedBox(height: 12),
       Text('No ${widget.type} data available', style: TextStyle(color: AppTheme.textSecondary)),
     ]));
+    }
     return RefreshIndicator(
       onRefresh: _load,
       color: AppTheme.primary,
@@ -1167,15 +1170,17 @@ class _PermissionsTabState extends State<_PermissionsTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-    if (_perms.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+    if (_perms.isEmpty) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Icon(Icons.lock_outline, size: 48, color: AppTheme.textMuted),
       const SizedBox(height: 12),
       Text('No permissions configured', style: TextStyle(color: AppTheme.textSecondary)),
     ]));
+    }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _perms.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final perm = _perms[i];
         final initials = perm.userName.isNotEmpty ? perm.userName[0].toUpperCase() : '?';
@@ -1371,7 +1376,7 @@ class _ActivityTabState extends State<_ActivityTab> {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _entries.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final e = _entries[i];
         final initials = e.userName.isNotEmpty ? e.userName[0].toUpperCase() : '?';

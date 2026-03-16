@@ -132,7 +132,7 @@ class _AvailableEmployeesScreenState extends State<AvailableEmployeesScreen> {
 
   Widget _dropdown(String hint, List<String> items, String value, ValueChanged<String?> onChanged) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(labelText: hint, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
       items: items.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13)))).toList(),
       onChanged: onChanged,

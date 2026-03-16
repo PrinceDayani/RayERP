@@ -15,7 +15,7 @@ class _WorkloadTimelineScreenState extends State<WorkloadTimelineScreen> {
   // Gantt window: today − 14 days → today + 76 days (90-day window)
   late DateTime _windowStart;
   late DateTime _windowEnd;
-  int _totalDays = 90;
+  final int _totalDays = 90;
 
   // Linked horizontal scroll for header + rows
   final _hScroll = ScrollController();

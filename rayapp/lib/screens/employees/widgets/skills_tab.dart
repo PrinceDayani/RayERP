@@ -109,7 +109,7 @@ class _SkillsListTabState extends State<_SkillsListTab> {
       ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: widget.skills.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
         itemBuilder: (_, i) {
           final s = widget.skills[i];
           final color = _levelColor(s.level);
@@ -352,7 +352,7 @@ class _ProjectMatchTabState extends State<_ProjectMatchTab> {
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         child: DropdownButtonFormField<Project>(
-          value: _selected,
+          initialValue: _selected,
           decoration: const InputDecoration(labelText: 'Select Project to Analyze'),
           items: _projects.map((p) => DropdownMenuItem(value: p, child: Text(p.name, style: const TextStyle(fontSize: 13)))).toList(),
           onChanged: (v) => setState(() => _selected = v),
@@ -440,7 +440,9 @@ class _AnalyticsTab extends StatelessWidget {
 
   Map<String, int> get _byLevel {
     final m = <String, int>{};
-    for (final s in skills) m[s.level] = (m[s.level] ?? 0) + 1;
+    for (final s in skills) {
+      m[s.level] = (m[s.level] ?? 0) + 1;
+    }
     return m;
   }
 

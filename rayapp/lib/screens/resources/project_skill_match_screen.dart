@@ -77,7 +77,7 @@ class _ProjectSkillMatchScreenState extends State<ProjectSkillMatchScreen> {
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         child: DropdownButtonFormField<Project>(
-          value: _selectedProject,
+          initialValue: _selectedProject,
           decoration: const InputDecoration(
             labelText: 'Select Project',
             prefixIcon: Icon(Icons.folder_outlined, size: 18),

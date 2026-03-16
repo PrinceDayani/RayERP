@@ -24,8 +24,10 @@ class _ProjectMilestonesScreenState extends State<ProjectMilestonesScreen> {
     setState(() => _saving = true);
     try {
       await ProjectService().updateMilestones(widget.project.id, _milestones);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Milestones saved')));
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
@@ -74,7 +76,7 @@ class _ProjectMilestonesScreenState extends State<ProjectMilestonesScreen> {
             )),
             const SizedBox(width: 12),
             Expanded(child: DropdownButtonFormField<String>(
-              value: status,
+              initialValue: status,
               decoration: const InputDecoration(labelText: 'Status'),
               items: ['pending', 'in-progress', 'completed'].map((s) =>
                   DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13)))).toList(),
@@ -94,8 +96,11 @@ class _ProjectMilestonesScreenState extends State<ProjectMilestonesScreen> {
                   'status': status,
                 };
                 setState(() {
-                  if (index != null) _milestones[index] = m;
-                  else _milestones.add(m);
+                  if (index != null) {
+                    _milestones[index] = m;
+                  } else {
+                    _milestones.add(m);
+                  }
                 });
                 Navigator.pop(ctx);
               },

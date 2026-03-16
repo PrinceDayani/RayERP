@@ -46,7 +46,11 @@ class _ProjectCloneScreenState extends State<ProjectCloneScreen> {
       ),
     );
     if (picked == null) return;
-    setState(() { if (isStart) _startDate = picked; else _endDate = picked; });
+    setState(() { if (isStart) {
+      _startDate = picked;
+    } else {
+      _endDate = picked;
+    } });
   }
 
   Future<void> _clone() async {
@@ -165,7 +169,7 @@ class _ToggleTile extends StatelessWidget {
       dense: true,
       title: Text(label, style: const TextStyle(fontSize: 13)),
       value: value,
-      activeColor: AppTheme.primary,
+      activeThumbColor: AppTheme.primary,
       onChanged: onChanged,
     ),
   );

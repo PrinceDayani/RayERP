@@ -5,9 +5,11 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface ITask extends Document {
   title: string;
   description: string;
+  taskType: 'individual' | 'project';
+  assignmentType: 'assigned' | 'self-assigned';
   status: 'todo' | 'in-progress' | 'review' | 'completed' | 'blocked';
   priority: 'low' | 'medium' | 'high' | 'critical';
-  project: mongoose.Types.ObjectId;
+  project?: mongoose.Types.ObjectId;
   assignedTo: mongoose.Types.ObjectId;
   assignedBy: mongoose.Types.ObjectId;
   dueDate: Date;
@@ -75,6 +77,18 @@ export interface ITask extends Document {
 const taskSchema = new Schema<ITask>({
   title: { type: String, required: true },
   description: { type: String, required: true },
+  taskType: { 
+    type: String, 
+    enum: ['individual', 'project'], 
+    default: 'individual',
+    required: true 
+  },
+  assignmentType: { 
+    type: String, 
+    enum: ['assigned', 'self-assigned'], 
+    default: 'assigned',
+    required: true 
+  },
   status: { 
     type: String, 
     enum: ['todo', 'in-progress', 'review', 'completed', 'blocked'], 
@@ -85,7 +99,7 @@ const taskSchema = new Schema<ITask>({
     enum: ['low', 'medium', 'high', 'critical'], 
     default: 'medium' 
   },
-  project: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
+  project: { type: Schema.Types.ObjectId, ref: 'Project' },
   assignedTo: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
   assignedBy: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
   dueDate: { type: Date },
@@ -152,8 +166,19 @@ taskSchema.index({ title: 'text', description: 'text' });
 taskSchema.index({ 'tags.name': 1 });
 taskSchema.index({ dueDate: 1, status: 1 });
 taskSchema.index({ assignedTo: 1, status: 1 });
+taskSchema.index({ taskType: 1, status: 1 });
+taskSchema.index({ assignmentType: 1 });
 taskSchema.index({ project: 1, status: 1 });
 taskSchema.index({ project: 1, order: 1 });
 taskSchema.index({ project: 1, column: 1, order: 1 });
+
+taskSchema.pre('validate', function(next) {
+  if (this.taskType === 'project' && !this.project) {
+    next(new Error('Project is required for project tasks'));
+  } else if (this.taskType === 'individual' && this.project) {
+    this.project = undefined;
+  }
+  next();
+});
 
 export default mongoose.model<ITask>('Task', taskSchema);

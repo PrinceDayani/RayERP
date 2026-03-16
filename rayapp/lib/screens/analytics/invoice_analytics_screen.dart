@@ -212,7 +212,7 @@ class _InvoicesTab extends StatelessWidget {
           : ListView.separated(
               padding: EdgeInsets.all(p),
               itemCount: invoices.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (_, i) {
                 final inv = invoices[i] as Map;
                 final number = inv['invoiceNumber']?.toString() ?? inv['number']?.toString() ?? '#${i + 1}';

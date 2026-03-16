@@ -4,22 +4,26 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Download } from 'lucide-react';
+import { Plus, Download, List, LayoutGrid } from 'lucide-react';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { Task } from '@/lib/api/tasksAPI';
 import TaskStats from '@/components/tasks/TaskStats';
 import TaskFilters from '@/components/tasks/TaskFilters';
 import TaskBoard from '@/components/tasks/TaskBoard';
-import TaskDialogs from '@/components/tasks/TaskDialogs';
+import EnhancedTaskDialog from '@/components/tasks/EnhancedTaskDialog';
+import EnhancedTaskCard from '@/components/tasks/EnhancedTaskCard';
+import TaskDetailView from '@/components/tasks/TaskDetailView';
 import { TieredAccessWrapper } from '@/components/common/TieredAccessWrapper';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function TaskManagementPage() {
-  const { computed, state } = useTaskContext();
+  const { computed, state, actions } = useTaskContext();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [commentingTask, setCommentingTask] = useState<Task | null>(null);
-  const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
 
 
 
@@ -34,11 +38,26 @@ export default function TaskManagementPage() {
     setIsEditDialogOpen(true);
   };
 
+  const openViewDialog = (task: Task) => {
+    setViewingTask(task);
+    setIsViewDialogOpen(true);
+  };
 
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    try {
+      await actions.deleteTask(taskId);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
 
-  const openCommentDialog = (task: Task) => {
-    setCommentingTask(task);
-    setIsCommentDialogOpen(true);
+  const handleStatusChange = async (taskId: string, status: Task['status']) => {
+    try {
+      await actions.updateTask(taskId, { status });
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
 
   const exportTasks = () => {
@@ -176,28 +195,72 @@ export default function TaskManagementPage() {
 
           <TaskStats />
 
-          <TaskFilters />
+          <div className="flex items-center justify-between">
+            <TaskFilters />
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === 'kanban' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('kanban')}
+              >
+                <LayoutGrid className="h-4 w-4 mr-2" />
+                Kanban
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+              >
+                <List className="h-4 w-4 mr-2" />
+                List
+              </Button>
+            </div>
+          </div>
 
-          <TaskBoard 
-            onEditTask={openEditDialog}
-            onCommentTask={openCommentDialog}
+          {viewMode === 'kanban' ? (
+            <TaskBoard 
+              onEditTask={openEditDialog}
+              onCommentTask={openViewDialog}
+            />
+          ) : (
+            <div className="space-y-3">
+              {computed.filteredTasks.map((task) => (
+                <EnhancedTaskCard
+                  key={task._id}
+                  task={task}
+                  onEdit={openEditDialog}
+                  onDelete={handleDeleteTask}
+                  onView={openViewDialog}
+                  onStatusChange={handleStatusChange}
+                />
+              ))}
+            </div>
+          )}
+
+          <EnhancedTaskDialog
+            open={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+            mode="create"
+            onSuccess={() => actions.fetchTasks()}
           />
 
-          <TaskDialogs
-            createDialog={{
-              open: isCreateDialogOpen,
-              onOpenChange: setIsCreateDialogOpen
+          <EnhancedTaskDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            task={editingTask}
+            mode="edit"
+            onSuccess={() => actions.fetchTasks()}
+          />
+
+          <TaskDetailView
+            open={isViewDialogOpen}
+            onOpenChange={setIsViewDialogOpen}
+            task={viewingTask}
+            onEdit={(task) => {
+              setIsViewDialogOpen(false);
+              openEditDialog(task);
             }}
-            editDialog={{
-              open: isEditDialogOpen,
-              onOpenChange: setIsEditDialogOpen,
-              task: editingTask
-            }}
-            commentDialog={{
-              open: isCommentDialogOpen,
-              onOpenChange: setIsCommentDialogOpen,
-              task: commentingTask
-            }}
+            onRefresh={() => actions.fetchTasks()}
           />
         </div>
       </TieredAccessWrapper>

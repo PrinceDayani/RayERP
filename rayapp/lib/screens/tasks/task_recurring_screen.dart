@@ -45,9 +45,10 @@ class _TaskRecurringScreenState extends State<TaskRecurringScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
     if (mounted) setState(() => _saving = false);
   }
@@ -107,7 +108,7 @@ class _TaskRecurringScreenState extends State<TaskRecurringScreen> {
               Switch(
                 value: _enabled,
                 onChanged: (v) => setState(() => _enabled = v),
-                activeColor: AppTheme.primary,
+                activeThumbColor: AppTheme.primary,
               ),
             ]),
           ),

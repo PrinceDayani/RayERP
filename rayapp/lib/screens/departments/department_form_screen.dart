@@ -103,7 +103,7 @@ class _DepartmentFormScreenState extends State<DepartmentFormScreen> {
               Expanded(child: _field(_budget, 'Budget', keyboardType: TextInputType.number)),
               const SizedBox(width: 12),
               Expanded(child: DropdownButtonFormField<String>(
-                value: _status,
+                initialValue: _status,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: ['active', 'inactive'].map((s) =>
                     DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13)))).toList(),
@@ -112,7 +112,7 @@ class _DepartmentFormScreenState extends State<DepartmentFormScreen> {
             ]),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _managerId,
+              initialValue: _managerId,
               decoration: const InputDecoration(labelText: 'Manager (optional)'),
               items: [
                 const DropdownMenuItem(value: null, child: Text('No manager', style: TextStyle(fontSize: 13))),

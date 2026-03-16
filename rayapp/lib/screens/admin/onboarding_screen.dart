@@ -135,7 +135,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.border)),
                             child: Column(children: [
                               DropdownButtonFormField<String>(
-                                value: _selectedRoleId,
+                                initialValue: _selectedRoleId,
                                 isExpanded: true,
                                 decoration: const InputDecoration(labelText: 'Role', prefixIcon: Icon(Icons.shield_outlined, size: 18)),
                                 items: [

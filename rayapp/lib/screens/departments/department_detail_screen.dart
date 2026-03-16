@@ -76,7 +76,7 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen>
           : _dept == null
               ? const Center(child: Text('Department not found'))
               : NestedScrollView(
-                  headerSliverBuilder: (_, __) => [
+                  headerSliverBuilder: (_, _) => [
                     SliverToBoxAdapter(child: _Header(dept: _dept!, employeeCount: _employees.length, projectCount: _projects.length)),
                     SliverToBoxAdapter(
                       child: TabBar(
@@ -278,7 +278,7 @@ class _MembersTab extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: employees.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final e = employees[i];
         final initials = '${e.firstName.isNotEmpty ? e.firstName[0] : ''}${e.lastName.isNotEmpty ? e.lastName[0] : ''}'.toUpperCase();

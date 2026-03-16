@@ -62,8 +62,12 @@ class _SkillMatrixScreenState extends State<SkillMatrixScreen> {
   List<String> get _allSkills {
     final set = <String>{};
     for (final e in _employees) {
-      for (final s in e.skillsEnhanced) set.add(s.skill);
-      for (final s in e.skills) set.add(s);
+      for (final s in e.skillsEnhanced) {
+        set.add(s.skill);
+      }
+      for (final s in e.skills) {
+        set.add(s);
+      }
     }
     final list = set.toList()..sort();
     if (_searchCtrl.text.isNotEmpty) {
@@ -178,7 +182,7 @@ class _SkillMatrixScreenState extends State<SkillMatrixScreen> {
 
   Widget _filterDropdown(String label, List<String> items, String value, ValueChanged<String?> onChanged) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       isDense: true,
       decoration: InputDecoration(
         labelText: label,
@@ -345,7 +349,7 @@ class _SkillMatrixScreenState extends State<SkillMatrixScreen> {
               Text(emp.fullName, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
               const SizedBox(height: 16),
               DropdownButtonFormField<String?>(
-                value: selectedLevel,
+                initialValue: selectedLevel,
                 decoration: const InputDecoration(labelText: 'Proficiency Level'),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('Remove skill', style: TextStyle(color: AppTheme.red))),

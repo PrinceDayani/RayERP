@@ -37,9 +37,9 @@ class _State extends State<EmployeeReportsScreen> with SingleTickerProviderState
       ]);
       if (!mounted) return;
       setState(() {
-        _reports = r[0] as Map<String, dynamic>;
-        _overview = r[1] as Map<String, dynamic>;
-        _teamProd = r[2] as Map<String, dynamic>;
+        _reports = r[0];
+        _overview = r[1];
+        _teamProd = r[2];
         _loading = false;
       });
     } catch (e) {
@@ -177,7 +177,7 @@ class _EmployeesTab extends StatelessWidget {
     return ListView.separated(
       padding: EdgeInsets.all(p),
       itemCount: employees.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final e = employees[i] as Map;
         final name = e['name']?.toString() ?? e['employeeName']?.toString() ?? '';

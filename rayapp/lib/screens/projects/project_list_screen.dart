@@ -206,7 +206,7 @@ class _ProjectListScreenState extends State<ProjectListScreen>
       ),
       floatingActionButton: ListenableBuilder(
         listenable: _tabs,
-        builder: (_, __) => _tabs.index == 0
+        builder: (_, _) => _tabs.index == 0
             ? FloatingActionButton(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
@@ -750,7 +750,7 @@ class _AllTasksTabState extends State<_AllTasksTab> {
             : ListView.separated(
                   padding: EdgeInsets.fromLTRB(AppTheme.hPad(context), 4, AppTheme.hPad(context), 80),
                 itemCount: filtered.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
                   final t = filtered[i];
                   final isOverdue = t.dueDate != null && t.dueDate!.isBefore(DateTime.now()) && t.status != 'completed';

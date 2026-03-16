@@ -27,8 +27,10 @@ class _ProjectSettingsScreenState extends State<ProjectSettingsScreen> {
     try {
       final updated = await ProjectService().update(_project.id, {'status': status});
       setState(() => _project = updated);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Status updated to $status')));
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {

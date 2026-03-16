@@ -123,7 +123,7 @@ class UserSession {
 
   factory UserSession.fromJson(Map<String, dynamic> j) {
     final deviceInfo = j['deviceInfo'] is Map ? j['deviceInfo'] as Map : null;
-    DateTime _parseDate(dynamic v) {
+    DateTime parseDate(dynamic v) {
       if (v == null) return DateTime.now();
       if (v is int) return DateTime.fromMillisecondsSinceEpoch(v);
       return DateTime.tryParse(v.toString()) ?? DateTime.now();
@@ -134,8 +134,8 @@ class UserSession {
       browser: deviceInfo?['browser']?.toString(),
       os: deviceInfo?['os']?.toString(),
       ipAddress: j['ipAddress']?.toString() ?? '',
-      lastActive: _parseDate(j['lastActive']),
-      createdAt: _parseDate(j['createdAt']),
+      lastActive: parseDate(j['lastActive']),
+      createdAt: parseDate(j['createdAt']),
       isCurrent: j['isCurrent'] ?? false,
     );
   }

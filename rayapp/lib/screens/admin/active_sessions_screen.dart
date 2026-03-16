@@ -49,7 +49,7 @@ class _ActiveSessionsScreenState extends State<ActiveSessionsScreen> {
   }
 
   String _deviceLabel(UserSession s) {
-    final parts = [s.os, s.browser].where((p) => p != null && p!.isNotEmpty).map((p) => p!).toList();
+    final parts = [s.os, s.browser].where((p) => p != null && p.isNotEmpty).map((p) => p!).toList();
     return parts.isNotEmpty ? parts.join(' · ') : 'Unknown Device';
   }
 
@@ -104,7 +104,7 @@ class _ActiveSessionsScreenState extends State<ActiveSessionsScreen> {
                           return ListView.separated(
                             padding: EdgeInsets.all(pad),
                             itemCount: _sessions.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            separatorBuilder: (_, _) => const SizedBox(height: 8),
                             itemBuilder: (_, i) => _card(_sessions[i]),
                           );
                         }),

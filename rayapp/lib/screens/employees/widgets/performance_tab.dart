@@ -30,11 +30,13 @@ class _PerformanceTabState extends State<PerformanceTab> {
         _svc.getTaskStats(widget.employeeId),
         _svc.getAchievements(widget.employeeId),
       ]);
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _att = results[0] as AttendanceStats;
         _tasks = results[1] as TaskStats;
         _achievements = results[2] as List<Achievement>;
       });
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     }

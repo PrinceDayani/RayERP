@@ -65,10 +65,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       EmployeeService().getAll().catchError((_) => <Employee>[]),
       DepartmentService().getNames().catchError((_) => <String>[]),
     ]);
-    if (mounted) setState(() {
+    if (mounted) {
+      setState(() {
       _allEmployees = results[0] as List<Employee>;
       _allDepts = results[1] as List<String>;
     });
+    }
   }
 
   @override
@@ -96,8 +98,11 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     );
     if (picked == null) return;
     setState(() {
-      if (isStart) _startDate = picked;
-      else _endDate = picked;
+      if (isStart) {
+        _startDate = picked;
+      } else {
+        _endDate = picked;
+      }
     });
   }
 
@@ -264,7 +269,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
 
   Widget _dropdown(String label, String value, List<String> options, ValueChanged<String?> onChanged) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(labelText: label),
       items: options.map((o) => DropdownMenuItem(value: o, child: Text(o, style: const TextStyle(fontSize: 13)))).toList(),
       onChanged: onChanged,
@@ -426,9 +431,13 @@ class _EmployeePickerSheetState extends State<_EmployeePickerSheet> {
                   value: selected,
                   activeColor: AppTheme.primary,
                   title: Text('${e.firstName} ${e.lastName}', style: const TextStyle(fontSize: 13)),
-                  subtitle: e.position != null ? Text(e.position!, style: const TextStyle(fontSize: 11)) : null,
+                  subtitle: Text(e.position!, style: const TextStyle(fontSize: 11)),
                   onChanged: (_) => setState(() {
-                    if (selected) _sel.remove(e.id); else _sel.add(e.id);
+                    if (selected) {
+                      _sel.remove(e.id);
+                    } else {
+                      _sel.add(e.id);
+                    }
                   }),
                 );
               },
@@ -461,7 +470,11 @@ class _DeptPicker extends StatelessWidget {
             return GestureDetector(
               onTap: () {
                 final next = List<String>.from(selected);
-                if (sel) next.remove(d); else next.add(d);
+                if (sel) {
+                  next.remove(d);
+                } else {
+                  next.add(d);
+                }
                 onChanged(next);
               },
               child: Container(

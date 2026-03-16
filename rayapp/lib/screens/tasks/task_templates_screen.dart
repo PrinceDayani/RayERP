@@ -66,7 +66,7 @@ class _TaskTemplatesScreenState extends State<TaskTemplatesScreen> {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
-              value: priority,
+              initialValue: priority,
               decoration: const InputDecoration(
                   labelText: 'Priority',
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
@@ -162,9 +162,10 @@ class _TaskTemplatesScreenState extends State<TaskTemplatesScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
   }
 
@@ -203,7 +204,7 @@ class _TaskTemplatesScreenState extends State<TaskTemplatesScreen> {
                   padding: EdgeInsets.fromLTRB(
                       AppTheme.hPad(context), 16, AppTheme.hPad(context), 80),
                   itemCount: _templates.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (_, i) {
                     final t = _templates[i];
                     final pc = _pc(t.priority);

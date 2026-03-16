@@ -128,7 +128,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
                             child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                               itemCount: _broadcasts.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 8),
+                              separatorBuilder: (_, _) => const SizedBox(height: 8),
                               itemBuilder: (_, i) => _BroadcastCard(
                                 broadcast: _broadcasts[i],
                                 onTap: () => _markRead(_broadcasts[i]),

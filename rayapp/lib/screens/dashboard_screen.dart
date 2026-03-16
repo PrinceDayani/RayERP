@@ -18,6 +18,9 @@ import 'tasks/task_list_screen.dart';
 import 'communication/chat_screen.dart';
 import 'communication/communication_screen.dart';
 import 'analytics/analytics_hub_screen.dart';
+import 'contacts/contact_list_screen.dart';
+import 'approvals/approval_workflow_screen.dart';
+import 'budget/budget_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -266,9 +269,12 @@ class _MenuScreen extends StatelessWidget {
       (Icons.access_time_rounded,         'Attendance',   AppTheme.amber,  const AttendanceListScreen()),
       (Icons.groups_rounded,              'Resources',    AppTheme.cyan,   const ResourceDashboardScreen()),
       (Icons.business_rounded,            'Departments',  AppTheme.teal,   const DepartmentListScreen()),
+      (Icons.contacts_rounded,            'Contacts',     AppTheme.primary,const ContactListScreen()),
+      (Icons.account_balance_wallet_rounded,'Budget',     AppTheme.green,  const BudgetListScreen()),
       (Icons.analytics_rounded,           'Analytics',    AppTheme.purple, const AnalyticsHubScreen()),
-      (Icons.campaign_outlined,           'Comms',        AppTheme.green,  const CommunicationScreen()),
+      (Icons.campaign_outlined,           'Comms',        AppTheme.teal,   const CommunicationScreen()),
       (Icons.admin_panel_settings_rounded,'Admin',        AppTheme.red,    const AdminScreen()),
+      (Icons.approval_outlined,             'Approvals',    AppTheme.amber,  const ApprovalWorkflowScreen()),
     ];
 
     return AppTheme.constrain(

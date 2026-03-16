@@ -200,7 +200,7 @@ class _RequestsTab extends StatelessWidget {
           : ListView.separated(
               padding: EdgeInsets.all(p),
               itemCount: approvals.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (_, i) {
                 final a = approvals[i] as Map;
                 final title = a['title']?.toString() ?? a['requestType']?.toString() ?? 'Request';

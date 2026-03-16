@@ -184,7 +184,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     if (_projectId == null)
                       _field(
                         child: DropdownButtonFormField<String>(
-                          value: _projectId,
+                          initialValue: _projectId,
                           decoration:
                               const InputDecoration(labelText: 'Project *'),
                           items: _projects
@@ -199,7 +199,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                       ),
                     _field(
                       child: DropdownButtonFormField<String>(
-                        value: _assignedToId,
+                        initialValue: _assignedToId,
                         decoration:
                             const InputDecoration(labelText: 'Assign To *'),
                         items: _employees
@@ -214,7 +214,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     ),
                     _field(
                       child: DropdownButtonFormField<String>(
-                        value: _assignedById,
+                        initialValue: _assignedById,
                         decoration:
                             const InputDecoration(labelText: 'Assigned By *'),
                         items: _employees
@@ -231,7 +231,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                       final narrow = constraints.maxWidth < 400;
                       final statusField = _field(
                         child: DropdownButtonFormField<String>(
-                          value: _status,
+                          initialValue: _status,
                           decoration:
                               const InputDecoration(labelText: 'Status'),
                           items: ['todo', 'in-progress', 'review', 'completed', 'blocked']
@@ -247,7 +247,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                       );
                       final priorityField = _field(
                         child: DropdownButtonFormField<String>(
-                          value: _priority,
+                          initialValue: _priority,
                           decoration:
                               const InputDecoration(labelText: 'Priority'),
                           items: ['low', 'medium', 'high', 'critical']

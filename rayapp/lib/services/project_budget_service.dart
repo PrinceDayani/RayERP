@@ -5,6 +5,226 @@ import '../config/api_config.dart';
 import '../utils/constants.dart';
 import 'api_service.dart';
 
+// ── Standalone Budget (org-wide, not project-scoped) ─────────────────────────
+
+class Budget {
+  final String id;
+  final String? projectId;
+  final String? departmentId;
+  final String? projectName;
+  final String? departmentName;
+  final String? budgetName;
+  final int fiscalYear;
+  final String fiscalPeriod;
+  final double totalBudget;
+  final double actualSpent;
+  final double remainingBudget;
+  final double utilizationPercentage;
+  final String currency;
+  final String status;
+  final String budgetType;
+  final List<BudgetCategory> categories;
+  final List<BudgetApprovalEntry> approvals;
+  final DateTime createdAt;
+
+  Budget({
+    required this.id,
+    this.projectId,
+    this.departmentId,
+    this.projectName,
+    this.departmentName,
+    this.budgetName,
+    required this.fiscalYear,
+    required this.fiscalPeriod,
+    required this.totalBudget,
+    required this.actualSpent,
+    required this.remainingBudget,
+    required this.utilizationPercentage,
+    required this.currency,
+    required this.status,
+    required this.budgetType,
+    required this.categories,
+    required this.approvals,
+    required this.createdAt,
+  });
+
+  String get displayName =>
+      budgetName?.isNotEmpty == true
+          ? budgetName!
+          : projectName?.isNotEmpty == true
+              ? projectName!
+              : departmentName?.isNotEmpty == true
+                  ? departmentName!
+                  : 'Budget #${id.substring(id.length > 6 ? id.length - 6 : 0)}';
+
+  factory Budget.fromJson(Map<String, dynamic> j) {
+    final cats = (j['categories'] as List? ?? [])
+        .map((c) => BudgetCategory.fromJson(c))
+        .toList();
+    final approvs = (j['approvals'] as List? ?? [])
+        .map((a) => BudgetApprovalEntry.fromJson(a))
+        .toList();
+    return Budget(
+      id: j['_id'] ?? '',
+      projectId: j['projectId']?.toString(),
+      departmentId: j['departmentId']?.toString(),
+      projectName: j['projectName'],
+      departmentName: j['departmentName'],
+      budgetName: j['budgetName'],
+      fiscalYear: (j['fiscalYear'] ?? DateTime.now().year).toInt(),
+      fiscalPeriod: j['fiscalPeriod'] ?? 'Q1',
+      totalBudget: (j['totalBudget'] ?? 0).toDouble(),
+      actualSpent: (j['actualSpent'] ?? 0).toDouble(),
+      remainingBudget: (j['remainingBudget'] ?? 0).toDouble(),
+      utilizationPercentage: (j['utilizationPercentage'] ?? 0).toDouble(),
+      currency: j['currency'] ?? 'USD',
+      status: j['status'] ?? 'draft',
+      budgetType: j['budgetType'] ?? 'project',
+      categories: cats,
+      approvals: approvs,
+      createdAt: DateTime.tryParse(j['createdAt'] ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+class BudgetApprovalEntry {
+  final String userId;
+  final String userName;
+  final String status;
+  final String? comments;
+  final DateTime? approvedAt;
+
+  BudgetApprovalEntry({
+    required this.userId,
+    required this.userName,
+    required this.status,
+    this.comments,
+    this.approvedAt,
+  });
+
+  factory BudgetApprovalEntry.fromJson(Map<String, dynamic> j) => BudgetApprovalEntry(
+        userId: j['userId']?.toString() ?? '',
+        userName: j['userName'] ?? '',
+        status: j['status'] ?? 'pending',
+        comments: j['comments'],
+        approvedAt: DateTime.tryParse(j['approvedAt'] ?? ''),
+      );
+}
+
+class BudgetSummary {
+  final int totalBudgets;
+  final double totalBudgetAmount;
+  final double totalSpent;
+  final double totalRemaining;
+  final double averageUtilization;
+  final Map<String, int> statusBreakdown;
+  final Map<String, dynamic> categoryBreakdown;
+
+  BudgetSummary({
+    required this.totalBudgets,
+    required this.totalBudgetAmount,
+    required this.totalSpent,
+    required this.totalRemaining,
+    required this.averageUtilization,
+    required this.statusBreakdown,
+    required this.categoryBreakdown,
+  });
+
+  factory BudgetSummary.fromJson(Map<String, dynamic> j) => BudgetSummary(
+        totalBudgets: (j['totalBudgets'] ?? 0).toInt(),
+        totalBudgetAmount: (j['totalBudgetAmount'] ?? 0).toDouble(),
+        totalSpent: (j['totalSpent'] ?? 0).toDouble(),
+        totalRemaining: (j['totalRemaining'] ?? 0).toDouble(),
+        averageUtilization: (j['averageUtilization'] ?? 0).toDouble(),
+        statusBreakdown: (j['statusBreakdown'] as Map<String, dynamic>? ?? {})
+            .map((k, v) => MapEntry(k, (v as num).toInt())),
+        categoryBreakdown: j['categoryBreakdown'] as Map<String, dynamic>? ?? {},
+      );
+}
+
+class BudgetService extends ApiService {
+  Future<({List<Budget> budgets, int total, int pages})> getAll({
+    String? status,
+    String? budgetType,
+    int? fiscalYear,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final params = <String>['page=$page', 'limit=$limit'];
+    if (status != null && status != 'all') params.add('status=$status');
+    if (budgetType != null && budgetType != 'all') params.add('budgetType=$budgetType');
+    if (fiscalYear != null) params.add('fiscalYear=$fiscalYear');
+    try {
+      final data = await get('/budget/all?${params.join('&')}');
+      final raw = data is Map ? data : <String, dynamic>{};
+      final list = (raw['data'] ?? raw['budgets'] ?? (data is List ? data : [])) as List;
+      final pagination = raw['pagination'] as Map<String, dynamic>? ?? {};
+      return (
+        budgets: list.map((e) => Budget.fromJson(e as Map<String, dynamic>)).toList(),
+        total: ((pagination['total'] ?? list.length) as num).toInt(),
+        pages: ((pagination['pages'] ?? 1) as num).toInt(),
+      );
+    } catch (_) {
+      return (budgets: <Budget>[], total: 0, pages: 0);
+    }
+  }
+
+  Future<Budget?> getById(String id) async {
+    try {
+      final data = await get('/budget/$id');
+      final obj = data is Map ? (data['data'] ?? data) : data;
+      return Budget.fromJson(obj as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<BudgetSummary?> getSummary({String? projectId, int? fiscalYear}) async {
+    try {
+      final params = <String>[];
+      if (projectId != null) params.add('projectId=$projectId');
+      if (fiscalYear != null) params.add('fiscalYear=$fiscalYear');
+      final q = params.isEmpty ? '' : '?${params.join('&')}';
+      final data = await get('/budget/analytics$q');
+      final obj = data is Map ? (data['data'] ?? data) : data;
+      return BudgetSummary.fromJson(obj as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> getTracking(String id) async {
+    try {
+      final data = await get('/budget/$id/track');
+      return data is Map ? (data['data'] ?? data) as Map<String, dynamic> : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<Budget> create(Map<String, dynamic> body) async {
+    final data = await post('/budget/create', body);
+    final obj = data is Map ? (data['data'] ?? data) : data;
+    return Budget.fromJson(obj as Map<String, dynamic>);
+  }
+
+  Future<Budget> update(String id, Map<String, dynamic> body) async {
+    final data = await put('/budget/$id', body);
+    final obj = data is Map ? (data['data'] ?? data) : data;
+    return Budget.fromJson(obj as Map<String, dynamic>);
+  }
+
+  Future<void> action(String id, String action, {String? comments}) =>
+      post('/budget/$id/$action', comments != null ? {'comments': comments} : {});
+
+  Future<void> allocate(String id, String categoryName, double amount, String categoryType) =>
+      post('/budget/$id/allocate', {
+        'categoryName': categoryName,
+        'allocatedAmount': amount,
+        'categoryType': categoryType,
+      });
+}
+
 class BudgetCategory {
   final String name;
   final String type;

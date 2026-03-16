@@ -38,7 +38,9 @@ class _CapacityPlanningScreenState extends State<CapacityPlanningScreen> {
 
   List<String> get _roles {
     final roles = {'All'};
-    for (final c in _capacities) roles.add(c.position);
+    for (final c in _capacities) {
+      roles.add(c.position);
+    }
     return roles.toList();
   }
 
@@ -73,7 +75,7 @@ class _CapacityPlanningScreenState extends State<CapacityPlanningScreen> {
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
         child: DropdownButtonFormField<String>(
-          value: _roleFilter,
+          initialValue: _roleFilter,
           decoration: const InputDecoration(labelText: 'Role', contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
           items: _roles.map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 13)))).toList(),
           onChanged: (v) => setState(() => _roleFilter = v!),

@@ -205,11 +205,13 @@ class _AllocationSummaryScreenState extends State<AllocationSummaryScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-    if (_error != null) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+    if (_error != null) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Text(_error!, style: const TextStyle(color: AppTheme.red), textAlign: TextAlign.center),
       const SizedBox(height: 8),
       TextButton(onPressed: _load, child: const Text('Retry')),
     ]));
+    }
 
     final filtered = _filtered;
     final screenW = MediaQuery.of(context).size.width;

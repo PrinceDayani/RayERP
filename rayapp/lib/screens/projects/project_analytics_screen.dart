@@ -222,7 +222,9 @@ class _BurndownTab extends StatelessWidget {
     // Sample every N points to keep chart readable
     final step = (burndownData.length / 10).ceil().clamp(1, 999);
     final points = <Map<String, dynamic>>[];
-    for (int i = 0; i < burndownData.length; i += step) points.add(burndownData[i]);
+    for (int i = 0; i < burndownData.length; i += step) {
+      points.add(burndownData[i]);
+    }
     if (points.last != burndownData.last) points.add(burndownData.last);
 
     return SingleChildScrollView(

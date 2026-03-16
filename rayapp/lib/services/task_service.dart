@@ -4,14 +4,25 @@ import 'api_service.dart';
 class TaskService extends ApiService {
   // ── Core CRUD ──────────────────────────────────────────────────────────────
 
-  Future<List<Task>> getAll({String? projectId, String? status, String? priority}) async {
+  Future<List<Task>> getAll({String? projectId, String? status, String? priority, String? taskType}) async {
     var path = '/tasks';
     final params = <String>[];
     if (projectId != null) params.add('project=$projectId');
     if (status != null) params.add('status=$status');
     if (priority != null) params.add('priority=$priority');
+    if (taskType != null) params.add('taskType=$taskType');
     if (params.isNotEmpty) path += '?${params.join('&')}';
     final data = await get(path);
+    final list = data is List ? data : (data['tasks'] ?? data['data'] ?? []);
+    return (list as List).map((e) => Task.fromJson(e)).toList();
+  }
+
+  Future<List<Task>> getIndividualTasks() => getAll(taskType: 'individual');
+
+  Future<List<Task>> getProjectTasks() => getAll(taskType: 'project');
+
+  Future<List<Task>> getTasksByProject(String projectId) async {
+    final data = await get('/projects/$projectId/tasks');
     final list = data is List ? data : (data['tasks'] ?? data['data'] ?? []);
     return (list as List).map((e) => Task.fromJson(e)).toList();
   }
@@ -224,8 +235,6 @@ class TaskService extends ApiService {
     return Task.fromJson(data);
   }
 
-  // ── Attachments ────────────────────────────────────────────────────────────
-
   Future<Task> uploadAttachment(String id, String filePath) async {
     final data = await multipartPost('/tasks/$id/attachments', filePath, 'file');
     return Task.fromJson(data);
@@ -233,4 +242,91 @@ class TaskService extends ApiService {
 
   Future<void> removeAttachment(String id, String attachmentId) =>
       delete('/tasks/$id/attachments/$attachmentId');
+}
+
+  Future<Task> addProjectTaskComment(String projectId, String taskId, String comment, String userId) async {
+    final data = await post('/projects/$projectId/tasks/$taskId/comments', {'comment': comment, 'user': userId});
+    return Task.fromJson(data);
+  }
+
+  Future<Map<String, dynamic>> startProjectTaskTimer(String projectId, String taskId, String userId, {String? description}) async {
+    final body = <String, dynamic>{'user': userId};
+    if (description != null && description.isNotEmpty) body['description'] = description;
+    final data = await post('/projects/$projectId/tasks/$taskId/time/start', body);
+    return data is Map<String, dynamic> ? data : {};
+  }
+
+  Future<Map<String, dynamic>> stopProjectTaskTimer(String projectId, String taskId, String userId) async {
+    final data = await post('/projects/$projectId/tasks/$taskId/time/stop', {'user': userId});
+    return data is Map<String, dynamic> ? data : {};
+  }
+
+  Future<void> addProjectTaskTag(String projectId, String taskId, String name, {String color = '#3b82f6'}) =>
+      post('/projects/$projectId/tasks/$taskId/tags', {'name': name, 'color': color});
+
+  Future<void> removeProjectTaskTag(String projectId, String taskId, String name) =>
+      delete_with_body('/projects/$projectId/tasks/$taskId/tags', {'name': name});
+
+  Future<void> addProjectTaskChecklist(String projectId, String taskId, String text) =>
+      post('/projects/$projectId/tasks/$taskId/checklist', {'text': text});
+
+  Future<void> updateProjectTaskChecklist(String projectId, String taskId, String itemId, bool completed, {String? completedBy}) async {
+    final body = <String, dynamic>{'itemId': itemId, 'completed': completed};
+    if (completedBy != null) body['completedBy'] = completedBy;
+    await http_patch('/projects/$projectId/tasks/$taskId/checklist/$itemId', body);
+  }
+
+  Future<void> deleteProjectTaskChecklist(String projectId, String taskId, String itemId) =>
+      delete('/projects/$projectId/tasks/$taskId/checklist/$itemId');
+
+  Future<void> addProjectTaskWatcher(String projectId, String taskId, String userId) =>
+      post('/projects/$projectId/tasks/$taskId/watchers', {'userId': userId});
+
+  Future<void> removeProjectTaskWatcher(String projectId, String taskId, String userId) =>
+      delete_with_body('/projects/$projectId/tasks/$taskId/watchers', {'userId': userId});
+
+  Future<void> addProjectTaskSubtask(String projectId, String taskId, Map<String, dynamic> body) =>
+      post('/projects/$projectId/tasks/$taskId/subtasks', body);
+
+  Future<void> deleteProjectTaskSubtask(String projectId, String taskId, String subtaskId) =>
+      delete('/projects/$projectId/tasks/$taskId/subtasks/$subtaskId');
+
+  Future<Map<String, dynamic>> getProjectTaskSubtaskProgress(String projectId, String taskId) async {
+    final data = await get('/projects/$projectId/tasks/$taskId/subtasks/progress');
+    return data is Map<String, dynamic> ? data : {};
+  }
+
+  Future<void> addProjectTaskDependency(String projectId, String taskId, String dependsOn, String type) =>
+      post('/projects/$projectId/tasks/$taskId/dependencies', {'dependsOn': dependsOn, 'type': type});
+
+  Future<void> removeProjectTaskDependency(String projectId, String taskId, String dependencyId) =>
+      delete('/projects/$projectId/tasks/$taskId/dependencies/$dependencyId');
+
+  Future<Task> updateProjectTaskStatus(String projectId, String taskId, String status, {String? userId}) async {
+    final body = <String, dynamic>{'status': status};
+    if (userId != null) body['user'] = userId;
+    final data = await http_patch('/projects/$projectId/tasks/$taskId/status', body);
+    return Task.fromJson(data);
+  }
+
+  Future<Task> cloneProjectTask(String projectId, String taskId) async {
+    final data = await post('/projects/$projectId/tasks/$taskId/clone', {});
+    return Task.fromJson(data);
+  }
+
+  Future<List<dynamic>> getProjectTaskTimeline(String projectId, String taskId) async {
+    final data = await get('/projects/$projectId/tasks/$taskId/timeline');
+    return data is List ? data : (data['timeline'] ?? []);
+  }
+
+  Future<Task> uploadProjectTaskAttachment(String projectId, String taskId, String filePath) async {
+    final data = await multipartPost('/projects/$projectId/tasks/$taskId/attachments', filePath, 'file');
+    return Task.fromJson(data);
+  }
+
+  Future<void> removeProjectTaskAttachment(String projectId, String taskId, String attachmentId) =>
+      delete('/projects/$projectId/tasks/$taskId/attachments/$attachmentId');
+
+  Future<void> reorderProjectTasks(String projectId, List<Map<String, dynamic>> tasks) =>
+      post('/projects/$projectId/tasks/reorder', {'tasks': tasks});
 }

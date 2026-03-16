@@ -267,7 +267,7 @@ class _AllocationFormScreenState extends State<AllocationFormScreen> {
 
   Widget _employeeDropdown() {
     return DropdownButtonFormField<Employee>(
-      value: _selectedEmployee,
+      initialValue: _selectedEmployee,
       decoration: const InputDecoration(labelText: 'Employee *'),
       isExpanded: true,
       items: _employees.map((e) => DropdownMenuItem(
@@ -284,7 +284,7 @@ class _AllocationFormScreenState extends State<AllocationFormScreen> {
 
   Widget _projectDropdown() {
     return DropdownButtonFormField<Project>(
-      value: _selectedProject,
+      initialValue: _selectedProject,
       decoration: const InputDecoration(labelText: 'Project *'),
       isExpanded: true,
       items: _projects.map((p) => DropdownMenuItem(
@@ -322,7 +322,7 @@ class _AllocationFormScreenState extends State<AllocationFormScreen> {
 
   Widget _dropdownField(String label, String value, List<String> options, ValueChanged<String?> onChanged) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(labelText: label),
       items: options.map((o) => DropdownMenuItem(
         value: o,

@@ -374,7 +374,7 @@ class ResourceService extends ApiService {
     await put('/resources/skill-matrix/$employeeId/skills', {
       'skill': skill,
       'level': level ?? '',
-      if (yearsOfExperience != null) 'yearsOfExperience': yearsOfExperience,
+      'yearsOfExperience': ?yearsOfExperience,
     });
   }
 
@@ -423,7 +423,7 @@ class ResourceService extends ApiService {
       'allocatedHours': allocatedHours,
       'startDate': startDate,
       'endDate': endDate,
-      if (excludeId != null) 'excludeId': excludeId,
+      'excludeId': ?excludeId,
     };
     final data = await post('/resources/validate-allocation', body);
     return Map<String, dynamic>.from(data);

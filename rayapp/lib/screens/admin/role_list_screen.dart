@@ -106,7 +106,7 @@ class _RoleListScreenState extends State<RoleListScreen> {
                     return ListView.separated(
                       padding: EdgeInsets.fromLTRB(pad, pad, pad, 100),
                       itemCount: _roles.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (_, i) => _roleCard(_roles[i]),
                     );
                   }),

@@ -122,7 +122,7 @@ class _UserFormScreenState extends State<UserFormScreen> {
                 const SizedBox(height: 16),
                 _section('Role Assignment', [
                   DropdownButtonFormField<String>(
-                    value: _selectedRoleId,
+                    initialValue: _selectedRoleId,
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Role', prefixIcon: Icon(Icons.manage_accounts_outlined, size: 18)),
                     items: [

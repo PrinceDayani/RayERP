@@ -81,7 +81,11 @@ class _FinancialReportsScreenState extends State<FinancialReportsScreen> {
       lastDate: DateTime(2100),
     );
     if (picked != null) {
-      setState(() { if (isStart) _startDate = picked; else _endDate = picked; });
+      setState(() { if (isStart) {
+        _startDate = picked;
+      } else {
+        _endDate = picked;
+      } });
       _load();
     }
   }

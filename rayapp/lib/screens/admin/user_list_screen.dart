@@ -98,9 +98,11 @@ class _UserListScreenState extends State<UserListScreen> {
     if (ok != true || selected == null || !mounted) return;
     try {
       final res = await _svc.updateUserStatus(u.id, selected!, reason: reasonCtrl.text.trim());
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(res['requiresApproval'] == true ? 'Status change submitted for approval' : 'Status updated to ${_fmtStatus(selected!)}'),
       ));
+      }
       _load();
     } catch (e) { if (mounted) _showErr('$e'); }
     reasonCtrl.dispose();

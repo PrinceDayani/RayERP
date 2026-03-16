@@ -82,7 +82,7 @@ router.get('/', requireTaskPermission('tasks.view_all', false), getAllTasks);
 router.get('/:id', validateObjectId(), requirePermission('tasks.view'), getTaskById);
 router.post('/', 
   requireTaskPermission('tasks.assign', false),
-  validateRequiredFields(['title', 'description', 'project', 'assignedTo', 'assignedBy']),
+  validateRequiredFields(['title', 'description', 'assignedTo', 'assignedBy']),
   validateTaskStatus,
   validatePriority,
   createTask

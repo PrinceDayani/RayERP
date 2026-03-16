@@ -346,7 +346,7 @@ class _TeamTab extends StatelessWidget {
     return ListView.separated(
       padding: EdgeInsets.all(AppTheme.hPad(context)),
       itemCount: data.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final d = data[i];
         final name = d['name']?.toString() ??

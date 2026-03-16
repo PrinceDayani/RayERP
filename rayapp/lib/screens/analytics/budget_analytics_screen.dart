@@ -218,7 +218,7 @@ class _ReportsTab extends StatelessWidget {
           : ListView.separated(
               padding: EdgeInsets.all(p),
               itemCount: reports.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (_, i) {
                 final r = reports[i] as Map;
                 final name = r['reportName']?.toString() ?? r['name']?.toString() ?? 'Report ${i + 1}';

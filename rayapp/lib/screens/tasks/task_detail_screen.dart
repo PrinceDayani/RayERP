@@ -364,8 +364,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
               AppTheme.fmtDate(t.dueDate!),
               color: isOverdue ? AppTheme.red : null,
             ),
-          if (t.projectName.isNotEmpty)
-            _InfoItem(Icons.folder_outlined, 'Project', t.projectName),
+          if (t.projectName?.isNotEmpty ?? false)
+            _InfoItem(Icons.folder_outlined, 'Project', t.projectName ?? ''),
           _InfoItem(Icons.timer_outlined, 'Est.',
               '${t.estimatedHours.toStringAsFixed(1)}h'),
           _InfoItem(Icons.access_time_outlined, 'Logged',

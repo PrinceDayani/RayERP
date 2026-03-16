@@ -108,7 +108,9 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
 
   int get _totalResources {
     final ids = <String>{};
-    for (final a in _allocations) ids.add(a.employeeId);
+    for (final a in _allocations) {
+      ids.add(a.employeeId);
+    }
     return ids.length;
   }
 
@@ -129,13 +131,15 @@ class _ResourceDashboardScreenState extends State<ResourceDashboardScreen>
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-    if (_error != null) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+    if (_error != null) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       const Icon(Icons.error_outline, color: AppTheme.red, size: 40),
       const SizedBox(height: 8),
       Text(_error!, style: const TextStyle(color: AppTheme.red), textAlign: TextAlign.center),
       const SizedBox(height: 12),
       ElevatedButton(onPressed: _load, child: const Text('Retry')),
     ]));
+    }
 
     return Scaffold(
       body: Column(children: [

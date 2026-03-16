@@ -227,7 +227,29 @@ For issues or questions, check the logs:
 
 ## 🎉 Latest Updates
 
-### Project Modular Architecture - NEW ✅ (Latest)
+### Unified Task System - NEW ✅ (Latest)
+- ✅ **Two Task Types** - Individual tasks (standalone) + Project tasks (project-linked)
+- ✅ **Self-Assignment** - Employees can create tasks for themselves
+- ✅ **Manager Assignment** - Managers can assign tasks to team members
+- ✅ **Full Feature Parity** - Both types support all features:
+  - Time tracking (start/stop timer)
+  - Comments with mentions
+  - Tags with colors
+  - File attachments
+  - Checklists with completion tracking
+  - Subtasks with progress
+  - Dependencies (4 types)
+  - Watchers for notifications
+  - Templates and recurring tasks
+  - Custom fields
+  - Activity timeline
+- ✅ **Permission-Based** - Role-based access control
+- ✅ **Real-Time Updates** - Socket.IO for live collaboration
+- ✅ **Migration Script** - Automatic data migration included
+
+See [UNIFIED_TASK_SYSTEM.md](./UNIFIED_TASK_SYSTEM.md) and [TASK_SYSTEM_QUICK_REFERENCE.md](./TASK_SYSTEM_QUICK_REFERENCE.md) for complete details.
+
+### Project Modular Architecture ✅
 - ✅ **7 Focused Modules** - Tasks, Budget, Timeline, Files, Finance, Permissions, Activity
 - ✅ **Improved Organization** - 50% reduction in main controller size
 - ✅ **Better Maintainability** - Smaller, focused files (100-200 lines)

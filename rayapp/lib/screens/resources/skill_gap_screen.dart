@@ -47,13 +47,15 @@ class _SkillGapScreenState extends State<SkillGapScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
-    if (_error != null) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+    if (_error != null) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       const Icon(Icons.error_outline, color: AppTheme.red, size: 40),
       const SizedBox(height: 8),
       Text(_error!, style: const TextStyle(color: AppTheme.red), textAlign: TextAlign.center),
       const SizedBox(height: 12),
       TextButton(onPressed: _load, child: const Text('Retry')),
     ]));
+    }
 
     final filtered = _filtered;
     return Column(children: [

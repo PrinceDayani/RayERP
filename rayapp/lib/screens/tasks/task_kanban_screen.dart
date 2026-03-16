@@ -79,8 +79,8 @@ class _TaskKanbanScreenState extends State<TaskKanbanScreen> {
         _columns[task.status]?.removeWhere((t) => t.id == task.id);
         final updated = Task(
           id: task.id, title: task.title, description: task.description,
+          taskType: task.taskType, assignmentType: task.assignmentType,
           status: newStatus, priority: task.priority,
-          projectId: task.projectId, projectName: task.projectName,
           assignedTo: task.assignedTo, assignedBy: task.assignedBy,
           dueDate: task.dueDate, estimatedHours: task.estimatedHours,
           actualHours: task.actualHours, column: newStatus, order: task.order,

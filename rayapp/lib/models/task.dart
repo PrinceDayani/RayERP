@@ -189,10 +189,12 @@ class Task {
   final String id;
   final String title;
   final String description;
+  final String taskType; // 'individual' or 'project'
+  final String assignmentType; // 'assigned' or 'self-assigned'
   final String status;
   final String priority;
-  final String projectId;
-  final String projectName;
+  final String? projectId;
+  final String? projectName;
   final TaskAssignee? assignedTo;
   final TaskAssignee? assignedBy;
   final DateTime? dueDate;
@@ -221,10 +223,12 @@ class Task {
     required this.id,
     required this.title,
     required this.description,
+    required this.taskType,
+    required this.assignmentType,
     required this.status,
     required this.priority,
-    required this.projectId,
-    required this.projectName,
+    this.projectId,
+    this.projectName,
     this.assignedTo,
     this.assignedBy,
     this.dueDate,
@@ -251,6 +255,9 @@ class Task {
   });
 
   bool get hasActiveTimer => timeEntries.any((e) => e.isActive);
+  bool get isIndividualTask => taskType == 'individual';
+  bool get isProjectTask => taskType == 'project';
+  bool get isSelfAssigned => assignmentType == 'self-assigned';
 
   int get totalLoggedMinutes => timeEntries.fold(0, (sum, e) => sum + e.duration);
 
@@ -262,10 +269,12 @@ class Task {
       id: json['_id'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
+      taskType: json['taskType'] ?? 'individual',
+      assignmentType: json['assignmentType'] ?? 'assigned',
       status: json['status'] ?? 'todo',
       priority: json['priority'] ?? 'medium',
-      projectId: project is Map ? (project['_id'] ?? '') : (project?.toString() ?? ''),
-      projectName: project is Map ? (project['name'] ?? '') : '',
+      projectId: project is Map ? (project['_id'] ?? '') : (project?.toString()),
+      projectName: project is Map ? (project['name'] ?? '') : null,
       assignedTo: json['assignedTo'] != null ? TaskAssignee.fromJson(json['assignedTo']) : null,
       assignedBy: json['assignedBy'] != null ? TaskAssignee.fromJson(json['assignedBy']) : null,
       dueDate: json['dueDate'] != null ? DateTime.tryParse(json['dueDate']) : null,

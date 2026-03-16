@@ -202,7 +202,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             : ListView.separated(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 itemCount: history.length,
-                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                separatorBuilder: (_, _) => const Divider(height: 1),
                                 itemBuilder: (_, i) {
                                   final h = history[i];
                                   final ts = h['timestamp'] != null ? DateTime.tryParse(h['timestamp']) : null;

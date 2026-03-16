@@ -134,7 +134,6 @@ export const createDepartmentBudget = async (req: Request, res: Response) => {
       metadata: { departmentId, fiscalYear }
     });
 
-    console.log('Department created successfully:', department);
     clearBudgetCache();
     res.status(201).json({ success: true, data: budget, message: 'Budget created and sent for approval' });
   } catch (error: any) {

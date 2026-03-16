@@ -172,9 +172,9 @@ class _TaskCalendarScreenState extends State<TaskCalendarScreen> {
                                                 fontSize: 13,
                                                 fontWeight:
                                                     FontWeight.w600)),
-                                        if (t.projectName.isNotEmpty)
+                                        if (t.projectName?.isNotEmpty ?? false)
                                           Text(t.projectName,
-                                              style: const TextStyle(
+                                          Text(t.projectName ?? '',
                                                   fontSize: 11,
                                                   color: AppTheme
                                                       .textSecondary)),

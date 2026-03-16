@@ -168,7 +168,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             child: ListView.separated(
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               itemCount: _displayed.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
+                              separatorBuilder: (_, _) => const Divider(height: 1, indent: 16),
                               itemBuilder: (_, i) => _NotificationTile(
                                 notification: _displayed[i],
                                 onTap: () => _markRead(_displayed[i]),

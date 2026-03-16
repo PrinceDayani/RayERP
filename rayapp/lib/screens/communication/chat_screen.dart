@@ -71,7 +71,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       : ListView.separated(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemCount: _chats.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+                          separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
                           itemBuilder: (_, i) => _ChatTile(
                             chat: _chats[i],
                             currentUserId: userId,
@@ -365,7 +365,7 @@ class _ChatDetailScreenState extends State<_ChatDetailScreen> {
                 children: [
                   Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                   Consumer<SocketService>(
-                    builder: (_, s, __) => Text(
+                    builder: (_, s, _) => Text(
                       s.isConnected ? 'Online' : 'Connecting…',
                       style: TextStyle(
                         fontSize: 11,
@@ -753,7 +753,7 @@ class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderState
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) => Row(
+      builder: (_, _) => Row(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(3, (i) {
           final offset = ((_ctrl.value * 3) - i).clamp(0.0, 1.0);

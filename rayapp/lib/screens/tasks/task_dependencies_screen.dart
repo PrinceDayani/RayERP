@@ -57,9 +57,10 @@ class _TaskDependenciesScreenState extends State<TaskDependenciesScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
     if (mounted) setState(() => _saving = false);
   }
@@ -76,9 +77,10 @@ class _TaskDependenciesScreenState extends State<TaskDependenciesScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.red));
+      }
     }
   }
 
@@ -150,7 +152,7 @@ class _TaskDependenciesScreenState extends State<TaskDependenciesScreen> {
                         fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _selectedTaskId,
+                  initialValue: _selectedTaskId,
                   decoration:
                       const InputDecoration(labelText: 'Depends on Task'),
                   items: _allTasks
@@ -165,7 +167,7 @@ class _TaskDependenciesScreenState extends State<TaskDependenciesScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _depType,
+                  initialValue: _depType,
                   decoration:
                       const InputDecoration(labelText: 'Dependency Type'),
                   items: _depTypes

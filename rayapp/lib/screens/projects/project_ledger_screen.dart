@@ -177,7 +177,7 @@ class _JournalTab extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: entries.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final e = entries[i];
         final status = e['status'] ?? 'draft';
@@ -248,7 +248,7 @@ class _LedgerTab extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: entries.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final e = entries[i];
         final debit = (e['debit'] ?? 0).toDouble();
