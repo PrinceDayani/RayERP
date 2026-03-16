@@ -207,7 +207,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                               return ListView.separated(
                                 padding: EdgeInsets.fromLTRB(h, 8, h, 80),
                                 itemCount: _filtered.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                separatorBuilder: (_, _) => const SizedBox(height: 8),
                                 itemBuilder: (_, i) => _TaskCard(
                                   task: _filtered[i],
                                   statusColor: _statusColor,
@@ -450,12 +450,12 @@ class _TaskCardState extends State<_TaskCard> {
                       AppTheme.taskStatusColor(t.status),
                       AppTheme.taskStatusBg(t.status)),
                   const SizedBox(width: 6),
-                  if (t.projectName?.isNotEmpty ?? false) ...[
+                  if (t.projectName.isNotEmpty) ...[
                     const Icon(Icons.folder_outlined, size: 11, color: AppTheme.textMuted),
                     const SizedBox(width: 3),
                     Flexible(
                       child: Text(
-                        t.projectName ?? '',
+                        t.projectName,
                         style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
                         overflow: TextOverflow.ellipsis,
                       ),
