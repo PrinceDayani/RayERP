@@ -144,6 +144,42 @@ export default function TaskFilters({ onExport }: TaskFiltersProps) {
               </div>
               
               <div>
+                <Label>Task Type</Label>
+                <Select 
+                  value={state.filters.taskType || 'all'} 
+                  onValueChange={(value) => actions.setFilters({ taskType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="individual">Individual</SelectItem>
+                    <SelectItem value="project">Project</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label>Assignment Type</Label>
+                <Select 
+                  value={state.filters.assignmentType || 'all'} 
+                  onValueChange={(value) => actions.setFilters({ assignmentType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Assignments</SelectItem>
+                    <SelectItem value="self-assigned">Self-Assigned</SelectItem>
+                    <SelectItem value="manager-assigned">Manager-Assigned</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <div>
                 <Label>Project</Label>
                 <Select 
                   value={state.filters.project} 

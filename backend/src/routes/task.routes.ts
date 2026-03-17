@@ -16,12 +16,18 @@ import {
   removeWatcher,
   getTaskTemplates,
   createFromTemplate,
+  saveAsTemplate,
+  updateTemplate,
+  deleteTemplate,
   startTimeTracking,
   stopTimeTracking,
   addAttachment,
   removeAttachment,
   addTag,
-  removeTag
+  removeTag,
+  addCustomField,
+  removeCustomField,
+  updateCustomField
 } from '../controllers/taskController';
 import {
   addSubtask,
@@ -52,6 +58,25 @@ import {
   exportICalendar,
   syncGoogleCalendar
 } from '../controllers/taskCalendarController';
+import {
+  getTaskAnalytics,
+  getProductivityMetrics,
+  getProjectAnalytics
+} from '../controllers/taskAnalyticsController';
+import {
+  getGanttChartData,
+  updateGanttTask
+} from '../controllers/taskGanttController';
+import {
+  bulkDelete,
+  bulkAssign,
+  bulkStatusChange,
+  bulkPriorityChange,
+  bulkAddTags,
+  bulkSetDueDate,
+  bulkClone,
+  bulkArchive
+} from '../controllers/taskBulkController';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/rbac.middleware';
 import { requireTaskPermission } from '../middleware/taskPermission.middleware';
@@ -120,6 +145,9 @@ router.post('/:id/watchers', validateObjectId(), validateRequiredFields(['userId
 router.delete('/:id/watchers', validateObjectId(), validateRequiredFields(['userId']), removeWatcher);
 router.get('/templates/all', getTaskTemplates);
 router.post('/templates/:id/create', validateObjectId(), createFromTemplate);
+router.post('/:id/templates/save', validateObjectId(), validateRequiredFields(['templateName']), saveAsTemplate);
+router.put('/templates/:id', validateObjectId(), updateTemplate);
+router.delete('/templates/:id', validateObjectId(), deleteTemplate);
 
 router.post('/:id/time/start', validateObjectId(), validateRequiredFields(['user']), startTimeTracking);
 router.post('/:id/time/stop', validateObjectId(), validateRequiredFields(['user']), stopTimeTracking);
@@ -158,5 +186,29 @@ router.get('/calendar/view', getCalendarView);
 router.get('/calendar/timeline', getTimelineView);
 router.get('/calendar/export', exportICalendar);
 router.post('/calendar/sync/google', validateRequiredFields(['accessToken', 'calendarId']), syncGoogleCalendar);
+
+// Analytics
+router.get('/analytics', getTaskAnalytics);
+router.get('/analytics/productivity', getProductivityMetrics);
+router.get('/analytics/project', getProjectAnalytics);
+
+// Gantt Chart
+router.get('/gantt', getGanttChartData);
+router.patch('/gantt/:id', validateObjectId(), updateGanttTask);
+
+// Bulk Operations
+router.delete('/bulk/delete', validateRequiredFields(['taskIds']), bulkDelete);
+router.patch('/bulk/assign', validateRequiredFields(['taskIds', 'assignedTo']), bulkAssign);
+router.patch('/bulk/status', validateRequiredFields(['taskIds', 'status']), bulkStatusChange);
+router.patch('/bulk/priority', validateRequiredFields(['taskIds', 'priority']), bulkPriorityChange);
+router.patch('/bulk/tags', validateRequiredFields(['taskIds', 'tags']), bulkAddTags);
+router.patch('/bulk/due-date', validateRequiredFields(['taskIds', 'dueDate']), bulkSetDueDate);
+router.post('/bulk/clone', validateRequiredFields(['taskIds']), bulkClone);
+router.patch('/bulk/archive', validateRequiredFields(['taskIds']), bulkArchive);
+
+// Custom Fields
+router.post('/:id/custom-fields', validateObjectId(), validateRequiredFields(['fieldName', 'fieldType']), addCustomField);
+router.delete('/:id/custom-fields/:fieldName', validateObjectId(), removeCustomField);
+router.patch('/:id/custom-fields/:fieldName', validateObjectId(), validateRequiredFields(['value']), updateCustomField);
 
 export default router;

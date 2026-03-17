@@ -735,6 +735,51 @@ export const createFromTemplate = async (req: Request, res: Response) => {
   }
 };
 
+export const saveAsTemplate = async (req: Request, res: Response) => {
+  try {
+    const { templateName } = req.body;
+    if (!templateName?.trim()) return res.status(400).json({ message: 'Template name required' });
+    
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const { _id, createdAt, updatedAt, timeEntries, comments, actualHours, ...templateData } = task.toObject();
+    const template = new Task({ ...templateData, isTemplate: true, templateName: templateName.trim() });
+    await template.save();
+    
+    res.status(201).json({ success: true, template });
+  } catch (error) {
+    res.status(400).json({ message: 'Error saving template', error });
+  }
+};
+
+export const updateTemplate = async (req: Request, res: Response) => {
+  try {
+    const template = await Task.findById(req.params.id);
+    if (!template || !template.isTemplate) return res.status(404).json({ message: 'Template not found' });
+    
+    Object.assign(template, req.body);
+    template.isTemplate = true;
+    await template.save();
+    
+    res.json({ success: true, template });
+  } catch (error) {
+    res.status(400).json({ message: 'Error updating template', error });
+  }
+};
+
+export const deleteTemplate = async (req: Request, res: Response) => {
+  try {
+    const template = await Task.findById(req.params.id);
+    if (!template || !template.isTemplate) return res.status(404).json({ message: 'Template not found' });
+    
+    await Task.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Template deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting template', error });
+  }
+};
+
 export const startTimeTracking = async (req: Request, res: Response) => {
   try {
     const { user, description } = req.body;
@@ -932,5 +977,94 @@ export const removeTag = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error removing tag:', error);
     res.status(500).json({ message: 'Error removing tag', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+// Custom Fields
+export const addCustomField = async (req: Request, res: Response) => {
+  try {
+    const { fieldName, fieldType, value, options } = req.body;
+    
+    if (!fieldName?.trim() || !fieldType) {
+      return res.status(400).json({ message: 'Field name and type are required' });
+    }
+    
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const existingField = task.customFields.find(f => f.fieldName === fieldName);
+    if (existingField) {
+      return res.status(400).json({ message: 'Custom field with this name already exists' });
+    }
+    
+    const customField: any = { fieldName, fieldType, value };
+    if (fieldType === 'select' || fieldType === 'multiselect') {
+      customField.options = options || [];
+    }
+    
+    task.customFields.push(customField);
+    await task.save();
+    
+    const { io } = await import('../server');
+    io.emit('task:customField:added', { taskId: task._id, field: task.customFields[task.customFields.length - 1] });
+    
+    res.json({ success: true, field: task.customFields[task.customFields.length - 1] });
+  } catch (error) {
+    console.error('Error adding custom field:', error);
+    res.status(500).json({ message: 'Error adding custom field', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const removeCustomField = async (req: Request, res: Response) => {
+  try {
+    const { fieldName } = req.params;
+    
+    if (!fieldName) return res.status(400).json({ message: 'Field name is required' });
+    
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const initialLength = task.customFields.length;
+    task.customFields = task.customFields.filter(f => f.fieldName !== fieldName);
+    
+    if (task.customFields.length === initialLength) {
+      return res.status(404).json({ message: 'Custom field not found' });
+    }
+    
+    await task.save();
+    
+    const { io } = await import('../server');
+    io.emit('task:customField:removed', { taskId: task._id, fieldName });
+    
+    res.json({ success: true, message: 'Custom field removed successfully' });
+  } catch (error) {
+    console.error('Error removing custom field:', error);
+    res.status(500).json({ message: 'Error removing custom field', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+export const updateCustomField = async (req: Request, res: Response) => {
+  try {
+    const { fieldName } = req.params;
+    const { value } = req.body;
+    
+    if (!fieldName) return res.status(400).json({ message: 'Field name is required' });
+    
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    
+    const field = task.customFields.find(f => f.fieldName === fieldName);
+    if (!field) return res.status(404).json({ message: 'Custom field not found' });
+    
+    field.value = value;
+    await task.save();
+    
+    const { io } = await import('../server');
+    io.emit('task:customField:updated', { taskId: task._id, fieldName, value });
+    
+    res.json({ success: true, field });
+  } catch (error) {
+    console.error('Error updating custom field:', error);
+    res.status(500).json({ message: 'Error updating custom field', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

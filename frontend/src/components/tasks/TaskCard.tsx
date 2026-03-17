@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AccessLevelIndicator } from "@/components/ui/access-level-indicator";
 import { AccessRequestDialog } from "@/components/ui/access-request-dialog";
+import { AssignmentTypeIndicator } from "./AssignmentTypeIndicator";
 import { Calendar, User, Edit, Eye, Trash2, UserPlus, Tag, CheckSquare, Paperclip, Users as UsersIcon, Clock, Square } from "lucide-react";
 
 interface Task {
@@ -83,12 +84,11 @@ export default function TaskCard({ task, onView, onEdit, onDelete }: TaskCardPro
                 showRequestAccess={isBasicView}
                 onRequestAccess={() => setShowAccessRequest(true)}
               />
-              {task.taskType === 'individual' && (
-                <Badge variant="outline" className="text-xs"><User className="h-3 w-3 mr-1" />Individual</Badge>
-              )}
-              {task.assignmentType === 'self-assigned' && (
-                <Badge variant="outline" className="text-xs">Self</Badge>
-              )}
+              <AssignmentTypeIndicator 
+                assignmentType={task.assignmentType}
+                taskType={task.taskType}
+                size="sm"
+              />
               {task.isRecurring && (
                 <Badge variant="outline" className="text-xs"><Square className="h-3 w-3 mr-1" />Recurring</Badge>
               )}

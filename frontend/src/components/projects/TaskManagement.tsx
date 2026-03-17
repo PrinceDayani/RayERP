@@ -3,16 +3,26 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Plus, Edit, Trash2, Clock, User, CheckCircle, PlayCircle, PauseCircle, ListTodo, Eye } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CalendarIcon, Plus, Edit, Trash2, Clock, User, CheckCircle, PlayCircle, PauseCircle, ListTodo, Eye, Download, Calendar as CalendarViewIcon, GripVertical } from "lucide-react";
 import { tasksAPI, Task } from "@/lib/api/tasksAPI";
 import { projectsAPI } from "@/lib/api/projectsAPI";
+import employeesAPI from "@/lib/api/employeesAPI";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import TaskDialogs from "@/components/tasks/TaskDialogs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import ProjectTaskFilters from "./ProjectTaskFilters";
+import BulkActionsToolbar from "./BulkActionsToolbar";
+import TaskCalendarView from "./TaskCalendarView";
+import GanttChart from "@/components/tasks/GanttChart";
+import { TaskAnalyticsDashboard } from "@/components/tasks/TaskAnalyticsDashboard";
+import { exportFilteredTasks } from "@/utils/exportTasks";
+import { AssignmentTypeIndicator } from "@/components/tasks/AssignmentTypeIndicator";
 
 interface TaskManagementProps {
   projectId?: string;
@@ -21,17 +31,40 @@ interface TaskManagementProps {
 
 const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectTasks = false }) => {
   const { user } = useAuth();
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [draggedTask, setDraggedTask] = useState<string | null>(null);
+  const [draggedOverColumn, setDraggedOverColumn] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"kanban" | "list" | "calendar" | "gantt" | "analytics">("kanban");
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    priority: 'all',
+    assignee: 'all',
+    taskType: 'all',
+    assignmentType: 'all',
+    overdue: false
+  });
 
   useEffect(() => {
     fetchTasks();
+    fetchEmployees();
   }, [projectId]);
+
+  const fetchEmployees = async () => {
+    try {
+      const data = await employeesAPI.getAll();
+      setEmployees(data || []);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -77,9 +110,74 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
   };
 
   const openViewDialog = (task: Task) => {
-    setSelectedTask(task);
-    setIsViewDialogOpen(true);
+    // Navigate to full page instead of dialog
+    router.push(`/dashboard/tasks/${task._id}`);
   };
+
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTasks(prev => 
+      prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
+    );
+  };
+
+  const handleBulkStatusUpdate = async (status: string) => {
+    try {
+      await tasksAPI.bulkUpdate(selectedTasks, { status });
+      toast({ title: "Success", description: `${selectedTasks.length} tasks updated` });
+      setSelectedTasks([]);
+      fetchTasks();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update tasks", variant: "destructive" });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Delete ${selectedTasks.length} tasks?`)) return;
+    try {
+      await Promise.all(selectedTasks.map(id => tasksAPI.delete(id)));
+      toast({ title: "Success", description: `${selectedTasks.length} tasks deleted` });
+      setSelectedTasks([]);
+      fetchTasks();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete tasks", variant: "destructive" });
+    }
+  };
+
+  const handleBulkAssign = async (userId: string) => {
+    try {
+      await tasksAPI.bulkUpdate(selectedTasks, { assignedTo: userId });
+      toast({ title: "Success", description: `${selectedTasks.length} tasks assigned` });
+      setSelectedTasks([]);
+      fetchTasks();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to assign tasks", variant: "destructive" });
+    }
+  };
+
+  const handleExportCSV = () => {
+    exportFilteredTasks(filteredTasks, filters);
+    toast({ title: "Success", description: "Tasks exported to CSV" });
+  };
+
+  const filteredTasks = tasks.filter(task => {
+    if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase()) && 
+        !task.description.toLowerCase().includes(filters.search.toLowerCase())) {
+      return false;
+    }
+    if (filters.status && filters.status !== 'all' && task.status !== filters.status) return false;
+    if (filters.priority && filters.priority !== 'all' && task.priority !== filters.priority) return false;
+    if (filters.assignee && filters.assignee !== 'all') {
+      const assigneeId = typeof task.assignedTo === 'object' ? task.assignedTo._id : task.assignedTo;
+      if (assigneeId !== filters.assignee) return false;
+    }
+    if (filters.taskType && filters.taskType !== 'all' && (task as any).taskType !== filters.taskType) return false;
+    if (filters.assignmentType && filters.assignmentType !== 'all' && (task as any).assignmentType !== filters.assignmentType) return false;
+    if (filters.overdue) {
+      if (!task.dueDate || task.status === 'completed') return false;
+      if (new Date(task.dueDate) >= new Date()) return false;
+    }
+    return true;
+  });
 
   const getAssignedUserName = (task: Task) => {
     if (typeof task.assignedTo === 'object' && task.assignedTo) {
@@ -145,14 +243,57 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
   }) => {
     const statuses: Task["status"][] = ['todo', 'in-progress', 'review', 'completed'];
     
+    const handleDragStart = (e: React.DragEvent, taskId: string) => {
+      setDraggedTask(taskId);
+      e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragEnd = () => {
+      setDraggedTask(null);
+      setDraggedOverColumn(null);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDragEnter = (status: string) => {
+      setDraggedOverColumn(status);
+    };
+
+    const handleDragLeave = () => {
+      setDraggedOverColumn(null);
+    };
+
+    const handleDrop = async (e: React.DragEvent, newStatus: Task["status"]) => {
+      e.preventDefault();
+      if (draggedTask) {
+        const task = tasks.find(t => t._id === draggedTask);
+        if (task && task.status !== newStatus) {
+          await onStatusChange(draggedTask, newStatus);
+        }
+      }
+      setDraggedTask(null);
+      setDraggedOverColumn(null);
+    };
+    
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statuses.map((status) => {
           const statusTasks = tasks.filter(task => task.status === status);
+          const isDraggedOver = draggedOverColumn === status;
           
           return (
-            <div key={status} className="space-y-4">
-              <Card className={`border-t-4 ${getStatusBorderColor(status)}`}>
+            <div 
+              key={status} 
+              className="space-y-4"
+              onDragOver={handleDragOver}
+              onDragEnter={() => handleDragEnter(status)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, status)}
+            >
+              <Card className={`border-t-4 ${getStatusBorderColor(status)} ${isDraggedOver ? 'border-primary border-2' : ''}`}>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     {getStatusIcon(status)}
@@ -166,11 +307,39 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
               
               <div className="space-y-3 min-h-[400px]">
                 {statusTasks.map((task) => (
-                  <Card key={task._id} className="hover:shadow-md transition-all duration-200 cursor-pointer">
+                  <Card 
+                    key={task._id} 
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, task._id)}
+                    onDragEnd={handleDragEnd}
+                    className={`hover:shadow-md transition-all duration-200 cursor-move ${
+                      draggedTask === task._id ? 'opacity-50 scale-95' : ''
+                    }`}
+                  >
                     <CardContent className="p-4">
                       <div className="space-y-3">
                         <div className="flex items-start justify-between">
-                          <h4 className="font-medium text-sm leading-tight">{task.title}</h4>
+                          <div className="flex items-start gap-2 flex-1">
+                            <GripVertical className="h-4 w-4 text-muted-foreground mt-1 flex-shrink-0" />
+                            <Checkbox
+                              checked={selectedTasks.includes(task._id)}
+                              onCheckedChange={() => toggleTaskSelection(task._id)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm leading-tight cursor-pointer" onClick={() => openViewDialog(task)}>
+                                {task.title}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                <AssignmentTypeIndicator
+                                  assignmentType={(task as any).assignmentType}
+                                  taskType={(task as any).taskType}
+                                  size="sm"
+                                  showText={false}
+                                />
+                              </div>
+                            </div>
+                          </div>
                           <div className="flex gap-1">
                             {task.status !== 'completed' && (
                               <Button 
@@ -296,7 +465,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
                   {task.dueDate && (
                     <div className="flex items-center gap-1">
                       <CalendarIcon className="h-4 w-4" />
-                      {format(new Date(task.dueDate), "MMM dd, yyyy")}
+                      {new Date(task.dueDate).toLocaleDateString()}
                     </div>
                   )}
                   {task.estimatedHours && (
@@ -373,28 +542,60 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
         </Button>
       </div>
 
-      <div className="flex gap-4 items-center">
+      <div className="flex gap-4 items-center flex-wrap">
         <div className="flex gap-2">
           <Button 
             variant={viewMode === "kanban" ? "default" : "outline"} 
             onClick={() => setViewMode("kanban")}
             size="sm"
           >
-            Kanban View
+            Kanban
           </Button>
           <Button 
             variant={viewMode === "list" ? "default" : "outline"} 
             onClick={() => setViewMode("list")}
             size="sm"
           >
-            List View
+            List
+          </Button>
+          <Button 
+            variant={viewMode === "calendar" ? "default" : "outline"} 
+            onClick={() => setViewMode("calendar")}
+            size="sm"
+          >
+            <CalendarViewIcon className="h-4 w-4 mr-2" />
+            Calendar
+          </Button>
+          <Button 
+            variant={viewMode === "gantt" ? "default" : "outline"} 
+            onClick={() => setViewMode("gantt")}
+            size="sm"
+          >
+            Gantt
+          </Button>
+          <Button 
+            variant={viewMode === "analytics" ? "default" : "outline"} 
+            onClick={() => setViewMode("analytics")}
+            size="sm"
+          >
+            Analytics
           </Button>
         </div>
+        <Button variant="outline" size="sm" onClick={handleExportCSV}>
+          <Download className="h-4 w-4 mr-2" />
+          Export CSV
+        </Button>
       </div>
+
+      <ProjectTaskFilters
+        filters={filters}
+        onFilterChange={setFilters}
+        employees={employees}
+      />
 
       {viewMode === "kanban" ? (
         <KanbanView 
-          tasks={tasks} 
+          tasks={filteredTasks} 
           onStatusChange={handleStatusChange}
           onEditTask={openEditDialog}
           onDeleteTask={(taskId) => {
@@ -408,9 +609,18 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
             }
           }}
         />
+      ) : viewMode === "calendar" ? (
+        <TaskCalendarView
+          tasks={filteredTasks}
+          onTaskClick={openViewDialog}
+        />
+      ) : viewMode === "gantt" ? (
+        <GanttChart projectId={projectId} />
+      ) : viewMode === "analytics" ? (
+        <TaskAnalyticsDashboard projectId={projectId} />
       ) : (
         <ListView 
-          tasks={tasks} 
+          tasks={filteredTasks} 
           onStatusChange={handleStatusChange}
           onEditTask={openEditDialog}
           onDeleteTask={(taskId) => {
@@ -425,6 +635,15 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
           }}
         />
       )}
+
+      <BulkActionsToolbar
+        selectedTasks={selectedTasks}
+        onClearSelection={() => setSelectedTasks([])}
+        onBulkStatusUpdate={handleBulkStatusUpdate}
+        onBulkDelete={handleBulkDelete}
+        onBulkAssign={handleBulkAssign}
+        employees={employees}
+      />
 
       <TaskDialogs
         createDialog={{
@@ -449,14 +668,6 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
           open: false,
           onOpenChange: () => {},
           task: null
-        }}
-        viewDialog={{
-          open: isViewDialogOpen,
-          onOpenChange: (open) => {
-            setIsViewDialogOpen(open);
-            if (!open) setSelectedTask(null);
-          },
-          task: selectedTask
         }}
       />
     </div>

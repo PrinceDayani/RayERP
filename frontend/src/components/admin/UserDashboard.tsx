@@ -24,9 +24,9 @@ import { trendsAPI, TrendsResponse } from "@/lib/api/trendsAPI";
 import { analyticsAPI } from "@/lib/api/analyticsAPI";
 
 const AnalyticsCharts = lazy(() => import('@/components/Dashboard/AnalyticsCharts'));
-const EmployeeList = lazy(() => import('@/components/employee').then(m => ({ default: m.EmployeeList })));
-const ProjectList = lazy(() => import('@/components/projects').then(m => ({ default: m.ProjectList })));
-const TaskList = lazy(() => import('@/components/tasks').then(m => ({ default: m.TaskList })));
+const EmployeeList = lazy(() => import('@/components/employee/EmployeeList'));
+const ProjectList = lazy(() => import('@/components/projects/ProjectList'));
+const TaskList = lazy(() => import('@/components/tasks/TaskList'));
 
 interface AnalyticsData {
   projectProgress: Array<{ name: string; progress: number; status: string }>;

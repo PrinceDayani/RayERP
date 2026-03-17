@@ -82,8 +82,9 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
     fetchData();
   }, []);
 
+  // Edit dialog effect - handles task data population
   useEffect(() => {
-    if (editDialog.task) {
+    if (editDialog.open && editDialog.task?._id) {
       const task = editDialog.task;
       setFormData({
         title: task.title,
@@ -104,23 +105,34 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
       
       if (task.tags && Array.isArray(task.tags)) {
         setTags(task.tags.map(t => typeof t === 'object' ? t : { name: t, color: '#3b82f6' }));
+      } else {
+        setTags([]);
       }
       if (task.checklist) {
         setChecklist(task.checklist.map(c => ({ text: c.text, completed: c.completed })));
+      } else {
+        setChecklist([]);
       }
       if (task.watchers) {
         setWatchers(task.watchers.map(w => typeof w === 'object' ? w._id : w));
+      } else {
+        setWatchers([]);
       }
       if (task.dependencies) {
         setDependencies(task.dependencies.map(d => ({
           taskId: typeof d.taskId === 'object' ? d.taskId._id : d.taskId,
           type: d.type
         })));
+      } else {
+        setDependencies([]);
       }
       setIsRecurring(task.isRecurring || false);
       setRecurrencePattern(task.recurrencePattern || '');
+    } else if (!editDialog.open) {
+      // Reset form when dialog closes
+      resetForm();
     }
-  }, [editDialog.task]);
+  }, [editDialog.open, editDialog.task]);
 
   const fetchData = async () => {
     try {
@@ -288,15 +300,30 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
 
     setLoading(true);
     try {
-      await tasksAPI.update(editDialog.task._id, {
+      const updateData: any = {
         title: formData.title,
         description: formData.description,
+        taskType: formData.taskType,
+        assignmentType: formData.assignmentType,
         priority: formData.priority,
         status: formData.status,
         dueDate: formData.dueDate,
         estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : 0,
+        tags: tags,
+        checklist: checklist,
+        watchers: watchers,
+        isRecurring,
+        recurrencePattern: isRecurring ? recurrencePattern : undefined,
+        parentTask: formData.parentTask || undefined,
+        blockedBy: formData.blockedBy || undefined,
         updatedBy: user?._id
-      });
+      };
+      
+      if (formData.taskType === 'project') {
+        updateData.project = formData.project;
+      }
+      
+      await tasksAPI.update(editDialog.task._id, updateData);
 
       editDialog.onOpenChange(false);
       resetForm();
@@ -481,10 +508,10 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
                   
                   <div className="col-span-2">
                     <Label htmlFor="parentTask">Parent Task (Optional)</Label>
-                    <Select onValueChange={(value) => setFormData(prev => ({ ...prev, parentTask: value }))} value={formData.parentTask}>
+                    <Select onValueChange={(value) => setFormData(prev => ({ ...prev, parentTask: value === 'none' ? '' : value }))} value={formData.parentTask || 'none'}>
                       <SelectTrigger><SelectValue placeholder="Select parent task" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {allTasks.filter(t => t._id !== editDialog.task?._id).map((task) => (
                           <SelectItem key={task._id} value={task._id}>{task.title}</SelectItem>
                         ))}
@@ -746,10 +773,10 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
                   
                   <div className="col-span-2">
                     <Label htmlFor="edit-parentTask">Parent Task (Optional)</Label>
-                    <Select onValueChange={(value) => setFormData(prev => ({ ...prev, parentTask: value }))} value={formData.parentTask}>
+                    <Select onValueChange={(value) => setFormData(prev => ({ ...prev, parentTask: value === 'none' ? '' : value }))} value={formData.parentTask || 'none'}>
                       <SelectTrigger><SelectValue placeholder="Select parent task" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {allTasks.filter(t => t._id !== editDialog.task?._id).map((task) => (
                           <SelectItem key={task._id} value={task._id}>{task.title}</SelectItem>
                         ))}

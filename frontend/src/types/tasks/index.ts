@@ -99,3 +99,90 @@ export interface Dependency {
   taskId: string;
   type: 'finish-to-start' | 'start-to-start' | 'finish-to-finish' | 'start-to-finish';
 }
+
+export interface Comment {
+  _id?: string;
+  user: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
+  comment: string;
+  mentions?: string[];
+  createdAt: Date;
+}
+
+export interface Subtask {
+  _id?: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  assignedTo: string;
+  assignedBy: string;
+  completed: boolean;
+  parentTask: string;
+}
+
+export interface CustomField {
+  _id?: string;
+  fieldName: string;
+  fieldType: 'text' | 'number' | 'date' | 'boolean' | 'select';
+  value: any;
+  options?: string[];
+}
+
+export interface RecurringPattern {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number;
+  endDate?: Date;
+  daysOfWeek?: number[];
+  dayOfMonth?: number;
+}
+
+export interface SavedSearch {
+  _id: string;
+  name: string;
+  filters: any;
+  createdBy: string;
+  createdAt: Date;
+}
+
+export interface TaskTemplate {
+  _id: string;
+  name: string;
+  description: string;
+  taskData: Partial<Task>;
+  createdBy: string;
+  createdAt: Date;
+}
+
+export interface Task {
+  _id: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  taskType: TaskType;
+  assignmentType: AssignmentType;
+  project?: any;
+  assignedTo: any;
+  assignedBy: any;
+  dueDate?: Date;
+  estimatedHours?: number;
+  actualHours?: number;
+  tags?: Tag[];
+  checklist?: ChecklistItem[];
+  subtasks?: Subtask[];
+  dependencies?: Dependency[];
+  watchers?: any[];
+  timeEntries?: TimeEntry[];
+  attachments?: Attachment[];
+  comments?: Comment[];
+  customFields?: CustomField[];
+  isRecurring?: boolean;
+  recurrencePattern?: RecurringPattern;
+  nextRecurrence?: Date;
+  isTemplate?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}

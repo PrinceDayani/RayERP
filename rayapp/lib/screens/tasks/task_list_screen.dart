@@ -11,6 +11,7 @@ import 'task_analytics_screen.dart';
 import 'task_calendar_screen.dart';
 import 'task_kanban_screen.dart';
 import 'task_templates_screen.dart';
+import '../../widgets/tasks/assignment_type_indicator.dart';
 
 class TaskListScreen extends StatefulWidget {
   final String? projectId;
@@ -450,12 +451,17 @@ class _TaskCardState extends State<_TaskCard> {
                       AppTheme.taskStatusColor(t.status),
                       AppTheme.taskStatusBg(t.status)),
                   const SizedBox(width: 6),
-                  if (t.projectName.isNotEmpty) ...[
+                  AssignmentTypeIndicator(
+                    assignmentType: t.assignmentType,
+                    taskType: t.taskType,
+                  ),
+                  const SizedBox(width: 6),
+                  if (t.projectName?.isNotEmpty ?? false) ...[
                     const Icon(Icons.folder_outlined, size: 11, color: AppTheme.textMuted),
                     const SizedBox(width: 3),
                     Flexible(
                       child: Text(
-                        t.projectName,
+                        t.projectName ?? '',
                         style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -431,7 +431,7 @@ class _EmployeePickerSheetState extends State<_EmployeePickerSheet> {
                   value: selected,
                   activeColor: AppTheme.primary,
                   title: Text('${e.firstName} ${e.lastName}', style: const TextStyle(fontSize: 13)),
-                  subtitle: Text(e.position!, style: const TextStyle(fontSize: 11)),
+                  subtitle: Text(e.position, style: const TextStyle(fontSize: 11)),
                   onChanged: (_) => setState(() {
                     if (selected) {
                       _sel.remove(e.id);

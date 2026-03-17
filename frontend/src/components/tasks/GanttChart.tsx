@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { tasksAPI } from '@/lib/api/tasksAPI';
 
 interface GanttTask {
   id: string;
@@ -27,14 +28,7 @@ export default function GanttChart({ projectId }: GanttChartProps) {
 
   const fetchTimeline = async () => {
     try {
-      const params = new URLSearchParams();
-      if (projectId) params.append('projectId', projectId);
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tasks/calendar/timeline?${params}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth-token')}` }
-      });
-
-      const data = await response.json();
+      const data = await tasksAPI.getTimelineView(projectId);
       setTasks(data.timeline.map((t: any) => ({
         ...t,
         start: new Date(t.start),

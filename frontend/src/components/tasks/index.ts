@@ -1,25 +1,46 @@
+// Task Feature Components
+export { TaskCloneDialog } from './TaskCloneDialog';
+export { TaskComments } from './TaskComments';
+export { TaskTags } from './TaskTags';
+export { TaskAttachments } from './TaskAttachments';
+export { TaskChecklist } from './TaskChecklist';
+export { TaskSubtasks } from './TaskSubtasks';
+export { TaskDependencies } from './TaskDependencies';
+export { TaskWatchers } from './TaskWatchers';
+export { TaskCustomFields } from './TaskCustomFields';
+export { TaskRecurring } from './TaskRecurring';
+export { TaskTemplates } from './TaskTemplates';
+export { TaskAdvancedSearch } from './TaskAdvancedSearch';
+export { TaskTimeTracking } from './TaskTimeTracking';
+
+// New Components
+export { TaskTypeSelector } from './TaskTypeSelector';
+export { AssignmentTypeIndicator } from './AssignmentTypeIndicator';
+export { CriticalPathView } from './CriticalPathView';
+export { DependencyGraphView } from './DependencyGraphView';
+export { SavedSearchesManager } from './SavedSearchesManager';
+
+// Views
+export { TaskTimelineView } from './TaskTimelineView';
+export { TaskGanttChart } from './TaskGanttChart';
+export { DraggableTaskBoard } from './DraggableTaskBoard';
+
+// Calendar Integration
+export { TaskCalendarExport } from './TaskCalendarExport';
+export { TaskGoogleCalendarSync } from './TaskGoogleCalendarSync';
+
+// Analytics
+export { TaskAnalyticsDashboard } from './TaskAnalyticsDashboard';
+export { TaskStatsDashboard } from './TaskStatsDashboard';
+
+// Activity
+export { TaskActivityTimeline } from './TaskActivityTimeline';
+
 // Core Components
-export { default as TaskCard } from './TaskCard';
-export { default as TaskList } from './TaskList';
-export { default as TaskEditor } from './TaskEditor';
-
-// New Modular Components
+export { default as TaskDetailPage } from './TaskDetailPage';
 export { default as TaskBoard } from './TaskBoard';
-export { default as TaskStats } from './TaskStats';
-export { default as TaskFilters } from './TaskFilters';
+export { default as TaskCard } from './TaskCard';
 export { default as TaskDialogs } from './TaskDialogs';
-
-// Feature Components
-export { default as TimeTracker } from './TimeTracker';
-export { default as AttachmentManager } from './AttachmentManager';
-export { default as TagManager } from './TagManager';
-export { default as TaskAnalyticsDashboard } from './TaskAnalyticsDashboard';
-export { default as AdvancedSearch } from './AdvancedSearch';
-export { default as TaskPriorityIndicator } from './TaskPriorityIndicator';
-export { default as MobileTaskCard } from './MobileTaskCard';
-export { default as GanttChart } from './GanttChart';
-export { default as SubtaskManager } from './SubtaskManager';
-export { default as MentionComment } from './MentionComment';
-export { default as CustomFieldsManager } from './CustomFieldsManager';
-export { default as RecurringTaskSetup } from './RecurringTaskSetup';
-export { default as TaskDependencyManager } from './TaskDependencyManager';
+export { default as TaskFilters } from './TaskFilters';
+export { default as TaskStats } from './TaskStats';
+export { default as TaskEditor } from './TaskEditor';

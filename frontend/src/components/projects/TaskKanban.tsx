@@ -125,6 +125,11 @@ const TaskKanban: React.FC<TaskKanbanProps> = ({
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  const isOverdue = (dueDate: string) => {
+    if (!dueDate) return false;
+    return new Date(dueDate) < new Date() && new Date(dueDate).toDateString() !== new Date().toDateString();
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {columns.map((column) => (
@@ -163,6 +168,8 @@ const TaskKanban: React.FC<TaskKanbanProps> = ({
                 onDragStart={(e) => handleDragStart(e, task)}
                 className={`cursor-move hover:shadow-md transition-shadow group ${
                   draggedTask?._id === task._id ? 'opacity-50' : ''
+                } ${
+                  isOverdue(task.dueDate) && task.status !== 'completed' ? 'border-l-4 border-l-red-500' : ''
                 }`}
                 onClick={() => onTaskEdit(task)}
               >
@@ -222,9 +229,14 @@ const TaskKanban: React.FC<TaskKanbanProps> = ({
                   
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {task.dueDate && (
-                      <div className="flex items-center gap-1">
+                      <div className={`flex items-center gap-1 ${
+                        isOverdue(task.dueDate) && task.status !== 'completed' ? 'text-red-600 font-semibold' : ''
+                      }`}>
                         <Calendar className="h-3 w-3" />
                         {new Date(task.dueDate).toLocaleDateString()}
+                        {isOverdue(task.dueDate) && task.status !== 'completed' && (
+                          <span className="text-red-600">⚠️</span>
+                        )}
                       </div>
                     )}
                     {(task as any).timeEntries && (task as any).timeEntries.length > 0 && (

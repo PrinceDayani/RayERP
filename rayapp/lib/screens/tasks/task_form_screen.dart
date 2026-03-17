@@ -181,7 +181,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                   children: [
                     _field(
                       child: DropdownButtonFormField<String>(
-                        value: _taskType,
+                        initialValue: _taskType,
                         decoration:
                             const InputDecoration(labelText: 'Task Type'),
                         items: ['individual', 'project']
@@ -195,7 +195,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     ),
                     _field(
                       child: DropdownButtonFormField<String>(
-                        value: _assignmentType,
+                        initialValue: _assignmentType,
                         decoration:
                             const InputDecoration(labelText: 'Assignment Type'),
                         items: ['assigned', 'self-assigned']
@@ -380,7 +380,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                     }),
                     _field(
                       child: DropdownButtonFormField<String?>(
-                        value: _parentTaskId,
+                        initialValue: _parentTaskId,
                         decoration:
                             const InputDecoration(labelText: 'Parent Task (Optional)'),
                         items: [
@@ -395,7 +395,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                                   child: Text(t.title,
                                       style: const TextStyle(fontSize: 13),
                                       overflow: TextOverflow.ellipsis)))
-                              .toList(),
+                              ,
                         ],
                         onChanged: (v) => setState(() => _parentTaskId = v),
                       ),
