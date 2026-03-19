@@ -1,7 +1,7 @@
 'use client';
 
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { Building2 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Loading() {
   return (
@@ -15,24 +15,24 @@ export default function Loading() {
 
       <div className="text-center space-y-8 max-w-md mx-auto">
         {/* Logo and Brand */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center space-x-4">
-            <div className="h-16 w-16 bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-2xl animate-pulse">
-              <Building2 className="h-8 w-8 text-white" />
+        <div className="flex items-center justify-center mb-10">
+          <div className="flex items-center space-x-6">
+            <div className="h-32 w-32 bg-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-primary/10 p-4 border border-white/20">
+              <Image src="/RAYlogo.webp" alt="RayERP Logo" width={96} height={96} className="object-contain" priority />
             </div>
             <div className="text-left">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+              <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                 RayERP
               </h1>
-              <p className="text-muted-foreground text-lg">Enterprise Resource Planning</p>
+              <p className="text-muted-foreground text-xl mt-1">Enterprise Resource Planning</p>
             </div>
           </div>
         </div>
 
         {/* Loading Spinner */}
-        <LoadingSpinner 
-          size="xl" 
-          text="Loading RayERP..." 
+        <LoadingSpinner
+          size="xl"
+          text="Loading RayERP..."
           variant="default"
         />
 
@@ -45,8 +45,8 @@ export default function Loading() {
 
         {/* Progress Indicator */}
         <div className="w-full bg-muted rounded-full h-1 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full animate-pulse" 
-               style={{ width: '60%' }} />
+          <div className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full animate-pulse"
+            style={{ width: '60%' }} />
         </div>
       </div>
     </div>

@@ -1,11 +1,10 @@
 version: 1.0
-runtime: nodejs18
+runtime: nodejs22
 build:
   commands:
-    pre-build:
-      - npm install
     build:
-      - npx tsc -p tsconfig.build.json --noEmitOnError false || true
+      - npm install
+      - npm run build:prod
 run:
   command: node dist/server.js
   network:

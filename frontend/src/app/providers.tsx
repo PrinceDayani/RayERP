@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { ReactQueryProvider } from '@/providers/ReactQueryProvider';
+import { ThemeProvider } from 'next-themes';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isClient, setIsClient] = useState(false);
@@ -17,7 +18,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ReactQueryProvider>
         <AuthProvider>
           <CurrencyProvider>
-            {children}
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+              {children}
+            </ThemeProvider>
           </CurrencyProvider>
         </AuthProvider>
       </ReactQueryProvider>
@@ -28,7 +31,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ReactQueryProvider>
       <AuthProvider>
         <CurrencyProvider>
-          {children}
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            {children}
+          </ThemeProvider>
         </CurrencyProvider>
       </AuthProvider>
     </ReactQueryProvider>
