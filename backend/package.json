@@ -13,7 +13,7 @@
     "build:prod": "npm run validate-env && npm run clean && tsc -p tsconfig.prod.json",
     "start": "npm run validate-env && node dist/server.js",
     "start:prod": "NODE_ENV=production npm run validate-env && node dist/server.js",
-    "clean": "if exist dist rmdir /s /q dist",
+    "clean": "rm -rf dist",
     "build:clean": "npm run clean && npm run build",
     "dev:debug": "npm run validate-env && nodemon --inspect --exec ts-node --transpile-only src/server.ts",
     "seed": "npm run validate-env && ts-node --transpile-only scripts/seed.ts",
