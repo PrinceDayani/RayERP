@@ -60,10 +60,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     currency: (project as any)?.currency || 'INR',
     progress: project?.progress?.toString() || "0",
     client: project?.client || "",
-    manager: Array.isArray(project?.managers) && project.managers.length > 0 
-      ? (typeof project.managers[0] === 'object' ? (project.managers[0] as any)._id : project.managers[0])
-      : "",
   });
+  const [selectedManagers, setSelectedManagers] = useState<string[]>(
+    Array.isArray(project?.managers) 
+      ? project.managers.map(manager => typeof manager === 'object' ? (manager as any)._id : manager)
+      : []
+  );
   const [startDate, setStartDate] = useState<Date | undefined>(
     project?.startDate ? new Date(project.startDate) : undefined
   );
@@ -219,7 +221,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       currency: formData.currency.toUpperCase(),
       progress: formData.progress ? Math.min(Math.max(parseInt(formData.progress), 0), 100) : 0,
       client: formData.client.trim() || undefined,
-      manager: formData.manager || undefined,
+      managers: selectedManagers.length > 0 ? selectedManagers : [],
       team: selectedTeam.length > 0 ? selectedTeam : [],
       departments: selectedDepartments.length > 0 ? selectedDepartments : [],
       tags: tags.length > 0 ? tags : [],
@@ -445,19 +447,42 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       </div>
 
       <div className="space-y-2">
-        <Label>Project Manager</Label>
-        <Select value={formData.manager} onValueChange={(value) => handleInputChange("manager", value)}>
-          <SelectTrigger>
-            <SelectValue placeholder={loadingData ? "Loading..." : "Select project manager"} />
-          </SelectTrigger>
-          <SelectContent>
-            {managerOptions.map((employee) => (
-              <SelectItem key={employee._id} value={employee._id}>
-                {`${employee.firstName} ${employee.lastName}`}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label>Project Managers</Label>
+        <div className="border rounded-md p-3 max-h-40 overflow-y-auto">
+          {loadingData ? (
+            <p className="text-sm text-muted-foreground">Loading employees...</p>
+          ) : managerOptions.length > 0 ? (
+            <div className="space-y-2">
+              {managerOptions.map((employee) => (
+                <div key={employee._id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={`manager-${employee._id}`}
+                    checked={selectedManagers.includes(employee._id)}
+                    onChange={() => {
+                      setSelectedManagers(prev => 
+                        prev.includes(employee._id)
+                          ? prev.filter(id => id !== employee._id)
+                          : [...prev, employee._id]
+                      );
+                    }}
+                    className="rounded"
+                  />
+                  <Label htmlFor={`manager-${employee._id}`} className="text-sm font-normal cursor-pointer">
+                    {employee.firstName} {employee.lastName}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No employees available</p>
+          )}
+        </div>
+        {selectedManagers.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            {selectedManagers.length} manager{selectedManagers.length !== 1 ? 's' : ''} selected
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

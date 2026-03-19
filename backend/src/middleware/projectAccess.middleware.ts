@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import Project from '../models/Project';
 import Employee from '../models/Employee';
+import ProjectPermission from '../models/ProjectPermission';
 
 export const checkProjectAccess = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -33,13 +34,21 @@ export const checkProjectAccess = async (req: Request, res: Response, next: Next
     const employee = await Employee.findOne({ user: user._id });
     let isTeamMember = false;
     let isManager = false;
+    let hasProjectPermission = false;
     
     if (employee) {
       isTeamMember = project.team && project.team.some(teamId => teamId.toString() === employee._id.toString());
-      isManager = project.managers && project.managers[0].toString() === employee._id.toString();
+      isManager = project.managers && project.managers.some(managerId => managerId.toString() === employee._id.toString());
+      
+      // Check if user has any ProjectPermission record for this project
+      const projectPermission = await ProjectPermission.findOne({
+        project: projectId,
+        employee: employee._id
+      });
+      hasProjectPermission = !!projectPermission;
     }
 
-    const hasAccess = isOwner || isMember || isTeamMember || isManager;
+    const hasAccess = isOwner || isMember || isTeamMember || isManager || hasProjectPermission;
 
     if (!hasAccess) {
       return res.status(403).json({ success: false, message: 'Access denied' });
