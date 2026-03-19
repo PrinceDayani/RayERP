@@ -147,6 +147,8 @@ curl -X POST http://localhost:5000/api/auth/login \
 ## 📚 Documentation
 
 ### Available Documentation
+- **PROJECT_PERMISSION_FIX.md** - Multiple managers & assigned user access fix
+- **PROJECT_ACCESS_QUICK_REFERENCE.md** - Project access control quick reference
 - **TEAM_MANAGEMENT_FIX.md** - Team/member management implementation
 - **CURRENCY_SYSTEM_FIX.md** - Currency system standardization
 - **CURRENCY_QUICK_REFERENCE.md** - Currency quick reference
@@ -223,9 +225,19 @@ For issues or questions, check the logs:
 
 **RayERP - Complete Enterprise Resource Planning System**
 **Status**: Production Ready ✅
-**Version**: 2.0.0
+**Version**: 2.0.1
 
 ## 🎉 Latest Updates
+
+### Project Permission & Access Control - Fixed ✅ (Latest)
+- ✅ **Multiple Managers Support** - All managers can now access projects (not just the first one)
+- ✅ **Assigned User Access** - Users with ProjectPermission records can access projects
+- ✅ **Enhanced Access Control** - 6 ways to access projects (Root, View All, Owner, Team, Manager, Assigned)
+- ✅ **Frontend Multi-Select** - Select multiple managers via checkbox list
+- ✅ **100% Backward Compatible** - No breaking changes, existing data works
+- ✅ **Comprehensive Documentation** - Full fix documentation and quick reference
+
+See [PROJECT_PERMISSION_FIX.md](./PROJECT_PERMISSION_FIX.md) and [PROJECT_ACCESS_QUICK_REFERENCE.md](./PROJECT_ACCESS_QUICK_REFERENCE.md) for complete details.
 
 ### Unified Task System - NEW ✅ (Latest)
 - ✅ **Two Task Types** - Individual tasks (standalone) + Project tasks (project-linked)

@@ -84,7 +84,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
 
   // Edit dialog effect - handles task data population
   useEffect(() => {
-    if (editDialog.open && editDialog.task?._id) {
+    if (editDialog.open && editDialog.task && editDialog.task._id) {
       const task = editDialog.task;
       setFormData({
         title: task.title,
