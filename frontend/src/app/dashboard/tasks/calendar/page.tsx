@@ -52,8 +52,6 @@ export default function TaskCalendarPage() {
               mode="single"
               selected={selected}
               onSelect={setSelected}
-              modifiers={{ hasTasks: dueDates }}
-              modifiersClassNames={{ hasTasks: 'font-bold underline decoration-blue-500' }}
             />
           </CardContent>
         </Card>
