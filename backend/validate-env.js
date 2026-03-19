@@ -3,6 +3,12 @@
 const fs = require('fs');
 const path = require('path');
 
+// Skip validation if explicitly requested (e.g., during Docker/App Runner build)
+if (process.env.SKIP_ENV_VALIDATION === 'true') {
+  console.log('⏭️  Skipping environment validation (SKIP_ENV_VALIDATION=true)');
+  process.exit(0);
+}
+
 const requiredEnvVars = [
   'MONGO_URI',
   'PORT',
