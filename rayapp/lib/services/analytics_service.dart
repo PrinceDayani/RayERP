@@ -2,6 +2,11 @@ import 'api_service.dart';
 
 class AnalyticsService extends ApiService {
   // ── Dashboard ──────────────────────────────────────────────────────────────
+  Future<Map<String, dynamic>> getUserDashboard() async {
+    final d = await get('/dashboard/user-dashboard');
+    return _m(d);
+  }
+
   Future<Map<String, dynamic>> getDashboardStats() async {
     final d = await get('/dashboard/stats');
     return _m(d);

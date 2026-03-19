@@ -47,25 +47,33 @@ const Dashboard = () => {
     teamProductivity: [], recentActivity: []
   });
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    
     const fetchData = async () => {
-      const [analyticsData, trendsData] = await Promise.allSettled([
-        analyticsAPI.getAnalytics().catch(() => null),
-        trendsAPI.getTrends().catch(() => null)
-      ]);
-      if (analyticsData.status === 'fulfilled' && analyticsData.value) {
-        setAnalytics({
-          projectProgress: analyticsData.value.projectProgress || [],
-          taskDistribution: analyticsData.value.taskDistribution || [],
-          monthlyRevenue: analyticsData.value.monthlyRevenue || [],
-          teamProductivity: analyticsData.value.teamProductivity || [],
-          recentActivity: analyticsData.value.recentActivity || []
-        });
+      setAnalyticsLoading(true);
+      try {
+        const [analyticsData, trendsData] = await Promise.allSettled([
+          analyticsAPI.getAnalytics().catch(() => null),
+          trendsAPI.getTrends().catch(() => null)
+        ]);
+        if (analyticsData.status === 'fulfilled' && analyticsData.value) {
+          setAnalytics({
+            projectProgress: analyticsData.value.projectProgress || [],
+            taskDistribution: analyticsData.value.taskDistribution || [],
+            monthlyRevenue: analyticsData.value.monthlyRevenue || [],
+            teamProductivity: analyticsData.value.teamProductivity || [],
+            recentActivity: analyticsData.value.recentActivity || []
+          });
+        }
+        if (trendsData.status === 'fulfilled' && trendsData.value) setTrends(trendsData.value);
+      } finally {
+        setAnalyticsLoading(false);
       }
-      if (trendsData.status === 'fulfilled' && trendsData.value) setTrends(trendsData.value);
     };
+    
     fetchData();
     const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);

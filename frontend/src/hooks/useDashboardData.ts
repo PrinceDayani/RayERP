@@ -2,28 +2,30 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocket, initializeSocket } from '@/lib/socket';
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 // Cache configuration
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes (aligned with backend)
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
 }
 const statsCache = new Map<string, CacheEntry<any>>();
 
-const getCachedStats = <T>(key: string): T | null => {
-  const entry = statsCache.get(key);
+const getCachedStats = <T>(userId: string, key: string): T | null => {
+  const cacheKey = `${userId}:${key}`;
+  const entry = statsCache.get(cacheKey);
   if (!entry) return null;
   if (Date.now() - entry.timestamp > CACHE_TTL) {
-    statsCache.delete(key);
+    statsCache.delete(cacheKey);
     return null;
   }
   return entry.data;
 };
 
-const setCachedStats = <T>(key: string, data: T): void => {
-  statsCache.set(key, { data, timestamp: Date.now() });
+const setCachedStats = <T>(userId: string, key: string, data: T): void => {
+  const cacheKey = `${userId}:${key}`;
+  statsCache.set(cacheKey, { data, timestamp: Date.now() });
 };
 
 interface DashboardStats {
@@ -48,6 +50,9 @@ interface DashboardStats {
   projectRevenue?: number;
   projectExpenses?: number;
   projectProfit?: number;
+  // Currency data
+  currency?: string;
+  currencySymbol?: string;
   timestamp?: string;
 }
 
@@ -95,10 +100,26 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
       return;
     }
 
+    const token = localStorage.getItem('auth-token');
+    if (!token) {
+      setError('No authentication token found');
+      setLoading(false);
+      return;
+    }
+
+    // Get userId from token for cache key
+    let userId = 'anonymous';
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      userId = payload.id || payload.userId || 'anonymous';
+    } catch (e) {
+      console.warn('Failed to parse token for cache key');
+    }
+
     // Check cache first
     const cacheKey = 'dashboard-stats';
     if (!force) {
-      const cached = getCachedStats<DashboardStats>(cacheKey);
+      const cached = getCachedStats<DashboardStats>(userId, cacheKey);
       if (cached) {
         setStats(cached);
         setLoading(false);
@@ -111,12 +132,6 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
     lastFetchRef.current = now;
 
     try {
-      const token = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
-      if (!token) {
-        setError('No authentication token found');
-        setLoading(false);
-        return;
-      }
 
       console.log('[Dashboard] Fetching stats from:', `${API_URL}/api/dashboard/stats`);
       const response = await axios.get(`${API_URL}/api/dashboard/stats`, {
@@ -128,7 +143,7 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
       if (response.data.success) {
         const data = response.data.data;
         setStats(data);
-        setCachedStats(cacheKey, data);
+        setCachedStats(userId, cacheKey, data);
         setError(null);
       } else {
         console.error('[Dashboard] Stats fetch failed:', response.data);
@@ -180,7 +195,7 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
 
     const initSocket = async () => {
       try {
-        const token = localStorage.getItem('auth-token') || localStorage.getItem('auth-token');
+        const token = localStorage.getItem('auth-token');
         const socket = await initializeSocket(token || undefined);
         if (!mounted || !socket) {
           if (!pollingIntervalRef.current) {
@@ -195,12 +210,12 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
           if (mounted) {
             console.log('Dashboard socket connected');
             setSocketConnected(true);
-            // Authenticate socket
-            if (token) {
+            // Authenticate immediately on connection
+            if (token && socket.connected) {
               socket.emit('authenticate', token);
             }
-            // Fetch stats immediately on connect
-            fetchStats();
+            // Fetch stats after authentication
+            setTimeout(() => fetchStats(), 200);
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
@@ -237,7 +252,7 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
         // Set initial connection state
         if (socket.connected) {
           setSocketConnected(true);
-          if (token) {
+          if (token && socket.connected) {
             socket.emit('authenticate', token);
           }
         }

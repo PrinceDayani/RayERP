@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
 import React, { Component, ReactNode } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface Props {
@@ -11,13 +11,13 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error?: Error;
+  error: Error | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -25,9 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('ErrorBoundary caught:', error, errorInfo);
-    }
+    console.error('ErrorBoundary caught error:', error, errorInfo);
   }
 
   render() {
@@ -37,42 +35,22 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4">
-          <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-red-100 dark:bg-red-900/20 rounded-full">
-                <AlertTriangle className="h-12 w-12 text-red-600 dark:text-red-400" />
-              </div>
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-              Something went wrong
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">
-              We encountered an error while loading this page. Please try again.
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4 p-6">
+            <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
+            <h2 className="text-xl font-semibold">Something went wrong</h2>
+            <p className="text-muted-foreground text-sm max-w-md">
+              {this.state.error?.message || 'An unexpected error occurred'}
             </p>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-900 rounded-lg text-left">
-                <p className="text-xs font-mono text-red-600 dark:text-red-400 break-all">
-                  {this.state.error.message}
-                </p>
-              </div>
-            )}
-            <div className="flex gap-3">
-              <Button
-                onClick={() => this.setState({ hasError: false, error: undefined })}
-                className="flex-1"
-                variant="default"
-              >
-                Try Again
-              </Button>
-              <Button
-                onClick={() => window.location.href = '/dashboard'}
-                className="flex-1"
-                variant="outline"
-              >
-                Go to Dashboard
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+            >
+              Reload Page
+            </Button>
           </div>
         </div>
       );

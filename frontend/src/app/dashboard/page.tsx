@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const UserDashboard = lazy(() => import('@/components/admin/UserDashboard').then(m => ({ default: m.default })));
+const PersonalizedDashboard = lazy(() => import('@/components/dashboard/PersonalizedDashboard'));
 
 const DashboardLoader = memo(() => (
   <div className="space-y-4 p-6">
@@ -49,10 +50,13 @@ export default function Dashboard() {
   if (loading) return <DashboardLoader />;
   if (!isAuthenticated || !user) return null;
 
+  const roleName = user.role?.name?.toLowerCase() || (typeof user.role === 'string' ? user.role.toLowerCase() : '');
+  const isAdminView = roleName === 'root' || roleName === 'super admin' || roleName === 'superadmin';
+
   return (
     <ErrorBoundary fallback={<DashboardError />}>
       <Suspense fallback={<DashboardLoader />}>
-        <UserDashboard />
+        {isAdminView ? <UserDashboard /> : <PersonalizedDashboard />}
       </Suspense>
     </ErrorBoundary>
   );
