@@ -12,7 +12,7 @@ export default function TaskCalendarPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<Date | undefined>(new Date());
+  const [selected, setSelected] = useState<Date>(new Date());
 
   useEffect(() => {
     tasksAPI.getAll()
@@ -49,9 +49,12 @@ export default function TaskCalendarPage() {
         <Card className="w-fit">
           <CardContent className="p-4">
             <Calendar
+              selectedDate={selected}
+              onChange={() => {}}
               mode="single"
               selected={selected}
               onSelect={setSelected}
+              disabled={false}
             />
           </CardContent>
         </Card>

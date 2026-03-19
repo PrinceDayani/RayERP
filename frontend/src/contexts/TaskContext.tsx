@@ -14,6 +14,8 @@ interface TaskState {
     priority: string;
     project: string;
     assignee: string;
+    taskType?: string;
+    assignmentType?: string;
   };
   selectedTasks: string[];
 }

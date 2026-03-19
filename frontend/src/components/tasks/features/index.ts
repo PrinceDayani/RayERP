@@ -10,5 +10,5 @@ export { default as TaskDependencyManager } from '../TaskDependencyManager';
 export { default as TaskPriorityIndicator } from '../TaskPriorityIndicator';
 export { default as GanttChart } from '../GanttChart';
 export { default as AdvancedSearch } from '../AdvancedSearch';
-export { default as TaskAnalyticsDashboard } from '../TaskAnalyticsDashboard';
+export { TaskAnalyticsDashboard } from '../TaskAnalyticsDashboard';
 export { default as MobileTaskCard } from '../MobileTaskCard';

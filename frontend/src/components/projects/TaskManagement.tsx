@@ -611,8 +611,8 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
         />
       ) : viewMode === "calendar" ? (
         <TaskCalendarView
-          tasks={filteredTasks}
-          onTaskClick={openViewDialog}
+          tasks={filteredTasks as any}
+          onTaskClick={openViewDialog as any}
         />
       ) : viewMode === "gantt" ? (
         <GanttChart projectId={projectId} />

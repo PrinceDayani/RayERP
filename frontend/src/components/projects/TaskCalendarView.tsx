@@ -7,13 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 
-interface Task {
-  _id: string;
-  title: string;
-  dueDate: string;
-  status: string;
-  priority: string;
-}
+import { Task } from '@/lib/api/tasksAPI';
 
 interface TaskCalendarViewProps {
   tasks: Task[];

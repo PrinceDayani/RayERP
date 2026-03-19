@@ -41,7 +41,7 @@ export function TaskTypeSelector({ onTaskCreated }: TaskTypeSelectorProps) {
         assignmentType: "self-assigned",
         assignedTo: user?._id,
         status: "todo",
-      });
+      } as any);
       toast({ title: "Success", description: "Task created for yourself" });
       setOpen(false);
       setFormData({ title: "", description: "", priority: "medium", dueDate: "" });

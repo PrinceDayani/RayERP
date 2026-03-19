@@ -146,8 +146,8 @@ export default function TaskFilters({ onExport }: TaskFiltersProps) {
               <div>
                 <Label>Task Type</Label>
                 <Select 
-                  value={state.filters.taskType || 'all'} 
-                  onValueChange={(value) => actions.setFilters({ taskType: value })}
+                  value={(state.filters as any).taskType || 'all'} 
+                  onValueChange={(value) => actions.setFilters({ taskType: value } as any)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -163,8 +163,8 @@ export default function TaskFilters({ onExport }: TaskFiltersProps) {
               <div>
                 <Label>Assignment Type</Label>
                 <Select 
-                  value={state.filters.assignmentType || 'all'} 
-                  onValueChange={(value) => actions.setFilters({ assignmentType: value })}
+                  value={(state.filters as any).assignmentType || 'all'} 
+                  onValueChange={(value) => actions.setFilters({ assignmentType: value } as any)}
                 >
                   <SelectTrigger>
                     <SelectValue />

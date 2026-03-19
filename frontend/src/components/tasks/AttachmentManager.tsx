@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Paperclip, X, Download, FileText, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import tasksAPI from '@/lib/api/tasksAPI';
+import { tasksAPI } from '@/lib/api/tasksAPI';
 
 interface Attachment {
   _id?: string;

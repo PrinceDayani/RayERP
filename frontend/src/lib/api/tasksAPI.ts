@@ -8,7 +8,9 @@ export interface Task {
   description: string;
   status: 'todo' | 'in-progress' | 'review' | 'completed' | 'blocked';
   priority: 'low' | 'medium' | 'high' | 'critical';
-  project: {
+  taskType?: 'individual' | 'project';
+  assignmentType?: 'self-assigned' | 'manager-assigned';
+  project?: {
     _id: string;
     name: string;
   };
@@ -39,6 +41,7 @@ export interface Task {
   subtasks?: Array<{ _id: string; title: string; status: string }>;
   dependencies?: Array<{ _id: string; taskId: { _id: string; title: string }; type: string }>;
   watchers?: Array<{ _id: string; firstName: string; lastName: string }>;
+  parentTask?: string | { _id: string; title: string };
   timeEntries?: Array<{
     user: string;
     startTime: string;
@@ -72,12 +75,15 @@ export interface Task {
 export interface CreateTaskData {
   title: string;
   description: string;
-  project: string;
+  project?: string;
   assignedTo: string;
-  assignedBy: string;
+  assignedBy?: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
+  status?: 'todo' | 'in-progress' | 'review' | 'completed' | 'blocked';
   dueDate?: string;
   estimatedHours?: number;
+  taskType?: 'individual' | 'project';
+  assignmentType?: 'self-assigned' | 'manager-assigned';
 }
 
 export interface UpdateTaskData {
@@ -224,6 +230,12 @@ export const tasksAPI = {
   },
 
   deleteAttachment: async (id: string, attachmentId: string) => {
+    const response = await api.delete(`/tasks/${id}/attachments/${attachmentId}`);
+    return response.data;
+  },
+
+  // Alias for deleteAttachment
+  removeAttachment: async (id: string, attachmentId: string) => {
     const response = await api.delete(`/tasks/${id}/attachments/${attachmentId}`);
     return response.data;
   },

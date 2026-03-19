@@ -21,7 +21,7 @@ interface Task {
   project?: { name: string };
   isBasicView?: boolean;
   taskType?: 'individual' | 'project';
-  assignmentType?: 'assigned' | 'self-assigned';
+  assignmentType?: 'self-assigned' | 'manager-assigned';
   tags?: Array<{ name: string; color: string } | string>;
   checklist?: Array<{ text: string; completed: boolean }>;
   attachments?: Array<any>;

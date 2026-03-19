@@ -96,7 +96,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
         status: task.status,
         dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
         estimatedHours: task.estimatedHours?.toString() || '',
-        parentTask: typeof task.parentTask === 'object' ? task.parentTask._id : task.parentTask || '',
+        parentTask: typeof (task as any).parentTask === 'object' ? (task as any).parentTask._id : (task as any).parentTask || '',
         blockedBy: (task as any).blockedBy || ''
       });
       setSelectedAssignees([

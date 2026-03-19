@@ -17,13 +17,15 @@ import { useProjectTasks } from "@/hooks/useProjectTasks";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
+import { Task as APITask } from '@/lib/api/tasksAPI';
+
 interface Task {
   _id: string;
   title: string;
   description: string;
   status: string;
   priority: string;
-  dueDate: string;
+  dueDate?: string;
   estimatedHours?: number;
 }
 
