@@ -87,42 +87,42 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
     if (editDialog.open && editDialog.task && editDialog.task._id) {
       const task = editDialog.task;
       setFormData({
-        title: task.title,
-        description: task.description,
+        title: task.title || '',
+        description: task.description || '',
         taskType: (task as any).taskType || 'project',
         assignmentType: (task as any).assignmentType || 'assigned',
-        project: typeof task.project === 'object' ? task.project._id : task.project || '',
-        priority: task.priority,
-        status: task.status,
+        project: (task.project && typeof task.project === 'object') ? task.project._id : (task.project || ''),
+        priority: task.priority || 'medium',
+        status: task.status || 'todo',
         dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
         estimatedHours: task.estimatedHours?.toString() || '',
-        parentTask: typeof (task as any).parentTask === 'object' ? (task as any).parentTask._id : (task as any).parentTask || '',
+        parentTask: ((task as any).parentTask && typeof (task as any).parentTask === 'object') ? (task as any).parentTask._id : ((task as any).parentTask || ''),
         blockedBy: (task as any).blockedBy || ''
       });
-      setSelectedAssignees([
-        typeof task.assignedTo === 'object' ? task.assignedTo._id : task.assignedTo
-      ]);
+      
+      const assignedToId = (task.assignedTo && typeof task.assignedTo === 'object') ? task.assignedTo._id : task.assignedTo;
+      setSelectedAssignees(assignedToId ? [assignedToId] : []);
       
       if (task.tags && Array.isArray(task.tags)) {
         setTags(task.tags.map(t => typeof t === 'object' ? t : { name: t, color: '#3b82f6' }));
       } else {
         setTags([]);
       }
-      if (task.checklist) {
-        setChecklist(task.checklist.map(c => ({ text: c.text, completed: c.completed })));
+      if (task.checklist && Array.isArray(task.checklist)) {
+        setChecklist(task.checklist.map(c => ({ text: c.text || '', completed: c.completed || false })));
       } else {
         setChecklist([]);
       }
-      if (task.watchers) {
-        setWatchers(task.watchers.map(w => typeof w === 'object' ? w._id : w));
+      if (task.watchers && Array.isArray(task.watchers)) {
+        setWatchers(task.watchers.map(w => (w && typeof w === 'object') ? w._id : w).filter(Boolean));
       } else {
         setWatchers([]);
       }
-      if (task.dependencies) {
+      if (task.dependencies && Array.isArray(task.dependencies)) {
         setDependencies(task.dependencies.map(d => ({
-          taskId: typeof d.taskId === 'object' ? d.taskId._id : d.taskId,
-          type: d.type
-        })));
+          taskId: (d.taskId && typeof d.taskId === 'object') ? d.taskId._id : d.taskId,
+          type: d.type || 'finish-to-start'
+        })).filter(d => d.taskId));
       } else {
         setDependencies([]);
       }

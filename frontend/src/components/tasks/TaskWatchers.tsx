@@ -37,15 +37,18 @@ export function TaskWatchers({ taskId, watchers, onWatchersUpdated }: TaskWatche
     try {
       const response = await fetch("/api/employees");
       const data = await response.json();
-      setEmployees(data);
+      // Handle both array and object responses
+      const employeeList = Array.isArray(data) ? data : (data.data || data.employees || []);
+      setEmployees(employeeList);
     } catch (error) {
       console.error("Failed to fetch employees:", error);
+      setEmployees([]);
     }
   };
 
-  const availableEmployees = employees.filter(
-    (emp) => !watchers?.some((w) => w._id === emp._id)
-  );
+  const availableEmployees = Array.isArray(employees) 
+    ? employees.filter((emp) => !watchers?.some((w) => w._id === emp._id))
+    : [];
 
   const handleAddWatcher = async () => {
     if (!selectedUserId) return;

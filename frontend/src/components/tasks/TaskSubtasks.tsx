@@ -50,9 +50,12 @@ export function TaskSubtasks({ taskId, subtasks, onSubtasksUpdated }: TaskSubtas
     try {
       const response = await fetch("/api/employees");
       const data = await response.json();
-      setEmployees(data);
+      // Handle both array and object responses
+      const employeeList = Array.isArray(data) ? data : (data.data || data.employees || []);
+      setEmployees(employeeList);
     } catch (error) {
       console.error("Failed to fetch employees:", error);
+      setEmployees([]);
     }
   };
 
@@ -196,7 +199,7 @@ export function TaskSubtasks({ taskId, subtasks, onSubtasksUpdated }: TaskSubtas
                   <SelectValue placeholder="Select employee" />
                 </SelectTrigger>
                 <SelectContent>
-                  {employees.map((emp) => (
+                  {Array.isArray(employees) && employees.map((emp) => (
                     <SelectItem key={emp._id} value={emp._id}>
                       {emp.firstName} {emp.lastName}
                     </SelectItem>
