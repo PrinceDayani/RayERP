@@ -4,12 +4,30 @@ import crypto from 'crypto';
 export interface IUserSession extends Document {
     user: mongoose.Types.ObjectId;
     tokenHash: string;
+    refreshTokenHash: string;
     sessionId: string;
     deviceInfo: {
         userAgent: string;
         deviceType: 'mobile' | 'desktop' | 'tablet' | 'unknown';
         browser?: string;
         os?: string;
+    };
+    deviceFingerprint: {
+        hash: string;
+        components: {
+            userAgent: string;
+            acceptLanguage: string;
+            acceptEncoding: string;
+            ipAddress: string;
+            screenResolution?: string;
+            timezone?: string;
+            platform?: string;
+            colorDepth?: string;
+            deviceMemory?: string;
+            hardwareConcurrency?: string;
+            doNotTrack?: string;
+        };
+        confidence: 'high' | 'medium' | 'low';
     };
     ipAddress: string;
     location?: {
@@ -45,6 +63,11 @@ const userSessionSchema = new Schema<IUserSession>(
         tokenHash: {
             type: String,
             required: true,
+            index: true
+        },
+        refreshTokenHash: {
+            type: String,
+            required: true,
             unique: true,
             index: true
         },
@@ -66,6 +89,31 @@ const userSessionSchema = new Schema<IUserSession>(
             },
             browser: String,
             os: String
+        },
+        deviceFingerprint: {
+            hash: {
+                type: String,
+                required: true,
+                index: true
+            },
+            components: {
+                userAgent: String,
+                acceptLanguage: String,
+                acceptEncoding: String,
+                ipAddress: String,
+                screenResolution: String,
+                timezone: String,
+                platform: String,
+                colorDepth: String,
+                deviceMemory: String,
+                hardwareConcurrency: String,
+                doNotTrack: String
+            },
+            confidence: {
+                type: String,
+                enum: ['high', 'medium', 'low'],
+                default: 'low'
+            }
         },
         ipAddress: {
             type: String,
@@ -102,6 +150,9 @@ userSessionSchema.index({ expiresAt: 1, isActive: 1 });
 
 // Index for finding user's active sessions
 userSessionSchema.index({ user: 1, isActive: 1 });
+
+// Index for device fingerprint lookup
+userSessionSchema.index({ 'deviceFingerprint.hash': 1 });
 
 // Static method to create token hash
 userSessionSchema.statics.hashToken = function (token: string): string {

@@ -147,6 +147,7 @@ curl -X POST http://localhost:5000/api/auth/login \
 ## 📚 Documentation
 
 ### Available Documentation
+- **PERFORMANCE_SCALABILITY_FIXES.md** - Performance & scalability improvements
 - **PROJECT_PERMISSION_FIX.md** - Multiple managers & assigned user access fix
 - **PROJECT_ACCESS_QUICK_REFERENCE.md** - Project access control quick reference
 - **TEAM_MANAGEMENT_FIX.md** - Team/member management implementation
@@ -161,7 +162,17 @@ curl -X POST http://localhost:5000/api/auth/login \
 
 ## 🔒 Security Features
 
-- JWT authentication with role-based access control
+- **JWT Authentication** with short-lived tokens (15 minutes)
+- **Refresh Tokens** for seamless re-authentication (7 days)
+- **HTTP-only Cookies** for secure token storage
+- **Automatic Token Refresh** on expiry
+- **Device Fingerprinting** - Unique device identification
+- **Token Binding** - Tokens bound to specific devices
+- **Suspicious Device Detection** - Auto-revoke on high-risk changes
+- **Role-Based Access Control (RBAC)** with permission checks
+- **2-Device Limit** per user with session management
+- **Admin Session Management** - View and revoke any user's sessions
+- **Enhanced CSRF Protection** - Device-validated CSRF tokens
 - Input validation and sanitization
 - CORS configuration
 - Rate limiting
@@ -229,7 +240,32 @@ For issues or questions, check the logs:
 
 ## 🎉 Latest Updates
 
-### Project Permission & Access Control - Fixed ✅ (Latest)
+### Device Fingerprinting & Enhanced Security - NEW ✅ (Latest)
+- ✅ **Device Fingerprinting** - Unique device identification for session security
+- ✅ **Token Binding** - Tokens bound to specific devices, prevents theft
+- ✅ **Enhanced CSRF Protection** - Device-validated CSRF tokens for state-changing operations
+- ✅ **Activity Logs** - Device fingerprints included in all authentication logs
+- ✅ **Suspicious Detection** - Automatic detection of device changes
+- ✅ **Auto-Revocation** - High-risk sessions automatically revoked
+- ✅ **Multi-Component Validation** - 11 device components for strong identification
+- ✅ **Confidence Scoring** - High/Medium/Low confidence levels
+
+See [DEVICE_FINGERPRINTING.md](./DEVICE_FINGERPRINTING.md) and [DEVICE_FINGERPRINTING_QUICK_REFERENCE.md](./DEVICE_FINGERPRINTING_QUICK_REFERENCE.md) for complete details.
+
+### Secure Authentication System - NEW ✅
+- ✅ **Short-Lived Access Tokens** - 15 minutes for enhanced security
+- ✅ **Refresh Tokens** - 7 days with automatic renewal
+- ✅ **HTTP-Only Cookies** - Secure storage, XSS protection
+- ✅ **Automatic Token Refresh** - Seamless user experience
+- ✅ **2-Device Limit** - Maximum 2 active sessions per user
+- ✅ **Admin Session Management** - View, revoke specific, or revoke all sessions
+- ✅ **Permission-Based Access** - Admin/Root only for session management
+- ✅ **Activity Logging** - Complete audit trail for all auth events
+- ✅ **Session Tracking** - Device info, IP, last active time
+
+See [SECURE_AUTH_SYSTEM.md](./SECURE_AUTH_SYSTEM.md) and [AUTH_QUICK_REFERENCE.md](./AUTH_QUICK_REFERENCE.md) for complete details.
+
+### Project Permission & Access Control - Fixed ✅
 - ✅ **Multiple Managers Support** - All managers can now access projects (not just the first one)
 - ✅ **Assigned User Access** - Users with ProjectPermission records can access projects
 - ✅ **Enhanced Access Control** - 6 ways to access projects (Root, View All, Owner, Team, Manager, Assigned)

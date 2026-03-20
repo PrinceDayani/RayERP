@@ -11,7 +11,7 @@ import ActivityLog from '../models/ActivityLog';
 import User from '../models/User';
 import { Role } from '../models/Role';
 import { io } from '../server';
-import { registerCacheInvalidator } from '../utils/dashboardCache';
+// Cache invalidation will be handled by model hooks if needed
 
 const router = express.Router();
 
@@ -25,9 +25,6 @@ const invalidateCache = () => {
   statsCache = null;
   analyticsCache = null;
 };
-
-// Register cache invalidator
-registerCacheInvalidator(invalidateCache);
 
 // Get real-time dashboard stats - OPTIMIZED
 router.get('/stats', protect, requirePermission('dashboard.view'), async (req, res) => {
@@ -243,16 +240,11 @@ router.get('/analytics', protect, requirePermission('analytics.view'), async (re
       { $match: { _id: { $ne: null } } }
     ]);
 
-    const teamProductivityData = teamProductivity.length > 0 ? teamProductivity.map(t => ({
+    const teamProductivityData = teamProductivity.map(t => ({
       name: t._id || 'Unassigned',
       completed: t.completed,
       pending: t.pending
-    })) : [
-      { name: 'Development', completed: 0, pending: 0 },
-      { name: 'Design', completed: 0, pending: 0 },
-      { name: 'Marketing', completed: 0, pending: 0 },
-      { name: 'Sales', completed: 0, pending: 0 }
-    ];
+    }));
 
     // Format recent activity
     const recentActivity = recentActivityLogs.map(log => ({
@@ -280,6 +272,74 @@ router.get('/analytics', protect, requirePermission('analytics.view'), async (re
   }
 });
 
+// Get trends data (percentage changes from last period)
+router.get('/trends', protect, requirePermission('dashboard.view'), async (req, res) => {
+  try {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    const [currentPeriod, previousPeriod] = await Promise.all([
+      Promise.all([
+        Employee.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+        Project.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+        Task.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+        Invoice.aggregate([{
+          $match: { createdAt: { $gte: thirtyDaysAgo } }
+        }, {
+          $group: {
+            _id: null,
+            revenue: { $sum: '$totalAmount' },
+            expenses: { $sum: '$paidAmount' }
+          }
+        }])
+      ]),
+      Promise.all([
+        Employee.countDocuments({ createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
+        Project.countDocuments({ createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
+        Task.countDocuments({ createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
+        Invoice.aggregate([{
+          $match: { createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }
+        }, {
+          $group: {
+            _id: null,
+            revenue: { $sum: '$totalAmount' },
+            expenses: { $sum: '$paidAmount' }
+          }
+        }])
+      ])
+    ]);
+
+    const calculateTrend = (current: number, previous: number) => {
+      if (previous === 0) return { value: current > 0 ? 100 : 0, direction: 'up' as const };
+      const change = ((current - previous) / previous) * 100;
+      return {
+        value: Math.abs(Math.round(change)),
+        direction: change >= 0 ? 'up' as const : 'down' as const
+      };
+    };
+
+    const currentRevenue = currentPeriod[3][0]?.revenue || 0;
+    const currentExpenses = currentPeriod[3][0]?.expenses || 0;
+    const previousRevenue = previousPeriod[3][0]?.revenue || 0;
+    const previousExpenses = previousPeriod[3][0]?.expenses || 0;
+
+    const trends = {
+      employees: calculateTrend(currentPeriod[0], previousPeriod[0]),
+      projects: calculateTrend(currentPeriod[1], previousPeriod[1]),
+      tasks: calculateTrend(currentPeriod[2], previousPeriod[2]),
+      revenue: calculateTrend(currentRevenue, previousRevenue),
+      expenses: calculateTrend(currentExpenses, previousExpenses),
+      profit: calculateTrend(currentRevenue - currentExpenses, previousRevenue - previousExpenses)
+    };
+
+    res.json({ success: true, data: trends });
+  } catch (error) {
+    console.error('Trends error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch trends' });
+  }
+});
+
 // Clear cache endpoint (for admin)
 router.post('/clear-cache', protect, requirePermission('system.manage'), (req, res) => {
   invalidateCache();
@@ -304,7 +364,7 @@ router.get('/user-dashboard', protect, requirePermission('dashboard.view'), asyn
 
     // Build project query — always include owner (userId), optionally employee-based fields
     const projectOrConditions: any[] = [{ owner: userId }];
-    if (employee?._id) {
+    if (employee && employee._id) {
       projectOrConditions.push({ managers: employee._id }, { team: employee._id });
     }
 

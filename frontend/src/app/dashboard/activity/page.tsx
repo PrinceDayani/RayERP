@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { SectionLoader } from '@/components/PageLoader';
+import { ActivitySkeletonList } from '@/components/ActivitySkeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { FileText, MessageSquare, Share2, UserPlus, CheckCircle, Clock, Filter, Upload, Trash2, Edit, Eye, Activity as ActivityIcon, Calendar, RefreshCw, Search, X, Info, Shield, Database, User, Settings, TrendingUp, Download, BarChart3 } from 'lucide-react';
+import { FileText, MessageSquare, Share2, UserPlus, CheckCircle, Clock, Filter, Upload, Trash2, Edit, Eye, Activity as ActivityIconLucide, Calendar, RefreshCw, Search, X, Info, Shield, Database, User, Settings, TrendingUp, Download, BarChart3, Undo2 } from 'lucide-react';
 import { useDebounce } from '@/lib/hooks/useDebounce';
-import { exportToCSV, exportToExcel } from '@/lib/utils/activityExport';
+import { exportToCSV, exportToExcel, exportToPDF, fetchAllActivities, groupActivitiesByRequest } from '@/lib/utils/activityExport';
 import { ActivityCharts } from '@/components/ActivityCharts';
 import { useToast } from '@/hooks/use-toast';
+import { io, Socket } from 'socket.io-client';
 
 interface Activity {
   _id: string;
@@ -38,6 +39,10 @@ interface Activity {
   httpMethod?: string;
   endpoint?: string;
   changes?: { before?: any; after?: any };
+  reversible?: boolean;
+  reverted?: boolean;
+  revertedBy?: { _id: string; name: string };
+  revertedAt?: Date;
 }
 
 interface ActivityStats {
@@ -97,6 +102,8 @@ function ActivityPageContent() {
   const [filter, setFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [useCursorPagination, setUseCursorPagination] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
@@ -108,14 +115,67 @@ function ActivityPageContent() {
   const [projectNameFilter, setProjectNameFilter] = useState('');
   const [stats, setStats] = useState<ActivityStats | null>(null);
   const [showCharts, setShowCharts] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [ipAddressFilter, setIpAddressFilter] = useState('');
+  const [minDurationFilter, setMinDurationFilter] = useState('');
+  const [maxDurationFilter, setMaxDurationFilter] = useState('');
+  const [sessionIdFilter, setSessionIdFilter] = useState('');
+  const [userAgentFilter, setUserAgentFilter] = useState('');
+  const [groupByRequest, setGroupByRequest] = useState(false);
+  const [exportProgress, setExportProgress] = useState<{ current: number; total: number } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const debouncedUserNameFilter = useDebounce(userNameFilter, 500);
-  const debouncedProjectNameFilter = useDebounce(projectNameFilter, 500);
+  const debouncedUserNameFilter = useDebounce(userNameFilter, 300);
+  const debouncedProjectNameFilter = useDebounce(projectNameFilter, 300);
+  const debouncedIpAddressFilter = useDebounce(ipAddressFilter, 300);
+  const debouncedSessionIdFilter = useDebounce(sessionIdFilter, 300);
+  const debouncedUserAgentFilter = useDebounce(userAgentFilter, 300);
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  const fetchActivities = async () => {
+  // Load filters from localStorage on mount
+  useEffect(() => {
+    const savedFilters = localStorage.getItem('activityFilters');
+    if (savedFilters) {
+      try {
+        const filters = JSON.parse(savedFilters);
+        if (filters.filter) setFilter(filters.filter);
+        if (filters.actionFilter) setActionFilter(filters.actionFilter);
+        if (filters.statusFilter) setStatusFilter(filters.statusFilter);
+        if (filters.categoryFilter) setCategoryFilter(filters.categoryFilter);
+        if (filters.startDate) setStartDate(filters.startDate);
+        if (filters.endDate) setEndDate(filters.endDate);
+      } catch (e) {
+        console.warn('[Activity] Failed to load saved filters:', e);
+      }
+    }
+  }, []);
+
+  // Save filters to localStorage
+  useEffect(() => {
+    const filters = {
+      filter,
+      actionFilter,
+      statusFilter,
+      categoryFilter,
+      startDate,
+      endDate,
+    };
+    localStorage.setItem('activityFilters', JSON.stringify(filters));
+  }, [filter, actionFilter, statusFilter, categoryFilter, startDate, endDate]);
+
+  const fetchActivities = useCallback(async () => {
     if (!token) {
       console.warn('[Activity] No auth token available');
       return;
+    }
+
+    // Use search endpoint if search query exists
+    if (debouncedSearchQuery.trim()) {
+      return fetchSearchResults();
     }
     
     const startTime = performance.now();
@@ -149,8 +209,14 @@ function ActivityPageContent() {
       const categoryParam = categoryFilter && categoryFilter !== 'all' ? `&category=${categoryFilter}` : '';
       const userParam = debouncedUserNameFilter ? `&userName=${debouncedUserNameFilter}` : '';
       const projectParam = debouncedProjectNameFilter ? `&projectName=${debouncedProjectNameFilter}` : '';
+      const ipParam = debouncedIpAddressFilter ? `&ipAddress=${debouncedIpAddressFilter}` : '';
+      const minDurParam = minDurationFilter ? `&minDuration=${minDurationFilter}` : '';
+      const maxDurParam = maxDurationFilter ? `&maxDuration=${maxDurationFilter}` : '';
+      const sessionParam = debouncedSessionIdFilter ? `&sessionId=${debouncedSessionIdFilter}` : '';
+      const userAgentParam = debouncedUserAgentFilter ? `&userAgent=${debouncedUserAgentFilter}` : '';
+      const cursorParam = useCursorPagination && cursor ? `&cursor=${cursor}&useCursor=true` : '';
       
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/activity?page=${page}&limit=20${filterParam}${dateParams}${actionParam}${statusParam}${categoryParam}${userParam}${projectParam}`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/activity?page=${page}&limit=20${filterParam}${dateParams}${actionParam}${statusParam}${categoryParam}${userParam}${projectParam}${ipParam}${minDurParam}${maxDurParam}${sessionParam}${userAgentParam}${cursorParam}`;
       console.log('Full Request URL:', url);
       console.log('Request Headers:', {
         Authorization: `Bearer ${token.substring(0, 20)}...`,
@@ -186,7 +252,8 @@ function ActivityPageContent() {
             currentPage: data.pagination?.page || 0,
             totalPages: data.pagination?.pages || 0,
             totalItems: data.pagination?.total || 0,
-            hasMore: (data.pagination?.page || 0) < (data.pagination?.pages || 0)
+            hasMore: (data.pagination?.page || 0) < (data.pagination?.pages || 0),
+            nextCursor: data.pagination?.nextCursor
           },
           firstActivity: data.data?.[0] ? {
             id: data.data[0]._id,
@@ -205,6 +272,9 @@ function ActivityPageContent() {
         });
         setActivities(data.data);
         setTotalPages(data.pagination.pages);
+        if (data.pagination.nextCursor) {
+          setCursor(data.pagination.nextCursor);
+        }
         console.log(`✅ Success - Loaded ${data.data?.length || 0} activities in ${duration}ms`);
       } else {
         const errorText = await response.text();
@@ -214,7 +284,19 @@ function ActivityPageContent() {
           errorBody: errorText,
           url
         });
-        setError(`Server error: ${response.status} ${response.statusText}`);
+        
+        // Classify error types - only show toast for critical errors
+        if (response.status === 401) {
+          setError('Authentication failed. Please log in again.');
+        } else if (response.status === 403) {
+          setError('Access denied. You do not have permission to view activities.');
+        } else if (response.status === 404) {
+          setError('Activity endpoint not found. Please contact support.');
+        } else if (response.status >= 500) {
+          setError('Server error. Please try again later.');
+        } else {
+          setError(`Error: ${response.status} ${response.statusText}`);
+        }
       }
     } catch (error) {
       const endTime = performance.now();
@@ -231,14 +313,66 @@ function ActivityPageContent() {
           'Invalid API URL'
         ]
       });
-      setError('Cannot connect to backend server. Please ensure the backend is running on http://localhost:5001');
+      
+      // Classify network errors - reduce toast spam
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setError('Cannot connect to server. Please check if the backend is running.');
+      } else if (error instanceof Error && error.name === 'AbortError') {
+        setError('Request timeout. Please try again.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setLoading(false);
       console.groupEnd();
     }
-  };
+  }, [token, page, filter, startDate, endDate, actionFilter, statusFilter, categoryFilter, debouncedUserNameFilter, debouncedProjectNameFilter, debouncedIpAddressFilter, minDurationFilter, maxDurationFilter, debouncedSessionIdFilter, debouncedUserAgentFilter, debouncedSearchQuery, toast]);
 
-  const fetchActivityStats = async () => {
+  const fetchSearchResults = useCallback(async () => {
+    if (!token || !debouncedSearchQuery.trim()) return;
+    
+    const startTime = performance.now();
+    const requestId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    console.log(`[Activity Search] ${requestId} - Searching:`, debouncedSearchQuery);
+    
+    try {
+      setIsSearching(true);
+      setLoading(true);
+      setError(null);
+      
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/activity/search?q=${encodeURIComponent(debouncedSearchQuery)}&page=${page}&limit=20`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const endTime = performance.now();
+      const duration = (endTime - startTime).toFixed(2);
+
+      if (response.ok) {
+        const data = await response.json();
+        setActivities(data.data);
+        setTotalPages(data.pagination.pages);
+        console.log(`✅ Search Success - Found ${data.data?.length || 0} results in ${duration}ms`);
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Search Error:', response.status, errorText);
+        setError(`Search failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('❌ Search Network Error:', error);
+      setError('Search failed. Please try again.');
+    } finally {
+      setLoading(false);
+      setIsSearching(false);
+    }
+  }, [token, debouncedSearchQuery, page]);
+
+  const fetchActivityStats = useCallback(async () => {
     if (!token) {
       console.warn('[Activity Stats] No auth token available');
       return;
@@ -274,6 +408,9 @@ function ActivityPageContent() {
         setStats(data.data);
       } else {
         console.error('[Activity Stats] Server error:', response.status, response.statusText);
+        if (response.status === 403) {
+          toast({ title: 'Permission Denied', description: 'Cannot load activity statistics.', variant: 'destructive' });
+        }
       }
     } catch (error) {
       console.error('[Activity Stats] Fetch error:', {
@@ -281,9 +418,9 @@ function ActivityPageContent() {
         message: error instanceof Error ? error.message : 'Unknown error'
       });
     }
-  };
+  }, [token, toast]);
 
-  const fetchActivityDetails = async (activityId: string) => {
+  const fetchActivityDetails = useCallback(async (activityId: string) => {
     if (!token) {
       console.warn('[Activity Details] No auth token available');
       return;
@@ -335,7 +472,7 @@ function ActivityPageContent() {
         variant: 'destructive' 
       });
     }
-  };
+  }, [token, toast]);
 
   const setQuickFilter = useCallback((preset: string) => {
     const now = new Date();
@@ -364,7 +501,7 @@ function ActivityPageContent() {
     }
   }, []);
 
-  const handleExport = useCallback((format: 'csv' | 'excel') => {
+  const handleExport = useCallback((format: 'csv' | 'excel' | 'pdf') => {
     console.log('[Activity Export] Starting export:', { format, count: activities.length });
     
     if (activities.length === 0) {
@@ -377,8 +514,10 @@ function ActivityPageContent() {
       const filename = `activities_${new Date().toISOString().split('T')[0]}`;
       if (format === 'csv') {
         exportToCSV(activities, `${filename}.csv`);
-      } else {
+      } else if (format === 'excel') {
         exportToExcel(activities, `${filename}.xlsx`);
+      } else if (format === 'pdf') {
+        exportToPDF(activities, `${filename}.pdf`);
       }
       console.log('[Activity Export] Export successful:', { format, filename, count: activities.length });
       toast({ title: 'Success', description: `Exported ${activities.length} activities` });
@@ -391,7 +530,88 @@ function ActivityPageContent() {
     }
   }, [activities, toast]);
 
-  const clearAllFilters = () => {
+  const handleExportAll = useCallback(async (format: 'csv' | 'excel' | 'pdf') => {
+    if (!token) return;
+    
+    console.log('[Activity Export All] Starting full export:', { format });
+    toast({ title: 'Exporting', description: 'Fetching all activities...', duration: 2000 });
+    
+    try {
+      const filters = {
+        resourceType: filter !== 'all' ? filter : undefined,
+        action: actionFilter !== 'all' ? actionFilter : undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      };
+
+      const allActivities = await fetchAllActivities(token, filters, (current, total) => {
+        setExportProgress({ current, total });
+      });
+
+      setExportProgress(null);
+
+      const filename = `activities_all_${new Date().toISOString().split('T')[0]}`;
+      if (format === 'csv') {
+        exportToCSV(allActivities, `${filename}.csv`);
+      } else if (format === 'excel') {
+        exportToExcel(allActivities, `${filename}.xlsx`);
+      } else if (format === 'pdf') {
+        exportToPDF(allActivities, `${filename}.pdf`);
+      }
+
+      console.log('[Activity Export All] Export successful:', { format, count: allActivities.length });
+      toast({ title: 'Success', description: `Exported ${allActivities.length} activities` });
+    } catch (error) {
+      setExportProgress(null);
+      console.error('[Activity Export All] Export failed:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+      toast({ title: 'Error', description: 'Failed to export all activities', variant: 'destructive' });
+    }
+  }, [token, filter, actionFilter, statusFilter, startDate, endDate, toast]);
+
+  const handleRevertActivity = useCallback(async (activityId: string) => {
+    if (!token) return;
+    
+    if (!confirm('Are you sure you want to revert this activity? This action will undo the changes made.')) {
+      return;
+    }
+
+    console.log('[Activity Revert] Starting revert:', { activityId });
+    toast({ title: 'Reverting', description: 'Processing revert request...', duration: 2000 });
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/activity/${activityId}/revert`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[Activity Revert] Success:', data);
+        toast({ title: 'Success', description: data.message || 'Activity reverted successfully' });
+        fetchActivities();
+        setShowDetailModal(false);
+      } else {
+        const error = await response.json();
+        console.error('[Activity Revert] Failed:', error);
+        toast({ title: 'Error', description: error.message || 'Failed to revert activity', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('[Activity Revert] Error:', error);
+      toast({ title: 'Error', description: 'Failed to revert activity', variant: 'destructive' });
+    }
+  }, [token, toast, fetchActivities]);
+
+  const clearAllFilters = useCallback(() => {
     setFilter('all');
     setActionFilter('all');
     setStatusFilter('all');
@@ -400,7 +620,13 @@ function ActivityPageContent() {
     setProjectNameFilter('');
     setStartDate('');
     setEndDate('');
-  };
+    setIpAddressFilter('');
+    setMinDurationFilter('');
+    setMaxDurationFilter('');
+    setSessionIdFilter('');
+    setUserAgentFilter('');
+    localStorage.removeItem('activityFilters');
+  }, []);
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -424,11 +650,124 @@ function ActivityPageContent() {
 
   useEffect(() => {
     fetchActivities();
-  }, [page, filter, startDate, endDate, actionFilter, statusFilter, categoryFilter, debouncedUserNameFilter, debouncedProjectNameFilter]);
+  }, [fetchActivities]);
 
   useEffect(() => {
     fetchActivityStats();
-  }, [token]);
+  }, [fetchActivityStats]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+F or Cmd+F - Focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      
+      // Escape - Close modal or clear search
+      if (e.key === 'Escape') {
+        if (showDetailModal) {
+          setShowDetailModal(false);
+        } else if (searchQuery) {
+          setSearchQuery('');
+          searchInputRef.current?.blur();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showDetailModal, searchQuery]);
+
+  // Focus trap for modal
+  useEffect(() => {
+    if (!showDetailModal || !modalRef.current) return;
+
+    const modal = modalRef.current;
+    const focusableElements = modal.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstElement = focusableElements[0] as HTMLElement;
+    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    };
+
+    modal.addEventListener('keydown', handleTabKey as any);
+    firstElement?.focus();
+
+    return () => {
+      modal.removeEventListener('keydown', handleTabKey as any);
+    };
+  }, [showDetailModal]);
+
+  // Socket.IO real-time updates
+  useEffect(() => {
+    if (!token) return;
+
+    const socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000', {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('[Activity Socket] Connected:', socket.id);
+    });
+
+    socket.on('activity:created', (newActivity: Activity) => {
+      console.log('[Activity Socket] New activity received:', newActivity);
+      // Optimistic update
+      setActivities((prev) => [newActivity, ...prev].slice(0, 20));
+      if (stats) {
+        setStats((prev) => prev ? {
+          ...prev,
+          totalActivities: prev.totalActivities + 1,
+          todayActivities: prev.todayActivities + 1,
+        } : null);
+      }
+      // Show toast notification
+      toast({
+        title: 'New Activity',
+        description: `${newActivity.userName} ${newActivity.action}d ${newActivity.resource}`,
+        duration: 3000,
+      });
+    });
+
+    socket.on('disconnect', () => {
+      console.log('[Activity Socket] Disconnected');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [token, stats, toast]);
+
+  // Memoize grouped activities
+  const groupedActivities = useMemo(() => {
+    if (!groupByRequest) return activities;
+    return Array.from(groupActivitiesByRequest(activities).values()).map(group => group[0]);
+  }, [activities, groupByRequest]);
+
+  // Memoize displayed activities
+  const displayedActivities = useMemo(() => {
+    return groupedActivities;
+  }, [groupedActivities]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -438,8 +777,15 @@ function ActivityPageContent() {
           <div className="space-y-1">
             <h1 className="text-3xl font-bold text-foreground">Activity Feed</h1>
             <p className="text-muted-foreground">Monitor all activities across your organization</p>
+            {loading && searchQuery && <p className="text-xs text-primary">🔍 Searching...</p>}
+            {loading && exportProgress && <p className="text-xs text-primary">📤 Exporting {exportProgress.current}/{exportProgress.total}...</p>}
+            {loading && !searchQuery && !exportProgress && <p className="text-xs text-muted-foreground">Loading activities...</p>}
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setGroupByRequest(!groupByRequest)} className="gap-2">
+              <ActivityIconLucide className="h-4 w-4" />
+              {groupByRequest ? 'Ungroup' : 'Group'}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowCharts(!showCharts)} className="gap-2">
               <BarChart3 className="h-4 w-4" />
               {showCharts ? 'Hide' : 'Show'} Charts
@@ -452,6 +798,14 @@ function ActivityPageContent() {
               <Download className="h-4 w-4" />
               Excel
             </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} className="gap-2">
+              <Download className="h-4 w-4" />
+              PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExportAll('excel')} className="gap-2" disabled={!!exportProgress}>
+              <Download className="h-4 w-4" />
+              {exportProgress ? `Exporting ${exportProgress.current}/${exportProgress.total}` : 'Export All'}
+            </Button>
             <Button size="sm" onClick={fetchActivities} className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Refresh
@@ -460,7 +814,7 @@ function ActivityPageContent() {
         </div>
 
         {/* Stats Cards */}
-        {stats && (
+        {stats && !searchQuery && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className="bg-card border border-border hover:border-primary/50 transition-colors">
               <CardContent className="p-6">
@@ -496,7 +850,7 @@ function ActivityPageContent() {
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-3">
                   <p className="text-sm font-medium text-muted-foreground">This Month</p>
-                  <ActivityIcon className="h-5 w-5 text-muted-foreground" />
+                  <ActivityIconLucide className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <h3 className="text-3xl font-bold mb-2 text-foreground">{stats.monthActivities}</h3>
                 <p className="text-xs text-muted-foreground">Last 30 days</p>
@@ -506,7 +860,40 @@ function ActivityPageContent() {
         )}
 
         {/* Analytics Charts */}
-        {showCharts && stats && <ActivityCharts stats={stats} />}
+        {showCharts && stats && !searchQuery && <ActivityCharts stats={stats} />}
+
+        {/* Global Search */}
+        <Card className="bg-card border border-border">
+          <CardContent className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                placeholder="Search all activities... (Ctrl+F)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 h-12 text-base"
+                aria-label="Search all activities"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {searchQuery && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Esc</kbd> to clear search
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Filters Section */}
         <Card className="bg-card border border-border">
@@ -642,7 +1029,7 @@ function ActivityPageContent() {
                 />
               </div>
 
-              {(filter !== 'all' || (actionFilter && actionFilter !== 'all') || (statusFilter && statusFilter !== 'all') || (categoryFilter && categoryFilter !== 'all') || userNameFilter || projectNameFilter || startDate || endDate) && (
+              {(filter !== 'all' || (actionFilter && actionFilter !== 'all') || (statusFilter && statusFilter !== 'all') || (categoryFilter && categoryFilter !== 'all') || userNameFilter || projectNameFilter || startDate || endDate || ipAddressFilter || minDurationFilter || maxDurationFilter || sessionIdFilter || userAgentFilter) && (
                 <Button
                   variant="outline"
                   onClick={clearAllFilters}
@@ -652,6 +1039,72 @@ function ActivityPageContent() {
                 </Button>
               )}
             </div>
+
+            {/* Advanced Filters Toggle */}
+            <div className="flex items-center justify-between pt-3 border-t">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
+              </Button>
+            </div>
+
+            {/* Advanced Filters Panel */}
+            {showAdvancedFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 border-t">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">IP Address</label>
+                  <Input
+                    placeholder="Filter by IP..."
+                    value={ipAddressFilter}
+                    onChange={(e) => setIpAddressFilter(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Min Duration (ms)</label>
+                  <Input
+                    type="number"
+                    placeholder="e.g., 1000"
+                    value={minDurationFilter}
+                    onChange={(e) => setMinDurationFilter(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Max Duration (ms)</label>
+                  <Input
+                    type="number"
+                    placeholder="e.g., 5000"
+                    value={maxDurationFilter}
+                    onChange={(e) => setMaxDurationFilter(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Session ID</label>
+                  <Input
+                    placeholder="Filter by session..."
+                    value={sessionIdFilter}
+                    onChange={(e) => setSessionIdFilter(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">User Agent</label>
+                  <Input
+                    placeholder="Filter by browser/device..."
+                    value={userAgentFilter}
+                    onChange={(e) => setUserAgentFilter(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -671,24 +1124,33 @@ function ActivityPageContent() {
           </CardContent>
         </Card>
         ) : loading ? (
-          <Card className="bg-card border border-border">
-          <CardContent className="flex justify-center items-center py-16">
-            <SectionLoader text="Loading activities..." />
-          </CardContent>
-        </Card>
+          <ActivitySkeletonList count={5} />
         ) : activities.length === 0 ? (
           <Card className="bg-card border border-border">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="p-4 bg-muted rounded-full mb-4">
-              <Clock className="h-8 w-8 text-muted-foreground" />
+              <ActivityIconLucide className="h-8 w-8 text-muted-foreground" />
             </div>
             <p className="text-lg font-medium mb-2">No activities found</p>
-            <p className="text-sm text-muted-foreground">Try adjusting your filters</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              {searchQuery ? 'No results match your search' : 'No activities match your filters'}
+            </p>
+            <div className="flex gap-2">
+              {(filter !== 'all' || actionFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+                <Button variant="outline" size="sm" onClick={clearAllFilters}>
+                  Clear Filters
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={fetchActivities}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </CardContent>
         </Card>
         ) : (
           <div className="space-y-4">
-            {activities.map((activity) => (
+            {displayedActivities.map((activity) => (
               <Card 
                 key={activity._id} 
                 className="bg-card border border-border hover:border-primary/50 transition-colors group overflow-hidden"
@@ -757,16 +1219,21 @@ function ActivityPageContent() {
                             {new Date(activity.timestamp).toLocaleTimeString()}
                           </span>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => fetchActivityDetails(activity._id)}
-                          className="text-xs h-8 px-3"
-                          aria-label="View activity details"
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          Details
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {activity.status === 'success' && <CheckCircle className="h-4 w-4 text-primary" aria-label="Success" />}
+                          {activity.status === 'error' && <X className="h-4 w-4 text-destructive" aria-label="Error" />}
+                          {activity.status === 'warning' && <Info className="h-4 w-4 text-yellow-600" aria-label="Warning" />}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => fetchActivityDetails(activity._id)}
+                            className="text-xs h-8 px-3"
+                            aria-label="View activity details"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            Details
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -815,6 +1282,7 @@ function ActivityPageContent() {
           onClick={() => setShowDetailModal(false)}
         >
           <div 
+            ref={modalRef}
             className="bg-card rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-border"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1027,11 +1495,30 @@ function ActivityPageContent() {
             </div>
 
             <div className="sticky bottom-0 bg-card/95 backdrop-blur-sm border-t border-border p-6">
-              <div className="flex justify-end">
-                <Button onClick={() => setShowDetailModal(false)} className="bg-primary hover:bg-primary/90">
+              <div className="flex justify-between items-center">
+                {selectedActivity.reversible && !selectedActivity.reverted && (
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => handleRevertActivity(selectedActivity._id)}
+                    className="gap-2"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                    Revert Action
+                  </Button>
+                )}
+                {selectedActivity.reverted && (
+                  <Badge variant="secondary" className="gap-2">
+                    <Undo2 className="h-3 w-3" />
+                    Reverted {selectedActivity.revertedAt && `on ${new Date(selectedActivity.revertedAt).toLocaleString()}`}
+                  </Badge>
+                )}
+                <Button onClick={() => setShowDetailModal(false)} className="bg-primary hover:bg-primary/90 ml-auto">
                   Close
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Esc</kbd> to close
+              </p>
             </div>
             </div>
           </div>

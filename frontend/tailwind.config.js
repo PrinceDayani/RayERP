@@ -8,6 +8,16 @@ module.exports = {
 	],
 	theme: {
 	  extend: {
+		screens: {
+		  'xs': '300px',
+		  'sm': '640px',
+		  'md': '768px',
+		  'lg': '1024px',
+		  'xl': '1280px',
+		  '2xl': '1536px',
+		  '3xl': '1920px',
+		  '4k': '2560px',
+		},
 		borderRadius: {
 		  lg: 'var(--radius)',
 		  md: 'calc(var(--radius) - 2px)',
@@ -43,6 +53,30 @@ module.exports = {
 		  destructive: {
 			DEFAULT: 'hsl(var(--destructive))',
 			foreground: 'hsl(var(--destructive-foreground))'
+		  },
+		  success: {
+			DEFAULT: 'hsl(var(--success))',
+			foreground: 'hsl(var(--success-foreground))'
+		  },
+		  warning: {
+			DEFAULT: 'hsl(var(--warning))',
+			foreground: 'hsl(var(--warning-foreground))'
+		  },
+		  info: {
+			DEFAULT: 'hsl(var(--info))',
+			foreground: 'hsl(var(--info-foreground))'
+		  },
+		  burgundy: {
+			50: 'hsl(var(--burgundy-50))',
+			100: 'hsl(var(--burgundy-100))',
+			200: 'hsl(var(--burgundy-200))',
+			300: 'hsl(var(--burgundy-300))',
+			400: 'hsl(var(--burgundy-400))',
+			500: 'hsl(var(--burgundy-500))',
+			600: 'hsl(var(--burgundy-600))',
+			700: 'hsl(var(--burgundy-700))',
+			800: 'hsl(var(--burgundy-800))',
+			900: 'hsl(var(--burgundy-900))',
 		  },
 		  border: 'hsl(var(--border))',
 		  input: 'hsl(var(--input))',

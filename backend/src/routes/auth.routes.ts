@@ -1,7 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { register, login, getCurrentUser, logout, checkInitialSetup, checkAuth, changePassword } from '../controllers/authController';
-import { protect } from '../middleware/auth.middleware';
+import { register, login, getCurrentUser, logout, checkInitialSetup, checkAuth, changePassword, refreshAccessToken, getMySessions, revokeMySession, getUserSessions, revokeUserSession, revokeAllUserSessions, getAllActiveSessions } from '../controllers/authController';
+import { protect, requireAdminOrRoot } from '../middleware/auth.middleware';
 import { authorizeMinLevel } from '../middleware/role.middleware';
 import { updateUserRole, getAllUsers } from '../controllers/userController';
 import { validateCsrfToken } from '../middleware/csrf.middleware';
@@ -44,10 +44,21 @@ const generalLimiter = rateLimit({
 
 router.post('/login', authLimiter, login);
 router.post('/logout', generalLimiter, logout);
+router.post('/refresh', generalLimiter, refreshAccessToken);
 
 // Protected routes
 router.get('/me', protect, getCurrentUser);
 router.get('/check', protect, checkAuth);
+
+// Session management - User's own sessions
+router.get('/sessions/my', protect, generalLimiter, getMySessions);
+router.delete('/sessions/my/:sessionId', protect, generalLimiter, revokeMySession);
+
+// Session management - Admin only
+router.get('/sessions/all', protect, requireAdminOrRoot, generalLimiter, getAllActiveSessions);
+router.get('/sessions/user/:userId', protect, requireAdminOrRoot, generalLimiter, getUserSessions);
+router.delete('/sessions/:sessionId', protect, requireAdminOrRoot, generalLimiter, revokeUserSession);
+router.delete('/sessions/user/:userId/all', protect, requireAdminOrRoot, generalLimiter, revokeAllUserSessions);
 
 router.post('/register', protect, authLimiter, register);
 

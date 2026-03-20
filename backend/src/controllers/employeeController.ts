@@ -57,7 +57,39 @@ export const getAllEmployees = async (req: Request, res: Response) => {
     const user = req.user;
     const hasViewSalary = await checkUserPermission(user, 'employees.view_salary');
     
-    const employees = await Employee.find().populate('manager', 'firstName lastName');
+    // Pagination parameters
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+    const search = req.query.search as string || '';
+    const status = req.query.status as string;
+    const department = req.query.department as string;
+    
+    // Build query
+    const query: any = {};
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { employeeId: { $regex: search, $options: 'i' } },
+        { position: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (status) query.status = status;
+    if (department) {
+      query.$or = [
+        { department: department },
+        { departments: department }
+      ];
+    }
+    
+    const total = await Employee.countDocuments(query);
+    const employees = await Employee.find(query)
+      .populate('manager', 'firstName lastName')
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
     
     // Hide salary if user doesn't have permission
     const sanitizedEmployees = employees.map(emp => {
@@ -68,7 +100,16 @@ export const getAllEmployees = async (req: Request, res: Response) => {
       return empObj;
     });
     
-    res.json(sanitizedEmployees);
+    res.json({
+      success: true,
+      data: sanitizedEmployees,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching employees', error });
   }

@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 interface LogActivityParams {
   userId: string | mongoose.Types.ObjectId;
   userName: string;
-  action: 'create' | 'update' | 'delete' | 'share' | 'comment' | 'assign' | 'complete' | 'view' | 'login' | 'logout' | 'upload' | 'download' | 'approve' | 'reject' | 'archive' | 'restore' | 'export' | 'import';
+  action: 'create' | 'update' | 'delete' | 'share' | 'comment' | 'assign' | 'complete' | 'view' | 'login' | 'logout' | 'upload' | 'download' | 'approve' | 'reject' | 'archive' | 'restore' | 'export' | 'import' | 'revoke_session' | 'revoke_all_sessions' | 'session_revoked' | 'revert';
   resource: string;
   resourceType: 'project' | 'task' | 'file' | 'comment' | 'employee' | 'budget' | 'user' | 'role' | 'department' | 'report' | 'notification' | 'system' | 'auth' | 'other';
   resourceId?: string | mongoose.Types.ObjectId;

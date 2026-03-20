@@ -68,7 +68,11 @@ const Dashboard = () => {
             recentActivity: analyticsData.value.recentActivity || []
           });
         }
-        if (trendsData.status === 'fulfilled' && trendsData.value) setTrends(trendsData.value);
+        if (trendsData.status === 'fulfilled' && trendsData.value) {
+          setTrends(trendsData.value);
+        }
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error);
       } finally {
         setAnalyticsLoading(false);
       }
@@ -102,107 +106,107 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
+      <div className="container-responsive py-4 md:py-6 space-y-4 md:space-y-6">
         {/* Header with Role Badge */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card rounded-lg p-6 border border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card rounded-lg p-4 md:p-6 border border-border shadow-sm">
           <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-foreground">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 Welcome back, {user?.name}!
               </h1>
               {userRole === UserRole.ROOT && (
-                <Badge className="bg-primary text-primary-foreground">
+                <Badge className="bg-burgundy-600 text-white border-0">
                   <ShieldCheck className="h-3 w-3 mr-1" />ROOT
                 </Badge>
               )}
               {userRole === UserRole.SUPER_ADMIN && (
-                <Badge className="bg-primary text-primary-foreground">
+                <Badge className="bg-burgundy-600 text-white border-0">
                   <ShieldCheck className="h-3 w-3 mr-1" />SUPER ADMIN
                 </Badge>
               )}
               {userRole === UserRole.ADMIN && (
-                <Badge className="bg-primary text-primary-foreground">
+                <Badge className="bg-burgundy-600 text-white border-0">
                   <UserCog className="h-3 w-3 mr-1" />ADMIN
                 </Badge>
               )}
             </div>
-            <p className="text-muted-foreground">Here's your business overview for today</p>
+            <p className="text-sm md:text-base text-muted-foreground">Here's your business overview for today</p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant={socketConnected ? "default" : "secondary"} className="gap-1.5 px-3 py-1.5">
               {socketConnected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-              {socketConnected ? 'Live Updates' : 'Polling Mode'}
+              <span className="hidden sm:inline">{socketConnected ? 'Live Updates' : 'Polling Mode'}</span>
             </Badge>
             <Button variant="outline" size="sm" onClick={refresh} className="gap-2">
               <RefreshCw className="h-4 w-4" />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
           </div>
         </div>
 
         {/* Tabs Navigation */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 h-12 bg-muted p-1 rounded-lg">
-            <TabsTrigger value="overview" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-6">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto sm:h-12 bg-muted p-1 rounded-lg gap-1">
+            <TabsTrigger value="overview" className="rounded-md data-[state=active]:bg-burgundy-600 data-[state=active]:text-white transition-all">
               Overview
             </TabsTrigger>
-            <TabsTrigger value="employees" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="employees" className="rounded-md data-[state=active]:bg-burgundy-600 data-[state=active]:text-white transition-all">
               Employees
             </TabsTrigger>
-            <TabsTrigger value="projects" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="projects" className="rounded-md data-[state=active]:bg-burgundy-600 data-[state=active]:text-white transition-all">
               Projects
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="tasks" className="rounded-md data-[state=active]:bg-burgundy-600 data-[state=active]:text-white transition-all">
               Tasks
             </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-4 md:space-y-6">
             {/* Quick Stats */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <StatCard title="Employees" value={stats.totalEmployees} subtitle={`${stats.activeEmployees} active`} icon={Users} trend={trends?.employees} loading={dataLoading} color="blue" />
-              <StatCard title="Projects" value={stats.totalProjects} subtitle={`${stats.completedProjects} completed`} icon={Briefcase} trend={trends?.projects} loading={dataLoading} color="purple" />
-              <StatCard title="Tasks" value={stats.totalTasks} subtitle={`${stats.completedTasks} done`} icon={CheckSquare} loading={dataLoading} color="green" />
-              <StatCard title="Progress" value={`${stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}%`} subtitle="Completion rate" icon={Target} loading={dataLoading} color="orange" />
+            <div className="grid gap-4 grid-cols-1 xs:grid-cols-2 lg:grid-cols-4">
+              <StatCard title="Employees" value={stats.totalEmployees} subtitle={`${stats.activeEmployees} active`} icon={Users} trend={trends?.employees} loading={dataLoading} />
+              <StatCard title="Projects" value={stats.totalProjects} subtitle={`${stats.completedProjects} completed`} icon={Briefcase} trend={trends?.projects} loading={dataLoading} />
+              <StatCard title="Tasks" value={stats.totalTasks} subtitle={`${stats.completedTasks} done`} icon={CheckSquare} loading={dataLoading} />
+              <StatCard title="Progress" value={`${stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}%`} subtitle="Completion rate" icon={Target} loading={dataLoading} />
             </div>
 
             {/* Financial Overview with Toggle */}
-            <Card className="bg-card border border-border">
-              <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <Card className="bg-card border border-border shadow-sm">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 space-y-2 sm:space-y-0">
                 <CardTitle className="text-lg font-semibold">Financial Overview</CardTitle>
                 <div className="flex gap-2">
                   <Button
                     variant={revenueView === 'sales' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setRevenueView('sales')}
-                    className={revenueView === 'sales' ? 'bg-primary text-primary-foreground' : ''}
+                    className={revenueView === 'sales' ? 'bg-burgundy-600 hover:bg-burgundy-700 text-white border-0' : ''}
                   >
-                    Sales Revenue
+                    Sales
                   </Button>
                   <Button
                     variant={revenueView === 'projects' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setRevenueView('projects')}
-                    className={revenueView === 'projects' ? 'bg-primary text-primary-foreground' : ''}
+                    className={revenueView === 'projects' ? 'bg-burgundy-600 hover:bg-burgundy-700 text-white border-0' : ''}
                   >
-                    Project Budgets
+                    Projects
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   {revenueView === 'sales' ? (
                     <>
-                      <FinanceCard title="Sales Revenue" value={formatINR(stats.salesRevenue || 0)} subtitle={`${stats.salesCount || 0} invoices`} icon={TrendingUp} color="green" />
-                      <FinanceCard title="Amount Received" value={formatINR(stats.salesPaid || 0)} subtitle={`${stats.salesRevenue > 0 ? ((stats.salesPaid / stats.salesRevenue) * 100).toFixed(1) : '0'}% collected`} icon={Calendar} color="blue" />
-                      <FinanceCard title="Pending Amount" value={formatINR(stats.salesPending || 0)} subtitle={`${stats.salesRevenue > 0 ? ((stats.salesPending / stats.salesRevenue) * 100).toFixed(1) : '0'}% pending`} icon={Clock} color="orange" />
+                      <FinanceCard title="Sales Revenue" value={formatINR(stats.salesRevenue || 0)} subtitle={`${stats.salesCount || 0} invoices`} icon={TrendingUp} color="success" />
+                      <FinanceCard title="Amount Received" value={formatINR(stats.salesPaid || 0)} subtitle={`${stats.salesRevenue > 0 ? ((stats.salesPaid / stats.salesRevenue) * 100).toFixed(1) : '0'}% collected`} icon={Calendar} color="info" />
+                      <FinanceCard title="Pending Amount" value={formatINR(stats.salesPending || 0)} subtitle={`${stats.salesRevenue > 0 ? ((stats.salesPending / stats.salesRevenue) * 100).toFixed(1) : '0'}% pending`} icon={Clock} color="warning" />
                     </>
                   ) : (
                     <>
-                      <FinanceCard title="Project Revenue" value={formatINR(stats.projectRevenue || 0)} subtitle={`${stats.totalProjects || 0} projects`} icon={Briefcase} color="purple" />
-                      <FinanceCard title="Project Expenses" value={formatINR(stats.projectExpenses || 0)} subtitle="Spent budget" icon={TrendingDown} color="red" />
-                      <FinanceCard title="Project Profit" value={formatINR(stats.projectProfit || 0)} subtitle="Budget - Spent" icon={Target} color="green" />
+                      <FinanceCard title="Project Revenue" value={formatINR(stats.projectRevenue || 0)} subtitle={`${stats.totalProjects || 0} projects`} icon={Briefcase} color="primary" />
+                      <FinanceCard title="Project Expenses" value={formatINR(stats.projectExpenses || 0)} subtitle="Spent budget" icon={TrendingDown} color="destructive" />
+                      <FinanceCard title="Project Profit" value={formatINR(stats.projectProfit || 0)} subtitle="Budget - Spent" icon={Target} color="success" />
                     </>
                   )}
                 </div>
@@ -219,29 +223,29 @@ const Dashboard = () => {
             </Suspense>
 
             {/* Projects & Activity */}
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-slate-800 dark:to-slate-800/80 border border-stone-200/50 dark:border-slate-700/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.2),-4px_-4px_12px_rgba(255,255,255,0.01)]">
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+              <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-base flex items-center gap-2 font-semibold text-stone-900 dark:text-slate-100">
-                    <Briefcase className="h-5 w-5 text-rose-700 dark:text-rose-300" />
+                  <CardTitle className="text-base flex items-center gap-2 font-semibold">
+                    <Briefcase className="h-5 w-5 text-burgundy-600" />
                     Active Projects
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {analytics.projectProgress?.length > 0 ? analytics.projectProgress.slice(0, 5).map((project, i) => (
-                    <div key={i} className="space-y-2 p-3 rounded-xl bg-gradient-to-br from-stone-50 to-white dark:from-slate-700 dark:to-slate-700/80 hover:from-stone-100 hover:to-stone-50 dark:hover:from-slate-600 dark:hover:to-slate-600/80 transition-all border border-stone-200/50 dark:border-slate-600/50 shadow-[3px_3px_6px_rgba(0,0,0,0.08),-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[3px_3px_6px_rgba(0,0,0,0.2),-2px_-2px_4px_rgba(255,255,255,0.02)]">
+                  {analytics.projectProgress?.length > 0 ? analytics.projectProgress.slice(0, 3).map((project, i) => (
+                    <div key={i} className="space-y-2 p-3 rounded-lg bg-accent/50 hover:bg-accent transition-colors border border-border">
                       <div className="flex justify-between items-center">
-                        <span className="font-medium text-sm truncate text-stone-700 dark:text-slate-200">{project.name}</span>
-                        <Badge className="bg-gradient-to-br from-rose-700 to-rose-800 text-white shadow-[2px_2px_4px_rgba(136,19,55,0.3)]">{project.progress}%</Badge>
+                        <span className="font-medium text-sm truncate">{project.name}</span>
+                        <Badge className="bg-burgundy-600 text-white border-0">{project.progress}%</Badge>
                       </div>
                       <Progress value={project.progress} className="h-2" />
                     </div>
                   )) : (
-                    <div className="text-center py-12">
-                      <Briefcase className="h-16 w-16 mx-auto mb-4 text-stone-300 dark:text-stone-700" />
-                      <p className="text-sm font-medium text-stone-600 dark:text-stone-400 mb-2">No active projects</p>
-                      <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/projects/create')} className="border-stone-300 dark:border-stone-700">
-                        <Plus className="h-4 w-4 mr-2" />
+                    <div className="text-center py-8">
+                      <Briefcase className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                      <p className="text-sm font-medium text-muted-foreground mb-3">No active projects</p>
+                      <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/projects/create')} className="gap-2">
+                        <Plus className="h-4 w-4" />
                         Create Project
                       </Button>
                     </div>
@@ -249,34 +253,34 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-slate-800 dark:to-slate-800/80 border border-stone-200/50 dark:border-slate-700/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.2),-4px_-4px_12px_rgba(255,255,255,0.01)]">
+              <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-base flex items-center gap-2 font-semibold text-stone-900 dark:text-slate-100">
-                    <Activity className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+                  <CardTitle className="text-base flex items-center gap-2 font-semibold">
+                    <Activity className="h-5 w-5 text-burgundy-600" />
                     Recent Activity
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {analytics.recentActivity?.length > 0 ? (
                     <div className="space-y-2">
-                      {analytics.recentActivity.slice(0, 5).map((activity) => (
-                        <div key={activity.id} className="flex gap-3 p-3 rounded-xl bg-gradient-to-br from-stone-50 to-white dark:from-slate-700 dark:to-slate-700/80 hover:from-stone-100 hover:to-stone-50 dark:hover:from-slate-600 dark:hover:to-slate-600/80 transition-all border border-stone-200/50 dark:border-slate-600/50 shadow-[3px_3px_6px_rgba(0,0,0,0.08),-2px_-2px_4px_rgba(255,255,255,0.9)] dark:shadow-[3px_3px_6px_rgba(0,0,0,0.2),-2px_-2px_4px_rgba(255,255,255,0.02)]">
-                          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-rose-100 to-rose-50 dark:from-rose-900/30 dark:to-rose-800/30 flex items-center justify-center flex-shrink-0 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.8)] dark:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.2),inset_-1px_-1px_2px_rgba(255,255,255,0.02)]">
-                            {activity.type === 'project' && <Briefcase className="h-4 w-4 text-rose-700 dark:text-rose-300" />}
-                            {activity.type === 'task' && <CheckSquare className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />}
-                            {activity.type === 'employee' && <Users className="h-4 w-4 text-amber-600 dark:text-amber-300" />}
+                      {analytics.recentActivity.slice(0, 3).map((activity) => (
+                        <div key={activity.id} className="flex gap-3 p-3 rounded-lg bg-accent/50 hover:bg-accent transition-colors border border-border">
+                          <div className="h-9 w-9 rounded-full bg-burgundy-100 dark:bg-burgundy-900/30 flex items-center justify-center flex-shrink-0">
+                            {activity.type === 'project' && <Briefcase className="h-4 w-4 text-burgundy-600" />}
+                            {activity.type === 'task' && <CheckSquare className="h-4 w-4 text-burgundy-600" />}
+                            {activity.type === 'employee' && <Users className="h-4 w-4 text-burgundy-600" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate text-stone-700 dark:text-slate-200">{activity.description}</p>
-                            <p className="text-xs text-stone-500 dark:text-slate-400">{activity.time}</p>
+                            <p className="text-sm font-medium truncate">{activity.description}</p>
+                            <p className="text-xs text-muted-foreground">{activity.time}</p>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <Activity className="h-16 w-16 mx-auto mb-4 text-stone-300 dark:text-stone-700" />
-                      <p className="text-sm text-stone-600 dark:text-stone-400">No recent activity</p>
+                    <div className="text-center py-8">
+                      <Activity className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                      <p className="text-sm text-muted-foreground">No recent activity</p>
                     </div>
                   )}
                 </CardContent>
@@ -304,17 +308,10 @@ const Dashboard = () => {
   );
 };
 
-const StatCard = memo(({ title, value, subtitle, icon: Icon, trend, loading, color }: any) => {
-  const colorClasses = {
-    blue: 'bg-card border border-border',
-    purple: 'bg-card border border-border',
-    green: 'bg-card border border-border',
-    orange: 'bg-card border border-border'
-  };
-
+const StatCard = memo(({ title, value, subtitle, icon: Icon, trend, loading }: any) => {
   return (
-    <Card className={`${colorClasses[color]} hover:border-primary/50 transition-colors`}>
-      <CardContent className="p-6">
+    <Card className="bg-card border border-border hover:border-burgundy-500/50 transition-all duration-200 shadow-sm hover:shadow-md">
+      <CardContent className="p-4 md:p-6">
         {loading ? (
           <div className="space-y-3">
             <Skeleton className="h-4 w-20" />
@@ -325,12 +322,12 @@ const StatCard = memo(({ title, value, subtitle, icon: Icon, trend, loading, col
           <>
             <div className="flex justify-between items-start mb-3">
               <p className="text-sm font-medium text-muted-foreground">{title}</p>
-              <Icon className="h-5 w-5 text-stone-500 dark:text-slate-400" />
+              <Icon className="h-5 w-5 text-burgundy-600" />
             </div>
-            <h3 className="text-3xl font-bold mb-2 text-foreground">{value}</h3>
+            <h3 className="text-2xl md:text-3xl font-bold mb-2 text-foreground">{value}</h3>
             <div className="flex items-center gap-2">
               {trend && (
-                <Badge className={`text-xs gap-1 ${trend.direction === 'up' ? 'bg-emerald-600 text-white' : 'bg-stone-400 dark:bg-stone-600 text-white'}`}>
+                <Badge className={`text-xs gap-1 border-0 ${trend.direction === 'up' ? 'bg-success text-success-foreground' : 'bg-muted text-muted-foreground'}`}>
                   <ArrowUpRight className={`h-3 w-3 ${trend.direction === 'down' ? 'rotate-90' : ''}`} />
                   {trend.value}%
                 </Badge>
@@ -347,30 +344,30 @@ StatCard.displayName = 'StatCard';
 
 const FinanceCard = memo(({ title, value, subtitle, icon: Icon, color }: any) => {
   const colorClasses = {
-    green: 'border-l-green-500 bg-card',
-    blue: 'border-l-blue-500 bg-card',
-    orange: 'border-l-orange-500 bg-card',
-    purple: 'border-l-purple-500 bg-card',
-    red: 'border-l-red-500 bg-card'
+    success: 'border-l-success',
+    info: 'border-l-info',
+    warning: 'border-l-warning',
+    primary: 'border-l-primary',
+    destructive: 'border-l-destructive'
   };
 
   const iconColors = {
-    green: 'text-green-600',
-    blue: 'text-blue-600',
-    orange: 'text-orange-600',
-    purple: 'text-purple-600',
-    red: 'text-red-600'
+    success: 'text-success',
+    info: 'text-info',
+    warning: 'text-warning',
+    primary: 'text-primary',
+    destructive: 'text-destructive'
   };
 
   return (
-    <div className={`border-l-4 rounded-lg p-5 ${colorClasses[color]} hover:border-primary/50 transition-colors`}>
-      <div className="flex justify-between items-start">
-        <div>
+    <div className={`border-l-4 rounded-lg p-4 md:p-5 bg-card hover:shadow-md transition-all duration-200 ${colorClasses[color]}`}>
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-muted-foreground mb-2">{title}</p>
-          <h3 className="text-2xl font-bold mb-1 text-foreground">{value}</h3>
-          <p className="text-xs text-stone-600 dark:text-slate-400">{subtitle}</p>
+          <h3 className="text-xl md:text-2xl font-bold mb-1 text-foreground truncate">{value}</h3>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
-        <Icon className={`h-9 w-9 ${iconColors[color]}`} />
+        <Icon className={`h-8 w-8 md:h-9 md:w-9 flex-shrink-0 ${iconColors[color]}`} />
       </div>
     </div>
   );
@@ -406,47 +403,47 @@ const EmployeeSection = ({ router }: { router: any }) => {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
-          <CardContent className="p-6">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Total</p>
-                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{employees.length}</h3>
+                <p className="text-sm text-muted-foreground mb-1">Total</p>
+                <h3 className="text-2xl md:text-3xl font-bold">{employees.length}</h3>
               </div>
-              <Users className="h-10 w-10 text-rose-700 dark:text-rose-400" />
+              <Users className="h-8 w-8 md:h-10 md:w-10 text-burgundy-600" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
-          <CardContent className="p-6">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Active</p>
-                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{employees.filter(e => e.status === 'active').length}</h3>
+                <p className="text-sm text-muted-foreground mb-1">Active</p>
+                <h3 className="text-2xl md:text-3xl font-bold">{employees.filter(e => e.status === 'active').length}</h3>
               </div>
-              <Activity className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+              <Activity className="h-8 w-8 md:h-10 md:w-10 text-success" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
-          <CardContent className="p-6">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Departments</p>
-                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">
+                <p className="text-sm text-muted-foreground mb-1">Departments</p>
+                <h3 className="text-2xl md:text-3xl font-bold">
                   {new Set(employees.flatMap(e => e.departments?.length > 0 ? e.departments : e.department ? [e.department] : [])).size}
                 </h3>
               </div>
-              <Briefcase className="h-10 w-10 text-amber-600 dark:text-amber-400" />
+              <Briefcase className="h-8 w-8 md:h-10 md:w-10 text-info" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+      <Card className="bg-card border border-border shadow-sm">
         <CardHeader>
-          <CardTitle className="font-semibold text-stone-900 dark:text-white">Recent Employees</CardTitle>
+          <CardTitle className="font-semibold">Recent Employees</CardTitle>
         </CardHeader>
         <CardContent>
           <Suspense fallback={<Skeleton className="h-64" />}>
@@ -487,47 +484,47 @@ const ProjectSection = ({ router }: { router: any }) => {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
-          <CardContent className="p-6">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Total</p>
-                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{projects.length}</h3>
+                <p className="text-sm text-muted-foreground mb-1">Total</p>
+                <h3 className="text-2xl md:text-3xl font-bold">{projects.length}</h3>
               </div>
-              <Briefcase className="h-10 w-10 text-rose-700 dark:text-rose-400" />
+              <Briefcase className="h-8 w-8 md:h-10 md:w-10 text-burgundy-600" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
-          <CardContent className="p-6">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Active</p>
-                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{projects.filter(p => p.status === 'active').length}</h3>
+                <p className="text-sm text-muted-foreground mb-1">Active</p>
+                <h3 className="text-2xl md:text-3xl font-bold">{projects.filter(p => p.status === 'active').length}</h3>
               </div>
-              <Activity className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+              <Activity className="h-8 w-8 md:h-10 md:w-10 text-success" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
-          <CardContent className="p-6">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Avg Progress</p>
-                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">
+                <p className="text-sm text-muted-foreground mb-1">Avg Progress</p>
+                <h3 className="text-2xl md:text-3xl font-bold">
                   {projects.length > 0 ? Math.round(projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length) : 0}%
                 </h3>
               </div>
-              <Target className="h-10 w-10 text-amber-600 dark:text-amber-400" />
+              <Target className="h-8 w-8 md:h-10 md:w-10 text-info" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+      <Card className="bg-card border border-border shadow-sm">
         <CardHeader>
-          <CardTitle className="font-semibold text-stone-900 dark:text-white">Recent Projects</CardTitle>
+          <CardTitle className="font-semibold">Recent Projects</CardTitle>
         </CardHeader>
         <CardContent>
           <Suspense fallback={<Skeleton className="h-64" />}>
@@ -568,45 +565,45 @@ const TaskSection = ({ router }: { router: any }) => {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
-          <CardContent className="p-6">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Total</p>
-                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{tasks.length}</h3>
+                <p className="text-sm text-muted-foreground mb-1">Total</p>
+                <h3 className="text-2xl md:text-3xl font-bold">{tasks.length}</h3>
               </div>
-              <CheckSquare className="h-10 w-10 text-rose-700 dark:text-rose-400" />
+              <CheckSquare className="h-8 w-8 md:h-10 md:w-10 text-burgundy-600" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
-          <CardContent className="p-6">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">Completed</p>
-                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{tasks.filter(t => t.status === 'completed').length}</h3>
+                <p className="text-sm text-muted-foreground mb-1">Completed</p>
+                <h3 className="text-2xl md:text-3xl font-bold">{tasks.filter(t => t.status === 'completed').length}</h3>
               </div>
-              <Activity className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+              <Activity className="h-8 w-8 md:h-10 md:w-10 text-success" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
-          <CardContent className="p-6">
+        <Card className="bg-card border border-border shadow-sm hover:shadow-md transition-all">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-stone-600 dark:text-stone-400 mb-1">In Progress</p>
-                <h3 className="text-3xl font-bold text-stone-900 dark:text-white">{tasks.filter(t => t.status === 'in-progress').length}</h3>
+                <p className="text-sm text-muted-foreground mb-1">In Progress</p>
+                <h3 className="text-2xl md:text-3xl font-bold">{tasks.filter(t => t.status === 'in-progress').length}</h3>
               </div>
-              <Clock className="h-10 w-10 text-amber-600 dark:text-amber-400" />
+              <Clock className="h-8 w-8 md:h-10 md:w-10 text-warning" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="bg-gradient-to-br from-white to-stone-50 dark:from-stone-900 dark:to-stone-950 border border-stone-200/50 dark:border-stone-800/50 shadow-[8px_8px_16px_rgba(0,0,0,0.1),-4px_-4px_12px_rgba(255,255,255,0.8)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_12px_rgba(255,255,255,0.02)]">
+      <Card className="bg-card border border-border shadow-sm">
         <CardHeader>
-          <CardTitle className="font-semibold text-stone-900 dark:text-white">Recent Tasks</CardTitle>
+          <CardTitle className="font-semibold">Recent Tasks</CardTitle>
         </CardHeader>
         <CardContent>
           <Suspense fallback={<Skeleton className="h-64" />}>

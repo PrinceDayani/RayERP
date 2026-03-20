@@ -48,52 +48,78 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle authentication errors
+// Response interceptor to handle authentication errors and retries
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Enhanced error logging for network issues
-    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      console.error('?? Network Error Details:', {
-        message: 'Cannot connect to backend server',
-        apiUrl: API_URL,
-        possibleCauses: [
-          'Backend server is not running',
-          'CORS configuration issue',
-          'Firewall blocking connection',
-          'Wrong API URL in environment'
-        ],
-        solutions: [
-          'Check if backend is running on port 5000',
-          'Verify NEXT_PUBLIC_API_URL in .env.local',
-          'Check browser console for CORS errors'
-        ]
-      });
+    const config = error.config;
+    
+    // Retry logic with exponential backoff
+    if (!config || config.__retryCount >= 3) {
+      return handleFinalError(error);
+    }
+    
+    config.__retryCount = config.__retryCount || 0;
+    
+    // Retry on network errors or 5xx errors
+    const shouldRetry = !error.response || 
+      (error.response.status >= 500 && error.response.status < 600) ||
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ERR_NETWORK';
+    
+    if (shouldRetry) {
+      config.__retryCount += 1;
+      const delay = Math.min(1000 * Math.pow(2, config.__retryCount), 10000);
       
-      // Create a more user-friendly error
-      const networkError = new Error('Network Error: This might be a CORS issue. Check server configuration.');
-      networkError.name = 'NetworkError';
-      return Promise.reject(networkError);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return api(config);
     }
     
-    // Handle CORS errors specifically
-    if (error.message?.includes('CORS') || error.code === 'ERR_BLOCKED_BY_CLIENT') {
-      console.error('?? CORS Error:', {
-        message: 'Request blocked by CORS policy',
-        url: error.config?.url,
-        method: error.config?.method,
-        origin: typeof window !== 'undefined' ? window.location.origin : 'server'
-      });
-    }
-    
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem("auth-token");
-      window.location.href = "/login";
-    }
-    
-    return Promise.reject(error);
+    return handleFinalError(error);
   }
 );
+
+function handleFinalError(error: any) {
+  // Enhanced error logging for network issues
+  if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+    console.error('🔴 Network Error Details:', {
+      message: 'Cannot connect to backend server',
+      apiUrl: API_URL,
+      possibleCauses: [
+        'Backend server is not running',
+        'CORS configuration issue',
+        'Firewall blocking connection',
+        'Wrong API URL in environment'
+      ],
+      solutions: [
+        'Check if backend is running on port 5000',
+        'Verify NEXT_PUBLIC_API_URL in .env.local',
+        'Check browser console for CORS errors'
+      ]
+    });
+    
+    const networkError = new Error('Network Error: This might be a CORS issue. Check server configuration.');
+    networkError.name = 'NetworkError';
+    return Promise.reject(networkError);
+  }
+  
+  // Handle CORS errors specifically
+  if (error.message?.includes('CORS') || error.code === 'ERR_BLOCKED_BY_CLIENT') {
+    console.error('🔴 CORS Error:', {
+      message: 'Request blocked by CORS policy',
+      url: error.config?.url,
+      method: error.config?.method,
+      origin: typeof window !== 'undefined' ? window.location.origin : 'server'
+    });
+  }
+  
+  if (error.response?.status === 401 && typeof window !== 'undefined') {
+    localStorage.removeItem("auth-token");
+    window.location.href = "/login";
+  }
+  
+  return Promise.reject(error);
+}
 
 // Helper function for API requests
 export const apiRequest = async (url: string, options?: any) => {

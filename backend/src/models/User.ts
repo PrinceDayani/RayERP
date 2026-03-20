@@ -16,6 +16,7 @@ export interface IUser extends Document {
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
   generateAuthToken(): string;
+  generateRefreshToken(): string;
 }
 
 const userSchema = new Schema<IUser>(
@@ -109,23 +110,41 @@ userSchema.methods.comparePassword = async function (candidatePassword: string):
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Generate JWT token
+// Generate JWT access token (short-lived)
 userSchema.methods.generateAuthToken = function (): string {
   const secretKey = process.env.JWT_SECRET;
-  const expiresIn = process.env.JWT_EXPIRES_IN;
+  const expiresIn = process.env.JWT_EXPIRES_IN || '15m';
   
   if (!secretKey) {
     throw new Error('JWT_SECRET environment variable is required');
   }
   
-  if (!expiresIn) {
-    throw new Error('JWT_EXPIRES_IN environment variable is required');
+  return jwt.sign(
+    { 
+      id: this._id.toString(),
+      role: this.role,
+      type: 'access'
+    },
+    secretKey,
+    {
+      expiresIn
+    } as jwt.SignOptions
+  );
+};
+
+// Generate JWT refresh token (long-lived)
+userSchema.methods.generateRefreshToken = function (): string {
+  const secretKey = process.env.JWT_SECRET;
+  const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+  
+  if (!secretKey) {
+    throw new Error('JWT_SECRET environment variable is required');
   }
   
   return jwt.sign(
     { 
       id: this._id.toString(),
-      role: this.role
+      type: 'refresh'
     },
     secretKey,
     {

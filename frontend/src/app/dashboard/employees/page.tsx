@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SectionLoader } from '@/components/PageLoader';
+import { Pagination } from "@/components/ui/pagination";
 import { 
   Plus, 
   Users, 
@@ -98,6 +99,10 @@ const EmployeeManagementDashboard = () => {
   });
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 50;
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     search: '',
@@ -116,7 +121,7 @@ const EmployeeManagementDashboard = () => {
     if (isAuthenticated) {
       fetchData();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentPage, filters]);
 
   // Real-time updates every 30 seconds
   useEffect(() => {
@@ -155,15 +160,27 @@ const EmployeeManagementDashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch employees first (most important)
+      // Fetch employees with pagination
       let employeesData = [];
       try {
-        const response = await employeesAPI.getAll();
-        employeesData = Array.isArray(response) ? response : (response?.data || []);
+        const response = await employeesAPI.getAll({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: filters.search || searchTerm,
+          status: filters.status,
+          department: filters.department
+        });
+        
+        if (response?.data) {
+          employeesData = response.data;
+          setTotalPages(response.pagination?.pages || 1);
+          setTotalItems(response.pagination?.total || 0);
+        } else {
+          employeesData = Array.isArray(response) ? response : [];
+        }
         setEmployees(employeesData);
       } catch (error) {
         console.error("Error fetching employees:", error);
-        // Continue with empty array if employees fail
       }
       
       // Fetch stats with individual error handling
@@ -588,6 +605,18 @@ const EmployeeManagementDashboard = () => {
                         ))}
                       </tbody>
                     </table>
+                    
+                    {totalPages > 1 && (
+                      <div className="p-4 border-t">
+                        <Pagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={setCurrentPage}
+                          totalItems={totalItems}
+                          itemsPerPage={itemsPerPage}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 

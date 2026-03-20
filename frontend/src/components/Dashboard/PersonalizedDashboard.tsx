@@ -38,26 +38,42 @@ export default function PersonalizedDashboard() {
   const [data, setData] = useState<PersonalizedDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+    
+    return () => {
+      // Cleanup on unmount
+    };
+  }, [retryCount]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       const response = await api.get('/dashboard/user-dashboard');
       setData(response.data.data);
+      setError(null);
+      setRetryCount(0);
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Failed to load dashboard data';
       setError(msg);
       
-      // Handle authentication errors
       if (err?.response?.status === 401) {
         localStorage.removeItem('auth-token');
         router.replace('/login');
+        return;
       } else if (err?.response?.status === 403) {
-        setError('You do not have permission to view the dashboard');
+        setError('Access Denied: You need dashboard.view permission. Please contact your administrator.');
+        return;
+      }
+      
+      // Auto-retry with exponential backoff
+      if (!err?.response && retryCount < 3) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+        }, delay);
       }
     } finally {
       setLoading(false);
@@ -90,21 +106,20 @@ export default function PersonalizedDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-6">
+      <div className="container-responsive py-4 md:py-6 space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="bg-card rounded-lg p-6 border">
-          <h1 className="text-3xl font-bold">Welcome back, {user?.name}!</h1>
-          <p className="text-muted-foreground mt-1">Here's your personalized overview</p>
+        <div className="bg-card rounded-lg p-4 md:p-6 border shadow-sm">
+          <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {user?.name}!</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">Here's your personalized overview</p>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 xs:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="My Projects"
             value={data.projects.length}
             subtitle="Active projects"
             icon={Briefcase}
-            color="blue"
             onClick={() => router.push('/dashboard/projects')}
           />
           <StatCard
@@ -112,7 +127,6 @@ export default function PersonalizedDashboard() {
             value={data.taskStats.total}
             subtitle={`${data.taskStats.overdue} overdue`}
             icon={CheckSquare}
-            color="green"
             onClick={() => router.push('/dashboard/tasks')}
           />
           <StatCard
@@ -120,7 +134,6 @@ export default function PersonalizedDashboard() {
             value={data.notifications.length}
             subtitle="Unread"
             icon={Bell}
-            color="orange"
             onClick={() => router.push('/dashboard/notifications')}
           />
           <StatCard
@@ -128,42 +141,41 @@ export default function PersonalizedDashboard() {
             value={data.taskStats.inProgress}
             subtitle="Active tasks"
             icon={Activity}
-            color="purple"
           />
         </div>
 
         {/* Financial Overview - Only if user has finance permission */}
         {data.permissions.finance && (
-          <Card>
+          <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <DollarSign className="h-5 w-5" />
                 Financial Overview
               </CardTitle>
             </CardHeader>
             <CardContent>
               {data.financials ? (
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   <FinanceCard
                     title="Sales Revenue"
                     value={formatINR(data.financials.salesRevenue)}
                     subtitle={`${data.financials.salesCount} invoices`}
                     icon={TrendingUp}
-                    color="green"
+                    color="success"
                   />
                   <FinanceCard
                     title="Amount Received"
                     value={formatINR(data.financials.salesPaid)}
                     subtitle="Collected"
                     icon={Calendar}
-                    color="blue"
+                    color="info"
                   />
                   <FinanceCard
                     title="Project Budget"
                     value={formatINR(data.financials.projectBudget)}
                     subtitle={`${formatINR(data.financials.projectSpent)} spent`}
                     icon={Target}
-                    color="purple"
+                    color="primary"
                   />
                 </div>
               ) : (
@@ -178,9 +190,9 @@ export default function PersonalizedDashboard() {
 
         {/* Budget Status - Only if user has budget permission */}
         {data.permissions.budget && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+          <Card className="shadow-sm">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <FileText className="h-5 w-5" />
                 My Budget Status
               </CardTitle>
@@ -191,21 +203,21 @@ export default function PersonalizedDashboard() {
             <CardContent>
               {data.budgets && data.budgets.length > 0 ? (
                 <div className="space-y-3">
-                  {data.budgets.slice(0, 5).map((budget: any) => (
-                    <div key={budget._id} className="p-4 border rounded-lg hover:bg-accent transition-colors">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-medium">{budget.budgetName || budget.projectName || budget.departmentName}</h4>
+                  {data.budgets.slice(0, 3).map((budget: any) => (
+                    <div key={budget._id} className="p-4 border rounded-lg hover:bg-accent transition-colors cursor-pointer">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium truncate">{budget.budgetName || budget.projectName || budget.departmentName}</h4>
                           <p className="text-sm text-muted-foreground">
                             {formatINR(budget.actualSpent)} / {formatINR(budget.totalBudget)}
                           </p>
                         </div>
-                        <div className="flex gap-2">
-                          <Badge variant={budget.status === 'approved' ? 'default' : budget.status === 'pending' ? 'secondary' : 'outline'}>
+                        <div className="flex gap-2 flex-wrap">
+                          <Badge variant={budget.status === 'approved' ? 'default' : budget.status === 'pending' ? 'secondary' : 'outline'} className="border-0">
                             {budget.status}
                           </Badge>
                           {budget.userApprovalStatus !== 'not-required' && (
-                            <Badge variant={budget.userApprovalStatus === 'approved' ? 'default' : 'secondary'}>
+                            <Badge variant={budget.userApprovalStatus === 'approved' ? 'default' : 'secondary'} className="border-0">
                               {budget.userApprovalStatus}
                             </Badge>
                           )}
@@ -226,11 +238,11 @@ export default function PersonalizedDashboard() {
         )}
 
         {/* Main Content Grid */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
           {/* My Projects */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+          <Card className="shadow-sm">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <Briefcase className="h-5 w-5" />
                 My Projects
               </CardTitle>
@@ -241,15 +253,15 @@ export default function PersonalizedDashboard() {
             <CardContent>
               {data.projects.length > 0 ? (
                 <div className="space-y-3">
-                  {data.projects.slice(0, 5).map((project: any) => (
+                  {data.projects.slice(0, 3).map((project: any) => (
                     <div
                       key={project._id}
-                      className="p-3 border rounded-lg hover:bg-accent transition-colors cursor-pointer"
+                      className="p-3 border rounded-lg hover:bg-accent transition-all cursor-pointer hover:shadow-sm"
                       onClick={() => router.push(`/dashboard/projects/${project._id}`)}
                     >
                       <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium">{project.name}</span>
-                        <Badge>{project.status}</Badge>
+                        <span className="font-medium truncate">{project.name}</span>
+                        <Badge className="bg-burgundy-600 text-white border-0">{project.status}</Badge>
                       </div>
                       <Progress value={project.progress} className="h-2 mb-2" />
                       <div className="flex justify-between text-xs text-muted-foreground">
@@ -269,9 +281,9 @@ export default function PersonalizedDashboard() {
           </Card>
 
           {/* My Tasks */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+          <Card className="shadow-sm">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <CheckSquare className="h-5 w-5" />
                 My Tasks
               </CardTitle>
@@ -282,20 +294,20 @@ export default function PersonalizedDashboard() {
             <CardContent>
               {data.tasks.length > 0 ? (
                 <div className="space-y-2">
-                  {data.tasks.slice(0, 8).map((task: any) => (
+                  {data.tasks.slice(0, 5).map((task: any) => (
                     <div
                       key={task._id}
-                      className="p-3 border rounded-lg hover:bg-accent transition-colors cursor-pointer"
+                      className="p-3 border rounded-lg hover:bg-accent transition-all cursor-pointer hover:shadow-sm"
                       onClick={() => router.push(`/dashboard/tasks/${task._id}`)}
                     >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{task.title}</p>
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{task.title}</p>
                           {task.project && (
-                            <p className="text-xs text-muted-foreground">{task.project.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{task.project.name}</p>
                           )}
                         </div>
-                        <Badge variant={task.priority === 'high' || task.priority === 'critical' ? 'destructive' : 'secondary'} className="ml-2">
+                        <Badge variant={task.priority === 'high' || task.priority === 'critical' ? 'destructive' : 'secondary'} className="ml-2 border-0">
                           {task.priority}
                         </Badge>
                       </div>
@@ -304,7 +316,7 @@ export default function PersonalizedDashboard() {
                           <Clock className="h-3 w-3" />
                           {new Date(task.dueDate).toLocaleDateString()}
                           {new Date(task.dueDate) < new Date() && task.status !== 'completed' && (
-                            <Badge variant="destructive" className="ml-2 text-xs">Overdue</Badge>
+                            <Badge variant="destructive" className="ml-2 text-xs border-0">Overdue</Badge>
                           )}
                         </div>
                       )}
@@ -321,9 +333,9 @@ export default function PersonalizedDashboard() {
           </Card>
 
           {/* Project Activity */}
-          <Card>
+          <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <Activity className="h-5 w-5" />
                 Project Activity
               </CardTitle>
@@ -331,16 +343,16 @@ export default function PersonalizedDashboard() {
             <CardContent>
               {data.projectActivity.length > 0 ? (
                 <div className="space-y-3">
-                  {data.projectActivity.slice(0, 8).map((activity: any) => (
+                  {data.projectActivity.slice(0, 5).map((activity: any) => (
                     <div key={activity._id} className="flex gap-3 p-2 rounded-lg hover:bg-accent transition-colors">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        {activity.resourceType === 'task' && <CheckSquare className="h-4 w-4 text-primary" />}
-                        {activity.resourceType === 'file' && <FileText className="h-4 w-4 text-primary" />}
-                        {activity.resourceType === 'budget' && <DollarSign className="h-4 w-4 text-primary" />}
-                        {activity.resourceType === 'project' && <Briefcase className="h-4 w-4 text-primary" />}
+                      <div className="h-8 w-8 rounded-full bg-burgundy-100 dark:bg-burgundy-900/30 flex items-center justify-center flex-shrink-0">
+                        {activity.resourceType === 'task' && <CheckSquare className="h-4 w-4 text-burgundy-600" />}
+                        {activity.resourceType === 'file' && <FileText className="h-4 w-4 text-burgundy-600" />}
+                        {activity.resourceType === 'budget' && <DollarSign className="h-4 w-4 text-burgundy-600" />}
+                        {activity.resourceType === 'project' && <Briefcase className="h-4 w-4 text-burgundy-600" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{activity.action}</p>
+                        <p className="text-sm font-medium truncate">{activity.action}</p>
                         <p className="text-xs text-muted-foreground truncate">{activity.details}</p>
                         <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleString()}</p>
                       </div>
@@ -357,9 +369,9 @@ export default function PersonalizedDashboard() {
           </Card>
 
           {/* Notifications */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+          <Card className="shadow-sm">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <Bell className="h-5 w-5" />
                 Notifications
               </CardTitle>
@@ -370,21 +382,21 @@ export default function PersonalizedDashboard() {
             <CardContent>
               {data.notifications.length > 0 ? (
                 <div className="space-y-2">
-                  {data.notifications.slice(0, 8).map((notification: any) => (
+                  {data.notifications.slice(0, 5).map((notification: any) => (
                     <div
                       key={notification._id}
-                      className="p-3 border rounded-lg hover:bg-accent transition-colors cursor-pointer"
+                      className="p-3 border rounded-lg hover:bg-accent transition-all cursor-pointer hover:shadow-sm"
                       onClick={() => notification.actionUrl && router.push(notification.actionUrl)}
                     >
                       <div className="flex gap-2">
                         <AlertCircle className={`h-4 w-4 flex-shrink-0 mt-0.5 ${
-                          notification.priority === 'urgent' ? 'text-red-500' :
-                          notification.priority === 'high' ? 'text-orange-500' :
-                          'text-blue-500'
+                          notification.priority === 'urgent' ? 'text-destructive' :
+                          notification.priority === 'high' ? 'text-warning' :
+                          'text-info'
                         }`} />
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{notification.title}</p>
-                          <p className="text-xs text-muted-foreground">{notification.message}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{notification.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{notification.message}</p>
                           <p className="text-xs text-muted-foreground mt-1">
                             {new Date(notification.createdAt).toLocaleString()}
                           </p>
@@ -407,15 +419,15 @@ export default function PersonalizedDashboard() {
   );
 }
 
-const StatCard = ({ title, value, subtitle, icon: Icon, color, onClick }: any) => {
+const StatCard = ({ title, value, subtitle, icon: Icon, onClick }: any) => {
   return (
-    <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={onClick}>
-      <CardContent className="p-6">
+    <Card className="hover:border-burgundy-500/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md" onClick={onClick}>
+      <CardContent className="p-4 md:p-6">
         <div className="flex justify-between items-start mb-3">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <Icon className="h-5 w-5 text-muted-foreground" />
+          <Icon className="h-5 w-5 text-burgundy-600" />
         </div>
-        <h3 className="text-3xl font-bold mb-2">{value}</h3>
+        <h3 className="text-2xl md:text-3xl font-bold mb-2">{value}</h3>
         <p className="text-xs text-muted-foreground">{subtitle}</p>
       </CardContent>
     </Card>
@@ -424,26 +436,26 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color, onClick }: any) =
 
 const FinanceCard = ({ title, value, subtitle, icon: Icon, color }: any) => {
   const colorClasses = {
-    green: 'border-l-green-500',
-    blue: 'border-l-blue-500',
-    purple: 'border-l-purple-500'
+    success: 'border-l-success',
+    info: 'border-l-info',
+    primary: 'border-l-primary'
   };
 
   const iconColors = {
-    green: 'text-green-600',
-    blue: 'text-blue-600',
-    purple: 'text-purple-600'
+    success: 'text-success',
+    info: 'text-info',
+    primary: 'text-primary'
   };
 
   return (
-    <div className={`border-l-4 rounded-lg p-5 bg-card ${colorClasses[color]}`}>
-      <div className="flex justify-between items-start">
-        <div>
+    <div className={`border-l-4 rounded-lg p-4 md:p-5 bg-card hover:shadow-md transition-all duration-200 ${colorClasses[color]}`}>
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-muted-foreground mb-2">{title}</p>
-          <h3 className="text-2xl font-bold mb-1">{value}</h3>
+          <h3 className="text-xl md:text-2xl font-bold mb-1 truncate">{value}</h3>
           <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
-        <Icon className={`h-9 w-9 ${iconColors[color]}`} />
+        <Icon className={`h-8 w-8 md:h-9 md:w-9 flex-shrink-0 ${iconColors[color]}`} />
       </div>
     </div>
   );

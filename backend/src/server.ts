@@ -10,6 +10,7 @@ import { connectDB, createIndexes } from "./config/database";
 import { cacheMiddleware } from "./middleware/cache.middleware";
 import { paginationMiddleware } from "./middleware/pagination.middleware";
 import { provideCsrfToken } from "./middleware/csrf.middleware";
+import { initRedis, closeRedis } from "./utils/redis";
 import http from "http";
 import path from "path";
 import { Server as SocketServer } from "socket.io";
@@ -351,6 +352,15 @@ async function initializeRealTimeSystems() {
       logger.warn('⚠️ File cleanup could not be started:', err.message);
     }
 
+    // Initialize activity log cleanup
+    try {
+      const { startActivityLogCleanup } = await import('./jobs/activityLogCleanup');
+      startActivityLogCleanup();
+      logger.info('✅ Activity log cleanup cron job started (daily at 3 AM, 90-day retention)');
+    } catch (err) {
+      logger.warn('⚠️ Activity log cleanup could not be started:', err.message);
+    }
+
     logger.info('✅ Real-time systems initialized');
     logger.info('✅ Budget cron jobs started');
     logger.info('✅ Audit log cleanup initialized');
@@ -370,6 +380,10 @@ mongoose.set('debug', false); // Disable query logging
 
 connectDB()
   .then(async () => {
+    // Initialize Redis
+    initRedis();
+    logger.info('✅ Redis initialization started');
+    
     // Create database indexes for performance
     await createIndexes();
 
@@ -431,6 +445,7 @@ connectDB()
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  await closeRedis();
   server.close(() => {
     mongoose.connection.close().then(() => {
       logger.info('MongoDB connection closed');
@@ -441,6 +456,7 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
+  await closeRedis();
   server.close(() => {
     mongoose.connection.close().then(() => {
       logger.info('MongoDB connection closed');

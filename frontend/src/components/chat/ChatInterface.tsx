@@ -154,7 +154,6 @@ export default function ChatInterface() {
       {isRoot && (
         <div className="absolute top-0 left-0 right-0 z-10 bg-red-600 text-white px-4 py-2 flex items-center justify-center gap-2 shadow-lg">
           <Shield className="w-4 h-4" />
-          <span className="text-sm font-semibold">ROOT MONITORING MODE - Read-Only Access to All Conversations</span>
         </div>
       )}
       <div className={`flex h-full w-full ${isRoot ? 'pt-10' : ''}`}>

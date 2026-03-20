@@ -31,6 +31,8 @@
     "fix:account-types": "npm run validate-env && ts-node --transpile-only src/scripts/fixAccountTypes.ts",
     "migrate:roles": "npm run validate-env && ts-node --transpile-only scripts/migrateToRoles.ts",
     "migrate:accounts": "npm run validate-env && ts-node --transpile-only src/scripts/migrateAccountCategories.ts",
+    "migrate:refresh-tokens": "npm run validate-env && ts-node --transpile-only src/migrations/add-refresh-token-to-sessions.ts",
+    "migrate:device-fingerprint": "npm run validate-env && ts-node --transpile-only src/migrations/add-device-fingerprint.ts",
     "backfill:ledger": "npm run validate-env && ts-node --transpile-only src/scripts/backfillLedgerEntries.ts",
     "validate:pl-accounts": "npm run validate-env && ts-node --transpile-only src/scripts/validatePLAccounts.ts",
     "preinstall": "npx only-allow npm"
@@ -54,7 +56,9 @@
     "express-rate-limit": "^6.11.2",
     "express-validator": "^7.3.0",
     "file-saver": "^2.0.5",
+    "geoip-lite": "^2.0.1",
     "helmet": "^7.0.0",
+    "ioredis": "^5.4.1",
     "ical-generator": "^10.0.0",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
@@ -66,6 +70,7 @@
     "pdfkit": "^0.13.0",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.1",
+    "ua-parser-js": "^2.0.9",
     "winston": "^3.8.2"
   },
   "devDependencies": {
@@ -79,6 +84,7 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/multer": "^2.0.0",
     "@types/node": "^20.0.0",
+    "@types/ioredis": "^5.0.0",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.3",
     "@types/pdfkit": "^0.12.9",

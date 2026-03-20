@@ -4,6 +4,9 @@ if (!API_URL) {
   throw new Error('NEXT_PUBLIC_API_URL environment variable is not set');
 }
 
+// Import device fingerprinting
+import { getFingerprintHeader } from './deviceFingerprint';
+
 interface FetchOptions extends Omit<RequestInit, 'cache'> {
   timeout?: number;
   retries?: number;
@@ -29,7 +32,9 @@ class ApiClient {
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('auth-token') || localStorage.getItem('token');
+    // Tokens are now in HTTP-only cookies, managed by browser
+    // This method is kept for backward compatibility but returns null
+    return null;
   }
 
   private getCacheKey(url: string, options: RequestInit): string {
@@ -135,7 +140,7 @@ class ApiClient {
   }
 
   private async request<T>(method: string, endpoint: string, data?: any, options: FetchOptions = {}): Promise<T> {
-    const token = this.getToken();
+    // Token is automatically sent via HTTP-only cookies
     const isFormData = data instanceof FormData;
     
     const requestOptions: FetchOptions = {
@@ -143,19 +148,55 @@ class ApiClient {
       method,
       headers: {
         ...(!isFormData && { 'Content-Type': 'application/json' }),
-        ...(token && { 'Authorization': `Bearer ${token}` }),
         'X-Requested-With': 'XMLHttpRequest',
+        // Add device fingerprint header
+        'X-Fingerprint': getFingerprintHeader(),
         ...options.headers
       },
-      credentials: 'include'
+      credentials: 'include' // Always include cookies
     };
 
     if (data && method !== 'GET') {
       requestOptions.body = isFormData ? data : JSON.stringify(data);
     }
 
-    const response = await this.fetchWithTimeout(`${API_URL}${endpoint}`, requestOptions);
-    return this.handleResponse<T>(response);
+    try {
+      const response = await this.fetchWithTimeout(`${API_URL}${endpoint}`, requestOptions);
+      return this.handleResponse<T>(response);
+    } catch (error: any) {
+      // If 401 and not already on refresh endpoint, try to refresh token
+      if (error.status === 401 && !endpoint.includes('/refresh') && !endpoint.includes('/login')) {
+        try {
+          // Attempt to refresh the access token
+          const refreshResponse = await fetch(`${API_URL}/api/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (refreshResponse.ok) {
+            // Retry the original request
+            const retryResponse = await this.fetchWithTimeout(`${API_URL}${endpoint}`, requestOptions);
+            return this.handleResponse<T>(retryResponse);
+          } else {
+            // Refresh failed, redirect to login
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
+            throw error;
+          }
+        } catch (refreshError) {
+          // Refresh failed, redirect to login
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+          throw error;
+        }
+      }
+      throw error;
+    }
   }
 
   async get<T>(endpoint: string, options?: FetchOptions): Promise<T> {

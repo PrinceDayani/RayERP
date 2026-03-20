@@ -19,7 +19,8 @@ declare global {
 
 interface JwtPayload {
   id: string;
-  role: string;
+  role?: string;
+  type: 'access' | 'refresh';
 }
 
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
@@ -56,6 +57,15 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
 
+    // Ensure it's an access token
+    if (decoded.type !== 'access') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token type',
+        code: 'INVALID_TOKEN_TYPE'
+      });
+    }
+
     // Check if session exists and is valid
     const UserSession = (await import('../models/UserSession')).default;
     const tokenHash = UserSession.hashToken(token);
@@ -71,6 +81,64 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
         message: 'Session expired or invalid. Please login again.',
         code: 'SESSION_INVALID'
       });
+    }
+
+    // Validate device fingerprint (token binding)
+    const { generateDeviceFingerprint, compareFingerprints, isSuspiciousChange } = await import('../utils/deviceFingerprint');
+    const currentFingerprint = generateDeviceFingerprint(req as any);
+    const storedFingerprint = session.deviceFingerprint;
+
+    if (storedFingerprint) {
+      const comparison = compareFingerprints(storedFingerprint, currentFingerprint);
+      
+      // If fingerprints don't match, check if it's suspicious
+      if (!comparison.match) {
+        const suspiciousCheck = isSuspiciousChange(storedFingerprint, currentFingerprint);
+        
+        if (suspiciousCheck.suspicious) {
+          // Log suspicious activity
+          const { logger } = await import('../utils/logger');
+          logger.warn(`Suspicious device change detected for session ${session.sessionId}`, {
+            userId: session.user,
+            severity: suspiciousCheck.severity,
+            reason: suspiciousCheck.reason,
+            oldFingerprint: storedFingerprint.hash,
+            newFingerprint: currentFingerprint.hash,
+            similarity: comparison.similarity
+          });
+
+          // For high severity changes, invalidate session
+          if (suspiciousCheck.severity === 'high') {
+            await UserSession.deleteOne({ _id: session._id });
+            
+            // Log security event
+            const { logActivity } = await import('../utils/activityLogger');
+            await logActivity({
+              userId: session.user.toString(),
+              userName: 'Unknown',
+              action: 'session_revoked',
+              resource: 'User Session',
+              resourceType: 'auth',
+              details: `Session revoked due to suspicious device change: ${suspiciousCheck.reason}`,
+              metadata: {
+                sessionId: session.sessionId,
+                severity: suspiciousCheck.severity,
+                oldFingerprint: storedFingerprint.hash,
+                newFingerprint: currentFingerprint.hash
+              },
+              category: 'security',
+              severity: 'high',
+              ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+            });
+
+            return res.status(401).json({
+              success: false,
+              message: 'Session invalidated due to suspicious device change. Please login again.',
+              code: 'DEVICE_MISMATCH'
+            });
+          }
+        }
+      }
     }
 
     // Update last active time (asynchronously, don't wait)
@@ -176,5 +244,91 @@ export const fastAuth = (req: Request, res: Response, next: NextFunction) => {
     next();
   } catch (error) {
     res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+};
+
+// Permission check middleware
+export const requirePermission = (permission: string) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      const user = await User.findById(req.user._id).populate('role');
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      const role = user.role as any;
+      
+      // Root has all permissions
+      if (role?.name?.toLowerCase() === 'root') {
+        return next();
+      }
+
+      // Check if user has the required permission
+      const permissions = role?.permissions || [];
+      if (!permissions.includes(permission)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Insufficient permissions',
+          code: 'INSUFFICIENT_PERMISSIONS'
+        });
+      }
+
+      next();
+    } catch (error: any) {
+      console.error('[Permission Check] Error:', error.message);
+      res.status(500).json({
+        success: false,
+        message: 'Error checking permissions'
+      });
+    }
+  };
+};
+
+// Admin or Root role check
+export const requireAdminOrRoot = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const user = await User.findById(req.user._id).populate('role');
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const role = user.role as any;
+    const roleName = role?.name?.toLowerCase();
+    
+    if (roleName !== 'root' && roleName !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin or Root access required',
+        code: 'ADMIN_ACCESS_REQUIRED'
+      });
+    }
+
+    next();
+  } catch (error: any) {
+    console.error('[Admin Check] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error checking admin access'
+    });
   }
 };

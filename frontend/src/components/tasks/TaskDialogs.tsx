@@ -91,7 +91,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
         description: task.description || '',
         taskType: (task as any).taskType || 'project',
         assignmentType: (task as any).assignmentType || 'assigned',
-        project: (task.project && typeof task.project === 'object') ? task.project._id : (task.project || ''),
+        project: (task.project && typeof task.project === 'object') ? task.project._id : ((task.project as unknown as string) || ''),
         priority: task.priority || 'medium',
         status: task.status || 'todo',
         dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
@@ -100,7 +100,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
         blockedBy: (task as any).blockedBy || ''
       });
       
-      const assignedToId = (task.assignedTo && typeof task.assignedTo === 'object') ? task.assignedTo._id : task.assignedTo;
+      const assignedToId = (task.assignedTo && typeof task.assignedTo === 'object') ? task.assignedTo._id : (task.assignedTo as unknown as string);
       setSelectedAssignees(assignedToId ? [assignedToId] : []);
       
       if (task.tags && Array.isArray(task.tags)) {
@@ -114,15 +114,15 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
         setChecklist([]);
       }
       if (task.watchers && Array.isArray(task.watchers)) {
-        setWatchers(task.watchers.map(w => (w && typeof w === 'object') ? w._id : w).filter(Boolean));
+        setWatchers(task.watchers.map(w => (w && typeof w === 'object') ? w._id : (w as unknown as string)).filter(Boolean) as string[]);
       } else {
         setWatchers([]);
       }
       if (task.dependencies && Array.isArray(task.dependencies)) {
         setDependencies(task.dependencies.map(d => ({
-          taskId: (d.taskId && typeof d.taskId === 'object') ? d.taskId._id : d.taskId,
+          taskId: (d.taskId && typeof d.taskId === 'object') ? d.taskId._id : (d.taskId as unknown as string),
           type: d.type || 'finish-to-start'
-        })).filter(d => d.taskId));
+        })).filter(d => d.taskId) as { taskId: string; type: string }[]);
       } else {
         setDependencies([]);
       }

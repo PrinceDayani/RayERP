@@ -92,7 +92,9 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
   const socketRef = useRef<any>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchRef = useRef<number>(0);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const FETCH_COOLDOWN = 3000;
+  const DEBOUNCE_DELAY = 300;
 
   const fetchStats = useCallback(async (force = false) => {
     if (!isAuthenticated) {
@@ -133,20 +135,17 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
 
     try {
 
-      console.log('[Dashboard] Fetching stats from:', `${API_URL}/api/dashboard/stats`);
       const response = await axios.get(`${API_URL}/api/dashboard/stats`, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 10000
       });
       
-      console.log('[Dashboard] Stats response:', response.data);
       if (response.data.success) {
         const data = response.data.data;
         setStats(data);
         setCachedStats(userId, cacheKey, data);
         setError(null);
       } else {
-        console.error('[Dashboard] Stats fetch failed:', response.data);
         setError(response.data.message || 'Failed to fetch statistics');
       }
     } catch (err: any) {
@@ -208,13 +207,10 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
 
         socket.on('connect', () => {
           if (mounted) {
-            console.log('Dashboard socket connected');
             setSocketConnected(true);
-            // Authenticate immediately on connection
             if (token && socket.connected) {
               socket.emit('authenticate', token);
             }
-            // Fetch stats after authentication
             setTimeout(() => fetchStats(), 200);
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
@@ -225,7 +221,6 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
 
         socket.on('disconnect', () => {
           if (mounted) {
-            console.log('Dashboard socket disconnected');
             setSocketConnected(false);
             if (!pollingIntervalRef.current) {
               pollingIntervalRef.current = setInterval(() => fetchStats(true), 60000);
@@ -239,15 +234,25 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
           }
         });
 
-        socket.on('employee:created', fetchStats);
-        socket.on('employee:updated', fetchStats);
-        socket.on('employee:deleted', fetchStats);
-        socket.on('project:created', fetchStats);
-        socket.on('project:updated', fetchStats);
-        socket.on('project:deleted', fetchStats);
-        socket.on('task:created', fetchStats);
-        socket.on('task:updated', fetchStats);
-        socket.on('task:deleted', fetchStats);
+        // Debounced fetch for socket events
+        const debouncedFetch = () => {
+          if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+          }
+          debounceTimerRef.current = setTimeout(() => {
+            if (mounted) fetchStats();
+          }, DEBOUNCE_DELAY);
+        };
+
+        socket.on('employee:created', debouncedFetch);
+        socket.on('employee:updated', debouncedFetch);
+        socket.on('employee:deleted', debouncedFetch);
+        socket.on('project:created', debouncedFetch);
+        socket.on('project:updated', debouncedFetch);
+        socket.on('project:deleted', debouncedFetch);
+        socket.on('task:created', debouncedFetch);
+        socket.on('task:updated', debouncedFetch);
+        socket.on('task:deleted', debouncedFetch);
 
         // Set initial connection state
         if (socket.connected) {
@@ -269,6 +274,10 @@ export const useDashboardData = (isAuthenticated: boolean): UseDashboardDataRetu
 
     return () => {
       mounted = false;
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
       if (socketRef.current) {
         socketRef.current.off('connect');
         socketRef.current.off('disconnect');

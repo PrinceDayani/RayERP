@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 import EmployeeCard from "./EmployeeCard";
 
 interface Employee {
@@ -24,21 +25,38 @@ interface EmployeeListProps {
   employees: Employee[];
   onEdit?: (id: string) => void;
   onDelete?: (id: string, name: string) => void;
+  totalItems?: number;
+  currentPage?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }
 
-export default function EmployeeList({ employees, onEdit, onDelete }: EmployeeListProps) {
+export default function EmployeeList({ 
+  employees, 
+  onEdit, 
+  onDelete,
+  totalItems,
+  currentPage = 1,
+  totalPages = 1,
+  onPageChange
+}: EmployeeListProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const itemsPerPage = 50;
 
-  const filteredEmployees = employees.filter(employee => {
-    const searchLower = searchTerm.toLowerCase();
-    const nameMatch = `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchLower);
-    const idMatch = employee.employeeId.toLowerCase().includes(searchLower);
-    const positionMatch = employee.position.toLowerCase().includes(searchLower);
-    const deptMatch = employee.department?.toLowerCase().includes(searchLower) || false;
-    const deptsMatch = employee.departments?.some(dept => dept.toLowerCase().includes(searchLower)) || false;
+  const filteredEmployees = useMemo(() => {
+    if (!searchTerm) return employees;
     
-    return nameMatch || idMatch || positionMatch || deptMatch || deptsMatch;
-  });
+    const searchLower = searchTerm.toLowerCase();
+    return employees.filter(employee => {
+      const nameMatch = `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchLower);
+      const idMatch = employee.employeeId.toLowerCase().includes(searchLower);
+      const positionMatch = employee.position.toLowerCase().includes(searchLower);
+      const deptMatch = employee.department?.toLowerCase().includes(searchLower) || false;
+      const deptsMatch = employee.departments?.some(dept => dept.toLowerCase().includes(searchLower)) || false;
+      
+      return nameMatch || idMatch || positionMatch || deptMatch || deptsMatch;
+    });
+  }, [employees, searchTerm]);
 
   return (
     <div className="space-y-4">
@@ -57,16 +75,28 @@ export default function EmployeeList({ employees, onEdit, onDelete }: EmployeeLi
           <p className="text-muted-foreground">No employees found</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredEmployees.map((employee) => (
-            <EmployeeCard
-              key={employee._id}
-              employee={employee}
-              onEdit={onEdit}
-              onDelete={onDelete}
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredEmployees.map((employee) => (
+              <EmployeeCard
+                key={employee._id}
+                employee={employee}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+          
+          {onPageChange && totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={onPageChange}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
             />
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

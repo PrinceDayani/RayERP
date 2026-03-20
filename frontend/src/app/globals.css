@@ -60,30 +60,60 @@
     --input: 0 0% 90%;
     --ring: 348 83% 32%;
     --radius: 0.5rem;
-
-
+    --success: 348 70% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 348 60% 55%;
+    --warning-foreground: 0 0% 100%;
+    --info: 348 50% 65%;
+    --info-foreground: 0 0% 10%;
+    --burgundy-50: 348 100% 97%;
+    --burgundy-100: 348 90% 92%;
+    --burgundy-200: 348 85% 82%;
+    --burgundy-300: 348 83% 68%;
+    --burgundy-400: 348 83% 52%;
+    --burgundy-500: 348 83% 42%;
+    --burgundy-600: 348 83% 32%;
+    --burgundy-700: 348 83% 25%;
+    --burgundy-800: 348 75% 18%;
+    --burgundy-900: 348 70% 12%;
   }
 
   .dark {
-    --background: 0 0% 9%;
+    --background: 0 0% 8%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 12%;
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 12%;
+    --popover: 0 0% 10%;
     --popover-foreground: 0 0% 98%;
     --primary: 348 83% 45%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 18%;
+    --secondary: 0 0% 16%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 18%;
+    --muted: 0 0% 16%;
     --muted-foreground: 0 0% 65%;
-    --accent: 0 0% 18%;
+    --accent: 0 0% 16%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 20%;
-    --input: 0 0% 18%;
+    --input: 0 0% 16%;
     --ring: 348 83% 45%;
+    --success: 348 70% 50%;
+    --success-foreground: 0 0% 100%;
+    --warning: 348 60% 60%;
+    --warning-foreground: 0 0% 100%;
+    --info: 348 50% 70%;
+    --info-foreground: 0 0% 10%;
+    --burgundy-50: 348 70% 12%;
+    --burgundy-100: 348 75% 18%;
+    --burgundy-200: 348 83% 25%;
+    --burgundy-300: 348 83% 32%;
+    --burgundy-400: 348 83% 42%;
+    --burgundy-500: 348 83% 52%;
+    --burgundy-600: 348 83% 62%;
+    --burgundy-700: 348 85% 72%;
+    --burgundy-800: 348 90% 82%;
+    --burgundy-900: 348 100% 92%;
   }
 }
 
@@ -114,11 +144,15 @@
 
 @layer utilities {
   .card-modern {
-    @apply bg-card border border-border rounded-lg;
+    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-all duration-200;
+  }
+
+  .card-interactive {
+    @apply bg-card border border-border rounded-lg p-4 transition-all duration-200 hover:border-primary/50 hover:shadow-md cursor-pointer;
   }
 
   .table-row-hover {
-    @apply hover:bg-accent transition-colors;
+    @apply hover:bg-accent transition-colors duration-150;
   }
 
   .kanban-column {
@@ -126,11 +160,19 @@
   }
 
   .kanban-card {
-    @apply bg-card border border-border rounded-lg p-4 mb-3 cursor-pointer hover:border-primary/50 transition-colors;
+    @apply bg-card border border-border rounded-lg p-4 mb-3 cursor-pointer hover:border-primary/50 transition-all duration-200 hover:shadow-sm;
   }
 
   .fade-in {
-    animation: fadeIn 0.2s ease-in-out;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .slide-up {
+    animation: slideUp 0.4s ease-out;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -141,15 +183,54 @@
     background-color: hsl(var(--muted));
     border-radius: 3px;
   }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--primary));
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .container-responsive {
+    @apply w-full mx-auto px-4 sm:px-6 lg:px-8;
+    max-width: min(100%, 1600px);
+  }
+
+  .grid-responsive {
+    @apply grid gap-4;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  }
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
   }
-
   to {
     opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
