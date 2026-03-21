@@ -66,6 +66,8 @@ export interface IProject extends Document {
   requiredSkills: IRequiredSkill[];
   instructions: IInstruction[];
   
+  activeBOQ?: mongoose.Types.ObjectId;
+  
   createdAt: Date;
   updatedAt: Date;
 }
@@ -160,7 +162,8 @@ const projectSchema = new Schema<IProject>({
     level: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert'], required: true },
     priority: { type: String, enum: ['required', 'preferred', 'nice-to-have'], default: 'required' }
   }],
-  instructions: [instructionSchema]
+  instructions: [instructionSchema],
+  activeBOQ: { type: Schema.Types.ObjectId, ref: 'BOQ' }
 }, { timestamps: true });
 
 projectSchema.index({ 'instructions.type': 1 });

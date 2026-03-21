@@ -62,8 +62,13 @@ const ProjectManagementDashboard: React.FC = () => {
   const socket = useSocket();
 
   useEffect(() => {
-    if (isAuthenticated) fetchData();
-  }, [isAuthenticated]);
+    if (isAuthenticated && user) {
+      const token = localStorage.getItem('auth-token');
+      if (token && token !== 'null' && token !== 'undefined') {
+        fetchData();
+      }
+    }
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     if (!socket) return;
@@ -89,19 +94,38 @@ const ProjectManagementDashboard: React.FC = () => {
   const fetchData = async (): Promise<void> => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('auth-token');
+      if (!token || token === 'null' || token === 'undefined') {
+        setLoading(false);
+        return;
+      }
       const [statsData, projectsData, tasksData] = await Promise.all([
-        getProjectStats().catch(() => ({
-          totalProjects: 0, activeProjects: 0, completedProjects: 0,
-          overdueTasks: 0, totalTasks: 0, completedTasks: 0
-        })),
-        getAllProjects().catch(() => []),
-        tasksAPI.getAll().catch(() => [])
+        getProjectStats().catch((err) => {
+          console.error('Stats fetch error:', err.message);
+          return {
+            totalProjects: 0, activeProjects: 0, completedProjects: 0,
+            overdueTasks: 0, totalTasks: 0, completedTasks: 0
+          };
+        }),
+        getAllProjects().catch((err) => {
+          console.error('Projects fetch error:', err.message);
+          return [];
+        }),
+        tasksAPI.getAll().catch((err) => {
+          console.error('Tasks fetch error:', err.message);
+          return [];
+        })
       ]);
       if (statsData) setStats(statsData);
       setProjects(projectsData || []);
       setAllTasks(tasksData || []);
-    } catch {
-      // silently handled
+    } catch (error: any) {
+      console.error('Data fetch error:', error.message);
+      toast({ 
+        title: "Failed to load data", 
+        description: "Please check your connection and try again",
+        variant: "destructive" 
+      });
     } finally {
       setLoading(false);
     }

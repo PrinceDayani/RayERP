@@ -607,10 +607,12 @@ const ProjectDetailPage = () => {
 
         {/* Tabs for Tasks and Other Details */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-grid">
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="budget">Budget</TabsTrigger>
+            <TabsTrigger value="boq">BOQ</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="accounting">Accounting</TabsTrigger>
@@ -797,6 +799,44 @@ const ProjectDetailPage = () => {
 
           <TabsContent value="activity">
             <ProjectActivity projectId={projectId} />
+          </TabsContent>
+
+          <TabsContent value="boq">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-semibold">Bill of Quantities (BOQ)</h3>
+                <Button onClick={() => router.push(`/dashboard/projects/${projectId}/boq`)}>
+                  View Full BOQ Management
+                </Button>
+              </div>
+              <Card>
+                <CardContent className="text-center py-12">
+                  <p className="text-muted-foreground mb-4">Manage BOQ items, track progress, and analyze variances.</p>
+                  <Button onClick={() => router.push(`/dashboard/projects/${projectId}/boq`)}>
+                    Go to BOQ Management
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="billing">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-semibold">Milestone Billing</h3>
+                <Button onClick={() => router.push(`/dashboard/projects/${projectId}/billing`)}>
+                  View Full Billing Management
+                </Button>
+              </div>
+              <Card>
+                <CardContent className="text-center py-12">
+                  <p className="text-muted-foreground mb-4">Manage milestone billing, invoices, and payments.</p>
+                  <Button onClick={() => router.push(`/dashboard/projects/${projectId}/billing`)}>
+                    Go to Billing Management
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

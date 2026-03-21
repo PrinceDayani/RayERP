@@ -60,9 +60,11 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
   const fetchEmployees = async () => {
     try {
       const data = await employeesAPI.getAll();
-      setEmployees(data || []);
+      const employeeList = Array.isArray(data) ? data : (data?.data || []);
+      setEmployees(employeeList);
     } catch (error) {
       console.error("Error fetching employees:", error);
+      setEmployees([]);
     }
   };
 

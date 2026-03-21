@@ -239,6 +239,12 @@ app.use("/api/budget-templates", budgetTemplateRoutes);
 app.use("/api/budget-reports", budgetReportRoutes);
 app.use("/api/budget-dashboard", budgetDashboardRoutes);
 
+// BOQ and Billing Routes
+import boqRoutes from "./routes/boq.routes";
+import billingRoutes from "./routes/billing.routes";
+app.use("/api/boq", boqRoutes);
+app.use("/api/billing", billingRoutes);
+
 // Catch-all for undefined routes
 app.all('*', (req, res) => {
   res.status(404).json({

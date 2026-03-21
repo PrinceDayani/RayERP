@@ -142,10 +142,12 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
         tasksAPI.getAll()
       ]);
       setProjects(projectsData || []);
-      setEmployees(employeesData || []);
+      const employeeList = Array.isArray(employeesData) ? employeesData : (employeesData?.data || []);
+      setEmployees(employeeList);
       setAllTasks(tasksData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setEmployees([]);
     }
   };
 

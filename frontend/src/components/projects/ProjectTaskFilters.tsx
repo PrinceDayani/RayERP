@@ -20,7 +20,7 @@ interface ProjectTaskFiltersProps {
   employees: Array<{ _id: string; firstName: string; lastName: string }>;
 }
 
-export default function ProjectTaskFilters({ filters, onFilterChange, employees }: ProjectTaskFiltersProps) {
+export default function ProjectTaskFilters({ filters, onFilterChange, employees = [] }: ProjectTaskFiltersProps) {
   const handleReset = () => {
     onFilterChange({
       search: '',
@@ -103,7 +103,7 @@ export default function ProjectTaskFilters({ filters, onFilterChange, employees 
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Assignees</SelectItem>
-            {employees.map((emp) => (
+            {Array.isArray(employees) && employees.map((emp) => (
               <SelectItem key={emp._id} value={emp._id}>
                 {emp.firstName} {emp.lastName}
               </SelectItem>

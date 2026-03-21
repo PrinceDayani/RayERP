@@ -67,3 +67,13 @@ export async function fetchWithRetry(
 
   throw lastError || new Error('Max retry attempts reached');
 }
+
+// Currency formatting utility
+export function formatCurrency(amount: number, currency: string = 'USD'): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+}

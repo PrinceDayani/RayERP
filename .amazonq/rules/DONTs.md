@@ -16,6 +16,7 @@ CONFIRMATION & TRANSPARENCY
 FILE MANAGEMENT
 
 - Do NOT generate any new file unless it is absolutely necessary and explicitly approved.
+- DO NOT CREATE ANY DOCUMENTATION, UNTIL SPECIFICALLY ASKED.
 - Do NOT create temporary files, backup files, enhanced copies, or duplicate versions.
 - Do NOT create files with suffixes such as:
   _v2, _final, _temp, _new, _enhanced, _copy
@@ -49,6 +50,7 @@ OUTPUT CONTROL
 
 - Do NOT generate unnecessary boilerplate, repetitive scaffolding, or unused artifacts.
 - Do NOT auto-generate configs, environments, or auxiliary assets unless explicitly requested.
+- DO NOT CREATE ANY DOCUMENTATION, UNLESS SPECIFICALLY ASKED.
 
 CLEANLINESS
 
@@ -58,10 +60,11 @@ CLEANLINESS
   - test prints
   - dead blocks
   - commented-out logic
+
 - Avoid technical debt and silent complexity.
 
 DOCUMENTATION
-
+- DO NOT CREATE ANY DOCUMENTATION, UNTIL SPECIFICALLY ASKED.
 - Documentation generation is allowed only inside a dedicated /docs (or /documentation) folder.
 - Documentation MUST reflect existing implementation only — never speculative or future behavior.
 - Documentation must never modify production code behavior.

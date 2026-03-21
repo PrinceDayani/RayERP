@@ -84,6 +84,7 @@ import referencePaymentRoutes from './referencePayment.routes';
 import salaryRoutes from './salary.routes';
 import careerRoutes from './career.routes';
 import achievementRoutes from './achievement.routes';
+import workOrderRoutes from './workOrder.routes';
 import { invalidateCacheOnMutation } from '../middleware/cacheInvalidation.middleware';
 
 const router = express.Router();
@@ -139,6 +140,7 @@ router.use('/reference-payments', referencePaymentRoutes);
 router.use('/salary', salaryRoutes);
 router.use('/career', careerRoutes);
 router.use('/achievements', achievementRoutes);
+router.use('/work-orders', workOrderRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);
