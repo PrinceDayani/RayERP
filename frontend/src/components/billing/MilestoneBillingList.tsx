@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMilestoneBilling } from '@/hooks/useMilestoneBilling';
+import { useBillingsByProject, useSubmitForApproval, useApproveBilling } from '@/hooks/useMilestoneBilling';
 import { IMilestoneBilling } from '@/types/billing';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,8 +24,9 @@ interface MilestoneBillingListProps {
 }
 
 export default function MilestoneBillingList({ projectId, onSelectBilling }: MilestoneBillingListProps) {
-  const { useBillingsByProject, submitForApproval, approveBilling } = useMilestoneBilling();
   const { data, isLoading } = useBillingsByProject(projectId);
+  const submitForApproval = useSubmitForApproval();
+  const approveBilling = useApproveBilling();
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
   const getStatusColor = (status: string) => {

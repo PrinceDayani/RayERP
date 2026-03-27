@@ -24,6 +24,27 @@ export interface IBillingItem {
   completionPercentage: number;
 }
 
+export interface IPaymentRecord {
+  paymentId: string;
+  amount: number;
+  paymentDate: Date;
+  paymentMethod: 'bank_transfer' | 'cheque' | 'cash' | 'online' | 'other';
+  paymentReference: string;
+  bankAccount?: string;
+  reconciled: boolean;
+  reconciledDate?: Date;
+  journalEntryId?: mongoose.Types.ObjectId;
+  notes?: string;
+}
+
+export interface IBillingAuditEntry {
+  action: 'created' | 'updated' | 'submitted' | 'approved' | 'rejected' | 'invoiced' | 'payment_recorded' | 'cancelled';
+  performedBy: mongoose.Types.ObjectId;
+  timestamp: Date;
+  changes?: any;
+  notes?: string;
+}
+
 export interface IMilestoneBilling extends Document {
   project: mongoose.Types.ObjectId;
   boq: mongoose.Types.ObjectId;
@@ -40,19 +61,29 @@ export interface IMilestoneBilling extends Document {
   outstandingAmount: number;
   retentionPercentage: number;
   retentionAmount: number;
+  retentionHeld: number;
+  retentionReleased: number;
   
   currency: string;
+  
+  paymentRecords: IPaymentRecord[];
+  auditTrail: IBillingAuditEntry[];
   
   status: 'draft' | 'pending-approval' | 'approved' | 'invoiced' | 'paid' | 'cancelled';
   approvalStatus: 'pending' | 'approved' | 'rejected';
   approvedBy?: mongoose.Types.ObjectId;
   approvedDate?: Date;
   rejectionReason?: string;
+  approvalLimit?: number;
+  requiresMultiLevelApproval: boolean;
   
   invoiceNumber?: string;
   invoiceDate?: Date;
   dueDate?: Date;
   paymentTerms?: string;
+  
+  journalEntryId?: mongoose.Types.ObjectId;
+  retentionAccountId?: mongoose.Types.ObjectId;
   
   notes?: string;
   attachments?: string[];
@@ -61,6 +92,35 @@ export interface IMilestoneBilling extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const paymentRecordSchema = new Schema({
+  paymentId: { type: String, required: true },
+  amount: { type: Number, required: true, min: 0 },
+  paymentDate: { type: Date, required: true },
+  paymentMethod: { 
+    type: String, 
+    enum: ['bank_transfer', 'cheque', 'cash', 'online', 'other'], 
+    required: true 
+  },
+  paymentReference: { type: String, required: true },
+  bankAccount: String,
+  reconciled: { type: Boolean, default: false },
+  reconciledDate: Date,
+  journalEntryId: { type: Schema.Types.ObjectId, ref: 'JournalEntry' },
+  notes: String
+}, { _id: true });
+
+const billingAuditEntrySchema = new Schema({
+  action: { 
+    type: String, 
+    enum: ['created', 'updated', 'submitted', 'approved', 'rejected', 'invoiced', 'payment_recorded', 'cancelled'], 
+    required: true 
+  },
+  performedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  timestamp: { type: Date, default: Date.now, required: true },
+  changes: Schema.Types.Mixed,
+  notes: String
+}, { _id: false });
 
 const paymentScheduleSchema = new Schema({
   milestoneId: { type: String, required: true },
@@ -109,9 +169,13 @@ const milestoneBillingSchema = new Schema<IMilestoneBilling>({
   totalPaidAmount: { type: Number, default: 0, min: 0 },
   outstandingAmount: { type: Number, default: 0, min: 0 },
   retentionPercentage: { type: Number, default: 0, min: 0, max: 100 },
-  retentionAmount: { type: Number, default: 0, min: 0 },
+  retentionHeld: { type: Number, default: 0, min: 0 },
+  retentionReleased: { type: Number, default: 0, min: 0 },
   
   currency: { type: String, default: 'USD', trim: true, uppercase: true, required: true },
+  
+  paymentRecords: [paymentRecordSchema],
+  auditTrail: [billingAuditEntrySchema],
   
   status: { 
     type: String, 
@@ -126,11 +190,16 @@ const milestoneBillingSchema = new Schema<IMilestoneBilling>({
   approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   approvedDate: Date,
   rejectionReason: String,
+  approvalLimit: { type: Number, default: 0 },
+  requiresMultiLevelApproval: { type: Boolean, default: false },
   
   invoiceNumber: String,
   invoiceDate: Date,
   dueDate: Date,
   paymentTerms: String,
+  
+  journalEntryId: { type: Schema.Types.ObjectId, ref: 'JournalEntry' },
+  retentionAccountId: { type: Schema.Types.ObjectId, ref: 'ChartOfAccount' },
   
   notes: String,
   attachments: [String],
@@ -150,6 +219,14 @@ milestoneBillingSchema.pre('save', function(next) {
   
   if (this.retentionPercentage > 0) {
     this.retentionAmount = (this.totalBilledAmount * this.retentionPercentage) / 100;
+    this.retentionHeld = this.retentionAmount - this.retentionReleased;
+  }
+  
+  if (this.isModified('totalBilledAmount') && !this.isNew) {
+    const calculatedTotal = this.billingItems.reduce((sum, item) => sum + item.amount, 0);
+    if (Math.abs(calculatedTotal - this.totalBilledAmount) > 0.01) {
+      return next(new Error(`Total billed amount mismatch: calculated ${calculatedTotal}, stored ${this.totalBilledAmount}`));
+    }
   }
   
   next();

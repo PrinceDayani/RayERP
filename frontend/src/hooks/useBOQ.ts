@@ -7,33 +7,46 @@ import {
   AddBOQItemRequest
 } from '@/types/boq';
 
-export const useBOQ = () => {
+export const useAllBOQs = (params?: { status?: string; projectId?: string; page?: number; limit?: number }) => {
+  return useQuery({
+    queryKey: ['boqs', 'all', params],
+    queryFn: () => boqApi.getAllBOQs(params)
+  });
+};
+
+export const useBOQsByProject = (projectId: string, params?: { status?: string; version?: number; page?: number; limit?: number }) => {
+  return useQuery({
+    queryKey: ['boqs', projectId, params],
+    queryFn: () => boqApi.getBOQsByProject(projectId, params),
+    enabled: !!projectId && projectId.length > 0
+  });
+};
+
+export const useBOQById = (id: string) => {
+  return useQuery({
+    queryKey: ['boq', id],
+    queryFn: () => boqApi.getBOQById(id),
+    enabled: !!id && id.length > 0
+  });
+};
+
+export const useAuditTrail = (id: string, params?: { page?: number; limit?: number }) => {
+  return useQuery({
+    queryKey: ['boq-audit', id, params],
+    queryFn: () => boqApi.getAuditTrail(id, params),
+    enabled: !!id && id.length > 0
+  });
+};
+
+export const useCreateBOQ = () => {
   const queryClient = useQueryClient();
-
-  // Get BOQs by project
-  const useBOQsByProject = (projectId: string, params?: { status?: string; version?: number }) => {
-    return useQuery({
-      queryKey: ['boqs', projectId, params],
-      queryFn: () => boqApi.getBOQsByProject(projectId, params),
-      enabled: !!projectId && projectId.length > 0
-    });
-  };
-
-  // Get BOQ by ID
-  const useBOQById = (id: string) => {
-    return useQuery({
-      queryKey: ['boq', id],
-      queryFn: () => boqApi.getBOQById(id),
-      enabled: !!id && id.length > 0
-    });
-  };
-
-  // Create BOQ
-  const createBOQ = useMutation({
+  
+  return useMutation({
     mutationFn: (data: CreateBOQRequest) => boqApi.createBOQ(data),
     onSuccess: (data) => {
       const projectId = typeof data.boq.project === 'string' ? data.boq.project : data.boq.project._id;
       queryClient.invalidateQueries({ queryKey: ['boqs', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['boqs', 'all'] });
       toast({
         title: 'Success',
         description: 'BOQ created successfully'
@@ -47,9 +60,12 @@ export const useBOQ = () => {
       });
     }
   });
+};
 
-  // Update BOQ item
-  const updateBOQItem = useMutation({
+export const useUpdateBOQItem = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
     mutationFn: ({ boqId, itemId, data }: { boqId: string; itemId: string; data: UpdateBOQItemRequest }) =>
       boqApi.updateBOQItem(boqId, itemId, data),
     onSuccess: (data) => {
@@ -69,9 +85,12 @@ export const useBOQ = () => {
       });
     }
   });
+};
 
-  // Add BOQ item
-  const addBOQItem = useMutation({
+export const useAddBOQItem = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
     mutationFn: ({ boqId, data }: { boqId: string; data: AddBOQItemRequest }) =>
       boqApi.addBOQItem(boqId, data),
     onSuccess: (data) => {
@@ -89,9 +108,12 @@ export const useBOQ = () => {
       });
     }
   });
+};
 
-  // Delete BOQ item
-  const deleteBOQItem = useMutation({
+export const useDeleteBOQItem = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
     mutationFn: ({ boqId, itemId }: { boqId: string; itemId: string }) =>
       boqApi.deleteBOQItem(boqId, itemId),
     onSuccess: (data) => {
@@ -109,9 +131,12 @@ export const useBOQ = () => {
       });
     }
   });
+};
 
-  // Approve BOQ
-  const approveBOQ = useMutation({
+export const useApproveBOQ = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
     mutationFn: (id: string) => boqApi.approveBOQ(id),
     onSuccess: (data) => {
       const projectId = typeof data.boq.project === 'string' ? data.boq.project : data.boq.project._id;
@@ -130,14 +155,18 @@ export const useBOQ = () => {
       });
     }
   });
+};
 
-  // Activate BOQ
-  const activateBOQ = useMutation({
+export const useActivateBOQ = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
     mutationFn: (id: string) => boqApi.activateBOQ(id),
     onSuccess: (data) => {
       const projectId = typeof data.boq.project === 'string' ? data.boq.project : data.boq.project._id;
       queryClient.invalidateQueries({ queryKey: ['boq', data.boq._id] });
       queryClient.invalidateQueries({ queryKey: ['boqs', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['boqs', 'all'] });
       toast({
         title: 'Success',
         description: 'BOQ activated successfully'
@@ -151,15 +180,4 @@ export const useBOQ = () => {
       });
     }
   });
-
-  return {
-    useBOQsByProject,
-    useBOQById,
-    createBOQ,
-    updateBOQItem,
-    addBOQItem,
-    deleteBOQItem,
-    approveBOQ,
-    activateBOQ
-  };
 };

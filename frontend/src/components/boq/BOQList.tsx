@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useBOQ } from '@/hooks/useBOQ';
+import { useBOQsByProject, useApproveBOQ, useActivateBOQ } from '@/hooks/useBOQ';
 import { IBOQ } from '@/types/boq';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,8 +25,9 @@ interface BOQListProps {
 }
 
 export default function BOQList({ projectId, onSelectBOQ }: BOQListProps) {
-  const { useBOQsByProject, approveBOQ, activateBOQ } = useBOQ();
   const { data, isLoading } = useBOQsByProject(projectId);
+  const approveBOQ = useApproveBOQ();
+  const activateBOQ = useActivateBOQ();
   const { formatAmount } = useGlobalCurrency();
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 

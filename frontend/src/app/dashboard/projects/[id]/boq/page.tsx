@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useBOQ } from '@/hooks/useBOQ';
+import { useBOQsByProject } from '@/hooks/useBOQ';
 import { useBOQAnalytics } from '@/hooks/useBOQAnalytics';
 import { IBOQ } from '@/types/boq';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,6 @@ export default function ProjectBOQPage() {
   const { formatAmount } = useGlobalCurrency();
   const [selectedBOQ, setSelectedBOQ] = useState<IBOQ | null>(null);
 
-  const { useBOQsByProject } = useBOQ();
   const { data: boqsData } = useBOQsByProject(projectId, { status: 'active' });
   const activeBOQ = boqsData?.boqs?.[0];
 

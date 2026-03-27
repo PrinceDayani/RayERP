@@ -20,6 +20,15 @@ export interface IBOQItem {
   attachments?: string[];
 }
 
+export interface IBOQAuditEntry {
+  action: 'created' | 'updated' | 'approved' | 'activated' | 'item_added' | 'item_updated' | 'item_deleted';
+  performedBy: mongoose.Types.ObjectId;
+  timestamp: Date;
+  changes?: any;
+  itemId?: string;
+  notes?: string;
+}
+
 export interface IBOQ extends Document {
   project: mongoose.Types.ObjectId;
   version: number;
@@ -33,9 +42,23 @@ export interface IBOQ extends Document {
   approvedDate?: Date;
   revisionNotes?: string;
   createdBy: mongoose.Types.ObjectId;
+  auditTrail: IBOQAuditEntry[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+const boqAuditEntrySchema = new Schema({
+  action: { 
+    type: String, 
+    enum: ['created', 'updated', 'approved', 'activated', 'item_added', 'item_updated', 'item_deleted'], 
+    required: true 
+  },
+  performedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  timestamp: { type: Date, default: Date.now, required: true },
+  changes: Schema.Types.Mixed,
+  itemId: String,
+  notes: String
+}, { _id: false });
 
 const boqItemSchema = new Schema({
   itemCode: { type: String, required: true, trim: true },
@@ -82,24 +105,29 @@ const boqSchema = new Schema<IBOQ>({
   approvedDate: Date,
   revisionNotes: String,
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  auditTrail: [boqAuditEntrySchema],
 }, { timestamps: true });
 
 boqSchema.index({ project: 1, version: -1 });
 boqSchema.index({ status: 1 });
 boqSchema.index({ 'items.category': 1 });
 boqSchema.index({ 'items.status': 1 });
+boqSchema.index({ 'items.itemCode': 1 });
 boqSchema.index({ createdAt: -1 });
+boqSchema.index({ 'auditTrail.timestamp': -1 });
 
 boqSchema.pre('save', function(next) {
   if (this.items && this.items.length > 0) {
-    this.totalPlannedAmount = this.items.reduce((sum, item) => sum + item.plannedAmount, 0);
-    this.totalActualAmount = this.items.reduce((sum, item) => sum + item.actualAmount, 0);
-    
-    const totalWeight = this.items.reduce((sum, item) => sum + item.plannedAmount, 0);
-    if (totalWeight > 0) {
-      this.overallProgress = this.items.reduce((sum, item) => 
-        sum + (item.completionPercentage * item.plannedAmount / totalWeight), 0
-      );
+    if (this.isModified('items')) {
+      this.totalPlannedAmount = this.items.reduce((sum, item) => sum + item.plannedAmount, 0);
+      this.totalActualAmount = this.items.reduce((sum, item) => sum + item.actualAmount, 0);
+      
+      const totalWeight = this.items.reduce((sum, item) => sum + item.plannedAmount, 0);
+      if (totalWeight > 0) {
+        this.overallProgress = this.items.reduce((sum, item) => 
+          sum + (item.completionPercentage * item.plannedAmount / totalWeight), 0
+        );
+      }
     }
   }
   next();

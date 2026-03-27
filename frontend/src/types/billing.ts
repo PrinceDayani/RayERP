@@ -18,6 +18,34 @@ export interface IPaymentSchedule {
   notes?: string;
 }
 
+export type PaymentMethod = 'bank_transfer' | 'cheque' | 'cash' | 'online' | 'other';
+
+export interface IPaymentRecord {
+  _id?: string;
+  paymentId: string;
+  amount: number;
+  paymentDate: string;
+  paymentMethod: PaymentMethod;
+  paymentReference: string;
+  bankAccount?: string;
+  reconciled: boolean;
+  reconciledDate?: string;
+  journalEntryId?: string;
+  notes?: string;
+}
+
+export interface IBillingAuditEntry {
+  action: 'created' | 'updated' | 'submitted' | 'approved' | 'rejected' | 'invoiced' | 'payment_recorded' | 'cancelled';
+  performedBy: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  timestamp: string;
+  changes?: any;
+  notes?: string;
+}
+
 export interface IBillingItem {
   _id?: string;
   boqItemId: string;
@@ -58,8 +86,13 @@ export interface IMilestoneBilling {
   outstandingAmount: number;
   retentionPercentage: number;
   retentionAmount: number;
+  retentionHeld: number;
+  retentionReleased: number;
   
   currency: string;
+  
+  paymentRecords: IPaymentRecord[];
+  auditTrail: IBillingAuditEntry[];
   
   status: BillingStatus;
   approvalStatus: ApprovalStatus;
@@ -70,11 +103,16 @@ export interface IMilestoneBilling {
   };
   approvedDate?: string;
   rejectionReason?: string;
+  approvalLimit?: number;
+  requiresMultiLevelApproval: boolean;
   
   invoiceNumber?: string;
   invoiceDate?: string;
   dueDate?: string;
   paymentTerms?: string;
+  
+  journalEntryId?: string;
+  retentionAccountId?: string;
   
   notes?: string;
   attachments?: string[];
@@ -129,15 +167,18 @@ export interface UpdateBillingRequest {
 }
 
 export interface GenerateInvoiceRequest {
-  invoiceNumber: string;
   invoiceDate?: string;
   dueDate?: string;
+  prefix?: string;
 }
 
 export interface RecordPaymentRequest {
   amount: number;
   paymentReference: string;
   paymentDate?: string;
+  paymentMethod: PaymentMethod;
+  bankAccount?: string;
+  createJournalEntry?: boolean;
 }
 
 export interface RejectBillingRequest {

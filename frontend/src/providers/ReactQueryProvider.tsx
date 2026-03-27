@@ -17,7 +17,8 @@ export function ReactQueryProvider({ children }: { children: ReactNode }) {
             refetchOnWindowFocus: false,
           },
           mutations: {
-            retry: 0,
+            retry: false,
+            retryDelay: 0,
           },
         },
       })

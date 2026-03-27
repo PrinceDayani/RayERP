@@ -11,6 +11,14 @@ import {
 } from '@/types/billing';
 
 export const billingApi = {
+  // Get all billings (common view)
+  getAllBillings: async (
+    params?: { status?: string; approvalStatus?: string; projectId?: string; page?: number; limit?: number }
+  ): Promise<{ billings: IMilestoneBilling[]; pagination: { total: number; page: number; limit: number; pages: number } }> => {
+    const response = await api.get('/billing/all', { params });
+    return response.data;
+  },
+
   // Create milestone billing
   createMilestoneBilling: async (
     data: CreateMilestoneBillingRequest
@@ -22,8 +30,8 @@ export const billingApi = {
   // Get billings by project
   getBillingsByProject: async (
     projectId: string,
-    params?: { status?: string; approvalStatus?: string }
-  ): Promise<{ billings: IMilestoneBilling[] }> => {
+    params?: { status?: string; approvalStatus?: string; page?: number; limit?: number }
+  ): Promise<{ billings: IMilestoneBilling[]; pagination: { total: number; page: number; limit: number; pages: number } }> => {
     const response = await api.get(`/billing/project/${projectId}`, { params });
     return response.data;
   },
@@ -104,6 +112,21 @@ export const billingApi = {
   // Get billing analytics
   getBillingAnalytics: async (projectId: string): Promise<{ analytics: IBillingAnalytics }> => {
     const response = await api.get(`/billing/project/${projectId}/analytics`);
+    return response.data;
+  },
+
+  // Reconcile payment
+  reconcilePayment: async (id: string, paymentId: string): Promise<{ billing: IMilestoneBilling }> => {
+    const response = await api.post(`/billing/${id}/payment/${paymentId}/reconcile`);
+    return response.data;
+  },
+
+  // Get audit trail
+  getAuditTrail: async (
+    id: string,
+    params?: { page?: number; limit?: number }
+  ): Promise<{ auditTrail: any[]; pagination: { total: number; page: number; limit: number; pages: number } }> => {
+    const response = await api.get(`/billing/${id}/audit-trail`, { params });
     return response.data;
   }
 };

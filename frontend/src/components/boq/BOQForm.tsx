@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useBOQ } from '@/hooks/useBOQ';
+import { useCreateBOQ } from '@/hooks/useBOQ';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ interface BOQFormProps {
 
 export default function BOQForm({ projectId }: BOQFormProps) {
   const router = useRouter();
-  const { createBOQ } = useBOQ();
+  const createBOQ = useCreateBOQ();
   const [currency, setCurrency] = useState('USD');
   const [items, setItems] = useState<Partial<IBOQItem>[]>([
     {

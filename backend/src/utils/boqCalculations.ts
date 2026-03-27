@@ -26,11 +26,13 @@ export interface ICostForecast {
 }
 
 export const calculateItemProgress = (item: IBOQItem): number => {
-  if (item.plannedQuantity === 0) return 0;
+  if (!item.plannedQuantity || item.plannedQuantity <= 0 || !isFinite(item.plannedQuantity)) return 0;
+  if (!item.actualQuantity || item.actualQuantity < 0 || !isFinite(item.actualQuantity)) return 0;
   return Math.min((item.actualQuantity / item.plannedQuantity) * 100, 100);
 };
 
 export const calculateItemAmount = (quantity: number, unitRate: number): number => {
+  if (!isFinite(quantity) || !isFinite(unitRate) || quantity < 0 || unitRate < 0) return 0;
   return quantity * unitRate;
 };
 
@@ -86,11 +88,16 @@ export const forecastCostToComplete = (boq: IBOQ): ICostForecast => {
   let estimatedCostAtCompletion = totalPlannedCost;
   let performanceIndex = 1;
   
-  if (completionPercentage > 0) {
-    performanceIndex = (completionPercentage / 100) / (totalActualCost / totalPlannedCost);
+  if (completionPercentage > 0 && totalPlannedCost > 0 && totalActualCost > 0) {
+    const costRatio = totalActualCost / totalPlannedCost;
+    const progressRatio = completionPercentage / 100;
     
-    if (performanceIndex > 0) {
-      estimatedCostAtCompletion = totalPlannedCost / performanceIndex;
+    if (costRatio > 0 && isFinite(costRatio)) {
+      performanceIndex = progressRatio / costRatio;
+      
+      if (performanceIndex > 0 && isFinite(performanceIndex)) {
+        estimatedCostAtCompletion = totalPlannedCost / performanceIndex;
+      }
     }
   }
   

@@ -10,6 +10,14 @@ import {
 } from '@/types/boq';
 
 export const boqApi = {
+  // Get all BOQs (common view)
+  getAllBOQs: async (
+    params?: { status?: string; projectId?: string; page?: number; limit?: number }
+  ): Promise<{ boqs: IBOQ[]; pagination: { total: number; page: number; limit: number; pages: number } }> => {
+    const response = await api.get('/boq/all', { params });
+    return response.data;
+  },
+
   // Create BOQ
   createBOQ: async (data: CreateBOQRequest): Promise<{ boq: IBOQ }> => {
     const response = await api.post('/boq', data);
@@ -19,8 +27,8 @@ export const boqApi = {
   // Get BOQs by project
   getBOQsByProject: async (
     projectId: string,
-    params?: { status?: string; version?: number }
-  ): Promise<{ boqs: IBOQ[] }> => {
+    params?: { status?: string; version?: number; page?: number; limit?: number }
+  ): Promise<{ boqs: IBOQ[]; pagination: { total: number; page: number; limit: number; pages: number } }> => {
     const response = await api.get(`/boq/project/${projectId}`, { params });
     return response.data;
   },
@@ -92,6 +100,15 @@ export const boqApi = {
   // Get category breakdown
   getCategoryBreakdown: async (id: string): Promise<{ breakdown: ICategoryBreakdown[] }> => {
     const response = await api.get(`/boq/${id}/category-breakdown`);
+    return response.data;
+  },
+
+  // Get audit trail
+  getAuditTrail: async (
+    id: string,
+    params?: { page?: number; limit?: number }
+  ): Promise<{ auditTrail: any[]; pagination: { total: number; page: number; limit: number; pages: number } }> => {
+    const response = await api.get(`/boq/${id}/audit-trail`, { params });
     return response.data;
   }
 };

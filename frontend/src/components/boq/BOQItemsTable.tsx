@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useBOQ } from '@/hooks/useBOQ';
+import { useUpdateBOQItem, useDeleteBOQItem } from '@/hooks/useBOQ';
 import { IBOQItem } from '@/types/boq';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,8 @@ interface BOQItemsTableProps {
 }
 
 export default function BOQItemsTable({ boqId, items, currency, readonly = false }: BOQItemsTableProps) {
-  const { updateBOQItem, deleteBOQItem } = useBOQ();
+  const updateBOQItem = useUpdateBOQItem();
+  const deleteBOQItem = useDeleteBOQItem();
   const { formatAmount } = useGlobalCurrency();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<IBOQItem>>({});
