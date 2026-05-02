@@ -262,7 +262,7 @@ export const approveBilling = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Only pending billings can be approved' });
     }
     
-    if (billing.createdBy.toString() === req.user?.userId) {
+    if (billing.createdBy.toString() === req.user?.userId?.toString()) {
       await session.abortTransaction();
       return res.status(403).json({ message: 'Cannot approve own billing - segregation of duties violation' });
     }
@@ -544,7 +544,7 @@ export const updatePaymentSchedule = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Billing not found' });
     }
     
-    const schedule = billing.paymentSchedules.id(scheduleId);
+    const schedule = billing.paymentSchedules.find(s => (s as any)._id?.toString() === scheduleId);
     if (!schedule) {
       return res.status(404).json({ message: 'Payment schedule not found' });
     }

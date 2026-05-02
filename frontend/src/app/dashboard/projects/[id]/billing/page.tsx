@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useMilestoneBilling } from '@/hooks/useMilestoneBilling';
+import { useBillingsByProject, useBillingAnalytics } from '@/hooks/useMilestoneBilling';
 import { IMilestoneBilling } from '@/types/billing';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +18,6 @@ export default function ProjectBillingPage() {
   const { formatAmount } = useGlobalCurrency();
   const [selectedBilling, setSelectedBilling] = useState<IMilestoneBilling | null>(null);
 
-  const { useBillingsByProject, useBillingAnalytics } = useMilestoneBilling();
   const { data: billingsData } = useBillingsByProject(projectId);
   const { data: analyticsData } = useBillingAnalytics(projectId);
 

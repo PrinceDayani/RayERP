@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMilestoneBilling } from '@/hooks/useMilestoneBilling';
+import { useGenerateInvoice, useRecordPayment, useRejectBilling, useSubmitForApproval, useApproveBilling } from '@/hooks/useMilestoneBilling';
 import { IMilestoneBilling } from '@/types/billing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,13 +24,11 @@ interface BillingDetailsProps {
 }
 
 export default function BillingDetails({ billing }: BillingDetailsProps) {
-  const {
-    generateInvoice,
-    recordPayment,
-    rejectBilling,
-    submitForApproval,
-    approveBilling
-  } = useMilestoneBilling();
+  const generateInvoice = useGenerateInvoice();
+  const recordPayment = useRecordPayment();
+  const rejectBilling = useRejectBilling();
+  const submitForApproval = useSubmitForApproval();
+  const approveBilling = useApproveBilling();
 
   const [invoiceData, setInvoiceData] = useState({
     invoiceNumber: '',
@@ -38,10 +36,16 @@ export default function BillingDetails({ billing }: BillingDetailsProps) {
     dueDate: ''
   });
 
-  const [paymentData, setPaymentData] = useState({
+  const [paymentData, setPaymentData] = useState<{
+    amount: number;
+    paymentReference: string;
+    paymentDate: string;
+    paymentMethod: 'bank_transfer' | 'cheque' | 'cash' | 'online' | 'other';
+  }>({
     amount: 0,
     paymentReference: '',
-    paymentDate: new Date().toISOString().split('T')[0]
+    paymentDate: new Date().toISOString().split('T')[0],
+    paymentMethod: 'bank_transfer'
   });
 
   const [rejectionReason, setRejectionReason] = useState('');
@@ -277,6 +281,20 @@ export default function BillingDetails({ billing }: BillingDetailsProps) {
                     value={paymentData.paymentDate}
                     onChange={(e) => setPaymentData({ ...paymentData, paymentDate: e.target.value })}
                   />
+                </div>
+                <div>
+                  <Label>Payment Method</Label>
+                  <select
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={paymentData.paymentMethod}
+                    onChange={(e) => setPaymentData({ ...paymentData, paymentMethod: e.target.value as any })}
+                  >
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="cash">Cash</option>
+                    <option value="online">Online</option>
+                    <option value="other">Other</option>
+                  </select>
                 </div>
                 <Button onClick={handleRecordPayment} disabled={!paymentData.amount || !paymentData.paymentReference}>
                   Record Payment

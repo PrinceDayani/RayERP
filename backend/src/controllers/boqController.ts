@@ -229,21 +229,21 @@ export const updateBOQItem = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Cannot update approved or active BOQ. Create a new version instead.' });
     }
     
-    const item = boq.items.id(itemId);
+    const item = boq.items.find(i => (i as any)._id?.toString() === itemId);
     if (!item) {
       await session.abortTransaction();
       return res.status(404).json({ message: 'BOQ item not found' });
     }
     
     if (updates.itemCode && updates.itemCode !== item.itemCode) {
-      const duplicate = boq.items.find(i => i._id?.toString() !== itemId && i.itemCode === updates.itemCode);
+      const duplicate = boq.items.find(i => (i as any)._id?.toString() !== itemId && i.itemCode === updates.itemCode);
       if (duplicate) {
         await session.abortTransaction();
         return res.status(400).json({ message: `Duplicate item code: ${updates.itemCode}` });
       }
     }
     
-    const oldItem = { ...item.toObject() };
+    const oldItem = { ...(item as any).toObject() };
     Object.assign(item, updates);
     
     if (updates.actualQuantity !== undefined || updates.unitRate !== undefined) {
@@ -256,7 +256,7 @@ export const updateBOQItem = async (req: Request, res: Response) => {
       performedBy: req.user?.userId,
       timestamp: new Date(),
       itemId: itemId,
-      changes: { old: oldItem, new: item.toObject() }
+      changes: { old: oldItem, new: (item as any).toObject() }
     });
     
     await boq.save({ session });
@@ -359,14 +359,14 @@ export const deleteBOQItem = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Cannot delete items from approved or active BOQ. Create a new version instead.' });
     }
     
-    const item = boq.items.id(itemId);
+    const item = boq.items.find(i => (i as any)._id?.toString() === itemId);
     if (!item) {
       await session.abortTransaction();
       return res.status(404).json({ message: 'BOQ item not found' });
     }
     
-    const deletedItem = { ...item.toObject() };
-    boq.items.pull(itemId);
+    const deletedItem = { ...item };
+    boq.items = boq.items.filter(i => (i as any)._id?.toString() !== itemId) as any;
     
     boq.auditTrail.push({
       action: 'item_deleted',

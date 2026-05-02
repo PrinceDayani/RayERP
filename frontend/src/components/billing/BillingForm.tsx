@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMilestoneBilling } from '@/hooks/useMilestoneBilling';
-import { useBOQ } from '@/hooks/useBOQ';
+import { useCreateMilestoneBilling } from '@/hooks/useMilestoneBilling';
+import { useBOQsByProject } from '@/hooks/useBOQ';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,8 +23,7 @@ interface BillingFormProps {
 
 export default function BillingForm({ projectId }: BillingFormProps) {
   const router = useRouter();
-  const { createMilestoneBilling } = useMilestoneBilling();
-  const { useBOQsByProject } = useBOQ();
+  const createMilestoneBilling = useCreateMilestoneBilling();
   const { data: boqsData } = useBOQsByProject(projectId, { status: 'active' });
 
   const [formData, setFormData] = useState({

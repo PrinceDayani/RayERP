@@ -32,10 +32,3 @@ export { default as permissionRoutes } from './permissions/permissionRoutes';
 export * from './activity/activityController';
 export { default as activityRoutes } from './activity/activityRoutes';
 
-// BOQ Module
-export * from './boq/boqController';
-export { default as boqRoutes } from './boq/boqRoutes';
-
-// Billing Module
-export * from './billing/billingController';
-export { default as billingRoutes } from './billing/billingRoutes';
