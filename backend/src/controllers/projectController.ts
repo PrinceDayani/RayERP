@@ -418,6 +418,22 @@ export const updateProject = async (req: Request, res: Response) => {
     if (!oldProject) {
       return res.status(404).json({ message: 'Project not found' });
     }
+
+    // Access check: Root, projects.edit_all, or project owner/manager only
+    const updateUser = req.user;
+    if (updateUser) {
+      const updateRoleName = typeof updateUser.role === 'object' && 'name' in updateUser.role ? updateUser.role.name : null;
+      const updateRolePerms = (typeof updateUser.role === 'object' && 'permissions' in updateUser.role ? updateUser.role.permissions : []) as string[];
+      const isRoot = updateRoleName === 'Root';
+      const hasEditAll = updateRolePerms.includes('projects.edit_all');
+      const isOwner = oldProject.owner?.toString() === updateUser._id.toString();
+      const Employee = (await import('../models/Employee')).default;
+      const emp = await Employee.findOne({ user: updateUser._id });
+      const isManager = emp && oldProject.managers && oldProject.managers.some((m: any) => m.toString() === emp._id.toString());
+      if (!isRoot && !hasEditAll && !isOwner && !isManager) {
+        return res.status(403).json({ message: 'Access denied: You do not have permission to edit this project' });
+      }
+    }
     
     // Validate and sanitize update data
     const updateData: any = {};
@@ -656,6 +672,28 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
 
 export const deleteProject = async (req: Request, res: Response) => {
   try {
+    // Access check: Root, projects.edit_all, or project owner/manager only
+    const deleteUser = req.user;
+    if (deleteUser) {
+      const deleteRoleName = typeof deleteUser.role === 'object' && 'name' in deleteUser.role ? deleteUser.role.name : null;
+      const deleteRolePerms = (typeof deleteUser.role === 'object' && 'permissions' in deleteUser.role ? deleteUser.role.permissions : []) as string[];
+      const isRoot = deleteRoleName === 'Root';
+      const hasEditAll = deleteRolePerms.includes('projects.edit_all');
+      if (!isRoot && !hasEditAll) {
+        const projectToCheck = await Project.findById(req.params.id);
+        if (!projectToCheck) {
+          return res.status(404).json({ message: 'Project not found' });
+        }
+        const isOwner = projectToCheck.owner?.toString() === deleteUser._id.toString();
+        const Employee = (await import('../models/Employee')).default;
+        const emp = await Employee.findOne({ user: deleteUser._id });
+        const isManager = emp && projectToCheck.managers && projectToCheck.managers.some((m: any) => m.toString() === emp._id.toString());
+        if (!isOwner && !isManager) {
+          return res.status(403).json({ message: 'Access denied: You do not have permission to delete this project' });
+        }
+      }
+    }
+
     const project = await Project.findByIdAndDelete(req.params.id);
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });

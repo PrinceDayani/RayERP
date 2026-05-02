@@ -5,13 +5,18 @@ import '../config/api_config.dart';
 import '../models/user.dart';
 import '../utils/constants.dart';
 import '../services/api_service.dart';
+import '../utils/device_fingerprint.dart';
 
 class AuthService {
   Future<Map<String, dynamic>> login(String email, String password) async {
+    final fingerprint = await DeviceFingerprint.generate();
     final res = await http
         .post(
           Uri.parse('${ApiConfig.baseUrl}/auth/login'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'x-fingerprint': fingerprint,
+          },
           body: jsonEncode({'email': email, 'password': password}),
         )
         .timeout(ApiConfig.timeout);
@@ -53,10 +58,14 @@ class AuthService {
   Future<void> validateSession() async {
     final token = await getToken();
     if (token == null || token.isEmpty) throw UnauthorizedException();
+    final fingerprint = await DeviceFingerprint.generate();
     final res = await http
         .get(
           Uri.parse('${ApiConfig.baseUrl}/auth/check'),
-          headers: {'Authorization': 'Bearer $token'},
+          headers: {
+            'Authorization': 'Bearer $token',
+            'x-fingerprint': fingerprint,
+          },
         )
         .timeout(ApiConfig.timeout);
     if (res.statusCode == 401) throw UnauthorizedException();
@@ -65,10 +74,14 @@ class AuthService {
   Future<String> fetchCsrfToken() async {
     final token = await getToken();
     if (token == null || token.isEmpty) throw Exception('Not authenticated');
+    final fingerprint = await DeviceFingerprint.generate();
     final res = await http
         .get(
           Uri.parse('${ApiConfig.baseUrl}/csrf/token'),
-          headers: {'Authorization': 'Bearer $token'},
+          headers: {
+            'Authorization': 'Bearer $token',
+            'x-fingerprint': fingerprint,
+          },
         )
         .timeout(ApiConfig.timeout);
     if (res.statusCode == 200) {
@@ -85,6 +98,7 @@ class AuthService {
   }) async {
     final token = await getToken();
     if (token == null || token.isEmpty) throw Exception('Not authenticated');
+    final fingerprint = await DeviceFingerprint.generate();
     final res = await http
         .put(
           Uri.parse('${ApiConfig.baseUrl}/auth/change-password'),
@@ -92,6 +106,7 @@ class AuthService {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
             'X-CSRF-Token': csrfToken,
+            'x-fingerprint': fingerprint,
           },
           body: jsonEncode({
             'currentPassword': currentPassword,

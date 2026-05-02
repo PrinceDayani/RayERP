@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../utils/constants.dart';
+import '../utils/device_fingerprint.dart';
 
 class ApiService {
   // ── In-memory layer (fast) ──────────────────────────────────────────────────
@@ -43,9 +44,11 @@ class ApiService {
   Future<Map<String, String>> headers() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AppConstants.tokenKey) ?? '';
+    final fingerprint = await DeviceFingerprint.generate();
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
+      'x-fingerprint': fingerprint,
     };
   }
 
@@ -152,8 +155,10 @@ class ApiService {
   Future<dynamic> multipartPost(String path, String filePath, String fieldName) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AppConstants.tokenKey) ?? '';
+    final fingerprint = await DeviceFingerprint.generate();
     final req = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}$path'));
     req.headers['Authorization'] = 'Bearer $token';
+    req.headers['x-fingerprint'] = fingerprint;
     req.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
     final streamed = await req.send().timeout(ApiConfig.timeout);
     final res = await http.Response.fromStream(streamed);

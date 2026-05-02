@@ -495,6 +495,8 @@ export const initializePermissions = async () => {
     { name: 'projects.delete', description: 'Delete projects', category: 'Project Management' },
     { name: 'projects.archive', description: 'Archive projects', category: 'Project Management' },
     { name: 'projects.manage_team', description: 'Manage project team', category: 'Project Management' },
+    { name: 'projects.view_all', description: 'View all projects regardless of assignment', category: 'Project Management' },
+    { name: 'projects.edit_all', description: 'Edit and delete all projects regardless of assignment', category: 'Project Management' },
     { name: 'tasks.view', description: 'View tasks', category: 'Project Management' },
     { name: 'tasks.create', description: 'Create tasks', category: 'Project Management' },
     { name: 'tasks.edit', description: 'Edit tasks', category: 'Project Management' },
