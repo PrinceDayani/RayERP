@@ -38,9 +38,24 @@ export interface IInstruction {
   updatedAt: Date;
 }
 
+export interface IFinancialProgress {
+  totalContractValue: number;
+  totalPaymentsReceived: number;
+  totalPaymentsMade: number;
+  financialProgress: number; // percentage based on payments vs budget
+  lastUpdated: Date;
+  departmentBreakdown: {
+    department: mongoose.Types.ObjectId;
+    allocated: number;
+    spent: number;
+    received: number;
+  }[];
+}
+
 export interface IProject extends Document {
   name: string;
   description: string;
+  projectType: 'instruction' | 'reporting';
   status: 'planning' | 'active' | 'on-hold' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'critical';
   startDate: Date;
@@ -50,6 +65,10 @@ export interface IProject extends Document {
   currency: string;
   progress: number;
   autoCalculateProgress: boolean;
+
+  // Reporting-based project fields
+  progressMode: 'task-based' | 'financial';
+  financialProgress: IFinancialProgress;
 
   managers: mongoose.Types.ObjectId[];
   team: mongoose.Types.ObjectId[];
@@ -67,6 +86,10 @@ export interface IProject extends Document {
   instructions: IInstruction[];
   
   activeBOQ?: mongoose.Types.ObjectId;
+
+  // Workflow integration
+  workflowInstanceId?: mongoose.Types.ObjectId;
+  workflowStatus?: 'active' | 'completed' | 'rejected' | 'cancelled' | 'on-hold' | null;
   
   createdAt: Date;
   updatedAt: Date;
@@ -124,9 +147,28 @@ const instructionSchema = new Schema({
   updatedAt: { type: Date, default: Date.now }
 }, { _id: true });
 
+const financialProgressSchema = new Schema({
+  totalContractValue: { type: Number, default: 0 },
+  totalPaymentsReceived: { type: Number, default: 0 },
+  totalPaymentsMade: { type: Number, default: 0 },
+  financialProgress: { type: Number, min: 0, max: 100, default: 0 },
+  lastUpdated: { type: Date, default: Date.now },
+  departmentBreakdown: [{
+    department: { type: Schema.Types.ObjectId, ref: 'Department' },
+    allocated: { type: Number, default: 0 },
+    spent: { type: Number, default: 0 },
+    received: { type: Number, default: 0 }
+  }]
+}, { _id: false });
+
 const projectSchema = new Schema<IProject>({
   name: { type: String, required: true },
   description: { type: String, required: true },
+  projectType: {
+    type: String,
+    enum: ['instruction', 'reporting'],
+    default: 'instruction'
+  },
   status: { 
     type: String, 
     enum: ['planning', 'active', 'on-hold', 'completed', 'cancelled'], 
@@ -145,6 +187,14 @@ const projectSchema = new Schema<IProject>({
 
   progress: { type: Number, min: 0, max: 100, default: 0 },
   autoCalculateProgress: { type: Boolean, default: true },
+
+  // Reporting-based project fields
+  progressMode: {
+    type: String,
+    enum: ['task-based', 'financial'],
+    default: 'task-based'
+  },
+  financialProgress: { type: financialProgressSchema, default: () => ({}) },
   managers: [{ type: Schema.Types.ObjectId, ref: 'Employee', required: true }],
   team: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
   owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -163,11 +213,21 @@ const projectSchema = new Schema<IProject>({
     priority: { type: String, enum: ['required', 'preferred', 'nice-to-have'], default: 'required' }
   }],
   instructions: [instructionSchema],
-  activeBOQ: { type: Schema.Types.ObjectId, ref: 'BOQ' }
+  activeBOQ: { type: Schema.Types.ObjectId, ref: 'BOQ' },
+
+  // Workflow integration
+  workflowInstanceId: { type: Schema.Types.ObjectId, ref: 'WorkflowInstance' },
+  workflowStatus: { 
+    type: String, 
+    enum: ['active', 'completed', 'rejected', 'cancelled', 'on-hold', null],
+    default: null
+  }
 }, { timestamps: true });
 
 projectSchema.index({ 'instructions.type': 1 });
 projectSchema.index({ 'instructions.priority': 1 });
+projectSchema.index({ projectType: 1 });
+projectSchema.index({ progressMode: 1 });
 
 
 // Virtual for backward compatibility
@@ -184,5 +244,7 @@ projectSchema.index({ status: 1, priority: 1 });
 projectSchema.index({ startDate: 1, endDate: 1 });
 projectSchema.index({ createdAt: -1 });
 projectSchema.index({ updatedAt: -1 });
+projectSchema.index({ workflowInstanceId: 1 });
+projectSchema.index({ workflowStatus: 1 });
 
 export default mongoose.model<IProject>('Project', projectSchema);

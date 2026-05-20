@@ -4,7 +4,6 @@ require('dotenv').config();
 const ANALYTICS_PERMISSIONS = [
   { name: 'analytics.financial', description: 'View financial analytics', category: 'Analytics', isActive: true },
   { name: 'analytics.sales', description: 'View sales analytics', category: 'Analytics', isActive: true },
-  { name: 'analytics.inventory', description: 'View inventory analytics', category: 'Analytics', isActive: true },
   { name: 'reports.view', description: 'View reports', category: 'Reports & Analytics', isActive: true },
   { name: 'reports.create', description: 'Create custom reports', category: 'Reports & Analytics', isActive: true },
   { name: 'reports.export', description: 'Export reports', category: 'Reports & Analytics', isActive: true },

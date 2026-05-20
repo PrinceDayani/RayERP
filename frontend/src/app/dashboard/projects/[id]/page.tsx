@@ -17,6 +17,8 @@ import ProjectBalanceSheet from "@/components/projects/finance/ProjectBalanceShe
 import ProjectCashFlow from "@/components/projects/finance/ProjectCashFlow";
 import ProjectLedger from "@/components/projects/finance/ProjectLedger";
 import ProjectPermissionsManager from "@/components/projects/ProjectPermissionsManager";
+import ProjectWorkflowPanel from "@/components/projects/ProjectWorkflowPanel";
+import ProjectReportingTab from "@/components/projects/ProjectReportingTab";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +103,16 @@ const ProjectDetailPage = () => {
       setActiveTab(tabParam === 'finance' ? 'accounting' : tabParam);
     }
   }, []);
+
+  // Set default tab to "reporting" for reporting-based projects
+  useEffect(() => {
+    if (project?.projectType === 'reporting' && activeTab === 'tasks') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.get('tab')) {
+        setActiveTab('reporting');
+      }
+    }
+  }, [project?.projectType]);
 
 
   useEffect(() => {
@@ -246,7 +258,14 @@ const ProjectDetailPage = () => {
               Back
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">{project.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-bold">{project.name}</h1>
+                {project.projectType === 'reporting' && (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                    Reporting-Based
+                  </Badge>
+                )}
+              </div>
               <p className="text-muted-foreground">{project.description}</p>
             </div>
           </div>
@@ -303,7 +322,9 @@ const ProjectDetailPage = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-green-700 dark:text-green-300">Progress</p>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                    {project.projectType === 'reporting' ? 'Financial Progress' : 'Progress'}
+                  </p>
                   <p className="text-3xl font-bold text-green-900 dark:text-green-100">{project.progress}%</p>
                   <div className="w-full bg-green-200 dark:bg-green-800 rounded-full h-2 mt-2">
                     <div 
@@ -588,6 +609,9 @@ const ProjectDetailPage = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Workflow Panel */}
+            <ProjectWorkflowPanel projectId={projectId} projectName={project.name} />
           </div>
         </div>
 
@@ -607,7 +631,10 @@ const ProjectDetailPage = () => {
 
         {/* Tabs for Tasks and Other Details */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-grid">
+          <TabsList className={`grid w-full ${project.projectType === 'reporting' ? 'grid-cols-11' : 'grid-cols-10'} lg:w-auto lg:inline-grid`}>
+            {project.projectType === 'reporting' && (
+              <TabsTrigger value="reporting">Reporting</TabsTrigger>
+            )}
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="budget">Budget</TabsTrigger>
@@ -619,6 +646,12 @@ const ProjectDetailPage = () => {
             <TabsTrigger value="permissions">Permissions</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
+
+          {project.projectType === 'reporting' && (
+            <TabsContent value="reporting">
+              <ProjectReportingTab projectId={projectId} />
+            </TabsContent>
+          )}
 
           <TabsContent value="tasks">
             <TaskManagement projectId={projectId} showProjectTasks={true} />

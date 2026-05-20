@@ -51,6 +51,7 @@ const EditProjectPage = () => {
       const updateData: any = {
         name: formData.name,
         description: formData.description,
+        projectType: formData.projectType,
         status: formData.status,
         priority: formData.priority,
         startDate: formData.startDate,
@@ -168,6 +169,7 @@ const EditProjectPage = () => {
               project={{
                 name: project.name,
                 description: project.description,
+                projectType: project.projectType,
                 status: project.status,
                 priority: project.priority,
                 budget: project.budget,

@@ -495,9 +495,16 @@ const ProjectManagementDashboard: React.FC = () => {
                           <Briefcase className="h-6 w-6" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-lg group-hover:text-[#970E2C] transition-colors line-clamp-1">
-                            {project.name}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-lg group-hover:text-[#970E2C] transition-colors line-clamp-1">
+                              {project.name}
+                            </h3>
+                            {project.projectType === 'reporting' && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-300 text-blue-600 flex-shrink-0">
+                                Reporting
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{project.description}</p>
                         </div>
                       </div>

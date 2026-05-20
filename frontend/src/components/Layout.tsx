@@ -29,7 +29,8 @@ import {
   Boxes,
   Building,
   Activity,
-  MessageCircle
+  MessageCircle,
+  GitBranch
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -111,6 +112,7 @@ export default function Layout({ children }: LayoutProps) {
       items: [
         { path: "/dashboard/projects", name: "Projects", icon: Briefcase, description: "Project tracking & management", access: hasProjectAccess } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/tasks", name: "Tasks", icon: CheckCircle, description: "Task management", access: hasTaskAccess } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/workflows", name: "Workflows", icon: GitBranch, description: "Workflow management & automation", access: hasProjectAccess || isManager } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/resources", name: "Resources", icon: Boxes, description: "Resource planning", access: hasResourceAccess } as MenuItem & { icon: any; description: string }
       ]
     },

@@ -438,15 +438,7 @@ export const initializePermissions = async () => {
     
 
     
-    // Customer & Vendor Management
-    { name: 'customers.view', description: 'View customer list', category: 'Customer & Vendor' },
-    { name: 'customers.create', description: 'Add new customers', category: 'Customer & Vendor' },
-    { name: 'customers.edit', description: 'Edit customer details', category: 'Customer & Vendor' },
-    { name: 'customers.delete', description: 'Delete customers', category: 'Customer & Vendor' },
-    { name: 'vendors.view', description: 'View vendor list', category: 'Customer & Vendor' },
-    { name: 'vendors.create', description: 'Add new vendors', category: 'Customer & Vendor' },
-    { name: 'vendors.edit', description: 'Edit vendor details', category: 'Customer & Vendor' },
-    { name: 'vendors.delete', description: 'Delete vendors', category: 'Customer & Vendor' },
+
     
     // Finance & Accounting
     { name: 'accounts.view', description: 'View chart of accounts', category: 'Finance & Accounting' },
@@ -522,9 +514,17 @@ export const initializePermissions = async () => {
     { name: 'analytics.view', description: 'View analytics dashboard', category: 'Analytics' },
     { name: 'analytics.financial', description: 'View financial analytics', category: 'Analytics' },
     { name: 'analytics.sales', description: 'View sales analytics', category: 'Analytics' },
-    { name: 'analytics.inventory', description: 'View inventory analytics', category: 'Analytics' },
     
-    
+    // Tender Management
+    { name: 'tenders.view', description: 'View tenders', category: 'Tender Management' },
+    { name: 'tenders.create', description: 'Create tenders', category: 'Tender Management' },
+    { name: 'tenders.edit', description: 'Edit tenders', category: 'Tender Management' },
+    { name: 'tenders.delete', description: 'Delete tenders', category: 'Tender Management' },
+    { name: 'tenders.manage', description: 'Manage tender lifecycle', category: 'Tender Management' },
+    { name: 'tenders.manage_bids', description: 'Manage bids and bidders', category: 'Tender Management' },
+    { name: 'tenders.evaluate', description: 'Evaluate and score bids', category: 'Tender Management' },
+    { name: 'tenders.award', description: 'Award tenders and generate work orders', category: 'Tender Management' },
+
     // System Administration
     { name: 'admin.view', description: 'View admin panel', category: 'System Administration' },
     { name: 'system.view', description: 'View system settings', category: 'System Administration' },

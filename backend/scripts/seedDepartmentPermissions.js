@@ -79,8 +79,6 @@ const departmentPermissionsMap = {
     'tasks.update',
     'resources.view',
     'resources.allocate',
-    'inventory.view',
-    'inventory.manage',
     'reports.view'
   ],
   'Engineering': [

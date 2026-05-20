@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, X, ClipboardList, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { type Project, projectsAPI } from "@/lib/api/projectsAPI";
@@ -25,7 +25,7 @@ interface Department {
 }
 
 interface ProjectFormProps {
-  project?: Partial<Project>;
+  project?: Partial<Project> & { projectType?: 'instruction' | 'reporting' };
   projectId?: string;
   onSubmit: (data: Partial<Project>) => void;
   onCancel: () => void;
@@ -54,6 +54,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const [formData, setFormData] = useState({
     name: project?.name || "",
     description: project?.description || "",
+    projectType: (project as any)?.projectType || "instruction",
     status: project?.status || "planning",
     priority: project?.priority || "medium",
     budget: project?.budget?.toString() || "",
@@ -213,6 +214,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     const projectData = {
       name: formData.name.trim(),
       description: formData.description.trim(),
+      projectType: formData.projectType,
       status: formData.status,
       priority: formData.priority,
       startDate: startDate.toISOString(),
@@ -314,6 +316,51 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           rows={4}
           required
         />
+      </div>
+
+      {/* Project Type Selection */}
+      <div className="space-y-2">
+        <Label>Project Type</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <div
+            className={`relative cursor-pointer rounded-lg border-2 p-3 transition-all ${
+              formData.projectType === 'instruction'
+                ? 'border-primary bg-primary/5'
+                : 'border-muted hover:border-muted-foreground/30'
+            }`}
+            onClick={() => handleInputChange("projectType", "instruction")}
+          >
+            <div className="flex items-center gap-2">
+              <ClipboardList className={`h-4 w-4 ${formData.projectType === 'instruction' ? 'text-primary' : 'text-muted-foreground'}`} />
+              <div>
+                <p className="font-medium text-sm">Instruction-Based</p>
+                <p className="text-xs text-muted-foreground">Tasks assigned top-down, progress by task completion</p>
+              </div>
+            </div>
+            {formData.projectType === 'instruction' && (
+              <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary" />
+            )}
+          </div>
+          <div
+            className={`relative cursor-pointer rounded-lg border-2 p-3 transition-all ${
+              formData.projectType === 'reporting'
+                ? 'border-primary bg-primary/5'
+                : 'border-muted hover:border-muted-foreground/30'
+            }`}
+            onClick={() => handleInputChange("projectType", "reporting")}
+          >
+            <div className="flex items-center gap-2">
+              <BarChart3 className={`h-4 w-4 ${formData.projectType === 'reporting' ? 'text-primary' : 'text-muted-foreground'}`} />
+              <div>
+                <p className="font-medium text-sm">Reporting-Based</p>
+                <p className="text-xs text-muted-foreground">Employees report progress, tracked by financial outcome</p>
+              </div>
+            </div>
+            {formData.projectType === 'reporting' && (
+              <div className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary" />
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

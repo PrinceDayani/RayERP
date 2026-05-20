@@ -25,6 +25,7 @@ export interface Project {
   _id: string;
   name: string;
   description: string;
+  projectType?: 'instruction' | 'reporting';
   startDate: string;
   endDate: string;
   status: 'planning' | 'active' | 'on-hold' | 'completed' | 'cancelled';
@@ -33,7 +34,21 @@ export interface Project {
   spentBudget?: number;
   currency: string;
   progress: number;
+  progressMode?: 'task-based' | 'financial';
   autoCalculateProgress?: boolean;
+  financialProgress?: {
+    totalContractValue: number;
+    totalPaymentsReceived: number;
+    totalPaymentsMade: number;
+    financialProgress: number;
+    lastUpdated: string;
+    departmentBreakdown?: {
+      department: string;
+      allocated: number;
+      spent: number;
+      received: number;
+    }[];
+  };
   managers: string[];
   team: string[];
   departments?: string[];

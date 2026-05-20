@@ -22,10 +22,6 @@ router.get('/financial/expenses', requirePermission('analytics.financial'), anal
 router.get('/sales', requirePermission('analytics.sales'), analyticsController.getDashboardAnalytics);
 router.get('/sales/trends', requirePermission('analytics.sales'), analyticsController.getDashboardAnalytics);
 
-// Inventory analytics
-router.get('/inventory', requirePermission('analytics.inventory'), analyticsController.getDashboardAnalytics);
-router.get('/inventory/stock', requirePermission('analytics.inventory'), analyticsController.getDashboardAnalytics);
-
 // General analytics
 router.get('/productivity-trends', requirePermission('analytics.view'), analyticsController.getProductivityTrends);
 router.get('/project-dues', requirePermission('analytics.view'), analyticsController.getProjectDues);

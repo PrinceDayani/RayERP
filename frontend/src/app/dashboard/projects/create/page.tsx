@@ -16,12 +16,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Save, X, Users, Building2 } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Save, X, Users, Building2, GitBranch, ClipboardList, BarChart3 } from "lucide-react";
 import { createProject, projectsAPI, type Project } from "@/lib/api/projectsAPI";
 import { getAllEmployees } from "@/lib/api/index";
 import { toast } from "@/components/ui/use-toast";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { CurrencySelector } from "@/components/ui/currency-selector";
+import { workflowsAPI, WorkflowTemplate } from "@/lib/api/workflowsAPI";
 
 interface Employee {
   _id: string;
@@ -42,10 +43,14 @@ const CreateProjectPage = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
+  const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplate[]>([]);
+  const [selectedWorkflowTemplate, setSelectedWorkflowTemplate] = useState<string>("");
+  const [skipWorkflow, setSkipWorkflow] = useState(false);
 
   const [projectForm, setProjectForm] = useState({
     name: "",
     description: "",
+    projectType: "instruction" as "instruction" | "reporting",
     status: "planning" as Project["status"],
     priority: "medium" as Project["priority"],
     startDate: undefined as Date | undefined,
@@ -71,8 +76,18 @@ const CreateProjectPage = () => {
     if (isAuthenticated) {
       fetchEmployees();
       fetchDepartments();
+      fetchWorkflowTemplates();
     }
   }, [isAuthenticated]);
+
+  const fetchWorkflowTemplates = async () => {
+    try {
+      const res = await workflowsAPI.getTemplates({ entityType: "project", isActive: true });
+      setWorkflowTemplates(res.data || []);
+    } catch (error) {
+      console.error("Error fetching workflow templates:", error);
+    }
+  };
 
   const fetchEmployees = async () => {
     try {
@@ -137,6 +152,7 @@ const CreateProjectPage = () => {
       const projectData = {
         name: projectForm.name,
         description: projectForm.description,
+        projectType: projectForm.projectType,
         status: projectForm.status,
         priority: projectForm.priority,
         startDate: projectForm.startDate.toISOString(),
@@ -147,7 +163,10 @@ const CreateProjectPage = () => {
         manager: projectForm.managers[0] || undefined, // Use first manager
         team: projectForm.team,
         departments: projectForm.departments,
-        tags: projectForm.tags
+        tags: projectForm.tags,
+        // Workflow integration
+        skipWorkflow: skipWorkflow,
+        workflowTemplateId: (selectedWorkflowTemplate && selectedWorkflowTemplate !== "default") ? selectedWorkflowTemplate : undefined,
       };
 
       // Use regular project creation API
@@ -232,6 +251,73 @@ const CreateProjectPage = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Project Type Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Project Type</CardTitle>
+            <p className="text-sm text-muted-foreground">Choose how this project will be managed and how progress is tracked</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div
+                className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all ${
+                  projectForm.projectType === 'instruction'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-muted hover:border-muted-foreground/30'
+                }`}
+                onClick={() => setProjectForm({ ...projectForm, projectType: 'instruction' })}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`rounded-full p-2 ${projectForm.projectType === 'instruction' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                    <ClipboardList className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-sm">Instruction-Based</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Management assigns tasks and gives instructions. Progress is tracked by task completion.
+                    </p>
+                  </div>
+                </div>
+                {projectForm.projectType === 'instruction' && (
+                  <div className="absolute top-2 right-2 h-3 w-3 rounded-full bg-primary" />
+                )}
+              </div>
+
+              <div
+                className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all ${
+                  projectForm.projectType === 'reporting'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-muted hover:border-muted-foreground/30'
+                }`}
+                onClick={() => setProjectForm({ ...projectForm, projectType: 'reporting' })}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`rounded-full p-2 ${projectForm.projectType === 'reporting' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                    <BarChart3 className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-sm">Reporting-Based</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Employees report progress. Progress is tracked by financial outcome (payments made vs budget).
+                    </p>
+                  </div>
+                </div>
+                {projectForm.projectType === 'reporting' && (
+                  <div className="absolute top-2 right-2 h-3 w-3 rounded-full bg-primary" />
+                )}
+              </div>
+            </div>
+
+            {projectForm.projectType === 'reporting' && (
+              <div className="mt-4 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3">
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  <strong>Financial Progress Mode:</strong> Project progress will be calculated based on the percentage of payments completed relative to the total budget. For example, if 20% of the budget has been paid out, the project progress will show 20% — regardless of task completion percentage.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
             <CardHeader>
@@ -458,6 +544,49 @@ const CreateProjectPage = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Workflow Configuration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <GitBranch className="h-4 w-4" />
+              Workflow Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="skipWorkflow"
+                checked={skipWorkflow}
+                onCheckedChange={(checked) => setSkipWorkflow(checked === true)}
+              />
+              <Label htmlFor="skipWorkflow" className="text-sm cursor-pointer">
+                Skip automatic workflow (create project without workflow)
+              </Label>
+            </div>
+            {!skipWorkflow && (
+              <div>
+                <Label className="text-sm">Workflow Template</Label>
+                <Select value={selectedWorkflowTemplate} onValueChange={setSelectedWorkflowTemplate}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Use default project workflow" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default Project Workflow</SelectItem>
+                    {workflowTemplates.map(t => (
+                      <SelectItem key={t._id} value={t._id}>
+                        {t.name} {t.isDefault ? "(Default)" : ""} — {t.steps?.length} steps
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  A workflow will be automatically started for this project after creation
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={() => router.push("/dashboard/projects")}>Cancel</Button>

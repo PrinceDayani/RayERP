@@ -8,6 +8,43 @@ interface AuthenticatedRequest extends Request {
   user?: any;
 }
 
+/**
+ * Resolve the role name from a user's role field.
+ * Handles:
+ * - Populated role object: { name: 'Root', permissions: ['*'] }
+ * - Legacy string role: 'root'
+ * - ObjectId (not populated): try to look up
+ */
+function resolveRoleName(role: any): string | null {
+  if (!role) return null;
+  // Populated role document with name
+  if (typeof role === 'object' && role.name) {
+    return role.name;
+  }
+  // Legacy string-based role
+  if (typeof role === 'string') {
+    return role;
+  }
+  return null;
+}
+
+function resolvePermissions(role: any): string[] {
+  if (!role) return [];
+  if (typeof role === 'object' && Array.isArray(role.permissions)) {
+    return role.permissions;
+  }
+  return [];
+}
+
+/**
+ * Check if the role is a root/superuser role (bypasses all permissions).
+ */
+function isRootRole(roleName: string | null): boolean {
+  if (!roleName) return false;
+  const normalized = roleName.toLowerCase();
+  return normalized === 'root';
+}
+
 export const requirePermission = (permission: string) => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
@@ -15,34 +52,30 @@ export const requirePermission = (permission: string) => {
         return res.status(401).json({ message: 'Authentication required' });
       }
 
-      const userId = req.user._id || req.user.id;
-      const user = await User.findById(userId).populate('role');
-      
-      if (!user) {
-        return res.status(401).json({ message: 'User not found' });
-      }
-
-      const userRole = user.role as any;
-      const roleName = userRole?.name;
+      // Use the already-populated user from auth middleware (avoid redundant DB call)
+      const userRole = req.user.role;
+      const roleName = resolveRoleName(userRole);
       
       // Root bypasses all permission checks
-      if (roleName === 'Root') {
+      if (isRootRole(roleName)) {
         return next();
       }
-      
-      const userPermissions = new Set<string>();
-      
+
       // Check for wildcard permission (*)
-      if (userRole?.permissions && userRole.permissions.includes('*')) {
+      const rolePermissions = resolvePermissions(userRole);
+      if (rolePermissions.includes('*')) {
         return next();
       }
       
-      if (userRole?.permissions) {
-        userRole.permissions.forEach((perm: string) => userPermissions.add(perm));
+      const userPermissions = new Set<string>(rolePermissions);
+
+      // Also check flattened permissions on req.user (set by auth middleware)
+      if (req.user.permissions && Array.isArray(req.user.permissions)) {
+        req.user.permissions.forEach((perm: string) => userPermissions.add(perm));
       }
 
       // Check department permissions
-      const employee = await Employee.findOne({ email: user.email });
+      const employee = await Employee.findOne({ email: req.user.email });
       if (employee) {
         const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
         if (departmentNames.length > 0) {
@@ -79,34 +112,30 @@ export const requireAnyPermission = (permissions: string[]) => {
         return res.status(401).json({ message: 'Authentication required' });
       }
 
-      const userId = req.user._id || req.user.id;
-      const user = await User.findById(userId).populate('role');
-      
-      if (!user) {
-        return res.status(401).json({ message: 'User not found' });
-      }
-
-      const userRole = user.role as any;
-      const roleName = userRole?.name;
+      // Use the already-populated user from auth middleware
+      const userRole = req.user.role;
+      const roleName = resolveRoleName(userRole);
       
       // Root bypasses all permission checks
-      if (roleName === 'Root') {
+      if (isRootRole(roleName)) {
         return next();
       }
-      
-      const userPermissions = new Set<string>();
-      
+
       // Check for wildcard permission (*)
-      if (userRole?.permissions && userRole.permissions.includes('*')) {
+      const rolePermissions = resolvePermissions(userRole);
+      if (rolePermissions.includes('*')) {
         return next();
       }
       
-      if (userRole?.permissions) {
-        userRole.permissions.forEach((perm: string) => userPermissions.add(perm));
+      const userPermissions = new Set<string>(rolePermissions);
+
+      // Also check flattened permissions on req.user
+      if (req.user.permissions && Array.isArray(req.user.permissions)) {
+        req.user.permissions.forEach((perm: string) => userPermissions.add(perm));
       }
 
       // Check department permissions
-      const employee = await Employee.findOne({ email: user.email });
+      const employee = await Employee.findOne({ email: req.user.email });
       if (employee) {
         const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
         if (departmentNames.length > 0) {

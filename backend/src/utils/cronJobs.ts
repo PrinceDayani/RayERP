@@ -87,9 +87,22 @@ export const scheduleRecurringEntries = () => {
   });
 };
 
+export const scheduleReportingReminders = () => {
+  // Run every 15 minutes to check for overdue reports and send reminders
+  cron.schedule('*/15 * * * *', async () => {
+    try {
+      const { checkOverdueReports } = await import('../services/reportingReminderService');
+      await checkOverdueReports();
+    } catch (error) {
+      logger.error('Reporting reminder check error:', error);
+    }
+  });
+};
+
 export const initializeCronJobs = () => {
   scheduleBillReminders();
   scheduleRecurringBills();
   scheduleRecurringEntries();
-  logger.info('✅ Cron jobs initialized (bills, recurring entries)');
+  scheduleReportingReminders();
+  logger.info('✅ Cron jobs initialized (bills, recurring entries, reporting reminders)');
 };

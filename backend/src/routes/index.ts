@@ -85,6 +85,9 @@ import salaryRoutes from './salary.routes';
 import careerRoutes from './career.routes';
 import achievementRoutes from './achievement.routes';
 import workOrderRoutes from './workOrder.routes';
+import workflowRoutes from './workflow.routes';
+import tenderRoutes from './tender.routes';
+import projectReportingRoutes from './projectReporting.routes';
 import { invalidateCacheOnMutation } from '../middleware/cacheInvalidation.middleware';
 
 const router = express.Router();
@@ -99,6 +102,7 @@ router.use("/profile", profileRoutes);
 router.use("/users", userRoutes);
 router.use("/sessions", sessionRoutes);
 router.use("/employees", employeeRoutes);
+router.use("/projects", projectReportingRoutes);
 router.use("/projects", projectRoutes);
 router.use("/tasks", taskRoutes);
 router.use("/tasks", taskAnalyticsRoutes);
@@ -141,6 +145,8 @@ router.use('/salary', salaryRoutes);
 router.use('/career', careerRoutes);
 router.use('/achievements', achievementRoutes);
 router.use('/work-orders', workOrderRoutes);
+router.use('/workflows', workflowRoutes);
+router.use('/tenders', tenderRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);

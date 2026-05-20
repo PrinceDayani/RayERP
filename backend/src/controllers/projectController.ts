@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import Project from '../models/Project';
 import Task from '../models/Task';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
+import { WorkflowProjectIntegration } from '../services/workflowProjectIntegration';
 // Socket will be imported dynamically to avoid circular dependency
 
 // Helper function to emit updated project stats
@@ -249,6 +250,7 @@ export const createProject = async (req: Request, res: Response) => {
     const projectData = {
       name: name.trim(),
       description: description.trim(),
+      projectType: req.body.projectType || 'instruction',
       status: req.body.status || 'planning',
       priority: req.body.priority || 'medium',
       startDate: new Date(startDate),
@@ -256,6 +258,7 @@ export const createProject = async (req: Request, res: Response) => {
       budget: parseFloat(req.body.budget) || 0,
       currency: req.body.currency || 'USD',
       progress: Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100),
+      progressMode: req.body.projectType === 'reporting' ? 'financial' : (req.body.progressMode || 'task-based'),
       client: req.body.client?.trim() || undefined,
       manager: req.body.managers && req.body.managers.length > 0 ? req.body.managers[0] : req.body.manager,
       managers: Array.isArray(req.body.managers) ? req.body.managers : (req.body.manager ? [req.body.manager] : []),
@@ -297,6 +300,7 @@ export const createProject = async (req: Request, res: Response) => {
       _id: project._id,
       name: project.name,
       description: project.description,
+      projectType: project.projectType,
       status: project.status,
       priority: project.priority,
       startDate: project.startDate,
@@ -304,6 +308,7 @@ export const createProject = async (req: Request, res: Response) => {
       budget: project.budget,
       currency: project.currency,
       progress: project.progress,
+      progressMode: project.progressMode,
       client: project.client,
       manager: project.managers && project.managers.length > 0 ? project.managers[0] : null,
       team: project.team,
@@ -335,6 +340,28 @@ export const createProject = async (req: Request, res: Response) => {
 
         // Execute background tasks in parallel
         const backgroundTasks = [];
+
+        // Auto-start workflow for the project (unless explicitly skipped)
+        backgroundTasks.push(
+          WorkflowProjectIntegration.onProjectCreated(
+            project._id.toString(),
+            user._id.toString(),
+            {
+              skipWorkflow: req.body.skipWorkflow === true,
+              workflowTemplateId: req.body.workflowTemplateId,
+              departmentId: project.departments?.[0]?.toString(),
+              metadata: req.body.workflowMetadata
+            }
+          ).then(result => {
+            if (result.workflowInstance) {
+              io.emit('workflow:started', {
+                projectId: project._id,
+                workflowInstanceId: result.workflowInstance._id,
+                workflowName: result.workflowInstance.templateName
+              });
+            }
+          }).catch(console.error)
+        );
 
         // Timeline event
         if (project.managers && project.managers.length > 0) {
@@ -441,6 +468,7 @@ export const updateProject = async (req: Request, res: Response) => {
     // Only include fields that are actually being updated
     if (req.body.name !== undefined) updateData.name = req.body.name;
     if (req.body.description !== undefined) updateData.description = req.body.description;
+    if (req.body.projectType !== undefined) updateData.projectType = req.body.projectType;
     if (req.body.status !== undefined) updateData.status = req.body.status;
     if (req.body.priority !== undefined) updateData.priority = req.body.priority;
     if (req.body.budget !== undefined) updateData.budget = parseFloat(req.body.budget) || 0;
@@ -451,6 +479,13 @@ export const updateProject = async (req: Request, res: Response) => {
     if (req.body.team !== undefined) updateData.team = Array.isArray(req.body.team) ? req.body.team : [];
     if (req.body.departments !== undefined) updateData.departments = Array.isArray(req.body.departments) ? req.body.departments : [];
     if (req.body.tags !== undefined) updateData.tags = Array.isArray(req.body.tags) ? req.body.tags : [];
+    
+    // When switching to reporting type, set progressMode to financial
+    if (req.body.projectType === 'reporting') {
+      updateData.progressMode = 'financial';
+    } else if (req.body.projectType === 'instruction') {
+      updateData.progressMode = 'task-based';
+    }
     
     // Handle dates carefully
     if (req.body.startDate) {
@@ -662,6 +697,14 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
+
+    // Sync workflow state with project status change
+    WorkflowProjectIntegration.onProjectStatusChanged(
+      project._id.toString(),
+      oldStatus,
+      status,
+      userId
+    ).catch(err => console.error('Error syncing workflow on status change:', err));
     
     res.json(project);
   } catch (error) {
@@ -1648,6 +1691,7 @@ export const createProjectFast = async (req: Request, res: Response) => {
     const projectData = {
       name: name.trim(),
       description: description.trim(),
+      projectType: req.body.projectType || 'instruction',
       status: req.body.status || 'planning',
       priority: req.body.priority || 'medium',
       startDate: new Date(startDate),
@@ -1655,6 +1699,7 @@ export const createProjectFast = async (req: Request, res: Response) => {
       budget: parseFloat(req.body.budget) || 0,
       currency: req.body.currency || 'USD',
       progress: Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100),
+      progressMode: req.body.projectType === 'reporting' ? 'financial' : (req.body.progressMode || 'task-based'),
       client: req.body.client?.trim() || undefined,
       manager: req.body.managers && req.body.managers.length > 0 ? req.body.managers[0] : req.body.manager,
       managers: Array.isArray(req.body.managers) ? req.body.managers : (req.body.manager ? [req.body.manager] : []),
@@ -1677,6 +1722,7 @@ export const createProjectFast = async (req: Request, res: Response) => {
       _id: project._id,
       name: project.name,
       description: project.description,
+      projectType: project.projectType,
       status: project.status,
       priority: project.priority,
       startDate: project.startDate,
@@ -1684,6 +1730,7 @@ export const createProjectFast = async (req: Request, res: Response) => {
       budget: project.budget,
       currency: project.currency,
       progress: project.progress,
+      progressMode: project.progressMode,
       client: project.client,
       manager: project.managers && project.managers.length > 0 ? project.managers[0] : null,
       team: project.team,

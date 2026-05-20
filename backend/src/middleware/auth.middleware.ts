@@ -83,59 +83,61 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
       });
     }
 
-    // Validate device fingerprint (token binding)
-    const { generateDeviceFingerprint, compareFingerprints, isSuspiciousChange } = await import('../utils/deviceFingerprint');
-    const currentFingerprint = generateDeviceFingerprint(req as any);
-    const storedFingerprint = session.deviceFingerprint;
+    // Validate device fingerprint (token binding) - skip in development
+    if (process.env.NODE_ENV !== 'development') {
+      const { generateDeviceFingerprint, compareFingerprints, isSuspiciousChange } = await import('../utils/deviceFingerprint');
+      const currentFingerprint = generateDeviceFingerprint(req as any);
+      const storedFingerprint = session.deviceFingerprint;
 
-    if (storedFingerprint) {
-      const comparison = compareFingerprints(storedFingerprint, currentFingerprint);
+      if (storedFingerprint) {
+        const comparison = compareFingerprints(storedFingerprint, currentFingerprint);
       
-      // If fingerprints don't match, check if it's suspicious
-      if (!comparison.match) {
-        const suspiciousCheck = isSuspiciousChange(storedFingerprint, currentFingerprint);
+        // If fingerprints don't match, check if it's suspicious
+        if (!comparison.match) {
+          const suspiciousCheck = isSuspiciousChange(storedFingerprint, currentFingerprint);
         
-        if (suspiciousCheck.suspicious) {
-          // Log suspicious activity
-          const { logger } = await import('../utils/logger');
-          logger.warn(`Suspicious device change detected for session ${session.sessionId}`, {
-            userId: session.user,
-            severity: suspiciousCheck.severity,
-            reason: suspiciousCheck.reason,
-            oldFingerprint: storedFingerprint.hash,
-            newFingerprint: currentFingerprint.hash,
-            similarity: comparison.similarity
-          });
+          if (suspiciousCheck.suspicious) {
+            // Log suspicious activity
+            const { logger } = await import('../utils/logger');
+            logger.warn(`Suspicious device change detected for session ${session.sessionId}`, {
+              userId: session.user,
+              severity: suspiciousCheck.severity,
+              reason: suspiciousCheck.reason,
+              oldFingerprint: storedFingerprint.hash,
+              newFingerprint: currentFingerprint.hash,
+              similarity: comparison.similarity
+            });
 
-          // For high severity changes, invalidate session
-          if (suspiciousCheck.severity === 'high') {
-            await UserSession.deleteOne({ _id: session._id });
+            // For high severity changes, invalidate session
+            if (suspiciousCheck.severity === 'high') {
+              await UserSession.deleteOne({ _id: session._id });
             
-            // Log security event
-            const { logActivity } = await import('../utils/activityLogger');
-            await logActivity({
-              userId: session.user.toString(),
-              userName: 'Unknown',
-              action: 'session_revoked',
-              resource: 'User Session',
-              resourceType: 'auth',
-              details: `Session revoked due to suspicious device change: ${suspiciousCheck.reason}`,
-              metadata: {
-                sessionId: session.sessionId,
-                severity: suspiciousCheck.severity,
-                oldFingerprint: storedFingerprint.hash,
-                newFingerprint: currentFingerprint.hash
-              },
-              category: 'security',
-              severity: 'high',
-              ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
-            });
+              // Log security event
+              const { logActivity } = await import('../utils/activityLogger');
+              await logActivity({
+                userId: session.user.toString(),
+                userName: 'Unknown',
+                action: 'session_revoked',
+                resource: 'User Session',
+                resourceType: 'auth',
+                details: `Session revoked due to suspicious device change: ${suspiciousCheck.reason}`,
+                metadata: {
+                  sessionId: session.sessionId,
+                  severity: suspiciousCheck.severity,
+                  oldFingerprint: storedFingerprint.hash,
+                  newFingerprint: currentFingerprint.hash
+                },
+                category: 'security',
+                severity: 'high',
+                ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
+              });
 
-            return res.status(401).json({
-              success: false,
-              message: 'Session invalidated due to suspicious device change. Please login again.',
-              code: 'DEVICE_MISMATCH'
-            });
+              return res.status(401).json({
+                success: false,
+                message: 'Session invalidated due to suspicious device change. Please login again.',
+                code: 'DEVICE_MISMATCH'
+              });
+            }
           }
         }
       }
@@ -159,6 +161,19 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
         success: false,
         message: 'User no longer exists'
       });
+    }
+
+    // Handle legacy string-based role (from old seedAdmin.js)
+    // If populate failed (role is null/undefined but raw doc has a string), fetch raw
+    if (!user.role) {
+      const mongoose = (await import('mongoose')).default;
+      const rawDoc = await mongoose.connection.db.collection('users').findOne(
+        { _id: user._id },
+        { projection: { role: 1 } }
+      );
+      if (rawDoc?.role && typeof rawDoc.role === 'string') {
+        (user as any).role = rawDoc.role;
+      }
     }
 
     // Check user status

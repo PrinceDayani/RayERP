@@ -77,22 +77,13 @@ app.use(compression({
 }));
 
 // CORS configuration
-const allowedOrigins = [];
+const allowedOrigins: string[] = [];
 
-// Add origins from environment variables only
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
-if (process.env.CORS_ORIGIN) {
-  allowedOrigins.push(...process.env.CORS_ORIGIN.split(',').filter(Boolean));
-}
-
-// Add environment origins if they exist
-if (process.env.CORS_ORIGIN) {
-  allowedOrigins.push(...process.env.CORS_ORIGIN.split(',').filter(Boolean));
-}
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(...process.env.FRONTEND_URL.split(',').filter(Boolean));
+}
+if (process.env.CORS_ORIGIN) {
+  allowedOrigins.push(...process.env.CORS_ORIGIN.split(',').filter(Boolean));
 }
 
 const corsOptions = {
@@ -114,7 +105,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Cache-Control", "Pragma"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Cache-Control", "Pragma", "X-Fingerprint", "x-fingerprint", "X-CSRF-Token", "x-csrf-token"],
   exposedHeaders: ["Set-Cookie", "Authorization"],
   optionsSuccessStatus: 200,
   preflightContinue: false
@@ -158,10 +149,10 @@ app.use(cookieParser());
 // CSRF token middleware (must be after auth but before routes)
 app.use(provideCsrfToken);
 
-// Request logging middleware (temporary for debugging)
+// Request logging middleware
 app.use((req, res, next) => {
   if (req.path.startsWith('/api/') && !req.path.includes('/health')) {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    logger.debug(`${req.method} ${req.path}`);
   }
   next();
 });
