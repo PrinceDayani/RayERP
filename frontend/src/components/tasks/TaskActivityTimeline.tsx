@@ -64,7 +64,7 @@ export function TaskActivityTimeline({ taskId, activities = [], onRefresh }: Tas
     if (searchQuery) {
       filtered = filtered.filter(activity =>
         activity.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        `${activity.user.firstName} ${activity.user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+        ((activity.user as any)?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -238,12 +238,11 @@ export function TaskActivityTimeline({ taskId, activities = [], onRefresh }: Tas
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
                           <AvatarFallback className="text-xs">
-                            {activity.user.firstName[0]}
-                            {activity.user.lastName[0]}
+                            {(((activity.user as any)?.name) || '').split(' ').slice(0, 2).map((p: string) => p[0]).join('').toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <span className="font-medium text-sm">
-                          {activity.user.firstName} {activity.user.lastName}
+                          {(activity.user as any)?.name}
                         </span>
                         <Badge variant="outline" className="text-xs">
                           {getActivityLabel(activity.type)}

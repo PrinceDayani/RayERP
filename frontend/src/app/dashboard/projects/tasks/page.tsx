@@ -660,8 +660,8 @@ export default function TaskManagementPage() {
                     
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                       <User className="w-3 h-3" />
-                      {typeof task.assignedTo === 'object' 
-                        ? `${task.assignedTo?.firstName || 'Unknown'} ${task.assignedTo?.lastName || 'User'}`
+                      {typeof task.assignedTo === 'object'
+                        ? (task.assignedTo as any)?.name || 'Unknown User'
                         : 'Unknown User'
                       }
                     </div>

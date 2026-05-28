@@ -5,11 +5,11 @@ import { logActivity } from '../utils/activityLogger';
 export const getProjectPermissions = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    
+
     const permissions = await ProjectPermission.find({ project: projectId })
-      .populate('employee', 'firstName lastName email')
-      .populate('createdBy', 'firstName lastName email');
-    
+      .populate('user', 'name email')
+      .populate('createdBy', 'name email');
+
     res.json({ success: true, data: permissions });
   } catch (error) {
     console.error('Error fetching project permissions:', error);
@@ -20,47 +20,49 @@ export const getProjectPermissions = async (req: Request, res: Response) => {
 export const setProjectPermissions = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { employeeId, permissions } = req.body;
-    const userId = (req as any).user?.id;
+    // Accept either `userId` or legacy `employeeId` from request body
+    const targetUserId = req.body.userId || req.body.employeeId;
+    const { permissions } = req.body;
+    const actingUserId = (req as any).user?.id;
 
-    if (!employeeId || !Array.isArray(permissions)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Employee ID and permissions array are required' 
+    if (!targetUserId || !Array.isArray(permissions)) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID and permissions array are required'
       });
     }
 
     const existingPermission = await ProjectPermission.findOne({
       project: projectId,
-      employee: employeeId
+      user: targetUserId
     });
 
     let result;
     if (existingPermission) {
       existingPermission.permissions = permissions;
-      existingPermission.createdBy = userId;
+      existingPermission.createdBy = actingUserId;
       result = await existingPermission.save();
     } else {
       result = await ProjectPermission.create({
         project: projectId,
-        employee: employeeId,
+        user: targetUserId,
         permissions,
-        createdBy: userId
+        createdBy: actingUserId
       });
     }
 
-    await result.populate('employee', 'firstName lastName email');
-    
+    await result.populate('user', 'name email');
+
     await logActivity({
-      userId,
-      userName: (req as any).user?.firstName || 'Unknown',
+      userId: actingUserId,
+      userName: (req as any).user?.name || 'Unknown',
       action: existingPermission ? 'update' : 'create',
       resource: 'Project Permissions',
       resourceType: 'project',
       resourceId: projectId,
       projectId,
-      details: `${existingPermission ? 'Updated' : 'Set'} project permissions for employee`,
-      metadata: { projectId, employeeId, permissions }
+      details: `${existingPermission ? 'Updated' : 'Set'} project permissions`,
+      metadata: { projectId, userId: targetUserId, permissions }
     });
 
     res.json({ success: true, data: result });
@@ -72,31 +74,32 @@ export const setProjectPermissions = async (req: Request, res: Response) => {
 
 export const removeProjectPermissions = async (req: Request, res: Response) => {
   try {
-    const { projectId, employeeId } = req.params;
-    const userId = (req as any).user?.id;
+    const { projectId } = req.params;
+    const targetUserId = req.params.userId || req.params.employeeId;
+    const actingUserId = (req as any).user?.id;
 
     const result = await ProjectPermission.findOneAndDelete({
       project: projectId,
-      employee: employeeId
+      user: targetUserId
     });
 
     if (!result) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Project permissions not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'Project permissions not found'
       });
     }
 
     await logActivity({
-      userId,
-      userName: (req as any).user?.firstName || 'Unknown',
+      userId: actingUserId,
+      userName: (req as any).user?.name || 'Unknown',
       action: 'delete',
       resource: 'Project Permissions',
       resourceType: 'project',
       resourceId: projectId,
       projectId,
-      details: 'Removed project permissions for employee',
-      metadata: { projectId, employeeId }
+      details: 'Removed project permissions',
+      metadata: { projectId, userId: targetUserId }
     });
 
     res.json({ success: true, message: 'Project permissions removed successfully' });
@@ -108,19 +111,20 @@ export const removeProjectPermissions = async (req: Request, res: Response) => {
 
 export const getEmployeeProjectPermissions = async (req: Request, res: Response) => {
   try {
-    const { projectId, employeeId } = req.params;
-    
+    const { projectId } = req.params;
+    const targetUserId = req.params.userId || req.params.employeeId;
+
     const permission = await ProjectPermission.findOne({
       project: projectId,
-      employee: employeeId
-    }).populate('employee', 'firstName lastName email');
-    
-    res.json({ 
-      success: true, 
-      data: permission ? permission.permissions : [] 
+      user: targetUserId
+    }).populate('user', 'name email');
+
+    res.json({
+      success: true,
+      data: permission ? permission.permissions : []
     });
   } catch (error) {
-    console.error('Error fetching employee project permissions:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch employee project permissions' });
+    console.error('Error fetching project permissions:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch project permissions' });
   }
 };

@@ -16,7 +16,7 @@ export const checkOverdueReports = async () => {
 
     // Find active schedules where due time has passed
     const schedules = await ReportingSchedule.find({ isActive: true })
-      .populate('requiredFrom.employee', 'firstName lastName user')
+      .populate('requiredFrom.user', 'name email')
       .populate('project', 'name team managers');
 
     const results: { reminders: number; escalations: number } = { reminders: 0, escalations: 0 };
@@ -38,9 +38,9 @@ export const checkOverdueReports = async () => {
           if (diff > 0 && diff <= schedule.reminderBeforeMinutes) {
             // Send reminders to those who haven't reported yet
             const missing = await getMissingReporters(schedule.project._id || schedule.project, schedule);
-            for (const employeeId of missing) {
+            for (const userId of missing) {
               await sendNotification(
-                employeeId,
+                userId,
                 'report_reminder',
                 `Your daily report for project is due in ${diff} minutes`,
                 schedule.project._id || schedule.project
@@ -106,25 +106,25 @@ async function getMissingReporters(projectId: any, schedule: any): Promise<strin
   const endOfDay = new Date(today);
   endOfDay.setHours(23, 59, 59, 999);
 
-  // Get reports submitted today
+  // Get reports submitted today — reportedBy is now User._id
   const todayReports = await DailyReport.find({
     project: projectId,
     reportDate: { $gte: today, $lte: endOfDay }
   }).select('reportedBy');
 
-  const reportedIds = new Set(todayReports.map(r => r.reportedBy.toString()));
+  const reportedUserIds = new Set(todayReports.map(r => r.reportedBy.toString()));
 
-  // Get required reporters from schedule, or fall back to project team
-  let requiredEmployees: string[] = [];
+  // Required reporters from schedule, or fall back to project.team (all User refs now)
+  let requiredUserIds: string[] = [];
   if (schedule.requiredFrom && schedule.requiredFrom.length > 0) {
-    requiredEmployees = schedule.requiredFrom.map((r: any) => 
-      typeof r.employee === 'object' ? r.employee._id.toString() : r.employee.toString()
-    );
-  } else if (schedule.project?.team) {
-    requiredEmployees = schedule.project.team.map((t: any) => t.toString());
+    requiredUserIds = schedule.requiredFrom
+      .map((r: any) => (typeof r.user === 'object' ? r.user?._id?.toString() : r.user?.toString()))
+      .filter(Boolean);
+  } else if (schedule.project?.team && schedule.project.team.length > 0) {
+    requiredUserIds = schedule.project.team.map((t: any) => t.toString());
   }
 
-  return requiredEmployees.filter(id => !reportedIds.has(id));
+  return requiredUserIds.filter(id => !reportedUserIds.has(id));
 }
 
 async function sendNotification(userId: any, type: string, message: string, projectId: any) {

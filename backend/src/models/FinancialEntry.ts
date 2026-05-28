@@ -35,8 +35,8 @@ const financialEntrySchema = new Schema<IFinancialEntry>({
   department: { type: Schema.Types.ObjectId, ref: 'Department' },
   referenceNumber: { type: String },
   date: { type: Date, required: true },
-  reportedBy: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
-  approvedBy: { type: Schema.Types.ObjectId, ref: 'Employee' },
+  reportedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   approvedAt: { type: Date },
   attachments: [{ type: String }],
   category: {

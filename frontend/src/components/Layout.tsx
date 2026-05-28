@@ -30,7 +30,8 @@ import {
   Building,
   Activity,
   MessageCircle,
-  GitBranch
+  GitBranch,
+  FileText
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -130,6 +131,7 @@ export default function Layout({ children }: LayoutProps) {
       title: "Analytics & Reports",
       items: [
         { path: "/dashboard/reports", name: "Reports", icon: BarChart3, description: "Business intelligence reports", access: hasReportAccess || isManager } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/daily-reports", name: "Daily Reports", icon: FileText, description: "Cross-project daily report monitoring", access: true } as MenuItem & { icon: any; description: string },
       ]
     },
     {

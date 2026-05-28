@@ -40,7 +40,7 @@ export interface Task {
   checklist?: Array<{ _id: string; text: string; completed: boolean }>;
   subtasks?: Array<{ _id: string; title: string; status: string }>;
   dependencies?: Array<{ _id: string; taskId: { _id: string; title: string }; type: string }>;
-  watchers?: Array<{ _id: string; firstName: string; lastName: string }>;
+  watchers?: Array<{ _id: string; name: string; email?: string }>;
   parentTask?: string | { _id: string; title: string };
   timeEntries?: Array<{
     user: string;

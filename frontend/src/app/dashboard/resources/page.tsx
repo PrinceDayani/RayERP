@@ -320,11 +320,11 @@ export default function ResourceDashboard() {
                           <Users className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                          <p 
+                          <p
                             className="font-medium cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => router.push(`/dashboard/employees/${allocation.employee?._id || allocation.employeeId}`)}
+                            onClick={() => router.push(`/dashboard/employees/${allocation.user?._id || allocation.employee?._id || allocation.employeeId}`)}
                           >
-                            {allocation.employee?.firstName ? `${allocation.employee.firstName} ${allocation.employee.lastName}` : allocation.employee}
+                            {allocation.user?.name || (allocation.employee?.firstName ? `${allocation.employee.firstName} ${allocation.employee.lastName}` : 'Unassigned')}
                           </p>
                           <p 
                             className="text-sm text-muted-foreground cursor-pointer hover:text-primary transition-colors"

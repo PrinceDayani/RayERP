@@ -244,7 +244,7 @@ export function TaskTimelineView({ tasks, onTaskClick }: TaskTimelineViewProps) 
                                   <div className="flex items-center gap-1">
                                     <User className="h-3 w-3" />
                                     <span>
-                                      {task.assignedTo.firstName} {task.assignedTo.lastName}
+                                      {(task.assignedTo as any).name}
                                     </span>
                                   </div>
                                 )}
@@ -272,8 +272,7 @@ export function TaskTimelineView({ tasks, onTaskClick }: TaskTimelineViewProps) 
                             {task.assignedTo && (
                               <Avatar className="h-10 w-10">
                                 <AvatarFallback>
-                                  {task.assignedTo.firstName?.[0]}
-                                  {task.assignedTo.lastName?.[0]}
+                                  {((task.assignedTo as any).name || '').split(' ').slice(0, 2).map((p: string) => p[0]).join('').toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                             )}

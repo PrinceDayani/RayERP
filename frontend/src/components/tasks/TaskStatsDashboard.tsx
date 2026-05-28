@@ -76,8 +76,8 @@ export function TaskStatsDashboard({ tasks, projectId }: TaskStatsDashboardProps
     tasks.forEach(t => {
       if (t.assignedTo) {
         const id = typeof t.assignedTo === 'object' ? t.assignedTo._id : t.assignedTo;
-        const name = typeof t.assignedTo === 'object' 
-          ? `${t.assignedTo.firstName} ${t.assignedTo.lastName}`
+        const name = typeof t.assignedTo === 'object' && t.assignedTo
+          ? (t.assignedTo as any).name || 'Unknown'
           : 'Unknown';
         
         if (!assigneeMap.has(id)) {

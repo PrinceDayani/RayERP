@@ -3,13 +3,16 @@
 import { Request, Response } from 'express';
 import FileShare from '../models/FileShare';
 import ProjectFile from '../models/ProjectFile';
-import Employee from '../models/Employee';
 import Project from '../models/Project';
 
 export const shareFile = async (req: Request, res: Response) => {
   try {
     const { fileId } = req.params;
-    const { employeeIds, message } = req.body;
+    // Accept either `userIds` or legacy `employeeIds` from the request body
+    const targetUserIds: string[] = req.body.userIds || req.body.employeeIds || [];
+    const { message } = req.body;
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ message: 'Authentication required' });
 
     const file = await ProjectFile.findById(fileId);
     if (!file) {
@@ -21,21 +24,11 @@ export const shareFile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    const sharedBy = await Employee.findOne({ email: (req as any).user.email });
-    if (!sharedBy) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
-
-    const employees = await Employee.find({ _id: { $in: employeeIds } });
-    if (employees.length !== employeeIds.length) {
-      return res.status(400).json({ message: 'Some employees not found' });
-    }
-
     const fileShare = new FileShare({
       file: fileId,
       project: file.project,
-      sharedBy: sharedBy._id,
-      sharedWith: employeeIds,
+      sharedBy: user._id,
+      sharedWith: targetUserIds,
       message
     });
 
@@ -43,8 +36,8 @@ export const shareFile = async (req: Request, res: Response) => {
 
     const populatedShare = await FileShare.findById(fileShare._id)
       .populate('file', 'name originalName size mimeType')
-      .populate('sharedBy', 'firstName lastName email')
-      .populate('sharedWith', 'firstName lastName email');
+      .populate('sharedBy', 'name email')
+      .populate('sharedWith', 'name email');
 
     res.status(201).json(populatedShare);
   } catch (error: any) {
@@ -54,14 +47,12 @@ export const shareFile = async (req: Request, res: Response) => {
 
 export const getSharedFiles = async (req: Request, res: Response) => {
   try {
-    const employee = await Employee.findOne({ email: (req as any).user.email });
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ message: 'Authentication required' });
 
-    const sharedFiles = await FileShare.find({ sharedWith: employee._id })
+    const sharedFiles = await FileShare.find({ sharedWith: user._id })
       .populate('file', 'name originalName size mimeType')
-      .populate('sharedBy', 'firstName lastName email')
+      .populate('sharedBy', 'name email')
       .populate('project', 'name')
       .sort({ createdAt: -1 });
 
@@ -77,10 +68,10 @@ export const getProjectSharedFiles = async (req: Request, res: Response) => {
 
     const shares = await FileShare.find({ project: projectId })
       .populate('file', 'name originalName size mimeType')
-      .populate('sharedBy', 'firstName lastName email')
-      .populate('sharedWith', 'firstName lastName email')
-      .populate('viewedBy.employee', 'firstName lastName')
-      .populate('downloadedBy.employee', 'firstName lastName')
+      .populate('sharedBy', 'name email')
+      .populate('sharedWith', 'name email')
+      .populate('viewedBy.user', 'name email')
+      .populate('downloadedBy.user', 'name email')
       .sort({ createdAt: -1 });
 
     res.json(shares);
@@ -94,10 +85,10 @@ export const getFileShares = async (req: Request, res: Response) => {
     const { fileId } = req.params;
 
     const shares = await FileShare.find({ file: fileId })
-      .populate('sharedBy', 'firstName lastName email')
-      .populate('sharedWith', 'firstName lastName email')
-      .populate('viewedBy.employee', 'firstName lastName')
-      .populate('downloadedBy.employee', 'firstName lastName')
+      .populate('sharedBy', 'name email')
+      .populate('sharedWith', 'name email')
+      .populate('viewedBy.user', 'name email')
+      .populate('downloadedBy.user', 'name email')
       .sort({ createdAt: -1 });
 
     res.json(shares);
@@ -109,27 +100,24 @@ export const getFileShares = async (req: Request, res: Response) => {
 export const markFileViewed = async (req: Request, res: Response) => {
   try {
     const { shareId } = req.params;
-
-    const employee = await Employee.findOne({ email: (req as any).user.email });
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ message: 'Authentication required' });
 
     const share = await FileShare.findById(shareId);
     if (!share) {
       return res.status(404).json({ message: 'Share not found' });
     }
 
-    if (!share.sharedWith.some(id => id.toString() === employee._id.toString())) {
+    if (!share.sharedWith.some(id => id.toString() === user._id.toString())) {
       return res.status(403).json({ message: 'Not authorized to view this file' });
     }
 
     const alreadyViewed = share.viewedBy.some(
-      v => v.employee.toString() === employee._id.toString()
+      v => v.user?.toString() === user._id.toString()
     );
 
     if (!alreadyViewed) {
-      share.viewedBy.push({ employee: employee._id, viewedAt: new Date() });
+      share.viewedBy.push({ user: user._id, viewedAt: new Date() });
       share.status = 'viewed';
       await share.save();
     }
@@ -143,27 +131,24 @@ export const markFileViewed = async (req: Request, res: Response) => {
 export const markFileDownloaded = async (req: Request, res: Response) => {
   try {
     const { shareId } = req.params;
-
-    const employee = await Employee.findOne({ email: (req as any).user.email });
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ message: 'Authentication required' });
 
     const share = await FileShare.findById(shareId);
     if (!share) {
       return res.status(404).json({ message: 'Share not found' });
     }
 
-    if (!share.sharedWith.some(id => id.toString() === employee._id.toString())) {
+    if (!share.sharedWith.some(id => id.toString() === user._id.toString())) {
       return res.status(403).json({ message: 'Not authorized to download this file' });
     }
 
     const alreadyDownloaded = share.downloadedBy.some(
-      d => d.employee.toString() === employee._id.toString()
+      d => d.user?.toString() === user._id.toString()
     );
 
     if (!alreadyDownloaded) {
-      share.downloadedBy.push({ employee: employee._id, downloadedAt: new Date() });
+      share.downloadedBy.push({ user: user._id, downloadedAt: new Date() });
       share.status = 'downloaded';
       await share.save();
     }
@@ -177,18 +162,15 @@ export const markFileDownloaded = async (req: Request, res: Response) => {
 export const deleteFileShare = async (req: Request, res: Response) => {
   try {
     const { shareId } = req.params;
-
-    const employee = await Employee.findOne({ email: (req as any).user.email });
-    if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ message: 'Authentication required' });
 
     const share = await FileShare.findById(shareId);
     if (!share) {
       return res.status(404).json({ message: 'Share not found' });
     }
 
-    if (share.sharedBy.toString() !== employee._id.toString()) {
+    if (share.sharedBy.toString() !== user._id.toString()) {
       return res.status(403).json({ message: 'Only the sender can delete this share' });
     }
 

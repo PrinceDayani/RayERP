@@ -97,15 +97,14 @@ export function TaskComments({ taskId, comments, onCommentAdded }: TaskCommentsP
                 <div key={comment._id || index} className="flex gap-3">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback>
-                      {comment.user?.firstName?.[0]}
-                      {comment.user?.lastName?.[0]}
+                      {(((comment.user as any)?.name) || '').split(' ').slice(0, 2).map((p: string) => p[0]).join('').toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="bg-muted rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-sm">
-                          {comment.user?.firstName} {comment.user?.lastName}
+                          {(comment.user as any)?.name}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {new Date(comment.createdAt).toLocaleString()}

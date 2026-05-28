@@ -19,7 +19,7 @@ export interface Blocker {
   severity: 'low' | 'medium' | 'high' | 'critical';
   isResolved: boolean;
   resolvedAt?: string;
-  resolvedBy?: { _id: string; firstName: string; lastName: string };
+  resolvedBy?: { _id: string; name: string; email?: string };
 }
 
 export interface ReportFinancials {
@@ -31,7 +31,7 @@ export interface ReportFinancials {
 
 export interface DailyReport {
   _id: string;
-  reportedBy: { _id: string; firstName: string; lastName: string };
+  reportedBy: { _id: string; name: string; email?: string };
   project: { _id: string; name: string } | string;
   reportDate: string;
   reportType: 'daily' | 'weekly' | 'milestone';
@@ -41,11 +41,41 @@ export interface DailyReport {
   nextSteps: string[];
   notes?: string;
   status: 'draft' | 'submitted' | 'acknowledged';
-  acknowledgedBy?: { _id: string; firstName: string; lastName: string };
+  acknowledgedBy?: { _id: string; name: string; email?: string };
   acknowledgedAt?: string;
   totalHours: number;
+  customFieldValues?: Record<string, any>;
+  templateVersion?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export type TemplateFieldType = 'text' | 'number' | 'select' | 'date' | 'photo';
+
+export interface TemplateSection {
+  key: string;
+  label: string;
+  required: boolean;
+  helpText?: string;
+}
+
+export interface TemplateCustomField {
+  key: string;
+  label: string;
+  type: TemplateFieldType;
+  options?: string[];
+  required: boolean;
+  helpText?: string;
+}
+
+export interface ReportTemplate {
+  version: number;
+  sections: TemplateSection[];
+  customFields: TemplateCustomField[];
+  requiredActivityCategories: string[];
+  requireBlockers: boolean;
+  requireNextSteps: boolean;
+  requireFinancials: boolean;
 }
 
 export interface FinancialEntry {
@@ -59,8 +89,8 @@ export interface FinancialEntry {
   department?: { _id: string; name: string };
   referenceNumber?: string;
   date: string;
-  reportedBy: { _id: string; firstName: string; lastName: string };
-  approvedBy?: { _id: string; firstName: string; lastName: string };
+  reportedBy: { _id: string; name: string; email?: string };
+  approvedBy?: { _id: string; name: string; email?: string };
   approvedAt?: string;
   attachments: string[];
   category: 'material' | 'labor' | 'equipment' | 'subcontractor' | 'overhead' | 'other';
@@ -77,12 +107,13 @@ export interface ReportingSchedule {
   dueTime: string;
   dueDay?: number;
   dueDateOfMonth?: number;
-  requiredFrom: { employee: { _id: string; firstName: string; lastName: string }; role: string }[];
+  requiredFrom: { user: { _id: string; name: string; email?: string }; role: string }[];
   reminderEnabled: boolean;
   reminderBeforeMinutes: number;
   escalateOnMiss: boolean;
-  escalateTo?: { _id: string; firstName: string; lastName: string };
+  escalateTo?: { _id: string; name: string; email?: string };
   isActive: boolean;
+  template?: ReportTemplate;
   createdAt: string;
   updatedAt: string;
 }
@@ -138,7 +169,7 @@ export interface ReportingStatus {
   pending: number;
   complianceRate: number;
   members: {
-    employee: { _id: string; firstName: string; lastName: string };
+    user: { _id: string; name: string; email?: string };
     hasReported: boolean;
     report: DailyReport | null;
   }[];
@@ -153,6 +184,48 @@ export interface PaginatedResponse<T> {
     limit: number;
     pages: number;
   };
+}
+
+export interface ReportsFeedFilters {
+  projectIds?: string[];
+  userIds?: string[];
+  from?: string;
+  to?: string;
+  status?: 'draft' | 'submitted' | 'acknowledged';
+  hasBlockers?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface ReportsMatrixMember {
+  _id: string;
+  name: string;
+  email?: string;
+}
+
+export interface ReportsMatrixProject {
+  _id: string;
+  name: string;
+}
+
+export interface ReportsMatrixCell {
+  hasReported: boolean;
+  hours: number;
+  status: string;
+}
+
+export interface ReportsMatrix {
+  members: ReportsMatrixMember[];
+  projects: ReportsMatrixProject[];
+  cells: Record<string, ReportsMatrixCell>;
+  range: { from: string; to: string; days: number };
+}
+
+export interface ReportsFeedSummary {
+  reportsToday: number;
+  pendingAcknowledgments: number;
+  openBlockers: number;
+  complianceLast7d: number;
 }
 
 // ==========================================
@@ -312,5 +385,84 @@ export const projectReportingAPI = {
   getWeeklySummary: async (projectId: string, weekStart?: string) => {
     const response = await api.get(`/projects/${projectId}/weekly-summary`, { params: { weekStart } });
     return response.data;
+  },
+
+  // --- Org-wide Reporting Dashboard ---
+
+  getReportsFeed: async (filters: ReportsFeedFilters = {}) => {
+    const params: Record<string, any> = {};
+    if (filters.projectIds && filters.projectIds.length) params.projectIds = filters.projectIds.join(',');
+    if (filters.userIds && filters.userIds.length) params.userIds = filters.userIds.join(',');
+    if (filters.from) params.from = filters.from;
+    if (filters.to) params.to = filters.to;
+    if (filters.status) params.status = filters.status;
+    if (filters.hasBlockers) params.hasBlockers = 'true';
+    if (filters.page) params.page = filters.page;
+    if (filters.limit) params.limit = filters.limit;
+    const response = await api.get(`/reporting/feed`, { params });
+    return response.data as PaginatedResponse<DailyReport>;
+  },
+
+  getReportsMatrix: async (params: { from?: string; to?: string; projectIds?: string[] } = {}) => {
+    const query: Record<string, any> = {};
+    if (params.from) query.from = params.from;
+    if (params.to) query.to = params.to;
+    if (params.projectIds && params.projectIds.length) query.projectIds = params.projectIds.join(',');
+    const response = await api.get(`/reporting/matrix`, { params: query });
+    return response.data as { success: boolean; data: ReportsMatrix };
+  },
+
+  getReportsFeedSummary: async () => {
+    const response = await api.get(`/reporting/summary`);
+    return response.data as { success: boolean; data: ReportsFeedSummary };
+  },
+
+  // --- Global single-report (cross-project, addressed by report id only) ---
+
+  getReport: async (reportId: string) => {
+    const response = await api.get(`/reporting/reports/${reportId}`);
+    return response.data as { success: boolean; data: DailyReport };
+  },
+
+  updateReportGlobal: async (reportId: string, data: Partial<DailyReport>) => {
+    const response = await api.put(`/reporting/reports/${reportId}`, data);
+    return response.data as { success: boolean; data: DailyReport };
+  },
+
+  acknowledgeReportGlobal: async (reportId: string) => {
+    const response = await api.patch(`/reporting/reports/${reportId}/acknowledge`);
+    return response.data as { success: boolean; data: DailyReport };
+  },
+
+  deleteReportGlobal: async (reportId: string) => {
+    const response = await api.delete(`/reporting/reports/${reportId}`);
+    return response.data as { success: boolean; message: string };
+  },
+
+  resolveBlockerGlobal: async (reportId: string, blockerId: string) => {
+    const response = await api.patch(`/reporting/reports/${reportId}/blockers/${blockerId}/resolve`);
+    return response.data as { success: boolean; data: DailyReport };
+  },
+
+  // --- Global schedule (cross-project, addressed by schedule id) ---
+
+  listSchedules: async () => {
+    const response = await api.get(`/reporting/schedules`);
+    return response.data as { success: boolean; data: ReportingSchedule[] };
+  },
+
+  getScheduleById: async (scheduleId: string) => {
+    const response = await api.get(`/reporting/schedules/${scheduleId}`);
+    return response.data as { success: boolean; data: ReportingSchedule };
+  },
+
+  updateScheduleGlobal: async (scheduleId: string, data: Partial<ReportingSchedule>) => {
+    const response = await api.put(`/reporting/schedules/${scheduleId}`, data);
+    return response.data as { success: boolean; data: ReportingSchedule };
+  },
+
+  deactivateScheduleGlobal: async (scheduleId: string) => {
+    const response = await api.delete(`/reporting/schedules/${scheduleId}`);
+    return response.data as { success: boolean; data: ReportingSchedule; message: string };
   }
 };

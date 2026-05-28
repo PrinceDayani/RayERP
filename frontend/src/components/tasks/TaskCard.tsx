@@ -149,7 +149,7 @@ export default function TaskCard({ task, onView, onEdit, onDelete }: TaskCardPro
             {!isBasicView && task.assignedTo && (
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4 text-muted-foreground" />
-                <span>{task.assignedTo.firstName} {task.assignedTo.lastName}</span>
+                <span>{(task.assignedTo as any).name}</span>
               </div>
             )}
             {!isBasicView && task.estimatedHours && (

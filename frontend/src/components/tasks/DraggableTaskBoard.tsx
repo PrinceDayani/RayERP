@@ -227,12 +227,11 @@ export function DraggableTaskBoard({ tasks, onTaskClick, onTasksReordered }: Dra
                             <div className="flex items-center gap-2">
                               <Avatar className="h-6 w-6">
                                 <AvatarFallback className="text-xs">
-                                  {task.assignedTo.firstName?.[0]}
-                                  {task.assignedTo.lastName?.[0]}
+                                  {((task.assignedTo as any).name || '').split(' ').slice(0, 2).map((p: string) => p[0]).join('').toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                               <span className="text-xs text-muted-foreground">
-                                {task.assignedTo.firstName}
+                                {(task.assignedTo as any).name?.split(' ')[0]}
                               </span>
                             </div>
                           )}

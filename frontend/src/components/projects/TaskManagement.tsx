@@ -183,7 +183,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
 
   const getAssignedUserName = (task: Task) => {
     if (typeof task.assignedTo === 'object' && task.assignedTo) {
-      return `${task.assignedTo.firstName} ${task.assignedTo.lastName}`;
+      return (task.assignedTo as any).name || 'Unassigned';
     }
     return 'Unassigned';
   };

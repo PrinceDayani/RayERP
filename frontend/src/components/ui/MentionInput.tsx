@@ -6,8 +6,8 @@ import { Card } from "./card";
 
 interface User {
   _id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
+  email?: string;
 }
 
 interface MentionInputProps {
@@ -50,10 +50,7 @@ export function MentionInput({ value, onChange, users, placeholder, rows = 3 }: 
     } else if (lastAtSymbol !== -1) {
       const searchTerm = textBeforeCursor.substring(lastAtSymbol + 1).toLowerCase();
       const filtered = users.filter(
-        (u) =>
-          `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTerm) ||
-          u.firstName.toLowerCase().includes(searchTerm) ||
-          u.lastName.toLowerCase().includes(searchTerm)
+        (u) => (u.name || '').toLowerCase().includes(searchTerm)
       );
       setSuggestions(filtered);
       setShowSuggestions(filtered.length > 0);
@@ -72,7 +69,7 @@ export function MentionInput({ value, onChange, users, placeholder, rows = 3 }: 
     const lastAtSymbol = textBeforeCursor.lastIndexOf("@");
 
     const beforeMention = value.substring(0, lastAtSymbol);
-    const mention = `@[${user.firstName} ${user.lastName}](${user._id})`;
+    const mention = `@[${user.name}](${user._id})`;
     const newValue = beforeMention + mention + " " + textAfterCursor;
 
     const mentions = extractMentions(newValue);
@@ -127,7 +124,7 @@ export function MentionInput({ value, onChange, users, placeholder, rows = 3 }: 
               }`}
               onClick={() => insertMention(user)}
             >
-              {user.firstName} {user.lastName}
+              {user.name}
             </button>
           ))}
         </Card>

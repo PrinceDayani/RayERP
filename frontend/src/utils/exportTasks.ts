@@ -29,12 +29,12 @@ export const exportTasksToCSV = (tasks: any[], filename: string = 'tasks.csv') =
 
   // Convert tasks to CSV rows
   const rows = tasks.map(task => {
-    const assignedTo = typeof task.assignedTo === 'object' 
-      ? `${task.assignedTo.firstName} ${task.assignedTo.lastName}`
+    const assignedTo = typeof task.assignedTo === 'object' && task.assignedTo
+      ? (task.assignedTo as any).name || 'Unassigned'
       : 'Unassigned';
-    
-    const assignedBy = typeof task.assignedBy === 'object'
-      ? `${task.assignedBy.firstName} ${task.assignedBy.lastName}`
+
+    const assignedBy = typeof task.assignedBy === 'object' && task.assignedBy
+      ? (task.assignedBy as any).name || ''
       : '';
 
     const tags = task.tags?.map((t: any) => typeof t === 'object' ? t.name : t).join('; ') || '';

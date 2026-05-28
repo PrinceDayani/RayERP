@@ -37,6 +37,8 @@ export interface IDailyReport extends Document {
   acknowledgedBy?: mongoose.Types.ObjectId;
   acknowledgedAt?: Date;
   totalHours: number;
+  customFieldValues?: Map<string, any>;
+  templateVersion?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -62,7 +64,7 @@ const blockerSchema = new Schema({
   },
   isResolved: { type: Boolean, default: false },
   resolvedAt: { type: Date },
-  resolvedBy: { type: Schema.Types.ObjectId, ref: 'Employee' }
+  resolvedBy: { type: Schema.Types.ObjectId, ref: 'User' }
 }, { _id: true });
 
 const reportFinancialsSchema = new Schema({
@@ -73,7 +75,7 @@ const reportFinancialsSchema = new Schema({
 }, { _id: false });
 
 const dailyReportSchema = new Schema<IDailyReport>({
-  reportedBy: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+  reportedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   project: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
   reportDate: { type: Date, required: true },
   reportType: {
@@ -91,9 +93,11 @@ const dailyReportSchema = new Schema<IDailyReport>({
     enum: ['draft', 'submitted', 'acknowledged'],
     default: 'draft'
   },
-  acknowledgedBy: { type: Schema.Types.ObjectId, ref: 'Employee' },
+  acknowledgedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   acknowledgedAt: { type: Date },
-  totalHours: { type: Number, default: 0 }
+  totalHours: { type: Number, default: 0 },
+  customFieldValues: { type: Map, of: Schema.Types.Mixed },
+  templateVersion: { type: Number }
 }, { timestamps: true });
 
 // Auto-calculate totalHours before save

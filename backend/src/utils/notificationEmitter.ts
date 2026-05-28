@@ -139,7 +139,7 @@ export class NotificationEmitter {
 
   static async taskDueSoon(task: any) {
     const assignedTo = task.assignedTo;
-    const userId = typeof assignedTo === 'object' && assignedTo.user ? assignedTo.user.toString() : null;
+    const userId = assignedTo ? (typeof assignedTo === 'object' ? assignedTo._id?.toString() : assignedTo.toString()) : null;
     
     if (userId) {
       const notification: NotificationData = {
@@ -156,7 +156,7 @@ export class NotificationEmitter {
 
   static async taskDueToday(task: any) {
     const assignedTo = task.assignedTo;
-    const userId = typeof assignedTo === 'object' && assignedTo.user ? assignedTo.user.toString() : null;
+    const userId = assignedTo ? (typeof assignedTo === 'object' ? assignedTo._id?.toString() : assignedTo.toString()) : null;
     
     if (userId) {
       const notification: NotificationData = {
@@ -173,7 +173,7 @@ export class NotificationEmitter {
 
   static async taskOverdue(task: any) {
     const assignedTo = task.assignedTo;
-    const userId = typeof assignedTo === 'object' && assignedTo.user ? assignedTo.user.toString() : null;
+    const userId = assignedTo ? (typeof assignedTo === 'object' ? assignedTo._id?.toString() : assignedTo.toString()) : null;
     
     if (userId) {
       const notification: NotificationData = {

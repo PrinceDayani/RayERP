@@ -9,7 +9,7 @@ export const getProjectTimeline = async (req: Request, res: Response) => {
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
-    
+
     const timeline = await getEntityTimeline('project', req.params.id);
     res.json(timeline);
   } catch (error) {
@@ -22,15 +22,15 @@ export const getProjectTimelineData = async (req: Request, res: Response) => {
   try {
     const projectId = req.params.id;
     const project = await Project.findById(projectId);
-    
+
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
-    
+
     const tasks = await Task.find({ project: projectId })
-      .populate('assignedTo', 'firstName lastName')
+      .populate('assignedTo', 'name email')
       .select('title status priority dueDate createdAt');
-    
+
     const timelineData = {
       project: {
         id: project._id,
@@ -50,7 +50,7 @@ export const getProjectTimelineData = async (req: Request, res: Response) => {
         assignees: task.assignedTo
       }))
     };
-    
+
     res.json(timelineData);
   } catch (error) {
     console.error('Error fetching project timeline data:', error);
@@ -66,33 +66,27 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
     }
 
     let query: any = {};
-    
+
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
     const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
-    
-    if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
+
+    if (roleName === 'Root' || rolePermissions.includes('projects.view_all') || rolePermissions.includes('*')) {
       query = {};
     } else {
-      const Employee = (await import('../../../models/Employee')).default;
-      const employee = await Employee.findOne({ user: user._id });
-      
-      const conditions: any[] = [{ owner: user._id }];
-      
-      if (employee) {
-        conditions.push({ team: employee._id });
-        conditions.push({ managers: employee._id });
-      }
-      
-      query = { $or: conditions };
+      query = { $or: [
+        { owner: user._id },
+        { team: user._id },
+        { managers: user._id }
+      ] };
     }
 
     const projects = await Project.find(query).select('name startDate endDate status');
     const projectIds = projects.map(p => p._id);
-    
+
     const allTasks = await Task.find({ project: { $in: projectIds } })
-      .populate('assignedTo', 'firstName lastName')
+      .populate('assignedTo', 'name email')
       .select('title status priority dueDate createdAt project');
-    
+
     const timelineData = {
       projects: projects.map(p => ({
         id: p._id,
@@ -112,7 +106,7 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
         projectId: task.project
       }))
     };
-    
+
     res.json(timelineData);
   } catch (error) {
     console.error('Error fetching all projects timeline data:', error);

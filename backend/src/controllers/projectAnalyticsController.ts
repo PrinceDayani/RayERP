@@ -85,12 +85,12 @@ export const getVelocity = async (req: Request, res: Response) => {
 
 export const getResourceUtilization = async (req: Request, res: Response) => {
   try {
-    const project = await Project.findById(req.params.id).populate('team', 'firstName lastName');
+    const project = await Project.findById(req.params.id).populate('team', 'name email');
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    const tasks = await Task.find({ project: req.params.id }).populate('assignedTo', 'firstName lastName');
+    const tasks = await Task.find({ project: req.params.id }).populate('assignedTo', 'name email');
     
     const utilization = tasks.reduce((acc: any, task) => {
       const userId = task.assignedTo?._id?.toString();

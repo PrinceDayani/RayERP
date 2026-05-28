@@ -6,47 +6,60 @@ import Task from '../models/Task';
 import Department from '../models/Department';
 import mongoose from 'mongoose';
 
+// Resolve `user` field from request body: accepts `user` (User._id) directly
+// or legacy `employee` (Employee._id) which is mapped via Employee.user.
+async function resolveAllocationUserId(body: any): Promise<string | null> {
+  if (body.user) return body.user.toString();
+  if (body.employee) {
+    const emp = await Employee.findById(body.employee).select('user');
+    return emp?.user?.toString() || null;
+  }
+  return null;
+}
+
 export const allocateResource = async (req: Request, res: Response) => {
   try {
-    // Validate allocation before creating
-    const { employee, allocatedHours, startDate, endDate } = req.body;
-    
-    // Check for conflicts
+    const { allocatedHours, startDate, endDate } = req.body;
+    const userId = await resolveAllocationUserId(req.body);
+    if (!userId) {
+      return res.status(400).json({ message: 'user or employee is required for allocation' });
+    }
+
     const existingAllocations = await ResourceAllocation.find({
-      employee,
+      user: userId,
       status: { $in: ['active', 'planned'] },
       $or: [
         { startDate: { $lte: new Date(endDate) }, endDate: { $gte: new Date(startDate) } }
       ]
     });
-    
+
     const totalHours = existingAllocations.reduce((sum, alloc) => sum + alloc.allocatedHours, 0) + allocatedHours;
-    
+
     if (totalHours > 60) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Allocation exceeds maximum allowed hours (60h/week)',
         totalHours,
         conflicts: existingAllocations
       });
     }
-    
-    // Calculate utilization rate
+
     const utilizationRate = Math.min(100, (allocatedHours / 40) * 100);
-    
+
+    const { employee: _ignoredLegacy, user: _ignoredUser, ...rest } = req.body;
     const allocation = new ResourceAllocation({
-      ...req.body,
+      ...rest,
+      user: userId,
       utilizationRate
     });
-    
+
     await allocation.save();
-    await allocation.populate(['employee', 'project']);
-    
-    // Add warning if over-allocated
+    await allocation.populate(['user', 'project']);
+
     const response: any = { allocation };
     if (totalHours > 40) {
-      response.warning = `Employee is over-allocated by ${totalHours - 40} hours`;
+      response.warning = `User is over-allocated by ${totalHours - 40} hours`;
     }
-    
+
     res.status(201).json(response);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -55,26 +68,33 @@ export const allocateResource = async (req: Request, res: Response) => {
 
 export const getResourceAllocations = async (req: Request, res: Response) => {
   try {
-    const { 
-      projectId, 
-      employeeId, 
-      status, 
-      department, 
-      role, 
-      startDate, 
+    const {
+      projectId,
+      userId: queryUserId,
+      employeeId,
+      status,
+      department,
+      role,
+      startDate,
       endDate,
       search,
       minUtilization,
       maxUtilization
     } = req.query;
-    
+
     const filter: any = {};
     if (projectId) filter.project = projectId;
-    if (employeeId) filter.employee = employeeId;
     if (status) filter.status = status;
     if (role) filter.role = { $regex: role, $options: 'i' };
-    
-    // Date range filter
+
+    // Accept either userId (preferred) or legacy employeeId (mapped via Employee.user)
+    if (queryUserId) {
+      filter.user = queryUserId;
+    } else if (employeeId) {
+      const emp = await Employee.findById(employeeId as string).select('user');
+      if (emp?.user) filter.user = emp.user;
+    }
+
     if (startDate && endDate) {
       filter.$or = [
         { startDate: { $lte: new Date(endDate as string) }, endDate: { $gte: new Date(startDate as string) } }
@@ -82,31 +102,42 @@ export const getResourceAllocations = async (req: Request, res: Response) => {
     }
 
     let allocations = await ResourceAllocation.find(filter)
-      .populate({
-        path: 'employee',
-        select: 'firstName lastName email position skills department',
-        populate: { path: 'department', select: 'name' }
-      })
+      .populate('user', 'name email')
       .populate('project', 'name status startDate endDate')
       .sort({ startDate: -1 });
 
-    // Apply additional filters
-    if (department) {
-      allocations = allocations.filter(alloc => 
-        (alloc.employee as any).department?.name === department
-      );
+    // Department / search filters need HR data — look up Employees once for matching users
+    let employeesByUserId: Map<string, any> = new Map();
+    if (department || search) {
+      const userIds = allocations.map(a => (a.user as any)?._id).filter(Boolean);
+      const employees = await Employee.find({ user: { $in: userIds } })
+        .populate('department', 'name')
+        .select('firstName lastName email position department user');
+      employeesByUserId = new Map(employees.map(e => [e.user.toString(), e]));
     }
-    
+
+    if (department) {
+      allocations = allocations.filter(alloc => {
+        const emp = employeesByUserId.get((alloc.user as any)?._id?.toString());
+        return (emp?.department as any)?.name === department;
+      });
+    }
+
     if (search) {
       const searchLower = (search as string).toLowerCase();
-      allocations = allocations.filter(alloc => 
-        (alloc.employee as any).firstName.toLowerCase().includes(searchLower) ||
-        (alloc.employee as any).lastName.toLowerCase().includes(searchLower) ||
-        (alloc.project as any).name.toLowerCase().includes(searchLower) ||
-        alloc.role.toLowerCase().includes(searchLower)
-      );
+      allocations = allocations.filter(alloc => {
+        const user = alloc.user as any;
+        const emp = employeesByUserId.get(user?._id?.toString());
+        return (
+          (user?.name || '').toLowerCase().includes(searchLower) ||
+          (emp?.firstName || '').toLowerCase().includes(searchLower) ||
+          (emp?.lastName || '').toLowerCase().includes(searchLower) ||
+          ((alloc.project as any)?.name || '').toLowerCase().includes(searchLower) ||
+          alloc.role.toLowerCase().includes(searchLower)
+        );
+      });
     }
-    
+
     if (minUtilization || maxUtilization) {
       allocations = allocations.filter(alloc => {
         const utilization = (alloc.allocatedHours / 40) * 100;
@@ -115,7 +146,7 @@ export const getResourceAllocations = async (req: Request, res: Response) => {
         return true;
       });
     }
-    
+
     res.json(allocations);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -124,52 +155,56 @@ export const getResourceAllocations = async (req: Request, res: Response) => {
 
 export const updateResourceAllocation = async (req: Request, res: Response) => {
   try {
-    const { allocatedHours, startDate, endDate, employee } = req.body;
-    
-    // If updating critical fields, validate conflicts
-    if (allocatedHours || startDate || endDate || employee) {
+    const { allocatedHours, startDate, endDate } = req.body;
+    // Map legacy `employee` in body to `user` for storage
+    if (req.body.employee && !req.body.user) {
+      const emp = await Employee.findById(req.body.employee).select('user');
+      if (emp?.user) req.body.user = emp.user;
+      delete req.body.employee;
+    }
+    const bodyUserId = req.body.user;
+
+    if (allocatedHours || startDate || endDate || bodyUserId) {
       const currentAllocation = await ResourceAllocation.findById(req.params.id);
       if (!currentAllocation) {
         return res.status(404).json({ message: 'Allocation not found' });
       }
-      
-      const empId = employee || currentAllocation.employee;
+
+      const targetUserId = bodyUserId || currentAllocation.user;
       const hours = allocatedHours || currentAllocation.allocatedHours;
       const start = startDate || currentAllocation.startDate;
       const end = endDate || currentAllocation.endDate;
-      
-      // Check conflicts excluding current allocation
+
       const existingAllocations = await ResourceAllocation.find({
         _id: { $ne: req.params.id },
-        employee: empId,
+        user: targetUserId,
         status: { $in: ['active', 'planned'] },
         $or: [
           { startDate: { $lte: new Date(end) }, endDate: { $gte: new Date(start) } }
         ]
       });
-      
+
       const totalHours = existingAllocations.reduce((sum, alloc) => sum + alloc.allocatedHours, 0) + hours;
-      
+
       if (totalHours > 60) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: 'Update would exceed maximum allowed hours (60h/week)',
           totalHours,
           conflicts: existingAllocations
         });
       }
-      
-      // Update utilization rate
+
       req.body.utilizationRate = Math.min(100, (hours / 40) * 100);
     }
-    
+
     const allocation = await ResourceAllocation.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    ).populate(['employee', 'project']);
-    
+    ).populate(['user', 'project']);
+
     if (!allocation) return res.status(404).json({ message: 'Allocation not found' });
-    
+
     res.json(allocation);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -188,8 +223,13 @@ export const deleteResourceAllocation = async (req: Request, res: Response) => {
 
 export const getResourceUtilization = async (req: Request, res: Response) => {
   try {
-    const { employeeId, startDate, endDate } = req.query;
-    const filter: any = { employee: employeeId };
+    const { userId: queryUserId, employeeId, startDate, endDate } = req.query;
+    let targetUserId: any = queryUserId;
+    if (!targetUserId && employeeId) {
+      const emp = await Employee.findById(employeeId as string).select('user');
+      targetUserId = emp?.user;
+    }
+    const filter: any = { user: targetUserId };
     if (startDate && endDate) {
       filter.$or = [
         { startDate: { $lte: new Date(endDate as string) }, endDate: { $gte: new Date(startDate as string) } }
@@ -210,14 +250,19 @@ export const getResourceUtilization = async (req: Request, res: Response) => {
 
 export const detectResourceConflicts = async (req: Request, res: Response) => {
   try {
-    const { employeeId, startDate, endDate } = req.query;
+    const { userId: queryUserId, employeeId, startDate, endDate } = req.query;
+    let targetUserId: any = queryUserId;
+    if (!targetUserId && employeeId) {
+      const emp = await Employee.findById(employeeId as string).select('user');
+      targetUserId = emp?.user;
+    }
     const conflicts = await ResourceAllocation.find({
-      employee: employeeId,
+      user: targetUserId,
       status: { $in: ['active', 'planned'] },
       $or: [
         { startDate: { $lte: new Date(endDate as string) }, endDate: { $gte: new Date(startDate as string) } }
       ]
-    }).populate('project', 'name priority');
+    }).populate('project', 'name priority').populate('user', 'name email');
 
     const totalAllocated = conflicts.reduce((sum, c) => sum + c.allocatedHours, 0);
     const hasConflict = totalAllocated > 40;
@@ -274,7 +319,7 @@ export const getCapacityPlanning = async (req: Request, res: Response) => {
       
     const planning = await Promise.all(employees.map(async (emp) => {
       const allocations = await ResourceAllocation.find({
-        employee: emp._id,
+        user: emp.user,
         status: { $in: ['active', 'planned'] },
         startDate: { $lte: new Date(endDate as string) },
         endDate: { $gte: new Date(startDate as string) }
@@ -702,16 +747,21 @@ export const getSkillStrengthAnalysis = async (req: Request, res: Response) => {
 
 export const getTimeTracking = async (req: Request, res: Response) => {
   try {
-    const { employeeId, projectId, startDate, endDate } = req.query;
+    const { userId: queryUserId, employeeId, projectId, startDate, endDate } = req.query;
     const filter: any = {};
-    if (employeeId) filter.assignedTo = employeeId;
+    if (queryUserId) {
+      filter.assignedTo = queryUserId;
+    } else if (employeeId) {
+      const emp = await Employee.findById(employeeId as string).select('user');
+      if (emp?.user) filter.assignedTo = emp.user;
+    }
     if (projectId) filter.project = projectId;
     if (startDate && endDate) {
       filter.createdAt = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
     }
 
     const tasks = await Task.find(filter)
-      .populate('assignedTo', 'firstName lastName')
+      .populate('assignedTo', 'name email')
       .populate('project', 'name')
       .select('title estimatedHours actualHours status');
 
@@ -728,10 +778,15 @@ export const getTimeTracking = async (req: Request, res: Response) => {
 // Enhanced allocation management endpoints
 export const getAllocationConflicts = async (req: Request, res: Response) => {
   try {
-    const { employeeId, startDate, endDate } = req.query;
+    const { userId: queryUserId, employeeId, startDate, endDate } = req.query;
     const filter: any = { status: { $in: ['active', 'planned'] } };
-    
-    if (employeeId) filter.employee = employeeId;
+
+    if (queryUserId) {
+      filter.user = queryUserId;
+    } else if (employeeId) {
+      const emp = await Employee.findById(employeeId as string).select('user');
+      if (emp?.user) filter.user = emp.user;
+    }
     if (startDate && endDate) {
       filter.$or = [
         { startDate: { $lte: new Date(endDate as string) }, endDate: { $gte: new Date(startDate as string) } }
@@ -739,22 +794,23 @@ export const getAllocationConflicts = async (req: Request, res: Response) => {
     }
 
     const allocations = await ResourceAllocation.find(filter)
-      .populate('employee', 'firstName lastName position')
+      .populate('user', 'name email')
       .populate('project', 'name priority')
-      .sort({ employee: 1, startDate: 1 });
+      .sort({ user: 1, startDate: 1 });
 
-    // Group by employee and detect conflicts
-    const employeeGroups = new Map();
+    // Group by user and detect conflicts
+    const userGroups = new Map();
     allocations.forEach(alloc => {
-      const empId = alloc.employee._id.toString();
-      if (!employeeGroups.has(empId)) {
-        employeeGroups.set(empId, { employee: alloc.employee, allocations: [] });
+      const uid = (alloc.user as any)?._id?.toString();
+      if (!uid) return;
+      if (!userGroups.has(uid)) {
+        userGroups.set(uid, { user: alloc.user, allocations: [] });
       }
-      employeeGroups.get(empId).allocations.push(alloc);
+      userGroups.get(uid).allocations.push(alloc);
     });
 
     const conflicts = [];
-    for (const [empId, group] of employeeGroups) {
+    for (const [uid, group] of userGroups) {
       const empAllocations = group.allocations;
       const empConflicts = [];
       let totalOverallocation = 0;
@@ -796,8 +852,8 @@ export const getAllocationConflicts = async (req: Request, res: Response) => {
 
       if (empConflicts.length > 0) {
         conflicts.push({
-          _id: empId,
-          employee: group.employee,
+          _id: uid,
+          user: group.user,
           conflicts: empConflicts,
           totalConflicts: empConflicts.length,
           totalOverallocation
@@ -830,7 +886,7 @@ export const getEmployeeSummary = async (req: Request, res: Response) => {
 
     const summaries = await Promise.all(employees.map(async (emp) => {
       const allocations = await ResourceAllocation.find({
-        employee: emp._id,
+        user: emp.user,
         status: { $in: ['active', 'planned'] },
         ...dateFilter
       }).populate('project', 'name');
@@ -846,7 +902,7 @@ export const getEmployeeSummary = async (req: Request, res: Response) => {
 
       // Check for conflicts
       const conflicts = await ResourceAllocation.countDocuments({
-        employee: emp._id,
+        user: emp.user,
         status: { $in: ['active', 'planned'] },
         ...dateFilter
       });
@@ -882,9 +938,12 @@ export const exportAllocations = async (req: Request, res: Response) => {
     
     // Build query filter
     const filter: any = {};
-    if (filters.department) filter['employee.department'] = filters.department;
     if (filters.project) filter.project = filters.project;
-    if (filters.employee) filter.employee = filters.employee;
+    if (filters.user) filter.user = filters.user;
+    else if (filters.employee) {
+      const emp = await Employee.findById(filters.employee).select('user');
+      if (emp?.user) filter.user = emp.user;
+    }
     if (filters.status) filter.status = filters.status;
     if (dateRange.from && dateRange.to) {
       filter.$or = [
@@ -893,14 +952,14 @@ export const exportAllocations = async (req: Request, res: Response) => {
     }
 
     const allocations = await ResourceAllocation.find(filter)
-      .populate('employee', 'firstName lastName position department')
+      .populate('user', 'name email')
       .populate('project', 'name status')
       .sort({ startDate: -1 });
 
     // Transform data based on includeFields
     const exportData = allocations.map(alloc => {
       const row: any = {};
-      if (includeFields.employee) row.employee = `${(alloc.employee as any).firstName} ${(alloc.employee as any).lastName}`;
+      if (includeFields.employee || includeFields.user) row.user = (alloc.user as any)?.name || '';
       if (includeFields.project) row.project = (alloc.project as any).name;
       if (includeFields.hours) row.allocatedHours = alloc.allocatedHours;
       if (includeFields.dates) {
@@ -947,7 +1006,7 @@ export const bulkUpdateAllocations = async (req: Request, res: Response) => {
           update.id,
           update.data,
           { new: true, runValidators: true }
-        ).populate(['employee', 'project']);
+        ).populate(['user', 'project']);
         return { id: update.id, success: true, allocation };
       } catch (error: any) {
         return { id: update.id, success: false, error: error.message };
@@ -985,7 +1044,7 @@ export const getGanttData = async (req: Request, res: Response) => {
       const allocations = await ResourceAllocation.find({
         project: project._id,
         status: { $in: ['active', 'planned'] }
-      }).populate('employee', 'firstName lastName');
+      }).populate('user', 'name email');
 
       return {
         _id: project._id,
@@ -994,7 +1053,7 @@ export const getGanttData = async (req: Request, res: Response) => {
         endDate: project.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         progress: project.progress || 0,
         resources: allocations.map(alloc => ({
-          employee: alloc.employee,
+          user: alloc.user,
           allocatedHours: alloc.allocatedHours,
           role: alloc.role
         })),
@@ -1016,11 +1075,16 @@ export const getGanttData = async (req: Request, res: Response) => {
 // Allocation limits and validation
 export const validateAllocation = async (req: Request, res: Response) => {
   try {
-    const { employeeId, allocatedHours, startDate, endDate, excludeId } = req.body;
-    
-    // Check existing allocations for the employee in the date range
+    const { userId, employeeId, allocatedHours, startDate, endDate, excludeId } = req.body;
+
+    let targetUserId: any = userId;
+    if (!targetUserId && employeeId) {
+      const emp = await Employee.findById(employeeId).select('user');
+      targetUserId = emp?.user;
+    }
+
     const filter: any = {
-      employee: employeeId,
+      user: targetUserId,
       status: { $in: ['active', 'planned'] },
       $or: [
         { startDate: { $lte: new Date(endDate) }, endDate: { $gte: new Date(startDate) } }

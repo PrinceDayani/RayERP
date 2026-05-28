@@ -261,14 +261,10 @@ router.post(
         return res.status(400).json({ success: false, message: 'reportIds array is required' });
       }
 
-      const Employee = (await import('../models/Employee')).default;
-      const employee = await Employee.findOne({ user: user._id });
-      if (!employee) return res.status(403).json({ success: false, message: 'Employee record not found' });
-
       const DailyReport = (await import('../models/DailyReport')).default;
       const result = await DailyReport.updateMany(
         { _id: { $in: reportIds }, project: projectId, status: 'submitted' },
-        { status: 'acknowledged', acknowledgedBy: employee._id, acknowledgedAt: new Date() }
+        { status: 'acknowledged', acknowledgedBy: user._id, acknowledgedAt: new Date() }
       );
 
       res.json({ success: true, data: { acknowledged: result.modifiedCount, total: reportIds.length } });
@@ -294,14 +290,10 @@ router.post(
         return res.status(400).json({ success: false, message: 'entryIds array is required' });
       }
 
-      const Employee = (await import('../models/Employee')).default;
-      const employee = await Employee.findOne({ user: user._id });
-      if (!employee) return res.status(403).json({ success: false, message: 'Employee record not found' });
-
       const FinancialEntry = (await import('../models/FinancialEntry')).default;
       const result = await FinancialEntry.updateMany(
         { _id: { $in: entryIds }, project: projectId, status: 'pending' },
-        { status: 'approved', approvedBy: employee._id, approvedAt: new Date() }
+        { status: 'approved', approvedBy: user._id, approvedAt: new Date() }
       );
 
       res.json({ success: true, data: { approved: result.modifiedCount, total: entryIds.length } });
@@ -340,7 +332,7 @@ router.get(
         DailyReport.find({
           project: projectId,
           reportDate: { $gte: monday, $lte: sunday }
-        }).populate('reportedBy', 'firstName lastName').sort({ reportDate: 1 }),
+        }).populate('reportedBy', 'name email').sort({ reportDate: 1 }),
 
         FinancialEntry.aggregate([
           { $match: { project: new (await import('mongoose')).default.Types.ObjectId(projectId), date: { $gte: monday, $lte: sunday } } },

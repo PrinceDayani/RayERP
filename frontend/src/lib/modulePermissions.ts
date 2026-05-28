@@ -57,6 +57,13 @@ export const MODULE_PERMISSIONS = {
     name: 'Reports & Analytics',
     routes: ['/dashboard/reports']
   },
+
+  // Daily Reports Dashboard (cross-project monitoring; access scoped server-side)
+  dailyReports: {
+    permissions: [],
+    name: 'Daily Reports Dashboard',
+    routes: ['/dashboard/daily-reports']
+  },
   
   // Admin Module
   admin: {

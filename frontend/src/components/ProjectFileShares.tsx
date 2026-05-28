@@ -81,10 +81,10 @@ export default function ProjectFileShares({ projectId }: ProjectFileSharesProps)
                 <div>
                   <p className="font-medium">{share.file.originalName}</p>
                   <p className="text-sm text-gray-600">
-                    Shared by: {share.sharedBy.firstName} {share.sharedBy.lastName}
+                    Shared by: {(share.sharedBy as any)?.name}
                   </p>
                   <p className="text-sm text-gray-600">
-                    Shared with: {share.sharedWith.map(e => `${e.firstName} ${e.lastName}`).join(', ')}
+                    Shared with: {share.sharedWith.map((u: any) => u?.name).filter(Boolean).join(', ')}
                   </p>
                   {share.message && (
                     <p className="text-sm text-gray-500 mt-1 italic">"{share.message}"</p>

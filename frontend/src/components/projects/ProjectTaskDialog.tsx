@@ -687,7 +687,7 @@ export default function ProjectTaskDialog({ open, onOpenChange, task, projectId,
                       <div className="space-y-2 max-h-60 overflow-y-auto">
                         {comments.map((comment: any, index: number) => (
                           <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                            <p className="font-medium">{comment.user?.firstName || 'User'}</p>
+                            <p className="font-medium">{comment.user?.name || 'User'}</p>
                             <p className="text-gray-600">{comment.comment}</p>
                             <p className="text-xs text-gray-400 mt-1">{new Date(comment.createdAt).toLocaleString()}</p>
                           </div>

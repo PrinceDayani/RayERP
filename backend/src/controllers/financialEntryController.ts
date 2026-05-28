@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import FinancialEntry from '../models/FinancialEntry';
 import Project from '../models/Project';
-import Employee from '../models/Employee';
 
 // Helper: Recalculate project financial progress
 const recalculateProjectProgress = async (projectId: string) => {
@@ -106,12 +105,6 @@ export const createFinancialEntry = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    // Get employee record
-    const employee = await Employee.findOne({ user: user._id });
-    if (!employee) {
-      return res.status(403).json({ success: false, message: 'Employee record not found' });
-    }
-
     const entry = new FinancialEntry({
       project: projectId,
       entryType,
@@ -122,7 +115,7 @@ export const createFinancialEntry = async (req: Request, res: Response) => {
       department,
       referenceNumber,
       date: new Date(date),
-      reportedBy: employee._id,
+      reportedBy: user._id,
       attachments: attachments || [],
       category: category || 'other',
       status: 'pending'
@@ -131,7 +124,7 @@ export const createFinancialEntry = async (req: Request, res: Response) => {
     await entry.save();
 
     const populatedEntry = await FinancialEntry.findById(entry._id)
-      .populate('reportedBy', 'firstName lastName')
+      .populate('reportedBy', 'name email')
       .populate('department', 'name');
 
     res.status(201).json({ success: true, data: populatedEntry });
@@ -166,8 +159,8 @@ export const getProjectFinancialEntries = async (req: Request, res: Response) =>
 
     const [entries, total] = await Promise.all([
       FinancialEntry.find(filter)
-        .populate('reportedBy', 'firstName lastName')
-        .populate('approvedBy', 'firstName lastName')
+        .populate('reportedBy', 'name email')
+        .populate('approvedBy', 'name email')
         .populate('department', 'name')
         .sort({ date: -1 })
         .skip(skip)
@@ -214,21 +207,15 @@ export const approveFinancialEntry = async (req: Request, res: Response) => {
 
     const { projectId, entryId } = req.params;
 
-    const employee = await Employee.findOne({ user: user._id });
-    if (!employee) {
-      return res.status(403).json({ success: false, message: 'Employee record not found' });
-    }
-
-    // Verify user is a manager of this project
     const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    const isManager = project.managers.some(m => m.toString() === employee._id.toString());
+    const isManager = !!project.managers?.some(m => m.toString() === user._id.toString());
     const isOwner = project.owner.toString() === user._id.toString();
     const userRole = user.role as any;
-    const isAdmin = userRole?.level >= 80;
+    const isAdmin = userRole?.level >= 80 || userRole?.name?.toLowerCase() === 'root';
 
     if (!isManager && !isOwner && !isAdmin) {
       return res.status(403).json({ success: false, message: 'Only project managers can approve financial entries' });
@@ -236,11 +223,11 @@ export const approveFinancialEntry = async (req: Request, res: Response) => {
 
     const entry = await FinancialEntry.findOneAndUpdate(
       { _id: entryId, project: projectId, status: 'pending' },
-      { status: 'approved', approvedBy: employee._id, approvedAt: new Date() },
+      { status: 'approved', approvedBy: user._id, approvedAt: new Date() },
       { new: true }
     )
-      .populate('reportedBy', 'firstName lastName')
-      .populate('approvedBy', 'firstName lastName')
+      .populate('reportedBy', 'name email')
+      .populate('approvedBy', 'name email')
       .populate('department', 'name');
 
     if (!entry) {
@@ -268,21 +255,15 @@ export const rejectFinancialEntry = async (req: Request, res: Response) => {
     const { projectId, entryId } = req.params;
     const { reason } = req.body;
 
-    const employee = await Employee.findOne({ user: user._id });
-    if (!employee) {
-      return res.status(403).json({ success: false, message: 'Employee record not found' });
-    }
-
-    // Verify user is a manager
     const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    const isManager = project.managers.some(m => m.toString() === employee._id.toString());
+    const isManager = !!project.managers?.some(m => m.toString() === user._id.toString());
     const isOwner = project.owner.toString() === user._id.toString();
     const userRole = user.role as any;
-    const isAdmin = userRole?.level >= 80;
+    const isAdmin = userRole?.level >= 80 || userRole?.name?.toLowerCase() === 'root';
 
     if (!isManager && !isOwner && !isAdmin) {
       return res.status(403).json({ success: false, message: 'Only project managers can reject financial entries' });
@@ -293,7 +274,7 @@ export const rejectFinancialEntry = async (req: Request, res: Response) => {
       { status: 'rejected', rejectionReason: reason || 'No reason provided' },
       { new: true }
     )
-      .populate('reportedBy', 'firstName lastName')
+      .populate('reportedBy', 'name email')
       .populate('department', 'name');
 
     if (!entry) {
@@ -375,17 +356,12 @@ export const deleteFinancialEntry = async (req: Request, res: Response) => {
 
     const { projectId, entryId } = req.params;
 
-    const employee = await Employee.findOne({ user: user._id });
-    if (!employee) {
-      return res.status(403).json({ success: false, message: 'Employee record not found' });
-    }
-
     const entry = await FinancialEntry.findOne({ _id: entryId, project: projectId });
     if (!entry) {
       return res.status(404).json({ success: false, message: 'Entry not found' });
     }
 
-    if (entry.reportedBy.toString() !== employee._id.toString()) {
+    if (entry.reportedBy.toString() !== user._id.toString()) {
       return res.status(403).json({ success: false, message: 'You can only delete your own entries' });
     }
 
@@ -414,8 +390,8 @@ export const exportFinancialEntries = async (req: Request, res: Response) => {
     if (status) filter.status = status;
 
     const entries = await FinancialEntry.find(filter)
-      .populate('reportedBy', 'firstName lastName')
-      .populate('approvedBy', 'firstName lastName')
+      .populate('reportedBy', 'name email')
+      .populate('approvedBy', 'name email')
       .populate('department', 'name')
       .sort({ date: -1 });
 
@@ -431,7 +407,7 @@ export const exportFinancialEntries = async (req: Request, res: Response) => {
       e.vendorOrClient || '',
       e.referenceNumber || '',
       e.status,
-      e.reportedBy ? `${(e.reportedBy as any).firstName} ${(e.reportedBy as any).lastName}` : '',
+      e.reportedBy ? (e.reportedBy as any).name || '' : '',
       e.department ? (e.department as any).name : ''
     ]);
 

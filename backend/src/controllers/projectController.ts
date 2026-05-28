@@ -56,8 +56,8 @@ export const getAllProjects = async (req: Request, res: Response) => {
       console.log(`Total projects in DB: ${count}`);
       
       const projects = await Project.find({})
-        .populate({ path: 'managers', select: 'firstName lastName', strictPopulate: false })
-        .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
+        .populate({ path: 'managers', select: 'name email', strictPopulate: false })
+        .populate({ path: 'team', select: 'name email', strictPopulate: false })
         .populate({ path: 'owner', select: 'name email', strictPopulate: false })
         
         .populate({ path: 'departments', select: 'name description', strictPopulate: false });
@@ -86,17 +86,14 @@ export const getAllProjects = async (req: Request, res: Response) => {
 
     // Find projects user is assigned to (full access)
     const assignedConditions: any[] = [
-      { owner: user._id }
+      { owner: user._id },
+      { team: user._id },
+      { managers: user._id }
     ];
     
-    if (employee) {
-      assignedConditions.push({ team: employee._id });
-      assignedConditions.push({ managers: employee._id });
-    }
-    
     const assignedProjects = await Project.find({ $or: assignedConditions })
-      .populate({ path: 'managers', select: 'firstName lastName', strictPopulate: false })
-      .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
+      .populate({ path: 'managers', select: 'name email', strictPopulate: false })
+      .populate({ path: 'team', select: 'name email', strictPopulate: false })
       .populate({ path: 'owner', select: 'name email', strictPopulate: false })
       
       .populate({ path: 'departments', select: 'name description', strictPopulate: false });
@@ -147,8 +144,8 @@ export const getProjectById = async (req: Request, res: Response) => {
     // Root or users with projects.view_all permission get full access
     if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
       const project = await Project.findById(req.params.id)
-        .populate({ path: 'managers', select: 'firstName lastName', strictPopulate: false })
-        .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
+        .populate({ path: 'managers', select: 'name email', strictPopulate: false })
+        .populate({ path: 'team', select: 'name email', strictPopulate: false })
         .populate({ path: 'owner', select: 'name email', strictPopulate: false })
         
         .populate({ path: 'departments', select: 'name description', strictPopulate: false });
@@ -160,8 +157,8 @@ export const getProjectById = async (req: Request, res: Response) => {
     }
 
     const project = await Project.findById(req.params.id)
-      .populate({ path: 'managers', select: 'firstName lastName', strictPopulate: false })
-      .populate({ path: 'team', select: 'firstName lastName', strictPopulate: false })
+      .populate({ path: 'managers', select: 'name email', strictPopulate: false })
+      .populate({ path: 'team', select: 'name email', strictPopulate: false })
       .populate({ path: 'owner', select: 'name email', strictPopulate: false })
       
       .populate({ path: 'departments', select: 'name description', strictPopulate: false });
@@ -173,18 +170,14 @@ export const getProjectById = async (req: Request, res: Response) => {
     // Check if user is assigned to project
     
     const isOwner = project.owner && project.owner._id && project.owner._id.toString() === user._id.toString();
-    
+    const userIdStr = user._id.toString();
+    const isTeamMember = !!(project.team && project.team.some((t: any) => (t?._id?.toString() || t?.toString()) === userIdStr));
+    const isManager = !!(project.managers && project.managers.some((m: any) => (m?._id?.toString() || m?.toString()) === userIdStr));
+
+    // Employee record only needed for the department-based fallback below
     const Employee = (await import('../models/Employee')).default;
     const employee = await Employee.findOne({ user: user._id });
-    
-    let isTeamMember = false;
-    let isManager = false;
-    
-    if (employee) {
-      isTeamMember = project.team && project.team.some((t: any) => t && t._id && t._id.toString() === employee._id.toString());
-      isManager = project.managers && project.managers.some((m: any) => m && m._id && m._id.toString() === employee._id.toString());
-    }
-    
+
     const isAssigned = isOwner || isTeamMember || isManager;
     
     // If assigned, return full project details
@@ -280,10 +273,10 @@ export const createProject = async (req: Request, res: Response) => {
     if (req.body.projectPermissions && Object.keys(req.body.projectPermissions).length > 0) {
       try {
         const ProjectPermission = (await import('../models/ProjectPermission')).default;
-        const permissionPromises = Object.entries(req.body.projectPermissions).map(([employeeId, permissions]) => {
+        const permissionPromises = Object.entries(req.body.projectPermissions).map(([userId, permissions]) => {
           return ProjectPermission.create({
             project: project._id,
-            employee: employeeId,
+            user: userId,
             permissions: permissions as string[],
             createdBy: user._id
           });
@@ -454,9 +447,7 @@ export const updateProject = async (req: Request, res: Response) => {
       const isRoot = updateRoleName === 'Root';
       const hasEditAll = updateRolePerms.includes('projects.edit_all');
       const isOwner = oldProject.owner?.toString() === updateUser._id.toString();
-      const Employee = (await import('../models/Employee')).default;
-      const emp = await Employee.findOne({ user: updateUser._id });
-      const isManager = emp && oldProject.managers && oldProject.managers.some((m: any) => m.toString() === emp._id.toString());
+      const isManager = !!(oldProject.managers && oldProject.managers.some((m: any) => m.toString() === updateUser._id.toString()));
       if (!isRoot && !hasEditAll && !isOwner && !isManager) {
         return res.status(403).json({ message: 'Access denied: You do not have permission to edit this project' });
       }
@@ -521,10 +512,9 @@ export const updateProject = async (req: Request, res: Response) => {
       req.params.id,
       updateData,
       { new: true, runValidators: true }
-    ).populate('managers', 'firstName lastName')
-     .populate('team', 'firstName lastName')
+    ).populate('managers', 'name email')
+     .populate('team', 'name email')
      .populate('owner', 'name email')
-     .populate('members', 'name email')
      .populate('departments', 'name description');
     
     if (!project) {
@@ -667,10 +657,9 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     const oldStatus = project.status;
     project.status = status;
     await project.save();
-    await project.populate('managers', 'firstName lastName');
-    await project.populate('team', 'firstName lastName');
+    await project.populate('managers', 'name email');
+    await project.populate('team', 'name email');
     await project.populate('owner', 'name email');
-    await project.populate('members', 'name email');
     await project.populate('departments', 'name description');
     
     // Safely get user ID
@@ -728,9 +717,7 @@ export const deleteProject = async (req: Request, res: Response) => {
           return res.status(404).json({ message: 'Project not found' });
         }
         const isOwner = projectToCheck.owner?.toString() === deleteUser._id.toString();
-        const Employee = (await import('../models/Employee')).default;
-        const emp = await Employee.findOne({ user: deleteUser._id });
-        const isManager = emp && projectToCheck.managers && projectToCheck.managers.some((m: any) => m.toString() === emp._id.toString());
+        const isManager = !!(projectToCheck.managers && projectToCheck.managers.some((m: any) => m.toString() === deleteUser._id.toString()));
         if (!isOwner && !isManager) {
           return res.status(403).json({ message: 'Access denied: You do not have permission to delete this project' });
         }
@@ -819,26 +806,17 @@ export const getProjectTasks = async (req: Request, res: Response) => {
     const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
     
     const isOwner = project.owner.toString() === user._id.toString();
-    
-    // Find employee record to check team/manager fields
-    const Employee = (await import('../models/Employee')).default;
-    const employee = await Employee.findOne({ user: user._id });
-    
-    let isTeamMember = false;
-    let isManager = false;
-    
-    if (employee) {
-      isTeamMember = project.team && project.team.some((t: any) => t.toString() === employee._id.toString());
-      isManager = project.managers && project.managers[0].toString() === employee._id.toString();
-    }
-    
-    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all') && !isOwner && !isTeamMember && !isManager) {
+    const userIdStr = user._id.toString();
+    const isTeamMember = !!(project.team && project.team.some((t: any) => t.toString() === userIdStr));
+    const isManager = !!(project.managers && project.managers.some((m: any) => m.toString() === userIdStr));
+
+    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all') && !rolePermissions.includes('*') && !isOwner && !isTeamMember && !isManager) {
       return res.status(403).json({ message: 'Access denied: You are not assigned to this project' });
     }
 
     const tasks = await Task.find({ project: req.params.id })
-      .populate('assignedTo', 'firstName lastName')
-      .populate('assignedBy', 'firstName lastName');
+      .populate('assignedTo', 'name email')
+      .populate('assignedBy', 'name email');
     
     // Transform tasks to include projectId for frontend compatibility
     const transformedTasks = tasks.map(task => ({
@@ -867,8 +845,8 @@ export const createProjectTask = async (req: Request, res: Response) => {
     const task = new Task(taskData);
     await task.save();
     await task.populate('project', 'name');
-    await task.populate('assignedTo', 'firstName lastName');
-    await task.populate('assignedBy', 'firstName lastName');
+    await task.populate('assignedTo', 'name email');
+    await task.populate('assignedBy', 'name email');
     
     // Create timeline event for task creation
     const assignedById = task.assignedBy ? 
@@ -956,20 +934,12 @@ export const getProjectStats = async (req: Request, res: Response) => {
     const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
     
     // Root and users with projects.view_all can see all project stats
-    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all')) {
-      const Employee = (await import('../models/Employee')).default;
-      const employee = await Employee.findOne({ user: user._id });
-      
-      const conditions: any[] = [
-        { owner: user._id }
-      ];
-      
-      if (employee) {
-        conditions.push({ team: employee._id });
-        conditions.push({ managers: employee._id });
-      }
-      
-      query = { $or: conditions };
+    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all') && !rolePermissions.includes('*')) {
+      query = { $or: [
+        { owner: user._id },
+        { team: user._id },
+        { managers: user._id }
+      ] };
     }
 
     const totalProjects = await Project.countDocuments(query);
@@ -1029,8 +999,8 @@ export const cloneProject = async (req: Request, res: Response) => {
     
     const clonedProject = new Project(clonedData);
     await clonedProject.save();
-    await clonedProject.populate('managers', 'firstName lastName');
-    await clonedProject.populate('team', 'firstName lastName');
+    await clonedProject.populate('managers', 'name email');
+    await clonedProject.populate('team', 'name email');
     await clonedProject.populate('owner', 'name email');
     await clonedProject.populate('departments', 'name description');
     
@@ -1133,7 +1103,7 @@ export const getProjectTimelineData = async (req: Request, res: Response) => {
     }
     
     const tasks = await Task.find({ project: projectId })
-      .populate('assignedTo', 'firstName lastName')
+      .populate('assignedTo', 'name email')
       .select('title status priority dueDate createdAt');
     
     const timelineData = {
@@ -1176,24 +1146,14 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
     const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
     
-    if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
+    if (roleName === 'Root' || rolePermissions.includes('projects.view_all') || rolePermissions.includes('*')) {
       query = {};
     } else {
-      // Find employee record linked to this user
-      const Employee = (await import('../models/Employee')).default;
-      const employee = await Employee.findOne({ user: user._id });
-      
-      const conditions: any[] = [
-        { owner: user._id }
-      ];
-      
-      // If user has an employee record, check team and manager fields
-      if (employee) {
-        conditions.push({ team: employee._id });
-        conditions.push({ managers: employee._id });
-      }
-      
-      query = { $or: conditions };
+      query = { $or: [
+        { owner: user._id },
+        { team: user._id },
+        { managers: user._id }
+      ] };
     }
 
     const projects = await Project.find(query).select('name startDate endDate status');
@@ -1201,7 +1161,7 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
     
     // Only fetch tasks from projects the user has access to
     const allTasks = await Task.find({ project: { $in: projectIds } })
-      .populate('assignedTo', 'firstName lastName')
+      .populate('assignedTo', 'name email')
       .select('title status priority dueDate createdAt project');
     
     const timelineData = {
@@ -1245,8 +1205,8 @@ export const updateProjectTask = async (req: Request, res: Response) => {
       { _id: taskId, project: projectId },
       req.body,
       { new: true, runValidators: true }
-    ).populate('assignedTo', 'firstName lastName')
-     .populate('assignedBy', 'firstName lastName');
+    ).populate('assignedTo', 'name email')
+     .populate('assignedBy', 'name email');
     
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -1609,20 +1569,12 @@ export const getProjectsByView = async (req: Request, res: Response) => {
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
     const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
     
-    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all')) {
-      const Employee = (await import('../models/Employee')).default;
-      const employee = await Employee.findOne({ user: user._id });
-      
-      const conditions: any[] = [
-        { owner: user._id }
-      ];
-      
-      if (employee) {
-        conditions.push({ team: employee._id });
-        conditions.push({ managers: employee._id });
-      }
-      
-      query = { $or: conditions };
+    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all') && !rolePermissions.includes('*')) {
+      query = { $or: [
+        { owner: user._id },
+        { team: user._id },
+        { managers: user._id }
+      ] };
     }
     
     switch (view) {
@@ -1642,8 +1594,8 @@ export const getProjectsByView = async (req: Request, res: Response) => {
     }
     
     const projects = await Project.find(query)
-      .populate('managers', 'firstName lastName')
-      .populate('team', 'firstName lastName')
+      .populate('managers', 'name email')
+      .populate('team', 'name email')
       .populate('owner', 'name email')
       .populate('members', 'name email')
       .populate('departments', 'name description')

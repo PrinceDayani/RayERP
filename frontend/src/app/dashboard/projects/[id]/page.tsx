@@ -574,8 +574,8 @@ const ProjectDetailPage = () => {
                             const managers = project.managers as any[];
                             if (managers.length === 1) {
                               const mgr = managers[0];
-                              return typeof mgr === 'object' && mgr?.firstName && mgr?.lastName
-                                ? `${mgr.firstName} ${mgr.lastName}`
+                              return typeof mgr === 'object' && mgr?.name
+                                ? mgr.name
                                 : 'Project Manager';
                             }
                             return `${managers.length} Managers`;
@@ -595,8 +595,8 @@ const ProjectDetailPage = () => {
                         </div>
                         <div>
                           <p className="font-medium">
-                            {typeof member === 'object' && member?.firstName && member?.lastName 
-                              ? `${member.firstName} ${member.lastName}` 
+                            {typeof member === 'object' && member?.name
+                              ? member.name
                               : `Team Member ${index + 1}`}
                           </p>
                           <p className="text-sm text-muted-foreground">Team Member</p>

@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IProjectPermission extends Document {
   project: mongoose.Types.ObjectId;
-  employee: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId;
   permissions: string[];
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -11,12 +11,11 @@ export interface IProjectPermission extends Document {
 
 const projectPermissionSchema = new Schema<IProjectPermission>({
   project: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
-  employee: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   permissions: [{ type: String, required: true }],
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 
-// Compound index to ensure unique employee-project combination
-projectPermissionSchema.index({ project: 1, employee: 1 }, { unique: true });
+projectPermissionSchema.index({ project: 1, user: 1 }, { unique: true });
 
 export default mongoose.model<IProjectPermission>('ProjectPermission', projectPermissionSchema);

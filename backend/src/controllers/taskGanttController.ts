@@ -10,7 +10,7 @@ export const getGanttChartData = async (req: Request, res: Response) => {
     const filter: any = { project: projectId, isTemplate: false };
     
     const tasks = await Task.find(filter)
-      .populate('assignedTo', 'firstName lastName')
+      .populate('assignedTo', 'name email')
       .populate('dependencies.taskId', 'title dueDate status')
       .populate('parentTask', 'title')
       .sort({ createdAt: 1 });

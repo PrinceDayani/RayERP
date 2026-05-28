@@ -1,8 +1,36 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IRequiredReporter {
-  employee: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId;
   role: 'team-member' | 'supervisor' | 'manager';
+}
+
+export type TemplateFieldType = 'text' | 'number' | 'select' | 'date' | 'photo';
+
+export interface ITemplateSection {
+  key: string;
+  label: string;
+  required: boolean;
+  helpText?: string;
+}
+
+export interface ITemplateCustomField {
+  key: string;
+  label: string;
+  type: TemplateFieldType;
+  options?: string[];
+  required: boolean;
+  helpText?: string;
+}
+
+export interface IReportTemplate {
+  version: number;
+  sections: ITemplateSection[];
+  customFields: ITemplateCustomField[];
+  requiredActivityCategories: string[];
+  requireBlockers: boolean;
+  requireNextSteps: boolean;
+  requireFinancials: boolean;
 }
 
 export interface IReportingSchedule extends Document {
@@ -17,18 +45,49 @@ export interface IReportingSchedule extends Document {
   escalateOnMiss: boolean;
   escalateTo?: mongoose.Types.ObjectId;
   isActive: boolean;
+  template?: IReportTemplate;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const requiredReporterSchema = new Schema({
-  employee: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   role: {
     type: String,
     enum: ['team-member', 'supervisor', 'manager'],
     default: 'team-member'
   }
+}, { _id: false });
+
+const templateSectionSchema = new Schema({
+  key: { type: String, required: true },
+  label: { type: String, required: true },
+  required: { type: Boolean, default: false },
+  helpText: { type: String }
+}, { _id: false });
+
+const templateCustomFieldSchema = new Schema({
+  key: { type: String, required: true },
+  label: { type: String, required: true },
+  type: {
+    type: String,
+    enum: ['text', 'number', 'select', 'date', 'photo'],
+    required: true
+  },
+  options: [{ type: String }],
+  required: { type: Boolean, default: false },
+  helpText: { type: String }
+}, { _id: false });
+
+const reportTemplateSchema = new Schema({
+  version: { type: Number, default: 0 },
+  sections: [templateSectionSchema],
+  customFields: [templateCustomFieldSchema],
+  requiredActivityCategories: [{ type: String }],
+  requireBlockers: { type: Boolean, default: false },
+  requireNextSteps: { type: Boolean, default: false },
+  requireFinancials: { type: Boolean, default: false }
 }, { _id: false });
 
 const reportingScheduleSchema = new Schema<IReportingSchedule>({
@@ -45,8 +104,9 @@ const reportingScheduleSchema = new Schema<IReportingSchedule>({
   reminderEnabled: { type: Boolean, default: true },
   reminderBeforeMinutes: { type: Number, default: 60 },
   escalateOnMiss: { type: Boolean, default: false },
-  escalateTo: { type: Schema.Types.ObjectId, ref: 'Employee' },
+  escalateTo: { type: Schema.Types.ObjectId, ref: 'User' },
   isActive: { type: Boolean, default: true },
+  template: { type: reportTemplateSchema, default: undefined },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 

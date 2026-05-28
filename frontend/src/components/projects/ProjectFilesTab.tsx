@@ -193,7 +193,7 @@ const ProjectFilesTab: React.FC<ProjectFilesTabProps> = ({ projectId }) => {
                         <span>{formatFileSize(file.size)}</span>
                         <span>•</span>
                         <span>
-                          {file.uploadedBy?.firstName} {file.uploadedBy?.lastName}
+                          {(file.uploadedBy as any)?.name}
                         </span>
                         <span>•</span>
                         <span>{new Date(file.createdAt).toLocaleDateString()}</span>

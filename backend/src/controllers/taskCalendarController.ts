@@ -17,7 +17,7 @@ export const getCalendarView = async (req: Request, res: Response) => {
     
     const tasks = await Task.find(filter)
       .populate('project', 'name')
-      .populate('assignedTo', 'firstName lastName')
+      .populate('assignedTo', 'name email')
       .sort({ dueDate: 1 });
     
     const events = tasks.map(task => ({
@@ -48,7 +48,7 @@ export const exportICalendar = async (req: Request, res: Response) => {
     
     const tasks = await Task.find(filter)
       .populate('project', 'name')
-      .populate('assignedTo', 'firstName lastName');
+      .populate('assignedTo', 'name email');
     
     // Generate iCal format manually
     let icalContent = [
@@ -102,7 +102,7 @@ export const getTimelineView = async (req: Request, res: Response) => {
     
     const tasks = await Task.find(filter)
       .populate('project', 'name')
-      .populate('assignedTo', 'firstName lastName')
+      .populate('assignedTo', 'name email')
       .populate('dependencies.taskId', 'title dueDate')
       .sort({ dueDate: 1 });
     

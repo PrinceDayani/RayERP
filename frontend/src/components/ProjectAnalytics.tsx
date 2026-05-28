@@ -235,7 +235,7 @@ export default function ProjectAnalytics({ projectId }: AnalyticsProps) {
               utilization.utilizationData.map((u: any, i: number) => (
                 <div key={i} className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">{u.user?.firstName} {u.user?.lastName}</p>
+                    <p className="font-medium">{u.user?.name}</p>
                     <p className="text-sm text-muted-foreground">
                       {u.completedTasks}/{u.totalTasks} tasks • {u.actualHours}/{u.estimatedHours} hrs
                     </p>

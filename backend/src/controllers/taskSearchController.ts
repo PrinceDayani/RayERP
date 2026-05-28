@@ -52,8 +52,8 @@ export const advancedSearch = async (req: Request, res: Response) => {
     const [tasks, total] = await Promise.all([
       Task.find(filter)
         .populate('project', 'name')
-        .populate('assignedTo', 'firstName lastName')
-        .populate('assignedBy', 'firstName lastName')
+        .populate('assignedTo', 'name email')
+        .populate('assignedBy', 'name email')
         .sort(query ? { score: { $meta: 'textScore' } } : { createdAt: -1 })
         .skip(skip)
         .limit(Number(limit)),

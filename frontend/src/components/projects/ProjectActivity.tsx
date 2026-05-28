@@ -174,7 +174,7 @@ const ProjectActivity: React.FC<ProjectActivityProps> = ({ projectId }) => {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <User className="h-4 w-4" />
-                      {activity.user.firstName} {activity.user.lastName}
+                      {(activity.user as any)?.name}
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-4 w-4" />

@@ -223,10 +223,10 @@ export default function ProjectAnalyticsFiltered({ burndown, velocity, utilizati
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold">
-                        {u.user?.firstName?.[0]}{u.user?.lastName?.[0]}
+                        {(u.user?.name || '').split(' ').slice(0, 2).map((p: string) => p[0]).join('').toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-medium">{u.user?.firstName} {u.user?.lastName}</p>
+                        <p className="text-sm font-medium">{u.user?.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {u.completedTasks}/{u.totalTasks} tasks • {u.actualHours}/{u.estimatedHours} hrs
                         </p>

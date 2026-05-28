@@ -344,7 +344,7 @@ export default function TaskEditor({ taskId, projectId, onSave, onCancel }: Task
                     <h4 className="font-medium">Previous Comments</h4>
                     {task.comments.map((comment: any, i: number) => (
                       <div key={i} className="p-3 bg-muted rounded-lg">
-                        <div className="text-sm font-medium">{comment.user?.firstName} {comment.user?.lastName}</div>
+                        <div className="text-sm font-medium">{comment.user?.name}</div>
                         <div className="text-sm text-muted-foreground mt-1">{comment.comment}</div>
                         <div className="text-xs text-muted-foreground mt-2">
                           {new Date(comment.createdAt).toLocaleString()}

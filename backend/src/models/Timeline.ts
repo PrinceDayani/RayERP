@@ -33,7 +33,7 @@ const timelineSchema = new Schema<ITimeline>({
   },
   title: { type: String, required: true },
   description: { type: String, required: true },
-  user: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   metadata: {
     oldValue: Schema.Types.Mixed,
     newValue: Schema.Types.Mixed,

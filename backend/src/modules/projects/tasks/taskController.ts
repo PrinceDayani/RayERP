@@ -6,8 +6,8 @@ import { createTimelineEvent } from '../../../utils/timelineHelper';
 export const getProjectTasks = async (req: Request, res: Response) => {
   try {
     const tasks = await Task.find({ project: req.params.id, taskType: 'project' })
-      .populate('assignedTo', 'firstName lastName')
-      .populate('assignedBy', 'firstName lastName')
+      .populate('assignedTo', 'name email')
+      .populate('assignedBy', 'name email')
       .populate('comments.user', 'firstName lastName')
       .populate('dependencies.taskId', 'title')
       .populate('subtasks', 'title status')

@@ -115,7 +115,7 @@ export interface TimeTracking {
     estimatedHours: number;
     actualHours: number;
     status: string;
-    assignedTo: { firstName: string; lastName: string };
+    assignedTo: { name: string; email?: string };
     project: { name: string };
   }[];
 }

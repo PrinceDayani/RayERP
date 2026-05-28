@@ -195,8 +195,8 @@ const projectSchema = new Schema<IProject>({
     default: 'task-based'
   },
   financialProgress: { type: financialProgressSchema, default: () => ({}) },
-  managers: [{ type: Schema.Types.ObjectId, ref: 'Employee', required: true }],
-  team: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
+  managers: [{ type: Schema.Types.ObjectId, ref: 'User', required: true }],
+  team: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   departments: [{ type: Schema.Types.ObjectId, ref: 'Department' }],
   client: String,

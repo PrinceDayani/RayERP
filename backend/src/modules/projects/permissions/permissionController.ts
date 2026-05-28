@@ -4,7 +4,6 @@ import Project from '../../../models/Project';
 import User from '../../../models/User';
 import ProjectPermission from '../../../models/ProjectPermission';
 
-// Re-export from existing projectPermissionController
 export {
   getProjectPermissions,
   setProjectPermissions,
@@ -23,23 +22,18 @@ export const hasProjectAccess = async (userId: any, projectId: string): Promise<
     const roleName = role?.name;
     const permissions = role?.permissions || [];
 
-    if (roleName === 'Root' || permissions.includes('projects.view_all')) return true;
+    if (roleName === 'Root' || permissions.includes('projects.view_all') || permissions.includes('*')) return true;
 
     const project = await Project.findById(projectId);
     if (!project) return false;
 
-    if (project.owner?.toString() === userId.toString()) return true;
+    const uid = userId.toString();
+    if (project.owner?.toString() === uid) return true;
+    if (project.team?.some((t: any) => t.toString() === uid)) return true;
+    if (project.managers?.some((m: any) => m.toString() === uid)) return true;
 
-    const Employee = (await import('../../../models/Employee')).default;
-    const employee = await Employee.findOne({ user: userId });
-    if (employee) {
-      const empId = employee._id.toString();
-      if (project.team?.some((t: any) => t.toString() === empId)) return true;
-      if (project.managers?.some((m: any) => m.toString() === empId)) return true;
-
-      const perm = await ProjectPermission.findOne({ project: projectId, employee: employee._id });
-      if (perm) return true;
-    }
+    const perm = await ProjectPermission.findOne({ project: projectId, user: userId });
+    if (perm) return true;
 
     return false;
   } catch {

@@ -49,42 +49,32 @@ export const getAllTasks = async (req: Request, res: Response) => {
       
       const tasks = await Task.find(filter)
         .populate('project', 'name')
-        .populate('assignedTo', 'firstName lastName')
-        .populate('assignedBy', 'firstName lastName')
+        .populate('assignedTo', 'name email')
+        .populate('assignedBy', 'name email')
         .populate('dependencies.taskId', 'title')
         .populate('subtasks', 'title status')
         .populate('parentTask', 'title');
       return res.json(tasks);
     }
 
-    const Employee = (await import('../models/Employee')).default;
-    const employee = await Employee.findOne({ user: user._id });
-    
-    if (!employee) {
-      return res.json([]);
-    }
-
-    // Build query for individual tasks
     const individualTaskQuery: any = {
       isTemplate: { $ne: true },
       taskType: 'individual',
       $or: [
-        { assignedTo: employee._id },
-        { assignedBy: employee._id }
+        { assignedTo: user._id },
+        { assignedBy: user._id }
       ]
     };
 
-    // Build query for project tasks
     const Project = (await import('../models/Project')).default;
     const assignedProjects = await Project.find({
       $or: [
-        { members: user._id },
         { owner: user._id },
-        { team: employee._id },
-        { managers: employee._id }
+        { team: user._id },
+        { managers: user._id }
       ]
     }).select('_id');
-    
+
     const assignedProjectIds = assignedProjects.map(p => p._id);
 
     const projectTaskQuery: any = {
@@ -92,8 +82,8 @@ export const getAllTasks = async (req: Request, res: Response) => {
       taskType: 'project',
       $or: [
         { project: { $in: assignedProjectIds } },
-        { assignedTo: employee._id },
-        { assignedBy: employee._id }
+        { assignedTo: user._id },
+        { assignedBy: user._id }
       ]
     };
 
@@ -101,32 +91,32 @@ export const getAllTasks = async (req: Request, res: Response) => {
     let tasks;
     if (taskType === 'individual') {
       tasks = await Task.find(individualTaskQuery)
-        .populate('assignedTo', 'firstName lastName')
-        .populate('assignedBy', 'firstName lastName')
+        .populate('assignedTo', 'name email')
+        .populate('assignedBy', 'name email')
         .populate('dependencies.taskId', 'title')
         .populate('subtasks', 'title status')
         .populate('parentTask', 'title');
     } else if (taskType === 'project') {
       tasks = await Task.find(projectTaskQuery)
         .populate('project', 'name')
-        .populate('assignedTo', 'firstName lastName')
-        .populate('assignedBy', 'firstName lastName')
+        .populate('assignedTo', 'name email')
+        .populate('assignedBy', 'name email')
         .populate('dependencies.taskId', 'title')
         .populate('subtasks', 'title status')
         .populate('parentTask', 'title');
     } else {
       // Get both types
       const individualTasks = await Task.find(individualTaskQuery)
-        .populate('assignedTo', 'firstName lastName')
-        .populate('assignedBy', 'firstName lastName')
+        .populate('assignedTo', 'name email')
+        .populate('assignedBy', 'name email')
         .populate('dependencies.taskId', 'title')
         .populate('subtasks', 'title status')
         .populate('parentTask', 'title');
       
       const projectTasks = await Task.find(projectTaskQuery)
         .populate('project', 'name')
-        .populate('assignedTo', 'firstName lastName')
-        .populate('assignedBy', 'firstName lastName')
+        .populate('assignedTo', 'name email')
+        .populate('assignedBy', 'name email')
         .populate('dependencies.taskId', 'title')
         .populate('subtasks', 'title status')
         .populate('parentTask', 'title');
@@ -153,9 +143,9 @@ export const getTaskById = async (req: Request, res: Response) => {
     if (userRole?.level >= 80) {
       const task = await Task.findById(req.params.id)
         .populate('project', 'name')
-        .populate('assignedTo', 'firstName lastName')
-        .populate('assignedBy', 'firstName lastName')
-        .populate('comments.user', 'firstName lastName');
+        .populate('assignedTo', 'name email')
+        .populate('assignedBy', 'name email')
+        .populate('comments.user', 'name email');
       
       if (!task) {
         return res.status(404).json({ message: 'Task not found' });
@@ -165,38 +155,36 @@ export const getTaskById = async (req: Request, res: Response) => {
 
     const task = await Task.findById(req.params.id)
       .populate('project', 'name')
-      .populate('assignedTo', 'firstName lastName')
-      .populate('assignedBy', 'firstName lastName')
-      .populate('comments.user', 'firstName lastName');
+      .populate('assignedTo', 'name email')
+      .populate('assignedBy', 'name email')
+      .populate('comments.user', 'name email');
     
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    const Employee = (await import('../models/Employee')).default;
-    const employee = await Employee.findOne({ user: user._id });
-    
-    if (!employee) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    
+    const userIdStr = user._id.toString();
+
     // Check if user is assigned to this task
-    const isAssigned = task.assignedTo && 
-      (task.assignedTo as any)._id.toString() === employee._id.toString();
-    
+    const isAssigned = task.assignedTo &&
+      ((task.assignedTo as any)._id?.toString() || task.assignedTo.toString()) === userIdStr;
+
     // Check if user has access to the project
     const Project = (await import('../models/Project')).default;
     const project = await Project.findById(task.project);
-    const hasProjectAccess = project && (
-      project.team.some(m => m.toString() === user._id.toString()) ||
-      project.owner.toString() === user._id.toString() ||
-      (project.team && project.team.some((t: any) => t.toString() === employee._id.toString())) ||
-      (project.managers && project.managers[0].toString() === employee._id.toString())
+    const hasProjectAccess = !!project && (
+      project.owner.toString() === userIdStr ||
+      project.team?.some((t: any) => t.toString() === userIdStr) ||
+      project.managers?.some((m: any) => m.toString() === userIdStr)
     );
-    
+
     // Check if user created the task
-    const isCreator = task.assignedBy && 
-      (task.assignedBy as any)._id.toString() === employee._id.toString();
+    const isCreator = task.assignedBy &&
+      ((task.assignedBy as any)._id?.toString() || task.assignedBy.toString()) === userIdStr;
+
+    // For the optional HR-domain department fallback below
+    const Employee = (await import('../models/Employee')).default;
+    const employee = await Employee.findOne({ user: user._id });
     
     // If assigned to task or project, return full details
     if (isAssigned || hasProjectAccess || isCreator) {
@@ -204,9 +192,13 @@ export const getTaskById = async (req: Request, res: Response) => {
     }
     
     // Check department permission for basic view
+    if (!employee) {
+      return res.status(403).json({ message: 'Access denied: You are not assigned to this task or project' });
+    }
+
     const Department = (await import('../models/Department')).default;
     const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
-    
+
     if (departmentNames.length > 0) {
       const departments = await Department.find({ name: { $in: departmentNames }, status: 'active' });
       const hasTaskViewPermission = departments.some(dept => 
@@ -246,34 +238,28 @@ export const createTask = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    const Employee = (await import('../models/Employee')).default;
-    const employee = await Employee.findOne({ user: user._id });
-    if (!employee) {
-      return res.status(403).json({ message: 'Employee profile not found' });
-    }
-
     const taskData = { ...req.body };
-    
-    // Determine task type
+
     if (!taskData.taskType) {
       taskData.taskType = taskData.project ? 'project' : 'individual';
     }
-    
-    // Handle self-assignment
+
     if (!taskData.assignmentType) {
       taskData.assignmentType = 'assigned';
     }
-    
-    // For self-assigned tasks
+
     if (taskData.assignmentType === 'self-assigned') {
-      taskData.assignedTo = employee._id;
-      taskData.assignedBy = employee._id;
+      taskData.assignedTo = user._id;
+      taskData.assignedBy = user._id;
     }
-    
-    // Validate permissions for assigned tasks
-    if (taskData.assignmentType === 'assigned' && taskData.assignedTo !== employee._id.toString()) {
+
+    if (!taskData.assignedBy) {
+      taskData.assignedBy = user._id;
+    }
+
+    if (taskData.assignmentType === 'assigned' && taskData.assignedTo?.toString() !== user._id.toString()) {
       const userRole = user.role as any;
-      if (userRole?.level < 50) {
+      if (userRole?.level < 50 && userRole?.name?.toLowerCase() !== 'root') {
         return res.status(403).json({ message: 'Insufficient permissions to assign tasks to others' });
       }
     }
@@ -284,8 +270,8 @@ export const createTask = async (req: Request, res: Response) => {
     if (task.project) {
       await task.populate('project', 'name');
     }
-    await task.populate('assignedTo', 'firstName lastName');
-    await task.populate('assignedBy', 'firstName lastName');
+    await task.populate('assignedTo', 'name email');
+    await task.populate('assignedBy', 'name email');
     
     const assignedById = task.assignedBy ? 
                         (task.assignedBy as any)._id.toString() : 
@@ -309,13 +295,9 @@ export const createTask = async (req: Request, res: Response) => {
     await emitProjectStats();
     
     // Send notification if task is assigned to someone else
-    if (task.assignmentType === 'assigned' && task.assignedTo.toString() !== employee._id.toString()) {
+    if (task.assignmentType === 'assigned' && task.assignedTo?.toString() !== user._id.toString()) {
       const { NotificationEmitter } = await import('../utils/notificationEmitter');
-      const assignedEmployee = await Employee.findById(task.assignedTo).populate('user');
-      if (assignedEmployee?.user) {
-        const userId = (assignedEmployee.user as any)._id.toString();
-        await NotificationEmitter.taskAssigned(task, userId);
-      }
+      await NotificationEmitter.taskAssigned(task, task.assignedTo.toString());
     }
     
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
@@ -347,8 +329,8 @@ export const updateTask = async (req: Request, res: Response) => {
       req.body,
       { new: true, runValidators: true }
     ).populate('project', 'name')
-     .populate('assignedTo', 'firstName lastName')
-     .populate('assignedBy', 'firstName lastName');
+     .populate('assignedTo', 'name email')
+     .populate('assignedBy', 'name email');
     
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -469,7 +451,7 @@ export const addTaskComment = async (req: Request, res: Response) => {
     
     task.comments.push({ user, comment, mentions: [], createdAt: new Date() });
     await task.save();
-    await task.populate('comments.user', 'firstName lastName');
+    await task.populate('comments.user', 'name email');
     
     try {
       await createTimelineEvent(
@@ -486,11 +468,11 @@ export const addTaskComment = async (req: Request, res: Response) => {
 
     // Log activity
     const currentUser = (req as any).user;
-    const Employee = (await import('../models/Employee')).default;
-    const employee = await Employee.findById(user);
+    const User = (await import('../models/User')).default;
+    const commenter = await User.findById(user).select('name');
     await logActivity({
       userId: currentUser?.id || user,
-      userName: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+      userName: commenter?.name || currentUser?.name || 'Unknown',
       action: 'comment',
       resource: `Task: ${task.title}`,
       resourceType: 'comment',
@@ -594,8 +576,8 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
     await task.save({ validateBeforeSave: true });
     
     await task.populate('project', 'name');
-    await task.populate('assignedTo', 'firstName lastName');
-    await task.populate('assignedBy', 'firstName lastName');
+    await task.populate('assignedTo', 'name email');
+    await task.populate('assignedBy', 'name email');
     
     // Safely get user ID
     const userId = user || (task.assignedBy ? 

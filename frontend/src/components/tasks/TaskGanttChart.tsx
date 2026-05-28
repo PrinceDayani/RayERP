@@ -192,7 +192,7 @@ export function TaskGanttChart({ tasks, onTaskClick }: TaskGanttChartProps) {
                               </Badge>
                               {task.assignedTo && (
                                 <span className="text-xs text-muted-foreground truncate">
-                                  {task.assignedTo.firstName}
+                                  {(task.assignedTo as any).name?.split(' ')[0]}
                                 </span>
                               )}
                             </div>

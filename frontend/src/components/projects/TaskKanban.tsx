@@ -218,8 +218,8 @@ const TaskKanban: React.FC<TaskKanbanProps> = ({
                     {task.assignedTo && (
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className="text-xs">
-                          {typeof task.assignedTo === 'object' 
-                            ? getInitials(`${task.assignedTo.firstName} ${task.assignedTo.lastName}`)
+                          {typeof task.assignedTo === 'object' && task.assignedTo
+                            ? getInitials((task.assignedTo as any).name || '')
                             : 'U'
                           }
                         </AvatarFallback>

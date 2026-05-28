@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IResourceAllocation extends Document {
-  employee: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId;
   project: mongoose.Types.ObjectId;
   allocatedHours: number;
   startDate: Date;
@@ -35,7 +35,7 @@ export interface IResourceAllocation extends Document {
 }
 
 const resourceAllocationSchema = new Schema<IResourceAllocation>({
-  employee: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   project: { type: Schema.Types.ObjectId, ref: 'Project', required: true },
   allocatedHours: { 
     type: Number, 
@@ -81,9 +81,9 @@ const resourceAllocationSchema = new Schema<IResourceAllocation>({
 }, { timestamps: true });
 
 // Indexes for performance
-resourceAllocationSchema.index({ employee: 1, project: 1 });
+resourceAllocationSchema.index({ user: 1, project: 1 });
 resourceAllocationSchema.index({ startDate: 1, endDate: 1 });
-resourceAllocationSchema.index({ employee: 1, startDate: 1, endDate: 1 });
+resourceAllocationSchema.index({ user: 1, startDate: 1, endDate: 1 });
 resourceAllocationSchema.index({ project: 1, status: 1 });
 resourceAllocationSchema.index({ status: 1, startDate: 1 });
 resourceAllocationSchema.index({ utilizationRate: 1 });
@@ -125,7 +125,7 @@ resourceAllocationSchema.methods.checkConflicts = async function() {
   const ResourceAllocation = this.constructor;
   const conflicts = await ResourceAllocation.find({
     _id: { $ne: this._id },
-    employee: this.employee,
+    user: this.user,
     status: { $in: ['active', 'planned'] },
     $or: [
       { startDate: { $lte: this.endDate }, endDate: { $gte: this.startDate } }
@@ -136,9 +136,9 @@ resourceAllocationSchema.methods.checkConflicts = async function() {
 };
 
 // Method to calculate total allocation for employee in date range
-resourceAllocationSchema.statics.getTotalAllocation = async function(employeeId, startDate, endDate, excludeId = null) {
+resourceAllocationSchema.statics.getTotalAllocation = async function(userId, startDate, endDate, excludeId = null) {
   const filter: any = {
-    employee: employeeId,
+    user: userId,
     status: { $in: ['active', 'planned'] },
     $or: [
       { startDate: { $lte: endDate }, endDate: { $gte: startDate } }

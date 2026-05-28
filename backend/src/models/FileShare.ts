@@ -9,8 +9,8 @@ export interface IFileShare extends Document {
   sharedWith: mongoose.Types.ObjectId[];
   message?: string;
   status: 'pending' | 'viewed' | 'downloaded';
-  viewedBy: { employee: mongoose.Types.ObjectId; viewedAt: Date }[];
-  downloadedBy: { employee: mongoose.Types.ObjectId; downloadedAt: Date }[];
+  viewedBy: { user: mongoose.Types.ObjectId; viewedAt: Date }[];
+  downloadedBy: { user: mongoose.Types.ObjectId; downloadedAt: Date }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,12 +28,12 @@ const FileShareSchema: Schema = new Schema({
   },
   sharedBy: {
     type: Schema.Types.ObjectId,
-    ref: 'Employee',
+    ref: 'User',
     required: true
   },
   sharedWith: [{
     type: Schema.Types.ObjectId,
-    ref: 'Employee',
+    ref: 'User',
     required: true
   }],
   message: {
@@ -46,11 +46,11 @@ const FileShareSchema: Schema = new Schema({
     default: 'pending'
   },
   viewedBy: [{
-    employee: { type: Schema.Types.ObjectId, ref: 'Employee' },
+    user: { type: Schema.Types.ObjectId, ref: 'User' },
     viewedAt: { type: Date, default: Date.now }
   }],
   downloadedBy: [{
-    employee: { type: Schema.Types.ObjectId, ref: 'Employee' },
+    user: { type: Schema.Types.ObjectId, ref: 'User' },
     downloadedAt: { type: Date, default: Date.now }
   }]
 }, {

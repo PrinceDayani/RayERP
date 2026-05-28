@@ -32,8 +32,8 @@ export const getTaskStats = async () => {
 export const getTasksByProject = async (projectId: string) => {
   try {
     return await Task.find({ project: projectId })
-      .populate('assignedTo', 'firstName lastName')
-      .populate('assignedBy', 'firstName lastName')
+      .populate('assignedTo', 'name email')
+      .populate('assignedBy', 'name email')
       .sort({ createdAt: -1 });
   } catch (error) {
     console.error('Error fetching tasks by project:', error);
@@ -45,7 +45,7 @@ export const getTasksByUser = async (userId: string) => {
   try {
     return await Task.find({ assignedTo: userId })
       .populate('project', 'name')
-      .populate('assignedBy', 'firstName lastName')
+      .populate('assignedBy', 'name email')
       .sort({ dueDate: 1 });
   } catch (error) {
     console.error('Error fetching tasks by user:', error);

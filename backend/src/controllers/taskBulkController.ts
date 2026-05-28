@@ -33,7 +33,7 @@ export const bulkAssign = async (req: Request, res: Response) => {
     );
     
     const tasks = await Task.find({ _id: { $in: taskIds } })
-      .populate('assignedTo', 'firstName lastName');
+      .populate('assignedTo', 'name email');
     
     const { io } = await import('../server');
     io.emit('tasks:bulk:assigned', { taskIds, assignedTo });

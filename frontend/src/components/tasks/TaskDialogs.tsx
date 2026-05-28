@@ -948,7 +948,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
                 <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
                   {commentDialog.task.comments.slice(-3).reverse().map((comment: any, idx: number) => (
                     <div key={idx} className="p-2 bg-gray-50 rounded text-xs">
-                      <p className="font-medium">{comment.user?.firstName || 'User'} {comment.user?.lastName || ''}</p>
+                      <p className="font-medium">{comment.user?.name || 'User'}</p>
                       <p className="text-gray-600">{comment.comment || comment.text}</p>
                       <p className="text-gray-400 text-xs mt-1">{new Date(comment.createdAt).toLocaleString()}</p>
                     </div>
@@ -1020,8 +1020,8 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
                     <div>
                       <Label className="text-sm font-medium">Assigned To</Label>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {typeof viewDialog.task.assignedTo === 'object'
-                          ? `${viewDialog.task.assignedTo.firstName} ${viewDialog.task.assignedTo.lastName}`
+                        {typeof viewDialog.task.assignedTo === 'object' && viewDialog.task.assignedTo
+                          ? (viewDialog.task.assignedTo as any).name || 'Unassigned'
                           : 'Unassigned'}
                       </p>
                     </div>
@@ -1096,7 +1096,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
                         {viewDialog.task.watchers.map((watcher, index) => (
                           <Badge key={index} variant="outline">
                             {typeof watcher === 'object'
-                              ? `${watcher.firstName} ${watcher.lastName}`
+                              ? (watcher as any).name
                               : 'User'}
                           </Badge>
                         ))}
@@ -1113,7 +1113,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
                           <div key={index} className="p-3 border rounded">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-medium text-sm">
-                                {comment.user.firstName} {comment.user.lastName}
+                                {(comment.user as any)?.name}
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 {new Date(comment.createdAt).toLocaleString()}

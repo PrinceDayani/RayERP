@@ -88,6 +88,7 @@ import workOrderRoutes from './workOrder.routes';
 import workflowRoutes from './workflow.routes';
 import tenderRoutes from './tender.routes';
 import projectReportingRoutes from './projectReporting.routes';
+import reportingRoutes from './reporting.routes';
 import { invalidateCacheOnMutation } from '../middleware/cacheInvalidation.middleware';
 
 const router = express.Router();
@@ -103,6 +104,7 @@ router.use("/users", userRoutes);
 router.use("/sessions", sessionRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/projects", projectReportingRoutes);
+router.use("/reporting", reportingRoutes);
 router.use("/projects", projectRoutes);
 router.use("/tasks", taskRoutes);
 router.use("/tasks", taskAnalyticsRoutes);

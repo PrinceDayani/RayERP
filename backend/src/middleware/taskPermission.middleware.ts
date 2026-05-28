@@ -34,36 +34,28 @@ const getUserPermissions = async (userId: string): Promise<Set<string>> => {
 const isAssignedToTask = async (userId: string, taskId: string): Promise<boolean> => {
   const task = await Task.findById(taskId);
   if (!task) return false;
-  
-  const Employee = (await import('../models/Employee')).default;
-  const employee = await Employee.findOne({ user: userId });
-  if (!employee) return false;
-  
-  // Check direct task assignment
-  if (task.assignedTo && task.assignedTo.toString() === employee._id.toString()) {
+
+  if (task.assignedTo && task.assignedTo.toString() === userId) {
     return true;
   }
-  
-  // Check project assignment
+
   const project = await Project.findById(task.project);
-  return project?.team?.some(m => m.toString() === userId) || 
-         project?.team?.some(t => t.toString() === employee._id.toString()) ||
-         project?.managers?.[0]?.toString() === employee._id.toString() ||
-         project?.owner?.toString() === userId;
+  return !!(
+    project?.team?.some(m => m.toString() === userId) ||
+    project?.managers?.some(m => m.toString() === userId) ||
+    project?.owner?.toString() === userId
+  );
 };
 
 const isAssignedToProject = async (userId: string, projectId: string): Promise<boolean> => {
   const project = await Project.findById(projectId);
   if (!project) return false;
-  
-  const Employee = (await import('../models/Employee')).default;
-  const employee = await Employee.findOne({ user: userId });
-  if (!employee) return false;
-  
-  return project.team?.some(m => m.toString() === userId) || 
-         project.team?.some(t => t.toString() === employee._id.toString()) ||
-         project.managers?.[0]?.toString() === employee._id.toString() ||
-         project.owner?.toString() === userId;
+
+  return !!(
+    project.team?.some(m => m.toString() === userId) ||
+    project.managers?.some(m => m.toString() === userId) ||
+    project.owner?.toString() === userId
+  );
 };
 
 export const requireTaskPermission = (permission: string, requiresAssignment = false) => {

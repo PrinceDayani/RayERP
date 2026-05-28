@@ -33,7 +33,7 @@ export const formatTaskDueDate = (dueDate: string): string => {
 
 export const getTaskAssigneeName = (task: Task): string => {
   if (typeof task.assignedTo === 'object' && task.assignedTo) {
-    return `${task.assignedTo.firstName || 'Unknown'} ${task.assignedTo.lastName || 'User'}`;
+    return (task.assignedTo as any).name || 'Unknown User';
   }
   return 'Unknown User';
 };

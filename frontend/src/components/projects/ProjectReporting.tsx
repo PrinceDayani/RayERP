@@ -35,8 +35,9 @@ import {
   X,
   Trash2
 } from "lucide-react";
-import { projectReportingAPI, type DailyReport, type FinancialEntry, type ProgressSummary, type ReportingStatus, type ReportingSchedule } from "@/lib/api/projectReportingAPI";
+import { projectReportingAPI, type DailyReport, type FinancialEntry, type ProgressSummary, type ReportingStatus, type ReportingSchedule, type ReportTemplate, type TemplateFieldType } from "@/lib/api/projectReportingAPI";
 import { format } from "date-fns";
+import ReportDetailDialog from "./ReportDetailDialog";
 
 interface ProjectReportingProps {
   projectId: string;
@@ -239,7 +240,7 @@ export default function ProjectReporting({ projectId, projectBudget = 0, project
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <p className="text-sm font-medium">{report.reportedBy?.firstName} {report.reportedBy?.lastName}</p>
+                            <p className="text-sm font-medium">{report.reportedBy?.name}</p>
                             <p className="text-xs text-muted-foreground">{format(new Date(report.reportDate), 'dd MMM yyyy')}</p>
                           </div>
                         </div>
@@ -318,7 +319,7 @@ export default function ProjectReporting({ projectId, projectBudget = 0, project
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-medium">{report.reportedBy?.firstName} {report.reportedBy?.lastName}</p>
+                            <p className="font-medium">{report.reportedBy?.name}</p>
                             <Badge variant="outline" className="text-xs">{report.reportType}</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">{format(new Date(report.reportDate), 'EEEE, dd MMM yyyy')}</p>
@@ -551,7 +552,7 @@ export default function ProjectReporting({ projectId, projectBudget = 0, project
                           {member.hasReported ? <Check className="h-4 w-4 text-green-600" /> : <Clock className="h-4 w-4 text-orange-600" />}
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{member.employee?.firstName} {member.employee?.lastName}</p>
+                          <p className="font-medium text-sm">{(member as any).user?.name}</p>
                           {member.report && (
                             <p className="text-xs text-muted-foreground">{member.report.totalHours}h logged • {member.report.activities?.length || 0} activities</p>
                           )}
@@ -1027,153 +1028,6 @@ function FinancialEntryDialog({ open, onOpenChange, projectId, currency, onSucce
 }
 
 // ==========================================
-// Report Detail Dialog (Item #9)
-// ==========================================
-
-interface ReportDetailDialogProps {
-  report: DailyReport | null;
-  onClose: () => void;
-}
-
-function ReportDetailDialog({ report, onClose }: ReportDetailDialogProps) {
-  if (!report) return null;
-
-  return (
-    <Dialog open={!!report} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Report — {format(new Date(report.reportDate), 'EEEE, dd MMM yyyy')}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-5">
-          {/* Reporter Info */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                <Users className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-sm">{report.reportedBy?.firstName} {report.reportedBy?.lastName}</p>
-                <p className="text-xs text-muted-foreground">{report.reportType} report • {report.totalHours}h total</p>
-              </div>
-            </div>
-            <Badge variant={report.status === 'acknowledged' ? 'default' : report.status === 'submitted' ? 'secondary' : 'outline'}>
-              {report.status}
-            </Badge>
-          </div>
-
-          {/* Activities */}
-          {report.activities.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-sm mb-2">Activities ({report.activities.length})</h4>
-              <div className="space-y-2">
-                {report.activities.map((act, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                    <div className="flex-1">
-                      <p className="text-sm">{act.description}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs">{act.category}</Badge>
-                        <span className="text-xs text-muted-foreground">{act.hoursSpent}h</span>
-                        {act.quantityCompleted && <span className="text-xs text-muted-foreground">• {act.quantityCompleted}</span>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Blockers */}
-          {report.blockers.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-sm mb-2 flex items-center gap-1">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
-                Blockers ({report.blockers.length})
-              </h4>
-              <div className="space-y-2">
-                {report.blockers.map((blocker, i) => (
-                  <div key={i} className="flex items-start justify-between p-3 border border-red-200 dark:border-red-800 rounded-lg bg-red-50/50 dark:bg-red-950/20">
-                    <div>
-                      <p className="text-sm">{blocker.description}</p>
-                      <Badge variant={blocker.isResolved ? 'default' : 'destructive'} className="text-xs mt-1">
-                        {blocker.isResolved ? 'Resolved' : blocker.severity}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Financials */}
-          {report.financials && (report.financials.paymentsProcessed > 0 || report.financials.invoicesReceived > 0) && (
-            <div>
-              <h4 className="font-semibold text-sm mb-2">Financial Activity</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Payments Processed</p>
-                  <p className="font-bold">{report.financials.paymentsProcessed}</p>
-                </div>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Invoices Received</p>
-                  <p className="font-bold">{report.financials.invoicesReceived}</p>
-                </div>
-                {report.financials.vendor && (
-                  <div className="p-3 bg-muted/50 rounded-lg col-span-2">
-                    <p className="text-xs text-muted-foreground">Vendor: {report.financials.vendor}</p>
-                    {report.financials.paymentReference && <p className="text-xs text-muted-foreground">Ref: {report.financials.paymentReference}</p>}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Next Steps */}
-          {report.nextSteps.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-sm mb-2">Next Steps</h4>
-              <ul className="space-y-1">
-                {report.nextSteps.map((step, i) => (
-                  <li key={i} className="text-sm flex items-start gap-2">
-                    <span className="text-muted-foreground">→</span> {step}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Notes */}
-          {report.notes && (
-            <div>
-              <h4 className="font-semibold text-sm mb-2">Notes</h4>
-              <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">{report.notes}</p>
-            </div>
-          )}
-
-          {/* Acknowledgment */}
-          {report.acknowledgedBy && (
-            <div className="flex items-center gap-2 pt-2 border-t">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <p className="text-xs text-muted-foreground">
-                Acknowledged by {report.acknowledgedBy.firstName} {report.acknowledgedBy.lastName}
-                {report.acknowledgedAt && ` on ${format(new Date(report.acknowledgedAt), 'dd MMM yyyy, HH:mm')}`}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ==========================================
 // Reporting Schedule Panel (Item #3)
 // ==========================================
 
@@ -1182,6 +1036,8 @@ interface ReportingSchedulePanelProps {
   schedule: ReportingSchedule | null;
   onUpdate: () => void;
 }
+
+const ACTIVITY_CATEGORIES = ['construction', 'procurement', 'design', 'inspection', 'administrative', 'other'];
 
 function ReportingSchedulePanel({ projectId, schedule, onUpdate }: ReportingSchedulePanelProps) {
   const [saving, setSaving] = useState(false);
@@ -1194,6 +1050,16 @@ function ReportingSchedulePanel({ projectId, schedule, onUpdate }: ReportingSche
     escalateOnMiss: schedule?.escalateOnMiss || false
   });
 
+  const [templateEnabled, setTemplateEnabled] = useState<boolean>(!!schedule?.template);
+  const [template, setTemplate] = useState<Omit<ReportTemplate, 'version'>>(() => ({
+    sections: schedule?.template?.sections || [],
+    customFields: schedule?.template?.customFields || [],
+    requiredActivityCategories: schedule?.template?.requiredActivityCategories || [],
+    requireBlockers: schedule?.template?.requireBlockers || false,
+    requireNextSteps: schedule?.template?.requireNextSteps || false,
+    requireFinancials: schedule?.template?.requireFinancials || false
+  }));
+
   useEffect(() => {
     if (schedule) {
       setForm({
@@ -1204,13 +1070,24 @@ function ReportingSchedulePanel({ projectId, schedule, onUpdate }: ReportingSche
         reminderBeforeMinutes: schedule.reminderBeforeMinutes,
         escalateOnMiss: schedule.escalateOnMiss
       });
+      setTemplateEnabled(!!schedule.template);
+      setTemplate({
+        sections: schedule.template?.sections || [],
+        customFields: schedule.template?.customFields || [],
+        requiredActivityCategories: schedule.template?.requiredActivityCategories || [],
+        requireBlockers: schedule.template?.requireBlockers || false,
+        requireNextSteps: schedule.template?.requireNextSteps || false,
+        requireFinancials: schedule.template?.requireFinancials || false
+      });
     }
   }, [schedule]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      await projectReportingAPI.upsertSchedule(projectId, form as any);
+      const payload: any = { ...form };
+      payload.template = templateEnabled ? template : null;
+      await projectReportingAPI.upsertSchedule(projectId, payload);
       toast({ title: "Reporting schedule saved" });
       onUpdate();
     } catch (error: any) {
@@ -1327,6 +1204,239 @@ function ReportingSchedulePanel({ projectId, schedule, onUpdate }: ReportingSche
             />
           </div>
         )}
+
+        {/* Report Template editor */}
+        <div className="border rounded-lg p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-semibold">Report Template</Label>
+              <p className="text-xs text-muted-foreground">
+                Shape each team-member's daily report. Empty = freeform (default).
+              </p>
+            </div>
+            <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={templateEnabled}
+                onChange={e => setTemplateEnabled(e.target.checked)}
+                className="rounded"
+              />
+              Enable template
+            </label>
+          </div>
+
+          {templateEnabled && (
+            <div className="space-y-4 pt-2 border-t">
+              {/* Sections */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Sections (checklist for activities)</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-xs"
+                    onClick={() => setTemplate(t => ({
+                      ...t,
+                      sections: [...t.sections, { key: `section-${Date.now()}`, label: '', required: false }]
+                    }))}
+                  >
+                    <Plus className="h-3 w-3 mr-1" /> Add section
+                  </Button>
+                </div>
+                {template.sections.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground italic">No sections yet.</p>
+                )}
+                {template.sections.map((s, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Input
+                      placeholder="Label (e.g., Site Safety)"
+                      value={s.label}
+                      onChange={e => setTemplate(t => ({
+                        ...t,
+                        sections: t.sections.map((x, j) => j === i ? { ...x, label: e.target.value } : x)
+                      }))}
+                      className="flex-1 h-8 text-xs"
+                    />
+                    <label className="flex items-center gap-1 text-[10px] cursor-pointer select-none whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={s.required}
+                        onChange={e => setTemplate(t => ({
+                          ...t,
+                          sections: t.sections.map((x, j) => j === i ? { ...x, required: e.target.checked } : x)
+                        }))}
+                      />
+                      Required
+                    </label>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={() => setTemplate(t => ({
+                        ...t,
+                        sections: t.sections.filter((_, j) => j !== i)
+                      }))}
+                    >
+                      <Trash2 className="h-3 w-3 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Custom fields */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Custom fields</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-xs"
+                    onClick={() => setTemplate(t => ({
+                      ...t,
+                      customFields: [...t.customFields, { key: `field-${Date.now()}`, label: '', type: 'text', required: false }]
+                    }))}
+                  >
+                    <Plus className="h-3 w-3 mr-1" /> Add field
+                  </Button>
+                </div>
+                {template.customFields.length === 0 && (
+                  <p className="text-[10px] text-muted-foreground italic">No custom fields yet.</p>
+                )}
+                {template.customFields.map((f, i) => (
+                  <div key={i} className="border rounded p-2 space-y-2">
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Label (e.g., Crew count)"
+                        value={f.label}
+                        onChange={e => setTemplate(t => ({
+                          ...t,
+                          customFields: t.customFields.map((x, j) => j === i ? { ...x, label: e.target.value, key: x.key || `field-${Date.now()}-${j}` } : x)
+                        }))}
+                        className="flex-1 h-8 text-xs"
+                      />
+                      <Select
+                        value={f.type}
+                        onValueChange={(v: TemplateFieldType) => setTemplate(t => ({
+                          ...t,
+                          customFields: t.customFields.map((x, j) => j === i ? { ...x, type: v, options: v === 'select' ? (x.options || ['Option 1']) : undefined } : x)
+                        }))}
+                      >
+                        <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="text">Text</SelectItem>
+                          <SelectItem value="number">Number</SelectItem>
+                          <SelectItem value="select">Select</SelectItem>
+                          <SelectItem value="date">Date</SelectItem>
+                          <SelectItem value="photo">Photo URL</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <label className="flex items-center gap-1 text-[10px] cursor-pointer select-none whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={f.required}
+                          onChange={e => setTemplate(t => ({
+                            ...t,
+                            customFields: t.customFields.map((x, j) => j === i ? { ...x, required: e.target.checked } : x)
+                          }))}
+                        />
+                        Required
+                      </label>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => setTemplate(t => ({
+                          ...t,
+                          customFields: t.customFields.filter((_, j) => j !== i)
+                        }))}
+                      >
+                        <Trash2 className="h-3 w-3 text-red-500" />
+                      </Button>
+                    </div>
+                    {f.type === 'select' && (
+                      <Input
+                        placeholder="Options, comma-separated (e.g. Sunny, Cloudy, Rainy)"
+                        value={(f.options || []).join(', ')}
+                        onChange={e => setTemplate(t => ({
+                          ...t,
+                          customFields: t.customFields.map((x, j) => j === i ? { ...x, options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) } : x)
+                        }))}
+                        className="h-8 text-xs"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Required activity categories */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Required activity categories</Label>
+                <div className="flex flex-wrap gap-2">
+                  {ACTIVITY_CATEGORIES.map(cat => {
+                    const active = template.requiredActivityCategories.includes(cat);
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setTemplate(t => ({
+                          ...t,
+                          requiredActivityCategories: active
+                            ? t.requiredActivityCategories.filter(c => c !== cat)
+                            : [...t.requiredActivityCategories, cat]
+                        }))}
+                        className={`text-[10px] px-2 py-1 rounded capitalize border ${
+                          active
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background border-border'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Required toggles */}
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={template.requireBlockers}
+                    onChange={e => setTemplate(t => ({ ...t, requireBlockers: e.target.checked }))}
+                  />
+                  Require blockers
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={template.requireNextSteps}
+                    onChange={e => setTemplate(t => ({ ...t, requireNextSteps: e.target.checked }))}
+                  />
+                  Require next steps
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={template.requireFinancials}
+                    onChange={e => setTemplate(t => ({ ...t, requireFinancials: e.target.checked }))}
+                  />
+                  Require financials
+                </label>
+              </div>
+
+              {schedule?.template && (
+                <p className="text-[10px] text-muted-foreground">
+                  Current saved version: v{schedule.template.version}. Existing reports keep their original shape via version snapshot.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="flex gap-3 pt-2">
           <Button onClick={handleSave} disabled={saving}>

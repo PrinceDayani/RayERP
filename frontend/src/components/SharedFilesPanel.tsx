@@ -148,7 +148,7 @@ export default function SharedFilesPanel() {
                   </p>
                   
                   <p className="text-sm text-gray-600">
-                    Shared by: {share.sharedBy.firstName} {share.sharedBy.lastName}
+                    Shared by: {(share.sharedBy as any)?.name}
                   </p>
                   
                   <p className="text-sm text-gray-500">

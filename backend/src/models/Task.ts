@@ -100,8 +100,8 @@ const taskSchema = new Schema<ITask>({
     default: 'medium' 
   },
   project: { type: Schema.Types.ObjectId, ref: 'Project' },
-  assignedTo: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
-  assignedBy: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+  assignedTo: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  assignedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   dueDate: { type: Date },
   estimatedHours: { type: Number, default: 0 },
   actualHours: { type: Number, default: 0 },
@@ -112,19 +112,19 @@ const taskSchema = new Schema<ITask>({
     color: { type: String, default: '#3b82f6' }
   }],
   comments: [{
-    user: { type: Schema.Types.ObjectId, ref: 'Employee' },
+    user: { type: Schema.Types.ObjectId, ref: 'User' },
     comment: String,
-    mentions: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
+    mentions: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     createdAt: { type: Date, default: Date.now }
   }],
   checklist: [{
     text: { type: String, required: true },
     completed: { type: Boolean, default: false },
-    completedBy: { type: Schema.Types.ObjectId, ref: 'Employee' },
+    completedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     completedAt: Date
   }],
   timeEntries: [{
-    user: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     startTime: { type: Date, required: true },
     endTime: Date,
     duration: { type: Number, default: 0 },
@@ -136,7 +136,7 @@ const taskSchema = new Schema<ITask>({
     mimetype: String,
     size: Number,
     url: { type: String, required: true },
-    uploadedBy: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+    uploadedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     uploadedAt: { type: Date, default: Date.now }
   }],
   customFields: [{
@@ -157,7 +157,7 @@ const taskSchema = new Schema<ITask>({
   isRecurring: { type: Boolean, default: false },
   recurrencePattern: { type: String },
   blockedBy: { type: String },
-  watchers: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
+  watchers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   isTemplate: { type: Boolean, default: false },
   templateName: { type: String }
 }, { timestamps: true });

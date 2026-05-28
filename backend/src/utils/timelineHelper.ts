@@ -63,7 +63,7 @@ export const getEntityTimeline = async (entityType: 'project' | 'task', entityId
       entityType,
       entityId: new mongoose.Types.ObjectId(entityId)
     })
-    .populate('user', 'firstName lastName')
+    .populate('user', 'name email')
     .sort({ createdAt: -1 });
 
     return timeline;

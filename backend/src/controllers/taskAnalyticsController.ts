@@ -151,7 +151,7 @@ export const getProjectAnalytics = async (req: Request, res: Response) => {
     if (!projectId) return res.status(400).json({ message: 'Project ID required' });
     
     const tasks = await Task.find({ project: projectId, isTemplate: false })
-      .populate('assignedTo', 'firstName lastName');
+      .populate('assignedTo', 'name email');
     
     // Team performance
     const teamPerformance: { [key: string]: any } = {};
@@ -278,7 +278,7 @@ export const getTeamPerformance = async (req: Request, res: Response) => {
       if (endDate) filter.createdAt.$lte = new Date(endDate as string);
     }
     
-    const tasks = await Task.find(filter).populate('assignedTo', 'firstName lastName');
+    const tasks = await Task.find(filter).populate('assignedTo', 'name email');
     
     const teamStats: { [key: string]: any } = {};
     

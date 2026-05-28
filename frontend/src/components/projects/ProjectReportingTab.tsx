@@ -19,9 +19,10 @@ import {
   FileText, Plus, CheckCircle2, Clock, AlertTriangle, TrendingUp,
   Users, Calendar, Send, Eye, Trash2, Check, X
 } from "lucide-react";
-import { projectReportingAPI, DailyReport, FinancialEntry, ProgressSummary } from "@/lib/api/projectReportingAPI";
+import { projectReportingAPI, DailyReport, FinancialEntry, ProgressSummary, ReportingSchedule, ReportTemplate } from "@/lib/api/projectReportingAPI";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import ReportDetailDialog from "./ReportDetailDialog";
 
 interface ProjectReportingTabProps {
   projectId: string;
@@ -32,12 +33,14 @@ export default function ProjectReportingTab({ projectId }: ProjectReportingTabPr
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [financialEntries, setFinancialEntries] = useState<FinancialEntry[]>([]);
   const [progressSummary, setProgressSummary] = useState<ProgressSummary | null>(null);
+  const [schedule, setSchedule] = useState<ReportingSchedule | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showFinancialDialog, setShowFinancialDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedReports, setSelectedReports] = useState<string[]>([]);
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
+  const [viewingReport, setViewingReport] = useState<DailyReport | null>(null);
 
   // Report form
   const [reportForm, setReportForm] = useState({
@@ -46,7 +49,8 @@ export default function ProjectReportingTab({ projectId }: ProjectReportingTabPr
     activities: [{ description: "", category: "other" as string, hoursSpent: 0 }],
     blockers: [] as { description: string; severity: string }[],
     nextSteps: [""],
-    notes: ""
+    notes: "",
+    customFieldValues: {} as Record<string, any>
   });
 
   // Financial entry form
@@ -63,14 +67,16 @@ export default function ProjectReportingTab({ projectId }: ProjectReportingTabPr
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [reportsRes, entriesRes, progressRes] = await Promise.all([
+      const [reportsRes, entriesRes, progressRes, scheduleRes] = await Promise.all([
         projectReportingAPI.getProjectReports(projectId, { limit: 20 }).catch(() => ({ data: [] })),
         projectReportingAPI.getFinancialEntries(projectId, { limit: 20 }).catch(() => ({ data: [] })),
-        projectReportingAPI.getProgressSummary(projectId).catch(() => ({ data: null }))
+        projectReportingAPI.getProgressSummary(projectId).catch(() => ({ data: null })),
+        projectReportingAPI.getSchedule(projectId).catch(() => ({ data: null }))
       ]);
       setReports(reportsRes.data || []);
       setFinancialEntries(entriesRes.data || []);
       setProgressSummary(progressRes.data || null);
+      setSchedule(scheduleRes.data || null);
     } catch (error) {
       console.error("Failed to fetch reporting data:", error);
     } finally {
@@ -94,6 +100,7 @@ export default function ProjectReportingTab({ projectId }: ProjectReportingTabPr
         blockers: reportForm.blockers.filter(b => b.description),
         nextSteps: reportForm.nextSteps.filter(Boolean),
         notes: reportForm.notes || undefined,
+        customFieldValues: reportForm.customFieldValues,
         status: "submitted"
       } as any);
       toast.success("Report submitted successfully");
@@ -104,7 +111,8 @@ export default function ProjectReportingTab({ projectId }: ProjectReportingTabPr
         activities: [{ description: "", category: "other", hoursSpent: 0 }],
         blockers: [],
         nextSteps: [""],
-        notes: ""
+        notes: "",
+        customFieldValues: {}
       });
       fetchData();
     } catch (error: any) {
@@ -282,23 +290,29 @@ export default function ProjectReportingTab({ projectId }: ProjectReportingTabPr
           ) : (
             <div className="space-y-2">
               {reports.map(report => (
-                <Card key={report._id} className="hover:shadow-sm transition-shadow">
+                <Card
+                  key={report._id}
+                  className="hover:shadow-sm hover:border-primary/40 transition-all cursor-pointer"
+                  onClick={() => setViewingReport(report)}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={selectedReports.includes(report._id)}
-                        onCheckedChange={(checked) => {
-                          setSelectedReports(prev =>
-                            checked ? [...prev, report._id] : prev.filter(id => id !== report._id)
-                          );
-                        }}
-                        disabled={report.status === "acknowledged"}
-                      />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedReports.includes(report._id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedReports(prev =>
+                              checked ? [...prev, report._id] : prev.filter(id => id !== report._id)
+                            );
+                          }}
+                          disabled={report.status === "acknowledged"}
+                        />
+                      </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">
-                              {report.reportedBy?.firstName} {report.reportedBy?.lastName}
+                              {report.reportedBy?.name}
                             </span>
                             <span className="text-xs text-muted-foreground">
                               {format(new Date(report.reportDate), "MMM dd, yyyy")}
@@ -315,6 +329,7 @@ export default function ProjectReportingTab({ projectId }: ProjectReportingTabPr
                           )}
                         </div>
                       </div>
+                      <Eye className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </CardContent>
                 </Card>
@@ -480,6 +495,15 @@ export default function ProjectReportingTab({ projectId }: ProjectReportingTabPr
               ))}
             </div>
 
+            {/* Template-driven sections + custom fields */}
+            {schedule?.template && (
+              <TemplateFieldsBlock
+                template={schedule.template}
+                values={reportForm.customFieldValues}
+                onChange={(values) => setReportForm(f => ({ ...f, customFieldValues: values }))}
+              />
+            )}
+
             {/* Notes */}
             <div>
               <Label className="text-xs">Notes (optional)</Label>
@@ -569,6 +593,125 @@ export default function ProjectReportingTab({ projectId }: ProjectReportingTabPr
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReportDetailDialog
+        report={viewingReport}
+        onClose={() => setViewingReport(null)}
+      />
+    </div>
+  );
+}
+
+// ==========================================
+// Template fields block — dynamic form
+// ==========================================
+
+interface TemplateFieldsBlockProps {
+  template: ReportTemplate;
+  values: Record<string, any>;
+  onChange: (values: Record<string, any>) => void;
+}
+
+function TemplateFieldsBlock({ template, values, onChange }: TemplateFieldsBlockProps) {
+  const update = (key: string, value: any) => {
+    onChange({ ...values, [key]: value });
+  };
+
+  const hasSections = (template.sections || []).length > 0;
+  const hasCustomFields = (template.customFields || []).length > 0;
+
+  if (!hasSections && !hasCustomFields) return null;
+
+  return (
+    <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs font-semibold">
+          Project template fields
+          <span className="ml-2 text-muted-foreground font-normal">v{template.version}</span>
+        </Label>
+      </div>
+
+      {hasSections && (
+        <div className="space-y-1">
+          {template.sections.map(s => (
+            <div key={s.key} className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{s.label}</span>
+              {s.required && <span className="text-red-500 ml-1">*</span>}
+              {s.helpText && <span className="ml-2">— {s.helpText}</span>}
+            </div>
+          ))}
+          <p className="text-[10px] text-muted-foreground italic">
+            Sections above are a checklist — make sure your activities cover them.
+          </p>
+        </div>
+      )}
+
+      {hasCustomFields && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {template.customFields.map(f => (
+            <div key={f.key} className="space-y-1">
+              <Label className="text-xs">
+                {f.label}
+                {f.required && <span className="text-red-500 ml-1">*</span>}
+              </Label>
+              {f.type === "text" && (
+                <Input
+                  type="text"
+                  value={values[f.key] ?? ""}
+                  onChange={e => update(f.key, e.target.value)}
+                  placeholder={f.helpText}
+                />
+              )}
+              {f.type === "number" && (
+                <Input
+                  type="number"
+                  value={values[f.key] ?? ""}
+                  onChange={e => update(f.key, e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder={f.helpText}
+                />
+              )}
+              {f.type === "date" && (
+                <Input
+                  type="date"
+                  value={values[f.key] ? String(values[f.key]).slice(0, 10) : ""}
+                  onChange={e => update(f.key, e.target.value)}
+                />
+              )}
+              {f.type === "select" && (
+                <Select
+                  value={values[f.key] ?? ""}
+                  onValueChange={v => update(f.key, v)}
+                >
+                  <SelectTrigger><SelectValue placeholder="Choose..." /></SelectTrigger>
+                  <SelectContent>
+                    {(f.options || []).map(opt => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {f.type === "photo" && (
+                <>
+                  <Input
+                    type="url"
+                    value={values[f.key] ?? ""}
+                    onChange={e => update(f.key, e.target.value)}
+                    placeholder="Paste image URL (file upload coming soon)"
+                  />
+                  {values[f.key] && /^https?:\/\//i.test(values[f.key]) && (
+                    <a href={values[f.key]} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline break-all">
+                      Preview link
+                    </a>
+                  )}
+                </>
+              )}
+              {f.helpText && f.type !== "text" && f.type !== "number" && (
+                <p className="text-[10px] text-muted-foreground">{f.helpText}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
