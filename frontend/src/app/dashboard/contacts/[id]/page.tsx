@@ -29,7 +29,6 @@ import {
   FileText, 
   Tag, 
   User,
-  RefreshCw,
   AlertTriangle,
   Calendar
 } from 'lucide-react';

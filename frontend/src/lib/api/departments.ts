@@ -2,23 +2,8 @@
 import api from './api';
 
 import {
-  Department,
-  Employee,
-  DepartmentAnalytics,
-  DepartmentProject,
-  ActivityLog,
-  DepartmentNotification,
-  BudgetHistory,
-  PerformanceMetrics,
-  TeamStructure,
-  UpcomingDeadline,
-  ResourceUtilization,
-  ComplianceStatus,
   DepartmentGoal,
-  BudgetAdjustment,
-  DepartmentFormData,
-  DepartmentExportOptions,
-  DepartmentReport
+  BudgetAdjustment
 } from '@/types/department';
 
 // Additional types for the API

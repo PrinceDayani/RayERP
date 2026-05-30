@@ -3,13 +3,10 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, ChevronLeft, ChevronRight, Users, Clock, AlertTriangle } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Users, AlertTriangle } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, startOfMonth, endOfMonth, eachWeekOfInterval } from 'date-fns';
 import { resourceApi } from '@/lib/api/resources';
-import { employeesAPI } from '@/lib/api/employeesAPI';
-import { getAllProjects } from '@/lib/api/projectsAPI';
 import { toast } from '@/hooks/use-toast';
 
 interface AllocationData {

@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, FileText, TrendingUp, Coins, Building, Users, Plus, Filter, Download, Eye, BarChart3, PieChart, Printer, Settings, ArrowLeft, Activity } from 'lucide-react';
+import { FileText, TrendingUp, Coins, Building, Users, Plus, Filter, Download, Eye, BarChart3, PieChart, Printer, Activity } from 'lucide-react';
 import ChartOfAccounts from './ChartOfAccounts';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { toast } from '@/hooks/use-toast';
@@ -552,7 +552,7 @@ const GeneralLedger = () => {
 
   const fetchLedgerEntries = (accountId?: string) => {
     // If accountId is provided, filter by that account, otherwise get all entries
-    let entries: LedgerEntry[] = [];
+    const entries: LedgerEntry[] = [];
     let runningBalance = 0;
 
     // Sort journal entries by date

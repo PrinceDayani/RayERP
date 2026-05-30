@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Briefcase, Calculator, FileText, TrendingUp, BarChart3, Coins, Receipt, Building2, BookOpen, FolderOpen, Banknote, Repeat, PieChart, Wallet, FileSpreadsheet, ChevronRight, Plus, Globe, Scale, Clock, Lock, Shield, Zap, CheckCircle, FileCheck, ArrowUpRight, Activity } from 'lucide-react';
+import { Briefcase, FileText, TrendingUp, BarChart3, Coins, Receipt, Building2, BookOpen, FolderOpen, Banknote, Repeat, PieChart, Wallet, FileSpreadsheet, ChevronRight, Plus, Globe, Scale, Clock, Lock, Shield, Zap, CheckCircle, FileCheck, ArrowUpRight, Activity } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useFinanceShortcuts } from '@/hooks/useFinanceShortcuts';

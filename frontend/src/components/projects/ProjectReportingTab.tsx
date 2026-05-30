@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -10,14 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
 import {
-  FileText, Plus, CheckCircle2, Clock, AlertTriangle, TrendingUp,
-  Users, Calendar, Send, Eye, Trash2, Check, X
+  FileText, Plus, AlertTriangle, TrendingUp, Send, Eye, Check
 } from "lucide-react";
 import { projectReportingAPI, DailyReport, FinancialEntry, ProgressSummary, ReportingSchedule, ReportTemplate } from "@/lib/api/projectReportingAPI";
 import { toast } from "sonner";

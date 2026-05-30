@@ -12,9 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle, XCircle, Clock, Eye, ArrowLeft, Search, Filter, AlertCircle, TrendingUp, Calendar, Coins, RefreshCw, Users, FileText, Timer, Zap, BarChart3, Download, Bell } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Eye, ArrowLeft, Search, AlertCircle, TrendingUp, Calendar, Coins, RefreshCw, Users, FileText, Download, Bell } from "lucide-react";
 import { Budget } from "@/types/budget";
-import { getPendingApprovals, approveBudget, rejectBudget, getAllBudgets } from "@/lib/api/budgetAPI";
+import { approveBudget, rejectBudget, getAllBudgets } from "@/lib/api/budgetAPI";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { formatCurrency } from "@/utils/currency";

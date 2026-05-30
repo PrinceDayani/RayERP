@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ArrowLeft, Play, Search, Zap, Layers, Clock, GitBranch, ChevronRight
 } from "lucide-react";
-import { workflowsAPI, WorkflowTemplate, EntityType } from "@/lib/api/workflowsAPI";
+import { workflowsAPI, WorkflowTemplate } from "@/lib/api/workflowsAPI";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {

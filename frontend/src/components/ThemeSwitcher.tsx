@@ -12,8 +12,6 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/tooltip";
 
 export default function ThemeSwitcher() {
   const [mounted, setMounted] = useState(false);
@@ -42,7 +40,7 @@ export default function ThemeSwitcher() {
 
       // Force a repaint to ensure theme is applied
       root.style.display = 'none';
-      root.offsetHeight; // Trigger reflow
+      void root.offsetHeight; // Trigger reflow
       root.style.display = '';
     }
   }, [mounted, resolvedTheme]);

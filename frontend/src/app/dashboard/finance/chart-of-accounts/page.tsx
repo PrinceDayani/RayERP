@@ -10,11 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FolderOpen, Edit, Trash2, ArrowLeft, Download, Upload, FileText, Search, TrendingUp, TrendingDown, Coins, Layers, RefreshCw } from 'lucide-react';
+import { Plus, FolderOpen, Edit, Trash2, ArrowLeft, Download, FileText, Search, TrendingUp, TrendingDown, Coins, Layers, RefreshCw } from 'lucide-react';
 import { generalLedgerAPI, type Account } from '@/lib/api/generalLedgerAPI';
 import { chartOfAccountsAPI } from '@/lib/api/chartOfAccountsAPI';
 import { toast } from '@/components/ui/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FinanceAccountCreationForm from '@/components/finance/AccountCreationForm';
 
 export default function ChartOfAccountsPage() {

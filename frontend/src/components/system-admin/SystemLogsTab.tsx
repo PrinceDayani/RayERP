@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Download, Search, RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import adminAPI from "@/lib/api/adminAPI";
 import { toast } from "@/components/ui/use-toast";
 import { PERMISSIONS } from "@/lib/permissions";

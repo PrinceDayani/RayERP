@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProfileSettings from '@/components/settings/ProfileSettings';
@@ -11,7 +10,7 @@ import NotificationSettings from '@/components/settings/NotificationSettings';
 import AppearanceSettings from '@/components/settings/AppearanceSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 import { useSocket } from '@/hooks/useSocket';
-import { Settings, User, Bell, Palette, Shield, Wifi, WifiOff, Search, Command, ArrowLeft, Sparkles, Globe, IndianRupee, Users, Coins } from 'lucide-react';
+import { Settings, User, Bell, Palette, Shield, Wifi, WifiOff, Search, Command, Sparkles, Globe, IndianRupee, Users, Coins } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import HierarchySettings from '@/components/settings/HierarchySettings';
 import CurrencySettings from '@/components/settings/CurrencySettings';

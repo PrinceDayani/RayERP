@@ -14,12 +14,10 @@ import {
   MessageSquare, 
   Paperclip, 
   Tag, 
-  Users, 
-  Clock,
+  Users,
   Plus,
   Trash2,
-  RefreshCw,
-  Filter
+  RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
 

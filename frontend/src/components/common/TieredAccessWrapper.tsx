@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 import { AccessLevelLegend } from "@/components/ui/access-level-indicator";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Info, HelpCircle, Users, Shield } from "lucide-react";
+import { Users, Shield } from "lucide-react";
 
 interface TieredAccessWrapperProps {
   children: ReactNode;

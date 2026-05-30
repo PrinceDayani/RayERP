@@ -8,11 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Save, Copy, Star, ArrowLeft, Search } from "lucide-react";
+import { Plus, Trash2, Save, Copy, Star, ArrowLeft, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
-import { getBudgetTemplates, createBudgetTemplate } from "@/lib/api/budgetAPI";
 import { BudgetTemplate } from "@/types/budget";
 import auditLogger from "@/lib/auditLog";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -265,7 +264,7 @@ export default function BudgetTemplatesPage() {
     localStorage.setItem("template-favorites", JSON.stringify([...next]));
   };
 
-  const useTemplate = async (template: BudgetTemplate) => {
+  const applyTemplate = async (template: BudgetTemplate) => {
     try {
       const typeMap: Record<string, 'labor' | 'materials' | 'equipment' | 'overhead'> = {
         'income': 'materials',
@@ -634,7 +633,7 @@ export default function BudgetTemplatesPage() {
                   variant="default" 
                   size="sm" 
                   className="flex-1"
-                  onClick={() => useTemplate(template)}
+                  onClick={() => applyTemplate(template)}
                 >
                   <Copy className="w-4 h-4 mr-2" />
                   Use Template

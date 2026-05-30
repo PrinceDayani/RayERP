@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { 
-  ArrowLeft, TrendingUp, TrendingDown, Coins, Users, 
+  ArrowLeft, TrendingUp, Coins, Users, 
   Calendar, CheckCircle, AlertCircle, Clock, BarChart3,
   Activity, Target, Zap, Award
 } from "lucide-react";

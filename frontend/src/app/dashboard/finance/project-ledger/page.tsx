@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { 
   Download, 
-  Filter, 
   Plus, 
   Edit, 
   Eye, 

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import ChatInterface from '@/components/chat/ChatInterface';
 import { Card } from '@/components/ui/card';
 

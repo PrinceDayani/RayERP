@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Lock, Shield, AlertTriangle } from "lucide-react";
+import { Lock, Shield } from "lucide-react";
 import { useAdminPermissions, AdminPermissions } from '@/hooks/useAdminPermissions';
 
 interface PermissionGuardProps {

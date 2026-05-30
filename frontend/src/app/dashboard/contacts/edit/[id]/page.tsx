@@ -6,7 +6,7 @@ import ContactForm from '@/components/Forms/ContactForm';
 import { getContact, updateContact, Contact } from '@/lib/api/index';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SectionLoader } from '@/components/PageLoader';
-import { AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 export default function EditContactPage() {

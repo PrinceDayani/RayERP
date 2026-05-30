@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Banknote, AlertCircle, Receipt, TrendingUp, Clock, FileText, Search, Filter, X, Download } from 'lucide-react';
+import { Plus, Banknote, AlertCircle, Clock, FileText, Search, X, Download } from 'lucide-react';
 import { exportBills } from '@/utils/exportUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

@@ -4,12 +4,14 @@ import { Spinner } from './ui/spinner';
 // Lazy load components with error boundary
 export const createLazyComponent = (importFn: () => Promise<{ default: React.ComponentType<any> }>) => {
   const LazyComponent = lazy(importFn);
-  
-  return (props: any) => (
+
+  const WrappedLazyComponent = (props: any) => (
     <Suspense fallback={<div className="flex items-center justify-center p-8"><Spinner /></div>}>
       <LazyComponent {...props} />
     </Suspense>
   );
+  WrappedLazyComponent.displayName = 'WrappedLazyComponent';
+  return WrappedLazyComponent;
 };
 
 // Pre-defined lazy components for common modules

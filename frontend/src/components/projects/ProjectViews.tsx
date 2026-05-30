@@ -5,15 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { 
-  Grid3X3, List, Calendar, BarChart3, Clock, AlertTriangle, 
-  CheckCircle, TrendingUp, Users, Target, Activity,
-  Filter, SortAsc, Eye, Briefcase
+  Grid3X3, List, Calendar, BarChart3, AlertTriangle, 
+  CheckCircle, TrendingUp, Users, Activity, Eye, Briefcase
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "@/components/ui/use-toast";
 import { Project } from "@/lib/api/projectsAPI";
 
 interface ProjectViewsProps {

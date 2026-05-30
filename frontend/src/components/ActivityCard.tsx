@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Eye, Info, X } from 'lucide-react';
 import { Activity } from '@/types/activity';
-import { formatTimeAgo, getActionIcon, getActionColor, getCategoryIcon, getSeverityColor } from '@/lib/utils/activityUtils';
+import { formatTimeAgo, getActionIcon, getActionColor, getSeverityColor } from '@/lib/utils/activityUtils';
 
 interface ActivityCardProps {
   activity: Activity;

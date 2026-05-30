@@ -533,7 +533,7 @@ class _SectionCard extends StatelessWidget {
                 Icon(icon, size: 16, color: iconColor),
                 const SizedBox(width: 8),
                 Expanded(child: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : AppTheme.textPrimary))),
-                if (trailing != null) trailing!,
+                ?trailing,
               ],
             ),
           ),

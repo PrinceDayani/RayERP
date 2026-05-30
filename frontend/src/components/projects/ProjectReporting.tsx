@@ -15,9 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose
+  DialogFooter
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
 import {
@@ -29,10 +27,7 @@ import {
   CheckCircle2,
   Clock,
   Users,
-  IndianRupee,
-  Eye,
   Check,
-  X,
   Trash2
 } from "lucide-react";
 import { projectReportingAPI, type DailyReport, type FinancialEntry, type ProgressSummary, type ReportingStatus, type ReportingSchedule, type ReportTemplate, type TemplateFieldType } from "@/lib/api/projectReportingAPI";

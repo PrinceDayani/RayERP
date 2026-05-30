@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SectionLoader } from '@/components/PageLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Search, Download, FileText, TrendingUp, TrendingDown, Coins, Filter } from 'lucide-react';
+import { BookOpen, Search, Download, FileText, TrendingUp, TrendingDown, Coins } from 'lucide-react';
 import { useCurrencyFormat } from '@/hooks/useCurrencyFormat';
 import { useToast } from '@/hooks/use-toast';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';

@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ArrowLeft, BarChart3, TrendingUp, Clock, AlertTriangle,
-  CheckCircle2, Activity, Target
+  ArrowLeft, BarChart3, TrendingUp, Clock, AlertTriangle, Activity, Target
 } from "lucide-react";
 import { workflowsAPI, WorkflowDashboardStats } from "@/lib/api/workflowsAPI";
 import { Skeleton } from "@/components/ui/skeleton";

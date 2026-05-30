@@ -37,7 +37,7 @@ export function ThemeEnforcer() {
     // Force repaint to ensure theme changes are visible
     requestAnimationFrame(() => {
       root.style.display = 'none';
-      root.offsetHeight; // Trigger reflow
+      void root.offsetHeight; // Trigger reflow
       root.style.display = '';
     });
     

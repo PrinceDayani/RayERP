@@ -1,8 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Keyboard, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Keyboard } from 'lucide-react';
 
 interface ShortcutsPanelProps {
   open: boolean;

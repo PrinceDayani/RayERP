@@ -124,7 +124,7 @@ export default function BackupScheduleManager() {
     const now = new Date();
     const [hours, minutes] = time.split(':').map(Number);
     
-    let nextRun = new Date();
+    const nextRun = new Date();
     nextRun.setHours(hours, minutes, 0, 0);
     
     switch (frequency) {

@@ -15,12 +15,10 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { 
   Plus, 
   Users, 
-  Calendar, 
-  Coins,
+  Calendar,
   Clock,
   UserCheck,
   UserX,
-  Search,
   Edit,
   Trash2,
   BarChart3,
@@ -31,12 +29,10 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
-import Link from "next/link";
 import { employeesAPI } from "@/lib/api/employeesAPI";
 import attendanceAPI from "@/lib/api/attendanceAPI";
-import leaveAPI, { Leave } from "@/lib/api/leaveAPI";
+import leaveAPI from "@/lib/api/leaveAPI";
 import employeeReportAPI from "@/lib/api/employeeReportAPI";
-import { EmployeeList } from "@/components/employee";
 import EmployeeFilters from "@/components/employee/EmployeeFilters";
 
 interface LeaveCreateRequest {

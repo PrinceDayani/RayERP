@@ -1,5 +1,5 @@
 import api from './api';
-import { Budget, BudgetTemplate, BudgetApproval } from '@/types/budget';
+import { Budget, BudgetTemplate } from '@/types/budget';
 
 export interface CreateBudgetRequest {
   projectId?: string;

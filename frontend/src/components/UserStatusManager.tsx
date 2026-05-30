@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, XCircle, Clock, User, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, User, AlertTriangle } from 'lucide-react';
 import usersAPI, { User as UserType, StatusChangeRequest } from '@/lib/api/usersAPI';
 
 interface UserStatusManagerProps {

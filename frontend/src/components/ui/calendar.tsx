@@ -15,14 +15,11 @@ import {
   setYear, 
   eachDayOfInterval,
   isToday,
-  isValid,
-  parse
+  isValid
 } from "date-fns";
 import { 
   ChevronLeft, 
-  ChevronRight, 
-  Calendar as CalendarIcon, 
-  X 
+  ChevronRight 
 } from "lucide-react";
 
 // --- Utility for conditional classes ---
@@ -35,6 +32,17 @@ const MONTHS = [
 ];
 
 // --- The DatePicker Component ---
+interface CalendarProps {
+  selectedDate?: any;
+  onChange?: (value: any) => void;
+  className?: string;
+  placeholder?: string;
+  mode?: string;
+  selected?: any;
+  onSelect?: (value: any) => void;
+  disabled?: any;
+}
+
 const Calendar = ({
   selectedDate,
   onChange = () => {},
@@ -44,7 +52,7 @@ const Calendar = ({
   selected,
   onSelect,
   disabled
-}) => {
+}: CalendarProps) => {
   // Handle both prop styles
   const actualSelected = selected || selectedDate;
   const actualOnChange = onSelect || onChange;

@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, FolderOpen, Building2, Receipt, Calculator, FileText, Trash2, Edit, Eye, CheckCircle, Download, BookOpen, Filter, Upload, TrendingUp, Coins, BarChart3 } from 'lucide-react';
+import { Plus, FolderOpen, Building2, Receipt, Calculator, FileText, Trash2, Edit, CheckCircle, Download, BookOpen, Filter, Upload, TrendingUp, Coins, BarChart3 } from 'lucide-react';
 import { generalLedgerAPI, type Account, type JournalEntry } from '@/lib/api/generalLedgerAPI';
 import { toast } from '@/components/ui/use-toast';
 

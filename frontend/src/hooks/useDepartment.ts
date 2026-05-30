@@ -4,17 +4,6 @@ import { departmentApi } from '@/lib/api/departments';
 import { useToast } from '@/hooks/use-toast';
 import {
   Department,
-  Employee,
-  DepartmentAnalytics,
-  DepartmentProject,
-  ActivityLog,
-  DepartmentNotification,
-  BudgetHistory,
-  PerformanceMetrics,
-  TeamStructure,
-  UpcomingDeadline,
-  ResourceUtilization,
-  ComplianceStatus,
   DepartmentGoal,
   BudgetAdjustment,
   DepartmentFormData

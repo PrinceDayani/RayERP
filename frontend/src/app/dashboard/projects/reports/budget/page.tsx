@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Coins, TrendingUp, TrendingDown, AlertCircle, ArrowLeft, PieChart } from "lucide-react";
+import { Coins, TrendingUp, TrendingDown, AlertCircle, ArrowLeft } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 import { useRouter } from "next/navigation";
 import { getAllProjects } from "@/lib/api/projectsAPI";

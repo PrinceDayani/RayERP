@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProjectAnalytics } from '@/hooks/tasks/useProjectAnalytics';
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, Clock, CheckCircle, AlertCircle, Users } from 'lucide-react';
+import { TrendingUp, Clock, CheckCircle, AlertCircle, Users } from 'lucide-react';
 
 interface ProjectAnalyticsDashboardProps {
   projectId: string;

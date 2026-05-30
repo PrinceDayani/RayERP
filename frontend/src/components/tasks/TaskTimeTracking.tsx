@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { tasksAPI } from "@/lib/api/tasksAPI";
 import { toast } from "@/components/ui/use-toast";
-import { Clock, Play, Square, Plus } from "lucide-react";
+import { Clock, Play, Square } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface TimeEntry {

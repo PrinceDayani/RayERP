@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Clock, AlertCircle, User } from 'lucide-react';
+import { Clock, AlertCircle, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import tasksAPI, { type Task } from '@/lib/api/tasksAPI';
 import Link from 'next/link';

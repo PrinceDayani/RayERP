@@ -6,14 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import {
   ArrowLeft, Edit, Mail, Phone, MapPin, Calendar, Coins, User, Clock,
-  FileText, BarChart3, Briefcase, Award, TrendingUp, Activity, Users,
-  CheckCircle2, XCircle, AlertCircle, Target, Zap, CheckCircle
+  FileText, BarChart3, Briefcase, Award, TrendingUp, Activity, XCircle, AlertCircle, Target, CheckCircle
 } from 'lucide-react';
-import Link from 'next/link';
-import { ResourceAllocation, Task, TaskStats, SkillMatrixData, Skill, LeaveBalance, LeaveBalanceType, Achievement, WorkSummary, CareerEvent } from '@/types/employee-profile';
+import { ResourceAllocation, Task, TaskStats, Skill, LeaveBalance, Achievement, WorkSummary } from '@/types/employee-profile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageLoader } from '@/components/PageLoader';
 import { employeesAPI } from '@/lib/api/employeesAPI';
@@ -22,12 +19,9 @@ import attendanceAPI from '@/lib/api/attendanceAPI';
 import leaveAPI from '@/lib/api/leaveAPI';
 import { resourceApi } from '@/lib/api/resources';
 import { toast } from '@/components/ui/use-toast';
-import { useCurrency } from '@/contexts/CurrencyContext';
 import { generateProfilePDF } from '@/lib/utils/profile-pdf';
 import SkillMatrix from '@/components/employee/SkillMatrix';
 import ProjectHistory from '@/components/employee/ProjectHistory';
-import AttendanceInsights from '@/components/employee/AttendanceInsights';
-import SalaryManagement from '@/components/employee/SalaryManagement';
 import CareerTimeline from '@/components/employee/CareerTimeline';
 import WorkSummaryDashboard from '@/components/employee/WorkSummaryDashboard';
 import AchievementsSection from '@/components/employee/AchievementsSection';

@@ -9,7 +9,6 @@ import {
   Settings,
   LogOut,
   HelpCircle,
-  Bell,
   User,
   Shield,
 

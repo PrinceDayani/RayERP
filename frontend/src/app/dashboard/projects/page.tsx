@@ -11,8 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { 
-  Plus, Calendar, Users, BarChart3, CheckCircle, AlertCircle, TrendingUp, Search,
-  MessageSquare, Clock, Coins, Edit, FileText, Download, Filter, ArrowRight,
+  Plus, Calendar, Users, BarChart3, CheckCircle, TrendingUp, Search, Clock, Coins, Edit,
   Briefcase, Target, Activity, Zap, GanttChartSquare, Trash2
 } from "lucide-react";
 import { TieredAccessWrapper } from "@/components/common/TieredAccessWrapper";
@@ -21,7 +20,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useSocket } from "@/hooks/useSocket";
 import tasksAPI, { type Task, type CreateTaskData } from "@/lib/api/tasksAPI";
 import employeesAPI, { type Employee } from "@/lib/api/employeesAPI";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ProjectViews from "@/components/projects/ProjectViews";

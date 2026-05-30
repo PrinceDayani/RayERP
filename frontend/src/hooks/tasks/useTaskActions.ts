@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { useTaskContext } from '@/contexts/TaskContext';
-import { Task } from '@/lib/api/tasksAPI';
 
 export function useTaskActions() {
   const { actions } = useTaskContext();

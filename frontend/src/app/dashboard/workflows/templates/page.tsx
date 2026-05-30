@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Plus, Search, ArrowLeft, Zap, Copy, Trash2, Edit, MoreHorizontal,
-  GitBranch, Clock, Layers, CheckCircle2
+  Plus, Search, ArrowLeft, Zap, Copy, Trash2, Edit, MoreHorizontal, Clock, Layers
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger

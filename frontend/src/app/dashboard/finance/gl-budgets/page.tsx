@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, TrendingUp, AlertTriangle, Copy, CheckCircle, XCircle, Clock, Lock } from 'lucide-react';
+import { Plus, AlertTriangle, Copy, CheckCircle, XCircle, Clock, Lock } from 'lucide-react';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';

@@ -12,10 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Play, Pause, Trash2, RefreshCw, CheckCircle, XCircle, Clock, AlertTriangle, Minus, Edit, History, Download, Search, Copy, Save, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Play, Pause, Trash2, RefreshCw, CheckCircle, XCircle, Clock, AlertTriangle, Edit, History, Download, Search, Copy, Save, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { recurringEntriesAPI, accountsAPI } from '@/lib/api/financeAPI';
-import { validateRecurringEntry } from '@/utils/validation';
-import { exportRecurringEntries } from '@/utils/exportUtils';
 
 export default function RecurringEntriesPage() {
   const [entries, setEntries] = useState<any[]>([]);

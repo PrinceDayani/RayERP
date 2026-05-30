@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, TrendingDown, AlertTriangle, Download, Filter, Calendar } from 'lucide-react';
+import { Clock, TrendingDown, AlertTriangle, Download } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import DataTable, { Column } from '@/components/DataTable';
 import LoadingSpinner from '@/components/LoadingSpinner';

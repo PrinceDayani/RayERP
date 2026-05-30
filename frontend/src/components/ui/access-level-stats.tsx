@@ -1,9 +1,8 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { UserCheck, Eye, TrendingUp, Users } from "lucide-react";
+import { UserCheck, Eye, Users } from "lucide-react";
 
 interface AccessLevelStatsProps {
   fullAccessCount: number;

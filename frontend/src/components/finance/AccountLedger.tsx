@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, Filter, Plus, TrendingUp, TrendingDown, ArrowLeft, RefreshCw, Edit, FileText, Image, Paperclip, ArrowRight } from 'lucide-react';
+import { Download, Filter, Plus, TrendingUp, TrendingDown, ArrowLeft, RefreshCw, Edit, FileText, Paperclip, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrencyFormat } from '@/hooks/useCurrencyFormat';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';

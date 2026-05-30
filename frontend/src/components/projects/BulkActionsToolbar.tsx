@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Trash2, CheckCircle, UserPlus } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 interface BulkActionsToolbarProps {

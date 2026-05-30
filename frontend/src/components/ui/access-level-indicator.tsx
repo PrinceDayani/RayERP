@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/tooltip";
-import { Eye, Lock, Users, Info, Shield, UserCheck } from "lucide-react";
+import { Eye, Info, UserCheck } from "lucide-react";
 
 interface AccessLevelIndicatorProps {
   isBasicView?: boolean;

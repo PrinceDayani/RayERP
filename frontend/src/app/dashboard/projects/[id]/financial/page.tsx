@@ -7,7 +7,7 @@ import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, TrendingDown, Coins, AlertTriangle, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertTriangle, RefreshCw } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
 import ProjectCurrencySwitcher from '@/components/projects/ProjectCurrencySwitcher';
 import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';

@@ -1,4 +1,3 @@
-import { CURRENCY_CONFIG } from '@/config/currency.config';
 
 // Exchange rates with USD as base currency
 const EXCHANGE_RATES: Record<string, number> = {

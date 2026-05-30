@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, PieChart, TrendingUp } from 'lucide-react';
+import { BarChart3, PieChart } from 'lucide-react';
 
 interface ActivityStats {
   resourceTypeStats: { _id: string; count: number }[];

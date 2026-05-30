@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AccessLevelIndicator } from "@/components/ui/access-level-indicator";
 import { AccessRequestDialog } from "@/components/ui/access-request-dialog";
-import { Calendar, Users, Edit, Eye, UserPlus, Lock } from "lucide-react";
+import { Calendar, Users, Edit, Eye, UserPlus } from "lucide-react";
 
 interface Project {
   _id: string;

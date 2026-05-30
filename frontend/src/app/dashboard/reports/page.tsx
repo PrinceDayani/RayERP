@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { Download, FileText, Users, Target, MessageSquare, Phone, Calendar, TrendingUp, TrendingDown, Clock, AlertCircle, CheckCircle, Star, ChevronDown, FileSpreadsheet, File } from 'lucide-react';
+import { Download, FileText, Users, Target, MessageSquare, Phone, TrendingUp, CheckCircle, ChevronDown, FileSpreadsheet, File } from 'lucide-react';
 import { exportToPDF, exportToExcel, exportToCSV, exportToText, ExportData } from '@/lib/exportUtils';
 import toast from 'react-hot-toast';
 import { reportsAPI } from '@/lib/api/reportsAPI';
@@ -18,7 +18,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import { formatCurrency, getUserPreferredCurrency } from '@/utils/currency';
-import { useCurrency } from '@/hooks/useCurrency';
 
 const COLORS = {
   primary: '#3b82f6',

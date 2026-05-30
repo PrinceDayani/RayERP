@@ -5,16 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  Plus,
   Calendar,
   Users,
   Target,
-  Award,
   Clock,
   CheckCircle2,
   AlertCircle,
   Briefcase,
-  TrendingUp,
   Filter
 } from "lucide-react";
 import { useState } from "react";

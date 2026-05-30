@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar, Users, Clock, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { employeesAPI } from '@/lib/api/employeesAPI';
 import { getAllProjects } from '@/lib/api/projectsAPI';
-import { resourceApi } from '@/lib/api/resources';
 
 interface Employee {
   _id: string;

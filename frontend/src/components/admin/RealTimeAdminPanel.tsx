@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { 
   Users, Shield, Activity, Database, Server, AlertTriangle, 
-  CheckCircle, TrendingUp, Eye, Settings, Zap, Clock,
-  UserCheck, UserX, Lock, Unlock, RefreshCw
+  CheckCircle, TrendingUp, Settings, Lock, RefreshCw
 } from "lucide-react";
 import { useRealTime } from '@/context/RealTimeContext';
 import { useAuth } from '@/contexts/AuthContext';

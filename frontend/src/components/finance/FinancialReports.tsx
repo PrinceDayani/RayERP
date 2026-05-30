@@ -14,9 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { FileText, Download, TrendingUp, Eye, FileSpreadsheet, FileJson, Printer, StickyNote, BarChart3, PieChart as PieChartIcon, Save, Clock, HelpCircle, Calendar, History, Mail, Palette, Calculator, Target, TrendingDown } from 'lucide-react';
+import { FileText, Download, TrendingUp, Eye, FileSpreadsheet, FileJson, Printer, StickyNote, BarChart3, PieChart as PieChartIcon, Save, Clock, HelpCircle, History, Mail, Palette, Calculator, Target } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 interface Account {

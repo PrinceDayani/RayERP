@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { TrendingUp, TrendingDown, Users, CheckCircle, Calendar, Download, Award, Target, MessageSquare, FileText, Phone, Package, ShoppingCart, Clock, AlertTriangle, Star, Activity } from 'lucide-react';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { TrendingUp, TrendingDown, Users, CheckCircle, Calendar, Download, Award, Target, MessageSquare, FileText, Phone, Package, ShoppingCart, Clock, Activity } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const COLORS = {

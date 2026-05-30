@@ -25,7 +25,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
-import { formatCurrency } from "@/utils/currency";
 import { getCurrency } from "@/utils/currency";
 import { 
   ArrowLeft, 
@@ -36,7 +35,7 @@ import {
   Edit,
   Settings
 } from "lucide-react";
-import { getProjectById, updateProject, type Project } from "@/lib/api/projectsAPI";
+import { getProjectById, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { GanttChart } from "@/components/GanttChart";
 import tasksAPI, { type Task } from "@/lib/api/tasksAPI";

@@ -7,9 +7,6 @@ import { SectionLoader } from '@/components/PageLoader';
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Table,
@@ -53,14 +50,9 @@ import {
   Settings,
   KeyRound,
   Mail,
-  Calendar,
   Clock,
   User,
-  Hash,
-  Briefcase,
-  Building,
-  Phone,
-  MapPin
+  Briefcase
 } from "lucide-react";
 import { UnifiedRoleManagement } from '@/components/admin/UnifiedRoleManagement';
 

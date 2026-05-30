@@ -10,9 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, FileText, Eye, CheckCircle, XCircle, Search, Filter, Download, ChevronLeft, ChevronRight, History } from 'lucide-react';
+import { Plus, Trash2, FileText, Eye, CheckCircle, XCircle, Search, Download, History } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 

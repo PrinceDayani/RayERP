@@ -1,6 +1,6 @@
 // Real-time Validation Wrapper for Form Inputs
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { validateGSTNumber, validatePANNumber, validateIFSCCode } from '@/utils/validation';
 

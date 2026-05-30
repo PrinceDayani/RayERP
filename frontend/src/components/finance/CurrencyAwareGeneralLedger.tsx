@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Coins, TrendingUp, Building, RefreshCw, Globe } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { formatCurrency } from '@/utils/currency';
 
 interface Account {
   _id: string;

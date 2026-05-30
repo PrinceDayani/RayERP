@@ -41,7 +41,7 @@ export const useSalesData = (options: UseSalesDataOptions = {}): UseSalesDataRet
       setLoading(true);
       setError(null);
 
-      let endpoint = '/sales-reports/report';
+      const endpoint = '/sales-reports/report';
       let ledgerData = null;
 
       // If specific account selected, get ledger data

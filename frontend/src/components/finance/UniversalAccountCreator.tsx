@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
-import { Copy, Save, RefreshCw, Building2, CreditCard, FileText, MapPin, Phone, Mail, Banknote } from 'lucide-react';
+import { Copy, Save, RefreshCw, Building2, CreditCard, FileText, MapPin } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL;
 

@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, X, User, Mail, Phone, Building2, MapPin, FileText, Tag, AlertTriangle, Globe, Linkedin, Twitter, Calendar, Briefcase, Star, TrendingUp, RefreshCw } from 'lucide-react';
+import { Plus, X, User, Mail, Phone, Building2, MapPin, FileText, Tag, AlertTriangle, Globe, Linkedin, Twitter, Star, RefreshCw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ContactFormProps {

@@ -17,7 +17,6 @@ import {
   Settings,
   Shield,
   CheckCircle,
-  Building2,
   UserCheck,
   Calculator,
   PieChart,

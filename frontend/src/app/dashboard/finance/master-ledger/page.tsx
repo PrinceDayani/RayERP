@@ -5,9 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Download, Filter, RefreshCw, Search } from 'lucide-react';
+import { BookOpen, Download, RefreshCw, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrencyFormat } from '@/hooks/useCurrencyFormat';
 

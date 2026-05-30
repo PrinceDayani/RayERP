@@ -8,13 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, FileText, CreditCard, Receipt, RefreshCw, BarChart3, Search, Download, Filter, Calendar } from 'lucide-react';
+import { Plus, FileText, CreditCard, Receipt, RefreshCw, BarChart3, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // Import new components
 import AdvancedFilters from './components/AdvancedFilters';
-import FinanceAnalyticsDashboard from './components/FinanceAnalyticsDashboard';
 import BulkActionsToolbar from './components/BulkActionsToolbar';
 import FinanceRecordActions from './components/FinanceRecordActions';
 import EmptyState from './components/EmptyState';

@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, X, Tag, CheckSquare, Users, Clock, Paperclip, Settings, Link2, MessageSquare, Upload, Play, Square as StopIcon, Download, FileText } from 'lucide-react';
+import { Plus, X, Tag, CheckSquare, Users, Clock, Paperclip, Settings, Link2, MessageSquare, Play, Square as StopIcon, Download, FileText } from 'lucide-react';
 import employeesAPI, { Employee } from '@/lib/api/employeesAPI';
 import { tasksAPI } from '@/lib/api/tasksAPI';
 

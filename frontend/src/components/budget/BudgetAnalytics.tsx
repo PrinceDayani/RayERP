@@ -6,11 +6,8 @@ import {
   BarChart3, 
   TrendingUp, 
   TrendingDown, 
-  Clock, 
-  Users, 
   DollarSign,
   AlertTriangle,
-  CheckCircle,
   Target,
   Zap
 } from 'lucide-react';

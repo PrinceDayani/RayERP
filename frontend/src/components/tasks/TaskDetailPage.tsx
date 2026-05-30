@@ -8,30 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ArrowLeft, 
   Edit, 
   Trash2, 
   Clock, 
   Calendar, 
-  User, 
-  Users, 
-  Tag, 
   CheckSquare, 
   Paperclip, 
   MessageSquare, 
   Play, 
   Square as StopIcon,
-  Download,
-  Link2,
   AlertCircle,
   TrendingUp,
-  FileText,
-  Plus,
-  X,
   Copy
 } from "lucide-react";
 import { TaskCloneDialog } from "./TaskCloneDialog";

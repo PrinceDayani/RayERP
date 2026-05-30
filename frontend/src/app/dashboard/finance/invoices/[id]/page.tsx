@@ -8,7 +8,7 @@ import { PageLoader } from '@/components/PageLoader';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Download, Mail, Printer, Edit, Copy, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Download, Mail, Printer, Edit } from 'lucide-react';
 
 export default function FinanceDetailPage() {
     const params = useParams();

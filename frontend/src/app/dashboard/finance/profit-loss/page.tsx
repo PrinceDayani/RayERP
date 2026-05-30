@@ -7,11 +7,9 @@ import { SectionLoader } from '@/components/PageLoader';
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Download, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Target, Coins, Zap, Filter } from "lucide-react";
+import { TrendingUp, Download, Calendar, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { reportingApi } from "@/lib/api/finance/reportingApi";
 import { DrillDownModal } from "@/components/finance/DrillDownModal";
-import { WaterfallChart } from "@/components/finance/WaterfallChart";
-import { AIInsights } from "@/components/finance/AIInsights";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const ProfitLossPage = () => {

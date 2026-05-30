@@ -1,18 +1,13 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import React, { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { SectionLoader } from '@/components/PageLoader';
-
-// Define types
-interface ContactData {
-  id?: string;
-  name: string;
-  email: string;
-  phone?: string;
-  // add other contact fields as needed
-}
+import ContactForm from '@/components/Forms/ContactForm';
+import { getContact, updateContact, Contact } from '@/lib/api/index';
 
 // Loading component
 function ContactEditLoading() {
@@ -25,21 +20,15 @@ function ContactEditLoading() {
 
 // Content component with useSearchParams
 function ContactEditContent() {
-  const { useState, useEffect } = React;
-  const { useRouter, useSearchParams } = require('next/navigation');
   const router = useRouter();
   const searchParams = useSearchParams();
   const contactId: string | null = searchParams?.get('id');
   
-  const [contact, setContact] = useState<ContactData | null>(null);
+  const [contact, setContact] = useState<Contact | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isFetching, setIsFetching] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  const ContactForm = require('@/components/Forms/ContactForm').default;
-  const { getContact, updateContact } = require('@/lib/api/index');
-  const { ArrowLeft } = require('lucide-react');
-
   useEffect(() => {
     const fetchContact = async () => {
       if (!contactId) {
@@ -64,7 +53,7 @@ function ContactEditContent() {
     fetchContact();
   }, [contactId]);
 
-  const handleSubmit = async (data: ContactData) => {
+  const handleSubmit = async (data: Contact) => {
     if (!contactId) {
       setError('Contact ID is missing');
       return;

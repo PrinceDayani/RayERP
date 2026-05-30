@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { SkillMatrix, SkillLevel, SkillFilters, SkillGapAnalysis, ProjectSkillMatch, SkillDistribution } from '@/types/resource';
 import { resourceApi } from '@/lib/api/resources';
 import { projectsAPI } from '@/lib/api/projectsAPI';
-import { Search, Filter, TrendingUp, Users, Target, BarChart3, Edit2, Save, X } from 'lucide-react';
+import { Search, Filter, TrendingUp, Users, Target, BarChart3, Edit2, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import SkillAnalyticsCharts from './SkillAnalyticsCharts';
 import SkillGapAnalysisView from './SkillGapAnalysisView';

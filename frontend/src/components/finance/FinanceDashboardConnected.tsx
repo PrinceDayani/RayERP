@@ -8,9 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Coins, 
   TrendingUp, 
-  FileText, 
-  AlertCircle, 
-  CheckCircle,
+  FileText,
   RefreshCw,
   Wifi,
   WifiOff

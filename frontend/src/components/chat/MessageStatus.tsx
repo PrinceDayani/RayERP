@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, CheckCheck, Clock, AlertCircle, Send } from 'lucide-react';
+import { Check, CheckCheck, Clock, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/tooltip';
 
 interface MessageStatusProps {

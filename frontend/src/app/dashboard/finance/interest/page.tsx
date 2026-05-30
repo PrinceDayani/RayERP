@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Calculator, Play, FileText, TrendingUp, Coins, Calendar } from 'lucide-react';
+import { Calculator, FileText, TrendingUp, Coins, Calendar } from 'lucide-react';
 import { AccountSelector } from '@/components/finance/AccountSelector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;

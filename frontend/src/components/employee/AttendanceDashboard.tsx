@@ -1,29 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Clock, 
-  Calendar as CalendarIcon, 
-  Users, 
-  CheckCircle, 
-  XCircle, 
-  Plus,
+  Calendar as CalendarIcon,
   Download,
   Filter,
-  Search,
-  BarChart3,
-  TrendingUp,
-  AlertTriangle,
-  Target
+  Search
 } from "lucide-react";
 import { format } from "date-fns";
 

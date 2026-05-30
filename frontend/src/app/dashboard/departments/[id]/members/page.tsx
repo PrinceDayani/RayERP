@@ -13,7 +13,6 @@ import {
     Phone,
     Briefcase,
     CheckCircle2,
-    XCircle,
 } from "lucide-react";
 import { SectionLoader } from '@/components/PageLoader';
 import { Button } from "@/components/ui/button";

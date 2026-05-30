@@ -6,14 +6,9 @@ import { IMilestoneBilling } from '@/types/billing';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  FileText, 
-  CheckCircle, 
-  Clock, 
-  DollarSign,
+import {
   Eye,
   CheckSquare,
-  XCircle,
   FileCheck
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';

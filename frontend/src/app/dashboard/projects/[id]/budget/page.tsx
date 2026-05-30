@@ -7,7 +7,7 @@ import { PageLoader } from '@/components/PageLoader';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Edit, Coins, TrendingUp, AlertTriangle, BarChart3, Send, CheckCircle, XCircle, Clock, FileText, ThumbsUp, ThumbsDown, RotateCcw } from "lucide-react";
+import { Plus, Edit, Coins, TrendingUp, AlertTriangle, Send, CheckCircle, XCircle, Clock, FileText, ThumbsUp, ThumbsDown, RotateCcw } from "lucide-react";
 import { Budget } from "@/types/budget";
 import BudgetDialog from "@/components/budget/BudgetDialog";
 import ProjectBudgetAnalytics from "@/components/budget/ProjectBudgetAnalytics";

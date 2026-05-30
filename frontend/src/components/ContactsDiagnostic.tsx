@@ -10,10 +10,7 @@ import {
   XCircle, 
   AlertTriangle, 
   RefreshCw, 
-  Server, 
-  Database, 
-  Wifi, 
-  User 
+  Server 
 } from 'lucide-react';
 import { checkContactsAPIHealth } from '@/lib/api/contactsAPI';
 import api from '@/lib/api/api';

@@ -10,16 +10,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Coins, 
   TrendingUp, 
-  TrendingDown, 
   AlertTriangle, 
   Activity,
   RefreshCw,
-  FileText,
-  BarChart3,
-  PieChart,
   Target
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
+import { Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 import { useSocket } from '@/hooks/useSocket';
 import { formatCurrency } from '@/utils/formatters';
 

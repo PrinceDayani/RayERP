@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Save, Plus, Edit2, Trash2, FileText } from 'lucide-react';
+import { Save, Plus, Trash2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

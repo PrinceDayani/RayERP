@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Eye, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { Eye, CheckCircle, XCircle } from "lucide-react";
 import { Budget } from "@/types/budget";
 import { formatCurrency } from "@/utils/currency";
 

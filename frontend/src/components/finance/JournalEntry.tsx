@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useGeneralLedger } from '@/hooks/finance/useGeneralLedger';
 import { useCreateEntryShortcut } from '@/hooks/useKeyboardShortcuts';
@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, FileText, Trash2, Upload, Download, Copy, AlertTriangle, CheckCircle, Paperclip, X, Save, Zap, FileSpreadsheet, Keyboard, Calculator, History, Eye, Link } from 'lucide-react';
+import { Plus, FileText, Trash2, Upload, Download, Copy, AlertTriangle, CheckCircle, Paperclip, X, Save, Zap, FileSpreadsheet, Keyboard, Calculator, Eye, Link } from 'lucide-react';
 import axios from 'axios';
 import { AccountSelector } from './AccountSelector';
 import { ReferenceSelector } from './ReferenceSelector';

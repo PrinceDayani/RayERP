@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BOQList from '@/components/boq/BOQList';
 import BOQItemsTable from '@/components/boq/BOQItemsTable';
-import { Plus, TrendingUp, DollarSign, Package, AlertTriangle } from 'lucide-react';
+import { Plus, TrendingUp, DollarSign, Package } from 'lucide-react';
 import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
 
 export default function ProjectBOQPage() {

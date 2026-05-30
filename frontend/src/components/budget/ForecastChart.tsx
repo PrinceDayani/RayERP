@@ -1,7 +1,7 @@
 'use client';
 
 import { BudgetForecast } from '@/lib/api/budgetForecastAPI';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
+import { Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
 
 interface ForecastChartProps {
   forecast: BudgetForecast;

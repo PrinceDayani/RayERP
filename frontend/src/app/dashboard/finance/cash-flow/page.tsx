@@ -16,7 +16,7 @@ import { validateDateRange, formatCurrency, formatPercentage } from "@/lib/utils
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CashFlowSkeleton } from "@/components/skeletons/CashFlowSkeleton";
 import { useCashFlowQuery, useHistoricalCashFlowQuery, useActivityTransactionsQuery, useExportReport } from "@/hooks/queries/useCashFlowQueries";
-import { CashFlowData, ForecastData } from "@/types/cashflow";
+import { ForecastData } from "@/types/cashflow";
 
 const LOW_CASH_THRESHOLD = Number(process.env.NEXT_PUBLIC_LOW_CASH_THRESHOLD) || 10000;
 

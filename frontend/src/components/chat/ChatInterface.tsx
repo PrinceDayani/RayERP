@@ -7,7 +7,6 @@ import ChatWindow from './ChatWindow';
 import { useSocket } from '@/hooks/useSocket';
 import { MessageCircle, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Badge } from '@/components/ui/badge';
 
 interface Chat {
   _id: string;

@@ -1,8 +1,6 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import UAParser from 'ua-parser-js';
-import geoip from 'geoip-lite';
 
 interface Activity {
   _id: string;

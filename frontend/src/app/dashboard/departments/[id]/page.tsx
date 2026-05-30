@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Building, Users, MapPin, Wallet, Activity, FolderOpen, Loader2 } from "lucide-react";
+import { Building, Users, MapPin, Wallet, Activity, FolderOpen } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionLoader } from '@/components/PageLoader';
 import { Badge } from "@/components/ui/badge";

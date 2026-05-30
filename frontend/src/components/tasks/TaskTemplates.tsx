@@ -1,16 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { tasksAPI } from "@/lib/api/tasksAPI";
 import { toast } from "@/components/ui/use-toast";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText } from "lucide-react";
 
 interface Template {
   _id: string;

@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getAllProjects } from '@/lib/api/projectsAPI';
 import employeesAPI, { Employee } from '@/lib/api/employeesAPI';
 import { tasksAPI, Task } from '@/lib/api/tasksAPI';
-import { Plus, X, Tag, CheckSquare, Users, Link2, Square, Edit } from 'lucide-react';
+import { Plus, X, Tag, CheckSquare, Users, Square, Edit } from 'lucide-react';
 
 interface Project {
   _id: string;

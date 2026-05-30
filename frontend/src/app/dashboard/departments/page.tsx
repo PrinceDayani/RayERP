@@ -2,21 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Building, Search, Filter, Loader2, Users, MapPin, X, Download, FileText, Clock, TrendingUp, Undo, Redo } from "lucide-react";
+import { Plus, Building, Filter, Users, MapPin, X, TrendingUp, Undo, Redo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionLoader } from '@/components/PageLoader';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { departmentApi, Department, DepartmentStats } from "@/lib/api/departments";
 import { useGlobalCurrency } from "@/hooks/useGlobalCurrency";
 import { usePermissions } from "@/hooks/usePermissions";
-import { PERMISSIONS } from "@/lib/permissions";
 import CurrencySwitcher from "@/components/budget/CurrencySwitcher";
 import { BulkOperations } from "@/components/departments/BulkOperations";
 import { AdvancedFilters } from "@/components/departments/AdvancedFilters";

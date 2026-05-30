@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSocketContext } from '@/contexts/socket/SocketContext';
-import { getContacts, searchContacts, deleteContact, createContact, Contact, filterContacts, getContactStats, ContactFilterOptions, ContactStats, ContactFilterParams } from '@/lib/api/index';
+import { getContacts, deleteContact, createContact, Contact, getContactStats, ContactStats, ContactFilterParams } from '@/lib/api/index';
 import { SectionLoader } from '@/components/PageLoader';
 import {
   Plus,
@@ -16,7 +16,6 @@ import {
   Download,
   Upload,
   X,
-  ChevronDown,
   RefreshCw,
   Users,
   Building2,
@@ -24,30 +23,17 @@ import {
   FileText,
   AlertTriangle,
   MapPin,
-  Globe,
-  Linkedin,
-  Twitter,
   TrendingUp,
   Briefcase,
-  Star,
-  Archive,
-  Eye,
-  MoreVertical
+  Star
 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,7 +51,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
@@ -77,7 +62,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Papa, { ParseConfig } from 'papaparse';
+import Papa from 'papaparse';
 import ContactsDiagnostic from '@/components/ContactsDiagnostic';
 
 type FilterOptions = {

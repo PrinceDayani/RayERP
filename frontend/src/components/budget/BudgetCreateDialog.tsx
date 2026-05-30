@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { createBudget } from '@/lib/api/budgetAPI';
 import { toast } from '@/components/ui/use-toast';
-import { Plus, Trash2, Info, Banknote, Calendar, FileText } from 'lucide-react';
+import { Plus, Trash2, Info, Banknote, FileText } from 'lucide-react';
 
 interface BudgetCreateDialogProps {
   open: boolean;

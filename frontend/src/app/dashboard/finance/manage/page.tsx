@@ -1,8 +1,6 @@
 'use client';
 
-import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Globe, Scale, Clock, Lock, Shield, CheckCircle, FileCheck, Zap } from 'lucide-react';
 
 // Import sub-components

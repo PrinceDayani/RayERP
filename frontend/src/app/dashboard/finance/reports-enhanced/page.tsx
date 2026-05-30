@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Download, TrendingUp, TrendingDown, RefreshCw, BarChart3, LineChart, PieChart, Filter } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, RefreshCw, BarChart3 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 

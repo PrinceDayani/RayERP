@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { Edit2, Save, X, Download, Camera, User, Mail, Phone, Building2, Calendar, Shield, Briefcase, MapPin, Loader2, Info, FileText, Linkedin, Github, Twitter, Globe, ExternalLink, Plus, Trash2, Upload, File, Bell, Clock, Users, FolderKanban, Share2, QrCode, Printer, FileJson, History, Monitor, LogOut } from "lucide-react";
 import { PasswordChangeDialog } from "@/components/settings/PasswordChangeDialog";
-import type { ProfileData, ProfileFormData, Project, Role, Skill, Document, NotificationSettings, LoginHistory, ActiveSession } from "@/types/employee-profile";
+import type { ProfileData, ProfileFormData, Project, Role, Document, NotificationSettings, LoginHistory, ActiveSession } from "@/types/employee-profile";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 

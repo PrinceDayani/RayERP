@@ -3,8 +3,8 @@
 import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, differenceInDays, addDays, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
-import { Calendar, Clock } from "lucide-react";
+import { format, differenceInDays, addDays, startOfMonth, endOfMonth } from "date-fns";
+import { Calendar } from "lucide-react";
 
 interface GanttTask {
   id: string;

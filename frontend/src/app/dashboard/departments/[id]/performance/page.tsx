@@ -5,12 +5,9 @@ import { useParams } from "next/navigation";
 import {
     BarChart3,
     TrendingUp,
-    TrendingDown,
     Users,
     Target,
     Award,
-    Activity,
-    Loader2,
     Shield,
     Zap,
 } from "lucide-react";

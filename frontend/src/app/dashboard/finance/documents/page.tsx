@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Upload, Download, Eye, Trash2, Search, Filter, FolderOpen } from 'lucide-react';
+import { FileText, Upload, Download, Eye, Trash2, Filter, FolderOpen } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import DataTable, { Column } from '@/components/DataTable';
 

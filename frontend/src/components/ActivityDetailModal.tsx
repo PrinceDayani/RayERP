@@ -1,12 +1,11 @@
 "use client";
 
 import { useRef, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { X, User, Undo2, Shield, AlertTriangle } from 'lucide-react';
 import { Activity } from '@/types/activity';
-import { getActionIcon, getActionColor, getCategoryIcon, getSeverityColor } from '@/lib/utils/activityUtils';
+import { getActionIcon, getActionColor, getSeverityColor } from '@/lib/utils/activityUtils';
 import { canViewSensitiveData } from '@/lib/utils/activityUtils';
 
 interface ActivityDetailModalProps {

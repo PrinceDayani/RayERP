@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Upload, Download, Share2, Trash2, File, FileText, Image, 
-  Video, Music, Archive, Eye, Users, Lock, Globe, Search,
-  Filter, Calendar, User, FolderOpen
+  Video, Music, Archive, Users, Search, FolderOpen
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";

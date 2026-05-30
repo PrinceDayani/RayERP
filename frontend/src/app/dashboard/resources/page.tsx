@@ -9,14 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Users, 
-  Target, 
   TrendingUp, 
   Calendar, 
   Clock, 
   AlertCircle,
   CheckCircle,
-  BarChart3,
-  Settings,
   UserCheck,
   Briefcase,
   Activity,

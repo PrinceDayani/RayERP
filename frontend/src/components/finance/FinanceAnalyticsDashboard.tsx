@@ -9,15 +9,11 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Coins, TrendingUp, TrendingDown, AlertTriangle, Activity, RefreshCw,
-  FileText, BarChart3, PieChart, Target, CreditCard, Wallet, Building,
-  Calendar, Users, Package, ShoppingCart, Clock, Bell, Download, Eye,
-  Calculator, Receipt, Banknote, ArrowUpRight, ArrowDownRight, Percent
+  Coins, TrendingUp, AlertTriangle, Activity, BarChart3, CreditCard, Building, Clock, Bell, Download, Eye, ArrowUpRight, ArrowDownRight, Percent
 } from 'lucide-react';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, AreaChart, Area,
-  ComposedChart, ReferenceLine
+import { Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell,
+  ComposedChart
 } from 'recharts';
 
 

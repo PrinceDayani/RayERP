@@ -3,12 +3,8 @@
 import React from 'react';
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription, 
   CardContent 
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Wifi, WifiOff } from "lucide-react";
 

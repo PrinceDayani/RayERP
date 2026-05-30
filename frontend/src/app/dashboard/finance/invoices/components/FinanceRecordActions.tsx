@@ -15,14 +15,12 @@ import {
     Download,
     Mail,
     Copy,
-    FileText,
     CheckCircle,
     Trash2,
     Edit,
     CreditCard,
     BookOpen,
     ThumbsUp,
-    Send,
 } from 'lucide-react';
 
 interface FinanceRecordActionsProps {

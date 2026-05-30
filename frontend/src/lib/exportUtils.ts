@@ -1,5 +1,4 @@
 ﻿import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
@@ -868,7 +867,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
     
     // Helper rendering functions
     function renderSummarySection(pdf: jsPDF, data: ExportData, startY: number): number {
-      let y = startY;
+      const y = startY;
       
       pdf.setFillColor(248, 250, 252);
       pdf.rect(20, y - 3, 170, 60, 'F');
@@ -899,7 +898,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
     }
     
     function renderAttendanceSection(pdf: jsPDF, data: ExportData, startY: number): number {
-      let y = startY;
+      const y = startY;
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
       pdf.text('Attendance data: 95.1% average attendance rate', 25, y);
@@ -908,7 +907,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
     }
     
     function renderBudgetSection(pdf: jsPDF, data: ExportData, startY: number): number {
-      let y = startY;
+      const y = startY;
       const totalBudget = data.projectReports?.reduce((sum, p) => sum + p.budget, 0) || 0;
       const totalSpent = data.projectReports?.reduce((sum, p) => sum + p.spent, 0) || 0;
       
@@ -933,7 +932,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
     }
     
     function renderVoucherSection(pdf: jsPDF, data: ExportData, startY: number): number {
-      let y = startY;
+      const y = startY;
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
       pdf.text('Voucher System: 8 types (Payment, Receipt, Contra, Sales, Purchase, Journal, DN, CN)', 25, y);
@@ -942,7 +941,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
     }
     
     function renderInvoiceSection(pdf: jsPDF, data: ExportData, startY: number): number {
-      let y = startY;
+      const y = startY;
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
       pdf.text('Invoice Management: Auto-numbering, Multi-currency, Tax calculations', 25, y);
@@ -951,7 +950,7 @@ export const exportToPDF = async (data: ExportData): Promise<void> => {
     }
     
     function renderFinancialSection(pdf: jsPDF, data: ExportData, startY: number): number {
-      let y = startY;
+      const y = startY;
       pdf.setFillColor(248, 250, 252);
       pdf.rect(20, y - 3, 170, 30, 'F');
       pdf.setDrawColor(226, 232, 240);

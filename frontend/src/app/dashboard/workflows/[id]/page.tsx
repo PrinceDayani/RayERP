@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft, CheckCircle2, XCircle, Clock, GitBranch, Users,
   Calendar, MessageSquare, AlertTriangle, PauseCircle, Play,
-  Send, SkipForward, UserPlus, History, ChevronRight
+  Send, SkipForward, UserPlus, History
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -145,7 +145,7 @@ export default function WorkflowDetailPage() {
 
   const isAssignedToMe = (step: StepExecution) => {
     if (!user) return false;
-    return step.assignedTo?.some(a => a._id === user.id || a._id === (user as any)._id);
+    return step.assignedTo?.some(a => a._id === user._id);
   };
 
   const canActOnStep = (step: StepExecution) => {

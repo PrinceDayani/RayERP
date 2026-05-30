@@ -5,10 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, RefreshCw, Shield, Megaphone, Check, CheckCheck, Clock, Image, FileText, Mic } from 'lucide-react';
+import { Search, Plus, RefreshCw, Shield, Megaphone, Check, CheckCheck, Clock } from 'lucide-react';
 import NewChatDialog from './NewChatDialog';
 import BroadcastDialog from './BroadcastDialog';
-import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Chat {

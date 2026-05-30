@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Building, Save, Loader2, Users as UsersIcon, MapPin, Wallet, X } from "lucide-react";
+import { Building, Save, Loader2, Users as UsersIcon, MapPin, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

@@ -2,8 +2,7 @@
 "use client";
 
 import React, { createContext, useEffect, useState, useMemo } from 'react';
-import { getSettings } from '@/lib/api/index';
-import { SettingScope, AppearanceSettings as AppearanceSettingsType } from '@/types/settings';
+import { AppearanceSettings as AppearanceSettingsType } from '@/types/settings';
 
 // Enhanced theme settings type 
 export interface EnhancedAppearanceSettings extends AppearanceSettingsType {

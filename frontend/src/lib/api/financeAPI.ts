@@ -6,8 +6,8 @@ let apiInstance: any = null;
 // Lazy import to avoid build-time issues
 const getApi = async () => {
   if (!apiInstance) {
-    const module = await import('./api');
-    apiInstance = module.default;
+    const apiModule = await import('./api');
+    apiInstance = apiModule.default;
   }
   return apiInstance;
 };

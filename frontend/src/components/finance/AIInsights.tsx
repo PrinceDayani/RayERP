@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, TrendingDown, TrendingUp, Zap } from "lucide-react";
+import { AlertTriangle, TrendingUp, Zap } from "lucide-react";
 
 interface Insight {
   type: 'warning' | 'info' | 'success';

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";import { PageLoader } from '@/components/PageLoader';import { Budget } from "@/types/budget";
 import BudgetAnalytics from "@/components/budget/BudgetAnalytics";
-import { RefreshCw, TrendingUp, Calendar, Coins, Target, ExternalLink } from "lucide-react";
+import { RefreshCw, TrendingUp, Coins, Target, ExternalLink } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from "recharts";
 import { checkBackendHealth, checkAuthToken } from "@/utils/healthCheck";

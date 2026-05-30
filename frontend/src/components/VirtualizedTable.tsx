@@ -1,4 +1,7 @@
 import React, { useMemo, useState } from 'react';
+// NOTE: dead component (not imported anywhere). react-window v2 renamed this
+// export to `List`; the require keeps the legacy shape until this is removed.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { FixedSizeList } = require('react-window') as any;
 
 interface Column {

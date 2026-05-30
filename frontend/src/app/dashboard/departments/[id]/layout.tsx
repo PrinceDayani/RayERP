@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, RefreshCw, Download } from "lucide-react";
+import { ArrowLeft, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionLoader } from '@/components/PageLoader';
 import { useToast } from "@/hooks/use-toast";
