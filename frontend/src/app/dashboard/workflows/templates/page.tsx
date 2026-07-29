@@ -32,6 +32,9 @@ export default function WorkflowTemplatesPage() {
   const [entityFilter, setEntityFilter] = useState("all");
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: '', name: '' });
 
+  // Template management is admin-only on the backend; hide the controls otherwise
+  const canManage = !!user && ((user.role?.level ?? 0) >= 80 || user.role?.name === 'Root');
+
   const fetchTemplates = useCallback(async () => {
     try {
       setLoading(true);
@@ -111,10 +114,12 @@ export default function WorkflowTemplatesPage() {
             Reusable workflow blueprints for your organization
           </p>
         </div>
-        <Button onClick={() => router.push('/dashboard/workflows/templates/create')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Template
-        </Button>
+        {canManage && (
+          <Button onClick={() => router.push('/dashboard/workflows/templates/create')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Template
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -168,9 +173,11 @@ export default function WorkflowTemplatesPage() {
             <Zap className="h-12 w-12 mx-auto mb-3 opacity-30" />
             <p className="text-lg font-medium">No templates found</p>
             <p className="text-sm">Create your first workflow template to get started.</p>
-            <Button className="mt-4" onClick={() => router.push('/dashboard/workflows/templates/create')}>
-              <Plus className="h-4 w-4 mr-2" /> Create Template
-            </Button>
+            {canManage && (
+              <Button className="mt-4" onClick={() => router.push('/dashboard/workflows/templates/create')}>
+                <Plus className="h-4 w-4 mr-2" /> Create Template
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -185,27 +192,29 @@ export default function WorkflowTemplatesPage() {
                       {template.description || 'No description'}
                     </p>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => router.push(`/dashboard/workflows/templates/${template._id}/edit`)}>
-                        <Edit className="h-4 w-4 mr-2" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleClone(template._id)}>
-                        <Copy className="h-4 w-4 mr-2" /> Clone
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-red-600"
-                        onClick={() => setDeleteDialog({ open: true, id: template._id, name: template.name })}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" /> Deactivate
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {canManage && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => router.push(`/dashboard/workflows/templates/${template._id}/edit`)}>
+                          <Edit className="h-4 w-4 mr-2" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleClone(template._id)}>
+                          <Copy className="h-4 w-4 mr-2" /> Clone
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={() => setDeleteDialog({ open: true, id: template._id, name: template.name })}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" /> Deactivate
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">

@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 import WorkflowTemplate, { IWorkflowStep, IWorkflowTemplate, ICondition } from '../models/WorkflowTemplate';
 import WorkflowInstance, { IWorkflowInstance, IStepExecution, StepStatus } from '../models/WorkflowInstance';
+import User from '../models/User';
+import { Role } from '../models/Role';
+import Employee from '../models/Employee';
+import Department from '../models/Department';
 import { logger } from '../utils/logger';
 
 // Lazy import to avoid circular dependency
@@ -12,6 +16,14 @@ const getIntegrationService = async () => {
   }
   return _integrationService;
 };
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Steps that execute without human interaction the moment they activate
+const AUTO_STEP_TYPES = new Set(['condition', 'notification', 'auto-action']);
+
+// Safety bound on auto-step chains so a mis-wired template (cycle) cannot loop forever
+const MAX_AUTO_ADVANCE_DEPTH = 50;
 
 /**
  * WorkflowEngine - Core state machine for workflow execution.
@@ -40,22 +52,20 @@ export class WorkflowEngine {
       const template = await WorkflowTemplate.findById(params.templateId).session(session);
       if (!template) throw new Error('Workflow template not found');
       if (!template.isActive) throw new Error('Workflow template is not active');
+      if (!template.steps?.length) throw new Error('Workflow template has no steps');
 
-      // Build step executions from template
-      const steps: IStepExecution[] = template.steps.map((step, index) => ({
+      // Build step executions from template; all pending until activated so
+      // SLA clocks start at activation, not at workflow start
+      const steps: IStepExecution[] = template.steps.map(step => ({
         stepId: step.stepId,
         stepName: step.name,
         stepType: step.type,
-        status: index === 0 ? 'active' : 'pending',
-        startedAt: index === 0 ? new Date() : undefined,
-        dueAt: step.sla ? new Date(Date.now() + step.sla.expectedHours * 3600000) : undefined,
-        slaWarningAt: step.sla ? new Date(Date.now() + step.sla.warningHours * 3600000) : undefined,
-        requiredApprovals: step.approvalMode === 'all' ? (step.approverIds?.length || 1) : 1,
+        status: 'pending' as StepStatus,
+        requiredApprovals: this.getRequiredApprovals(step),
         receivedApprovals: 0
       }));
 
       const firstStep = template.steps[0];
-      const currentAssignees = this.resolveAssignees(firstStep, params.metadata);
 
       const instance = new WorkflowInstance({
         templateId: template._id,
@@ -72,11 +82,11 @@ export class WorkflowEngine {
         progress: 0,
         steps,
         initiatedBy: params.initiatedBy,
-        currentAssignees,
-        participants: [params.initiatedBy, ...currentAssignees].filter(Boolean),
+        currentAssignees: [],
+        participants: [params.initiatedBy],
         priority: params.priority || template.priority,
-        dueDate: template.estimatedDurationHours 
-          ? new Date(Date.now() + template.estimatedDurationHours * 3600000) 
+        dueDate: template.estimatedDurationHours
+          ? new Date(Date.now() + template.estimatedDurationHours * 3600000)
           : undefined,
         slaBreached: false,
         metadata: params.metadata,
@@ -87,6 +97,9 @@ export class WorkflowEngine {
           timestamp: new Date()
         }]
       });
+
+      await this.activateStep(instance, firstStep.stepId, session);
+      this.mergeParticipants(instance);
 
       await instance.save({ session });
       await session.commitTransaction();
@@ -109,6 +122,7 @@ export class WorkflowEngine {
     stepId: string;
     action: 'approve' | 'reject' | 'complete' | 'delegate' | 'skip';
     userId: string;
+    isPrivileged?: boolean;
     comments?: string;
     delegateTo?: string;
     resultData?: Record<string, any>;
@@ -129,20 +143,40 @@ export class WorkflowEngine {
         throw new Error(`Step is ${step.status}, cannot process action`);
       }
 
+      // Authorization: only assigned users may act; skip is admin-only because
+      // it bypasses the step entirely
+      const isAssigned = step.assignedTo?.some(a => a.toString() === params.userId);
+      if (!params.isPrivileged) {
+        if (params.action === 'skip') {
+          throw new Error('Only administrators can skip workflow steps');
+        }
+        if (!isAssigned) {
+          throw new Error('You are not assigned to act on this step');
+        }
+      }
+
       // Get template step for configuration
       const template = await WorkflowTemplate.findById(instance.templateId).session(session);
       if (!template) throw new Error('Workflow template not found');
       const templateStep = template.steps.find(s => s.stepId === params.stepId);
+      if (!templateStep) throw new Error('Step configuration not found in template');
+
+      if ((params.action === 'approve' || params.action === 'reject') && templateStep.type !== 'approval') {
+        throw new Error(`Cannot ${params.action} a ${templateStep.type} step`);
+      }
+      if (params.action === 'complete' && templateStep.type !== 'task') {
+        throw new Error(`Cannot complete a ${templateStep.type} step`);
+      }
 
       switch (params.action) {
         case 'approve':
-          await this.handleApproval(instance, step, stepIndex, templateStep!, params, session);
+          await this.handleApproval(instance, step, stepIndex, templateStep, params, session);
           break;
         case 'reject':
           await this.handleRejection(instance, step, stepIndex, params, session);
           break;
         case 'complete':
-          await this.handleCompletion(instance, step, stepIndex, templateStep!, params, session);
+          await this.handleCompletion(instance, step, stepIndex, templateStep, params, session);
           break;
         case 'delegate':
           await this.handleDelegation(instance, step, stepIndex, params, session);
@@ -190,7 +224,12 @@ export class WorkflowEngine {
     params: any,
     session: any
   ) {
-    // Record approval
+    // One vote per user: without this, a single approver could satisfy an
+    // 'all'/'majority' quorum by approving repeatedly
+    if (step.approvals?.some(a => a.action === 'approved' && a.userId.toString() === params.userId)) {
+      throw new Error('You have already approved this step');
+    }
+
     if (!step.approvals) step.approvals = [];
     step.approvals.push({
       userId: new mongoose.Types.ObjectId(params.userId),
@@ -198,15 +237,15 @@ export class WorkflowEngine {
       comments: params.comments,
       timestamp: new Date()
     });
-    step.receivedApprovals = (step.receivedApprovals || 0) + 1;
+    step.receivedApprovals = step.approvals.filter(a => a.action === 'approved').length;
 
     // Check if enough approvals received
-    const requiredApprovals = this.getRequiredApprovals(templateStep);
+    const requiredApprovals = this.getRequiredApprovals(templateStep, step.assignedTo?.length);
     if (step.receivedApprovals >= requiredApprovals) {
       step.status = 'completed';
       step.result = 'approved';
       step.completedAt = new Date();
-      
+
       // Advance to next step
       await this.advanceWorkflow(instance, templateStep, session);
     }
@@ -239,6 +278,7 @@ export class WorkflowEngine {
     instance.status = 'rejected';
     instance.completedAt = new Date();
     instance.progress = this.calculateProgress(instance);
+    instance.currentAssignees = [];
 
     // Cancel remaining steps
     instance.steps.forEach(s => {
@@ -288,6 +328,7 @@ export class WorkflowEngine {
     session: any
   ) {
     if (!params.delegateTo) throw new Error('delegateTo is required for delegation');
+    if (!mongoose.isValidObjectId(params.delegateTo)) throw new Error('delegateTo must be a valid user id');
 
     if (!step.approvals) step.approvals = [];
     step.approvals.push({
@@ -301,8 +342,10 @@ export class WorkflowEngine {
     // Update assignees
     const delegateId = new mongoose.Types.ObjectId(params.delegateTo);
     if (!step.assignedTo) step.assignedTo = [];
-    step.assignedTo.push(delegateId);
-    
+    if (!step.assignedTo.some(a => a.toString() === params.delegateTo)) {
+      step.assignedTo.push(delegateId);
+    }
+
     // Update instance current assignees
     if (!instance.currentAssignees.some(a => a.toString() === params.delegateTo)) {
       instance.currentAssignees.push(delegateId);
@@ -339,27 +382,20 @@ export class WorkflowEngine {
   private static async advanceWorkflow(
     instance: IWorkflowInstance,
     currentTemplateStep: IWorkflowStep,
-    session: any
+    session: any,
+    depth = 0
   ) {
     // Calculate progress
     instance.progress = this.calculateProgress(instance);
 
-    // Check if this is a terminal step
-    if (currentTemplateStep.isTerminal || !currentTemplateStep.nextSteps?.length) {
-      instance.status = 'completed';
-      instance.completedAt = new Date();
-      instance.progress = 100;
-      instance.currentAssignees = [];
+    // Condition steps route via branches, not nextSteps
+    const hasNext = currentTemplateStep.type === 'condition'
+      ? !!(currentTemplateStep.trueBranch || currentTemplateStep.falseBranch || currentTemplateStep.nextSteps?.length)
+      : !!currentTemplateStep.nextSteps?.length;
 
-      // Trigger completion callback (async, non-blocking)
-      setImmediate(async () => {
-        try {
-          const integration = await getIntegrationService();
-          await integration.onWorkflowCompleted(instance._id.toString());
-        } catch (err) {
-          logger.error('Error in workflow completion callback:', err);
-        }
-      });
+    // Check if this is a terminal step
+    if (currentTemplateStep.isTerminal || !hasNext) {
+      this.completeWorkflow(instance);
       return;
     }
 
@@ -367,27 +403,61 @@ export class WorkflowEngine {
     if (currentTemplateStep.type === 'condition') {
       const nextStepId = await this.evaluateCondition(instance, currentTemplateStep);
       if (nextStepId) {
-        await this.activateStep(instance, nextStepId, session);
+        await this.activateStep(instance, nextStepId, session, depth + 1);
+      } else {
+        this.completeWorkflow(instance);
+        return;
       }
-      return;
+    } else {
+      // Activate next step(s)
+      for (const nextStepId of currentTemplateStep.nextSteps!) {
+        await this.activateStep(instance, nextStepId, session, depth + 1);
+      }
     }
 
-    // Activate next step(s)
-    for (const nextStepId of currentTemplateStep.nextSteps) {
-      await this.activateStep(instance, nextStepId, session);
-    }
+    this.refreshCurrentStepPointers(instance);
+    this.mergeParticipants(instance);
   }
 
   /**
-   * Activate a specific step
+   * Mark the workflow completed and notify the integration layer
+   */
+  private static completeWorkflow(instance: IWorkflowInstance) {
+    instance.status = 'completed';
+    instance.completedAt = new Date();
+    instance.progress = 100;
+    instance.currentAssignees = [];
+
+    // Trigger completion callback (async, non-blocking)
+    setImmediate(async () => {
+      try {
+        const integration = await getIntegrationService();
+        await integration.onWorkflowCompleted(instance._id.toString());
+      } catch (err) {
+        logger.error('Error in workflow completion callback:', err);
+      }
+    });
+  }
+
+  /**
+   * Activate a specific step. Auto-executing step types (condition,
+   * notification, auto-action) are processed immediately; timer steps get a
+   * due date and are advanced by the cron; human steps get resolved assignees.
    */
   private static async activateStep(
     instance: IWorkflowInstance,
     stepId: string,
-    session: any
+    session: any,
+    depth = 0
   ) {
+    if (depth > MAX_AUTO_ADVANCE_DEPTH) {
+      logger.error(`Workflow ${instance._id}: auto-advance depth exceeded at step ${stepId}; template likely has a cycle`);
+      instance.status = 'error';
+      return;
+    }
+
     const step = instance.steps.find(s => s.stepId === stepId);
-    if (!step) return;
+    if (!step || step.status !== 'pending') return;
 
     step.status = 'active';
     step.startedAt = new Date();
@@ -396,32 +466,101 @@ export class WorkflowEngine {
     instance.currentStepId = stepId;
     instance.currentStepName = step.stepName;
 
-    // Resolve assignees for the new step
     const template = await WorkflowTemplate.findById(instance.templateId).session(session);
-    if (template) {
-      const templateStep = template.steps.find(s => s.stepId === stepId);
-      if (templateStep) {
-        const assignees = this.resolveAssignees(templateStep, instance.metadata);
-        step.assignedTo = assignees;
-        instance.currentAssignees = assignees;
+    const templateStep = template?.steps.find(s => s.stepId === stepId);
+    if (!templateStep) return;
 
-        // Set due date based on SLA
-        if (templateStep.sla) {
-          step.dueAt = new Date(Date.now() + templateStep.sla.expectedHours * 3600000);
-          step.slaWarningAt = new Date(Date.now() + templateStep.sla.warningHours * 3600000);
-        }
+    // Set due date based on SLA (clock starts at activation)
+    if (templateStep.sla) {
+      step.dueAt = new Date(Date.now() + templateStep.sla.expectedHours * 3600000);
+      step.slaWarningAt = new Date(Date.now() + templateStep.sla.warningHours * 3600000);
+    }
 
-        // Create task if this is a task-type step
-        if (templateStep.type === 'task' && templateStep.taskConfig) {
-          setImmediate(async () => {
-            try {
-              const integration = await getIntegrationService();
-              await integration.createTaskForActiveStep(instance, instance.initiatedBy?.toString());
-            } catch (err) {
-              logger.error('Error creating task for workflow step:', err);
-            }
-          });
+    // Timer steps wait until dueAt; the workflow cron advances them
+    if (templateStep.type === 'timer') {
+      const hours = templateStep.timerConfig?.durationHours || templateStep.sla?.expectedHours || 24;
+      step.dueAt = new Date(Date.now() + hours * 3600000);
+      return;
+    }
+
+    // Auto-executing steps complete themselves and advance
+    if (AUTO_STEP_TYPES.has(templateStep.type)) {
+      await this.autoProcessStep(instance, step, templateStep, session, depth);
+      return;
+    }
+
+    // Human steps: resolve assignees
+    const assignees = await this.resolveStepAssignees(templateStep, instance.metadata, session);
+    step.assignedTo = assignees;
+    instance.currentAssignees = assignees;
+    if (templateStep.type === 'approval') {
+      step.requiredApprovals = this.getRequiredApprovals(templateStep, assignees.length);
+    }
+    if ((templateStep.type === 'approval' || templateStep.type === 'task') && assignees.length === 0) {
+      logger.warn(`Workflow ${instance._id}: step "${templateStep.name}" activated with no resolvable assignees; only administrators will be able to act on it`);
+    }
+
+    // Create task if this is a task-type step
+    if (templateStep.type === 'task' && templateStep.taskConfig) {
+      setImmediate(async () => {
+        try {
+          const integration = await getIntegrationService();
+          await integration.createTaskForActiveStep(instance, instance.initiatedBy?.toString());
+        } catch (err) {
+          logger.error('Error creating task for workflow step:', err);
         }
+      });
+    }
+  }
+
+  /**
+   * Execute an auto step (condition / notification / auto-action) and advance
+   */
+  private static async autoProcessStep(
+    instance: IWorkflowInstance,
+    step: IStepExecution,
+    templateStep: IWorkflowStep,
+    session: any,
+    depth: number
+  ) {
+    if (templateStep.type === 'auto-action') {
+      await this.executeAutoActions(instance, templateStep);
+    }
+    if (templateStep.type === 'notification') {
+      // No dedicated notification infrastructure yet; record execution so the
+      // step never blocks the workflow
+      logger.info(`Workflow ${instance._id}: notification step "${templateStep.name}" executed (recipients: ${templateStep.notificationConfig?.recipients || 'unspecified'})`);
+    }
+
+    step.status = 'completed';
+    step.result = 'completed';
+    step.completedAt = new Date();
+
+    instance.auditTrail.push({
+      action: `step_auto_${templateStep.type === 'condition' ? 'evaluated' : 'executed'}`,
+      stepId: step.stepId,
+      details: { stepType: templateStep.type },
+      timestamp: new Date()
+    });
+
+    await this.advanceWorkflow(instance, templateStep, session, depth);
+  }
+
+  /**
+   * Execute configured actions of an auto-action step
+   */
+  private static async executeAutoActions(instance: IWorkflowInstance, templateStep: IWorkflowStep) {
+    for (const action of templateStep.actions || []) {
+      try {
+        if (action.type === 'change-status' && instance.entityType === 'project' && action.config?.newStatus) {
+          const Project = mongoose.model('Project');
+          await Project.findByIdAndUpdate(instance.entityId, { $set: { status: action.config.newStatus } });
+          logger.info(`Workflow ${instance._id}: auto-action set project ${instance.entityId} status to "${action.config.newStatus}"`);
+        } else {
+          logger.warn(`Workflow ${instance._id}: auto-action type "${action.type}" is not supported for entity "${instance.entityType}"; skipping`);
+        }
+      } catch (err) {
+        logger.error(`Workflow ${instance._id}: auto-action "${action.type}" failed:`, err);
       }
     }
   }
@@ -433,10 +572,10 @@ export class WorkflowEngine {
     instance: IWorkflowInstance,
     step: IWorkflowStep
   ): Promise<string | null> {
-    if (!step.conditions?.length) return step.trueBranch || null;
+    if (!step.conditions?.length) return step.trueBranch || step.nextSteps?.[0] || null;
 
     const entityData = instance.metadata || {};
-    const allConditionsMet = step.conditions.every(condition => 
+    const allConditionsMet = step.conditions.every(condition =>
       this.evaluateSingleCondition(condition, entityData)
     );
 
@@ -469,31 +608,128 @@ export class WorkflowEngine {
   }
 
   /**
-   * Resolve assignees for a step based on configuration
+   * Resolve assignees for a step. Sources, in order:
+   * - explicit user ids (approverIds / taskConfig.assigneeIds)
+   * - role names matched against Role documents, then users holding them
+   * - role names matched against department names (department members)
+   * - approverType 'project-manager' -> metadata.projectManagers
+   * - approverType 'department-head' -> Department.manager.email -> User
    */
-  private static resolveAssignees(
+  private static async resolveStepAssignees(
     step: IWorkflowStep,
-    metadata?: Record<string, any>
-  ): mongoose.Types.ObjectId[] {
-    if (step.type === 'approval' && step.approverIds?.length) {
-      return step.approverIds;
+    metadata: Record<string, any> | undefined,
+    session: any
+  ): Promise<mongoose.Types.ObjectId[]> {
+    const resolved = new Map<string, mongoose.Types.ObjectId>();
+    const add = (id: any) => {
+      if (!id) return;
+      const str = id.toString();
+      if (mongoose.isValidObjectId(str)) resolved.set(str, new mongoose.Types.ObjectId(str));
+    };
+
+    const explicitIds = step.type === 'task' ? step.taskConfig?.assigneeIds : step.approverIds;
+    explicitIds?.forEach(add);
+
+    const roleNames = ((step.type === 'task' ? step.taskConfig?.assigneeRoles : step.approverRoles) || [])
+      .map(r => r.trim())
+      .filter(Boolean);
+
+    if (roleNames.length) {
+      const namePatterns = roleNames.map(r => new RegExp(`^${escapeRegex(r)}$`, 'i'));
+
+      // Users holding a matching Role
+      const roles = await Role.find({ name: { $in: namePatterns }, isActive: true })
+        .select('_id')
+        .session(session);
+      if (roles.length) {
+        const users = await User.find({
+          role: { $in: roles.map(r => r._id) },
+          status: { $nin: ['disabled', 'inactive'] }
+        })
+          .select('_id')
+          .limit(100)
+          .session(session);
+        users.forEach(u => add(u._id));
+      }
+
+      // Users whose employee record belongs to a department with a matching name
+      const employees = await Employee.find({
+        $or: [
+          { departments: { $in: namePatterns } },
+          { department: { $in: namePatterns } }
+        ]
+      })
+        .select('user')
+        .limit(100)
+        .session(session);
+      employees.forEach(e => add(e.user));
     }
-    if (step.type === 'task' && step.taskConfig?.assigneeIds?.length) {
-      return step.taskConfig.assigneeIds;
+
+    const assigneeType = step.type === 'task' ? step.taskConfig?.assigneeType : step.approverType;
+
+    if (assigneeType === 'project-manager' && Array.isArray(metadata?.projectManagers)) {
+      metadata!.projectManagers.forEach(add);
     }
-    // Dynamic resolution would happen here based on metadata
-    return [];
+
+    if (assigneeType === 'department-head') {
+      const deptIds = (Array.isArray(metadata?.projectDepartments) ? metadata!.projectDepartments : [])
+        .filter((id: any) => mongoose.isValidObjectId(id?.toString?.() || ''));
+      if (deptIds.length) {
+        const departments = await Department.find({ _id: { $in: deptIds } })
+          .select('manager.email')
+          .session(session);
+        const emails = departments.map(d => (d as any).manager?.email).filter(Boolean);
+        if (emails.length) {
+          const heads = await User.find({ email: { $in: emails } }).select('_id').session(session);
+          heads.forEach(h => add(h._id));
+        }
+      }
+    }
+
+    return Array.from(resolved.values());
   }
 
   /**
-   * Get required number of approvals for a step
+   * Point currentStepId/currentAssignees at the union of all active steps,
+   * so parallel branches keep every branch's assignees actionable
    */
-  private static getRequiredApprovals(step: IWorkflowStep): number {
+  private static refreshCurrentStepPointers(instance: IWorkflowInstance) {
+    const activeSteps = instance.steps.filter(s => s.status === 'active' || s.status === 'escalated');
+    if (!activeSteps.length) return;
+
+    instance.currentStepId = activeSteps[0].stepId;
+    instance.currentStepName = activeSteps[0].stepName;
+
+    const union = new Map<string, mongoose.Types.ObjectId>();
+    activeSteps.forEach(s => s.assignedTo?.forEach(a => union.set(a.toString(), a)));
+    instance.currentAssignees = Array.from(union.values());
+  }
+
+  /**
+   * Ensure everyone currently assigned is a participant
+   */
+  private static mergeParticipants(instance: IWorkflowInstance) {
+    const existing = new Set(instance.participants.map(p => p.toString()));
+    instance.currentAssignees.forEach(a => {
+      if (!existing.has(a.toString())) {
+        instance.participants.push(a);
+        existing.add(a.toString());
+      }
+    });
+  }
+
+  /**
+   * Get required number of approvals for a step. The pool is the larger of
+   * the explicit approver list and the resolved assignees (role-based
+   * approvers have no approverIds).
+   */
+  private static getRequiredApprovals(step: IWorkflowStep, resolvedCount?: number): number {
+    const poolSize = Math.max(step.approverIds?.length || 0, resolvedCount || 0) || 1;
     if (step.approvalMode === 'all') {
-      return step.approverIds?.length || 1;
+      return poolSize;
     }
     if (step.approvalMode === 'majority') {
-      return Math.ceil((step.approverIds?.length || 1) / 2);
+      return Math.ceil(poolSize / 2);
     }
     return 1; // 'any' mode
   }
@@ -530,9 +766,8 @@ export class WorkflowEngine {
 
     instance.auditTrail.push({
       action: 'step_escalated',
-      performedBy: new mongoose.Types.ObjectId(), // System
       stepId,
-      details: { escalationLevel: step.escalationLevel },
+      details: { escalationLevel: step.escalationLevel, system: true },
       timestamp: new Date()
     });
 
@@ -563,7 +798,7 @@ export class WorkflowEngine {
 
     // Cancel all pending/active steps
     instance.steps.forEach(step => {
-      if (step.status === 'pending' || step.status === 'active') {
+      if (step.status === 'pending' || step.status === 'active' || step.status === 'escalated') {
         step.status = 'cancelled';
       }
     });
@@ -637,10 +872,60 @@ export class WorkflowEngine {
     const now = new Date();
     return WorkflowInstance.find({
       status: 'active',
-      'steps.status': 'active',
-      'steps.dueAt': { $lt: now },
-      'steps.slaBreached': { $ne: true }
+      steps: {
+        $elemMatch: {
+          status: 'active',
+          stepType: { $ne: 'timer' },
+          dueAt: { $lt: now },
+          slaBreached: { $ne: true }
+        }
+      }
     });
+  }
+
+  /**
+   * Advance timer steps whose wait period has elapsed. Called from the
+   * workflow cron; idempotent (completed steps are never re-processed).
+   */
+  static async processDueTimerSteps(): Promise<number> {
+    const now = new Date();
+    const instances = await WorkflowInstance.find({
+      status: 'active',
+      steps: { $elemMatch: { status: 'active', stepType: 'timer', dueAt: { $lte: now } } }
+    });
+
+    let advanced = 0;
+    for (const instance of instances) {
+      try {
+        const template = await WorkflowTemplate.findById(instance.templateId);
+        if (!template) continue;
+
+        for (const step of instance.steps) {
+          if (step.stepType !== 'timer' || step.status !== 'active' || !step.dueAt || step.dueAt > now) continue;
+
+          step.status = 'completed';
+          step.result = 'completed';
+          step.completedAt = new Date();
+          instance.auditTrail.push({
+            action: 'step_timer_elapsed',
+            stepId: step.stepId,
+            details: { system: true },
+            timestamp: new Date()
+          });
+
+          const templateStep = template.steps.find(s => s.stepId === step.stepId);
+          if (templateStep) {
+            await this.advanceWorkflow(instance, templateStep, null);
+          }
+          advanced++;
+        }
+
+        await instance.save();
+      } catch (err) {
+        logger.error(`Error advancing timer steps for workflow ${instance._id}:`, err);
+      }
+    }
+    return advanced;
   }
 }
 

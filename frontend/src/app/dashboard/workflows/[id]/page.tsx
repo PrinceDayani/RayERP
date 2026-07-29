@@ -52,6 +52,13 @@ export default function WorkflowDetailPage() {
     fetchInstance();
   }, [fetchInstance]);
 
+  const ACTION_PAST_TENSE: Record<string, string> = {
+    approve: 'approved',
+    reject: 'rejected',
+    complete: 'completed',
+    skip: 'skipped'
+  };
+
   const handleStepAction = async (action: 'approve' | 'reject' | 'complete' | 'skip') => {
     if (!instance) return;
     setProcessing(true);
@@ -60,7 +67,7 @@ export default function WorkflowDetailPage() {
         action,
         comments
       });
-      toast.success(`Step ${action}d successfully`);
+      toast.success(`Step ${ACTION_PAST_TENSE[action] || action} successfully`);
       setActionDialog({ open: false, type: '', stepId: '' });
       setComments("");
       fetchInstance();
@@ -143,14 +150,20 @@ export default function WorkflowDetailPage() {
     }
   };
 
+  // Mirrors the backend rule: assignees act; admins (level >= 80 / Root) may act anywhere
+  const isPrivileged = !!user && ((user.role?.level ?? 0) >= 80 || user.role?.name === 'Root');
+
   const isAssignedToMe = (step: StepExecution) => {
     if (!user) return false;
     return step.assignedTo?.some(a => a._id === user._id);
   };
 
   const canActOnStep = (step: StepExecution) => {
-    return (step.status === 'active' || step.status === 'escalated') && isAssignedToMe(step);
+    return (step.status === 'active' || step.status === 'escalated') && (isAssignedToMe(step) || isPrivileged);
   };
+
+  // Backend restricts lifecycle changes to the initiator or admins
+  const canControlWorkflow = !!user && !!instance && (isPrivileged || instance.initiatedBy?._id === user._id);
 
   if (loading) {
     return (
@@ -190,7 +203,7 @@ export default function WorkflowDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {instance.status === 'active' && (
+          {instance.status === 'active' && canControlWorkflow && (
             <>
               <Button variant="outline" size="sm" onClick={handleHold}>
                 <PauseCircle className="h-4 w-4 mr-1" /> Hold
@@ -200,7 +213,7 @@ export default function WorkflowDetailPage() {
               </Button>
             </>
           )}
-          {instance.status === 'on-hold' && (
+          {instance.status === 'on-hold' && canControlWorkflow && (
             <Button size="sm" onClick={handleResume}>
               <Play className="h-4 w-4 mr-1" /> Resume
             </Button>
@@ -452,7 +465,7 @@ export default function WorkflowDetailPage() {
                   <div key={i} className="flex items-start gap-2 text-xs">
                     <div className="h-1.5 w-1.5 rounded-full bg-gray-400 mt-1.5 flex-shrink-0" />
                     <div>
-                      <span className="font-medium">{entry.performedBy?.name}</span>{' '}
+                      <span className="font-medium">{entry.performedBy?.name || 'System'}</span>{' '}
                       <span className="text-muted-foreground">{entry.action.replace(/_/g, ' ')}</span>
                       <p className="text-muted-foreground">
                         {new Date(entry.timestamp).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}

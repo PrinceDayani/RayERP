@@ -13,7 +13,8 @@ import { Progress } from "@/components/ui/progress";
 import {
   Plus, Search, Filter, GitBranch, Clock, CheckCircle2, XCircle,
   AlertTriangle, PauseCircle, Play, BarChart3, ArrowRight, Users,
-  Calendar, Zap, TrendingUp, Activity, Eye, MoreHorizontal
+  Calendar, Zap, TrendingUp, Activity, Eye, MoreHorizontal,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { workflowsAPI, WorkflowInstance, WorkflowDashboardStats, InstanceStatus } from "@/lib/api/workflowsAPI";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +38,10 @@ export default function WorkflowsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [entityFilter, setEntityFilter] = useState("all");
+  const [allInstances, setAllInstances] = useState<WorkflowInstance[]>([]);
+  const [allLoading, setAllLoading] = useState(false);
+  const [allPage, setAllPage] = useState(1);
+  const [allPagination, setAllPagination] = useState({ total: 0, pages: 1 });
 
   const fetchData = useCallback(async () => {
     try {
@@ -61,6 +66,40 @@ export default function WorkflowsPage() {
       fetchData();
     }
   }, [isAuthenticated, fetchData]);
+
+  // Server-side filtering for the All Workflows tab so results cover every
+  // instance the user can see, not just the latest 20
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== 'all') return;
+    const timer = setTimeout(async () => {
+      try {
+        setAllLoading(true);
+        const params: Record<string, any> = {
+          page: allPage,
+          limit: 20,
+          sortBy: 'updatedAt',
+          sortOrder: 'desc'
+        };
+        if (searchTerm.trim()) params.search = searchTerm.trim();
+        if (statusFilter !== 'all') params.status = statusFilter;
+        if (priorityFilter !== 'all') params.priority = priorityFilter;
+        if (entityFilter !== 'all') params.entityType = entityFilter;
+        const res = await workflowsAPI.getInstances(params);
+        setAllInstances(res.data);
+        setAllPagination({ total: res.pagination?.total || 0, pages: res.pagination?.pages || 1 });
+      } catch (error) {
+        console.error('Failed to fetch workflows:', error);
+      } finally {
+        setAllLoading(false);
+      }
+    }, searchTerm ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, activeTab, searchTerm, statusFilter, priorityFilter, entityFilter, allPage]);
+
+  // New filter selection restarts from the first page
+  useEffect(() => {
+    setAllPage(1);
+  }, [searchTerm, statusFilter, priorityFilter, entityFilter]);
 
   const getStatusColor = (status: InstanceStatus) => {
     switch (status) {
@@ -102,7 +141,7 @@ export default function WorkflowsPage() {
   };
 
   const formatTimeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
+    const diff = Math.max(0, Date.now() - new Date(dateStr).getTime());
     const hours = Math.floor(diff / 3600000);
     if (hours < 1) return 'Just now';
     if (hours < 24) return `${hours}h ago`;
@@ -110,15 +149,6 @@ export default function WorkflowsPage() {
     if (days < 7) return `${days}d ago`;
     return formatDate(dateStr);
   };
-
-  const filteredInstances = instances.filter(instance => {
-    if (searchTerm && !instance.templateName.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !instance.entityTitle.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-    if (statusFilter !== 'all' && instance.status !== statusFilter) return false;
-    if (priorityFilter !== 'all' && instance.priority !== priorityFilter) return false;
-    if (entityFilter !== 'all' && instance.entityType !== entityFilter) return false;
-    return true;
-  });
 
   if (loading) {
     return (
@@ -465,7 +495,11 @@ export default function WorkflowsPage() {
           </div>
 
           {/* Workflow List */}
-          {filteredInstances.length === 0 ? (
+          {allLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16" />)}
+            </div>
+          ) : allInstances.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 <Filter className="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -474,7 +508,7 @@ export default function WorkflowsPage() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {filteredInstances.map(instance => (
+              {allInstances.map(instance => (
                 <Card key={instance._id} className="hover:shadow-sm transition-shadow cursor-pointer" onClick={() => router.push(`/dashboard/workflows/${instance._id}`)}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -523,6 +557,33 @@ export default function WorkflowsPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!allLoading && allPagination.pages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-xs text-muted-foreground">
+                Page {allPage} of {allPagination.pages} • {allPagination.total} workflows
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={allPage <= 1}
+                  onClick={() => setAllPage(p => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={allPage >= allPagination.pages}
+                  onClick={() => setAllPage(p => p + 1)}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
             </div>
           )}
         </TabsContent>
