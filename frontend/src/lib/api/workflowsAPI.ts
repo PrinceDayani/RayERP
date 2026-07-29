@@ -115,7 +115,7 @@ export interface WorkflowComment {
 
 export interface WorkflowAuditEntry {
   action: string;
-  performedBy: { _id: string; name: string; email: string };
+  performedBy?: { _id: string; name: string; email: string }; // absent for system entries
   stepId?: string;
   details?: Record<string, any>;
   timestamp: string;
