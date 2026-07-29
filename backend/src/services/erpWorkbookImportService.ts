@@ -48,6 +48,9 @@ export interface ErpWorkbookData {
 
 export interface ImportOptions {
   dryRun: boolean;
+  // Explicit workbook-owner-label -> user email mapping (e.g.
+  // { "MD/CEO": "ceo@company.com" }). Checked before name matching.
+  ownerMap?: Record<string, string>;
 }
 
 export interface ImportReport {
@@ -172,13 +175,24 @@ export async function parseErpWorkbook(buffer: Buffer): Promise<ErpWorkbookData>
 // --- User matching -----------------------------------------------------------
 
 // Matches a workbook owner label ("MD/CEO", "ATUL", "BD & Tendering Mgr")
-// against existing users by exact name, then by name token. Returns null when
-// nothing matches; the caller falls back to the importing user and reports it.
+// against the explicit ownerMap (label -> email) first, then existing users
+// by exact name, then by name token. Returns null when nothing matches; the
+// caller falls back to the importing user and reports it.
 function matchUser(
   label: string,
-  users: { _id: mongoose.Types.ObjectId; name: string }[]
+  users: { _id: mongoose.Types.ObjectId; name: string; email: string }[],
+  ownerMap?: Record<string, string>
 ): { _id: mongoose.Types.ObjectId; name: string } | null {
   const needle = label.trim().toLowerCase();
+  if (ownerMap) {
+    const mappedEmail = Object.entries(ownerMap).find(
+      ([key]) => key.trim().toLowerCase() === needle
+    )?.[1];
+    if (mappedEmail) {
+      const byEmail = users.find(u => u.email.toLowerCase() === mappedEmail.trim().toLowerCase());
+      if (byEmail) return byEmail;
+    }
+  }
   const exact = users.find(u => u.name.trim().toLowerCase() === needle);
   if (exact) return exact;
   const token = users.find(u =>
@@ -206,11 +220,11 @@ export async function importErpData(
     unmatchedOwners: [],
   };
 
-  const users = await User.find({}, 'name').lean<{ _id: mongoose.Types.ObjectId; name: string }[]>();
+  const users = await User.find({}, 'name email').lean<{ _id: mongoose.Types.ObjectId; name: string; email: string }[]>();
 
   const resolveOwner = (label: string | null): mongoose.Types.ObjectId => {
     if (!label) return actorId;
-    const match = matchUser(label, users);
+    const match = matchUser(label, users, options.ownerMap);
     if (match) {
       report.ownerMatches[label] = match.name;
       return match._id;

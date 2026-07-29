@@ -14,6 +14,24 @@ export const importErpWorkbook = async (req: Request, res: Response) => {
 
     const dryRun = req.query.dryRun === 'true' || req.body?.dryRun === 'true' || req.body?.dryRun === true;
 
+    // Optional owner-label -> user-email mapping, sent as a JSON string field
+    // alongside the file (multipart bodies carry strings).
+    let ownerMap: Record<string, string> | undefined;
+    if (req.body?.ownerMap) {
+      try {
+        const parsed = typeof req.body.ownerMap === 'string' ? JSON.parse(req.body.ownerMap) : req.body.ownerMap;
+        if (
+          typeof parsed !== 'object' || parsed === null || Array.isArray(parsed) ||
+          Object.values(parsed).some(v => typeof v !== 'string')
+        ) {
+          return res.status(400).json({ success: false, message: 'ownerMap must be a JSON object of label -> email strings.' });
+        }
+        ownerMap = parsed;
+      } catch {
+        return res.status(400).json({ success: false, message: 'ownerMap is not valid JSON.' });
+      }
+    }
+
     const data = await parseErpWorkbook(file.buffer);
     const totalRows = data.roadmapTasks.length + data.dailyTasks.length + data.announcements.length;
     if (totalRows === 0) {
@@ -24,7 +42,7 @@ export const importErpWorkbook = async (req: Request, res: Response) => {
       });
     }
 
-    const report = await importErpData(data, (req as any).user._id, { dryRun });
+    const report = await importErpData(data, (req as any).user._id, { dryRun, ownerMap });
 
     logger.info('ERP workbook import completed', {
       user: (req as any).user._id.toString(),

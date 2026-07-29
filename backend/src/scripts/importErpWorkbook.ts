@@ -8,6 +8,10 @@
  *   npx ts-node --transpile-only src/scripts/importErpWorkbook.ts --dry-run
  *   npx ts-node --transpile-only src/scripts/importErpWorkbook.ts [--actor you@company.com]
  *
+ * Workbook owner labels are matched to users by name; add explicit mappings
+ * with a repeatable --map flag (label=email):
+ *   ... importErpWorkbook.ts --map "MD/CEO=ceo@company.com" --map "Accounts=accounts@company.com"
+ *
  * Without --actor, tasks fall back to the Root user as assigner. Owners that
  * match no existing user are listed at the end for manual reassignment.
  * Reads MONGO_URI from the environment.
@@ -23,6 +27,16 @@ dotenv.config();
 const DRY_RUN = process.argv.includes('--dry-run');
 const actorFlag = process.argv.indexOf('--actor');
 const ACTOR_EMAIL = actorFlag !== -1 ? process.argv[actorFlag + 1] : undefined;
+
+// Repeatable --map "Label=email" flags -> { Label: email }
+const OWNER_MAP: Record<string, string> = {};
+process.argv.forEach((arg, i) => {
+  if (arg !== '--map') return;
+  const pair = process.argv[i + 1] || '';
+  const eq = pair.indexOf('=');
+  if (eq === -1) throw new Error(`Invalid --map value "${pair}" — expected "Label=email"`);
+  OWNER_MAP[pair.slice(0, eq).trim()] = pair.slice(eq + 1).trim();
+});
 
 const DATA: ErpWorkbookData = {
   "roadmapTasks": [
@@ -717,7 +731,7 @@ async function run() {
   console.log('Connected to database');
 
   const actorId = await resolveActor();
-  const report = await importErpData(DATA, actorId, { dryRun: DRY_RUN });
+  const report = await importErpData(DATA, actorId, { dryRun: DRY_RUN, ownerMap: OWNER_MAP });
 
   console.log('\n=== ERP workbook import report ===');
   console.log(`Project "${report.project.name}": ${report.project.action}`);
