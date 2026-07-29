@@ -1,6 +1,18 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { WorkflowProjectIntegration } from '../services/workflowProjectIntegration';
+import { getAccessibleProjectIdsForUser } from '../middleware/projectAccess.middleware';
+import { canManageWorkflows } from '../middleware/rbac.middleware';
 import { logger } from '../utils/logger';
+
+const isInvalidId = (id: any) => !id || !mongoose.isValidObjectId(String(id));
+
+const hasProjectAccess = async (user: any, projectId: string): Promise<boolean> => {
+  if (canManageWorkflows(user)) return true;
+  const access = await getAccessibleProjectIdsForUser(user);
+  if (access.all) return true;
+  return access.ids.some(id => id.toString() === projectId);
+};
 
 /**
  * Get the active workflow for a project
@@ -12,6 +24,13 @@ export const getProjectWorkflow = async (req: Request, res: Response) => {
     }
 
     const { projectId } = req.params;
+    if (isInvalidId(projectId)) {
+      return res.status(400).json({ success: false, message: 'Invalid project id' });
+    }
+    if (!(await hasProjectAccess(req.user, projectId))) {
+      return res.status(403).json({ success: false, message: 'You do not have access to this project' });
+    }
+
     const workflow = await WorkflowProjectIntegration.getProjectWorkflow(projectId);
 
     if (!workflow) {
@@ -21,7 +40,7 @@ export const getProjectWorkflow = async (req: Request, res: Response) => {
     res.json({ success: true, data: workflow });
   } catch (error: any) {
     logger.error('Get project workflow error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Failed to load project workflow' });
   }
 };
 
@@ -35,12 +54,19 @@ export const getProjectWorkflowHistory = async (req: Request, res: Response) => 
     }
 
     const { projectId } = req.params;
+    if (isInvalidId(projectId)) {
+      return res.status(400).json({ success: false, message: 'Invalid project id' });
+    }
+    if (!(await hasProjectAccess(req.user, projectId))) {
+      return res.status(403).json({ success: false, message: 'You do not have access to this project' });
+    }
+
     const workflows = await WorkflowProjectIntegration.getProjectWorkflowHistory(projectId);
 
     res.json({ success: true, data: workflows });
   } catch (error: any) {
     logger.error('Get project workflow history error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Failed to load project workflow history' });
   }
 };
 
@@ -55,7 +81,16 @@ export const startProjectWorkflow = async (req: Request, res: Response) => {
     }
 
     const { projectId } = req.params;
+    if (isInvalidId(projectId)) {
+      return res.status(400).json({ success: false, message: 'Invalid project id' });
+    }
     const { workflowTemplateId, metadata } = req.body;
+    if (workflowTemplateId !== undefined && isInvalidId(workflowTemplateId)) {
+      return res.status(400).json({ success: false, message: 'Invalid workflowTemplateId' });
+    }
+    if (!(await hasProjectAccess(req.user, projectId))) {
+      return res.status(403).json({ success: false, message: 'You do not have access to this project' });
+    }
 
     const result = await WorkflowProjectIntegration.onProjectCreated(
       projectId,
@@ -88,7 +123,16 @@ export const restartProjectWorkflow = async (req: Request, res: Response) => {
     }
 
     const { projectId } = req.params;
+    if (isInvalidId(projectId)) {
+      return res.status(400).json({ success: false, message: 'Invalid project id' });
+    }
     const { workflowTemplateId } = req.body;
+    if (workflowTemplateId !== undefined && isInvalidId(workflowTemplateId)) {
+      return res.status(400).json({ success: false, message: 'Invalid workflowTemplateId' });
+    }
+    if (!(await hasProjectAccess(req.user, projectId))) {
+      return res.status(403).json({ success: false, message: 'You do not have access to this project' });
+    }
 
     const result = await WorkflowProjectIntegration.restartProjectWorkflow(
       projectId,
