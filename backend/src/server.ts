@@ -396,31 +396,37 @@ connectDB()
     await mongoose.connection.db.admin().ping();
     console.log('✅ Database connection warmed up');
 
-    // Initialize onboarding system
-    try {
-      const { initializeOnboardingSystem } = await import('./utils/initializeOnboarding');
-      await initializeOnboardingSystem();
-      logger.info('✅ Onboarding system initialized');
-    } catch (error) {
-      logger.warn('⚠️ Onboarding system could not be initialized:', error.message);
-    }
+    // Startup seeding is opt-in: it writes roles, permissions, chart of accounts
+    // and currencies, so it must not repopulate a deliberately cleared database.
+    if (process.env.SEED_ON_STARTUP === 'true') {
+      // Initialize onboarding system
+      try {
+        const { initializeOnboardingSystem } = await import('./utils/initializeOnboarding');
+        await initializeOnboardingSystem();
+        logger.info('✅ Onboarding system initialized');
+      } catch (error) {
+        logger.warn('⚠️ Onboarding system could not be initialized:', error.message);
+      }
 
-    // Seed default chart of accounts
-    try {
-      const { seedDefaultAccounts } = await import('./utils/seedDefaultAccounts');
-      await seedDefaultAccounts();
-      logger.info('✅ Default chart of accounts seeded');
-    } catch (error) {
-      logger.warn('⚠️ Default accounts could not be seeded:', error.message);
-    }
+      // Seed default chart of accounts
+      try {
+        const { seedDefaultAccounts } = await import('./utils/seedDefaultAccounts');
+        await seedDefaultAccounts();
+        logger.info('✅ Default chart of accounts seeded');
+      } catch (error) {
+        logger.warn('⚠️ Default accounts could not be seeded:', error.message);
+      }
 
-    // Seed default currencies
-    try {
-      const { seedDefaultCurrencies } = await import('./utils/seedDefaultCurrencies');
-      await seedDefaultCurrencies();
-      logger.info('✅ Default currencies seeded');
-    } catch (error) {
-      logger.warn('⚠️ Default currencies could not be seeded:', error.message);
+      // Seed default currencies
+      try {
+        const { seedDefaultCurrencies } = await import('./utils/seedDefaultCurrencies');
+        await seedDefaultCurrencies();
+        logger.info('✅ Default currencies seeded');
+      } catch (error) {
+        logger.warn('⚠️ Default currencies could not be seeded:', error.message);
+      }
+    } else {
+      logger.info('Startup seeding skipped (set SEED_ON_STARTUP=true to enable)');
     }
 
     // Start server

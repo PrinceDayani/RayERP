@@ -26,6 +26,20 @@ User  ──1:1──>  Employee
   involved (attendance, leave, payroll). Project / task / reporting code
   now uses `req.user._id` directly.
 
+### When the Employee record is created
+
+- **HR-first:** `POST /api/employees` creates the Employee and its User
+  together (`employeeController.createEmployee`).
+- **Signup-first:** approving a self-registered account
+  (`userApprovalController.approveUser`) creates the linked Employee from
+  what signup collected — `firstName` / `lastName` split from `User.name`,
+  `email`, `hireDate` = approval date. `phone`, `position`, `department`
+  and `salary` are left unset for HR to complete, so those four are
+  `required: false` on the Employee schema. Skipped if an Employee already
+  exists for that user or email.
+- Neither path is the removed shadow-Employee pattern: both create a real
+  HR record for a real hire. Root still has no Employee, by design.
+
 ---
 
 ## 2. Architectural rule

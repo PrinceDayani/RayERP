@@ -1,6 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { register, login, getCurrentUser, logout, checkInitialSetup, checkAuth, changePassword, refreshAccessToken, getMySessions, revokeMySession, getUserSessions, revokeUserSession, revokeAllUserSessions, getAllActiveSessions } from '../controllers/authController';
+import { register, login, getCurrentUser, logout, checkInitialSetup, initialSetup, publicSignup, checkAuth, changePassword, refreshAccessToken, getMySessions, revokeMySession, getUserSessions, revokeUserSession, revokeAllUserSessions, getAllActiveSessions } from '../controllers/authController';
+import { listPendingUsers, approveUser, rejectUser } from '../controllers/userApprovalController';
 import { protect, requireAdminOrRoot } from '../middleware/auth.middleware';
 import { authorizeMinLevel } from '../middleware/role.middleware';
 import { updateUserRole, getAllUsers } from '../controllers/userController';
@@ -62,11 +63,20 @@ router.delete('/sessions/user/:userId/all', protect, requireAdminOrRoot, general
 
 router.post('/register', protect, authLimiter, register);
 
+// Public self-registration; account is created inert and awaits Admin/Root approval
+router.post('/signup', authLimiter, publicSignup);
+
+// Approval queue for self-registered accounts
+router.get('/pending-users', protect, requireAdminOrRoot, generalLimiter, listPendingUsers);
+router.post('/pending-users/:id/approve', protect, requireAdminOrRoot, generalLimiter, approveUser);
+router.post('/pending-users/:id/reject', protect, requireAdminOrRoot, generalLimiter, rejectUser);
+
 router.get('/users', protect, authorizeMinLevel(80), getAllUsers);
 router.patch('/users/:id/role', protect, authorizeMinLevel(90), updateUserRole);
 router.put('/users/:id/role', protect, authorizeMinLevel(90), updateUserRole);
 
-router.post('/initial-setup', authLimiter, register);
+// Bootstrap of the first Root user only; refuses once any user exists
+router.post('/initial-setup', authLimiter, initialSetup);
 router.get('/initial-setup', generalLimiter, checkInitialSetup);
 
 router.put('/change-password', protect, generalLimiter, validateCsrfToken, changePassword);

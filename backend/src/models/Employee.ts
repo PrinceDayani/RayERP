@@ -38,12 +38,13 @@ export interface IEmployee extends Document {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
+  // Unset on records created by signup approval; HR fills these in later.
+  phone?: string;
   department?: string;
   departments?: string[];
-  position: string;
+  position?: string;
   jobTitle?: string;
-  salary: number;
+  salary?: number;
   hireDate: Date;
   status: 'active' | 'inactive' | 'terminated';
   address: {
@@ -88,14 +89,15 @@ export interface IEmployee extends Document {
 const employeeSchema = new Schema<IEmployee>({
   employeeId: { type: String, required: true, unique: true },
   firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
+  // Blank when a single-word name is split at signup approval.
+  lastName: { type: String, required: false, default: '' },
   email: { type: String, required: true, unique: true },
-  phone: { type: String, required: true },
+  phone: { type: String, required: false },
   department: { type: String, required: false },
   departments: { type: [String], default: [] },
-  position: { type: String, required: true },
+  position: { type: String, required: false },
   jobTitle: { type: String },
-  salary: { type: Number, required: true },
+  salary: { type: Number, required: false },
   hireDate: { type: Date, required: true },
   status: { type: String, enum: ['active', 'inactive', 'terminated'], default: 'active' },
   address: {

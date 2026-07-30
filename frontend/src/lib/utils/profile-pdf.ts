@@ -5,9 +5,9 @@ interface Employee {
     firstName: string;
     lastName: string;
     email: string;
-    phone: string;
+    phone?: string;
     department: string;
-    position: string;
+    position?: string;
     employeeId: string;
     hireDate?: string;
     address?: {
@@ -82,7 +82,7 @@ export const generateProfilePDF = (
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text(employee.position, margin, 30);
+    doc.text(employee.position || '', margin, 30);
 
     yPos = 50;
     doc.setTextColor(0, 0, 0);
@@ -99,7 +99,7 @@ export const generateProfilePDF = (
     yPos += lineHeight;
     doc.text(`Email: ${employee.email}`, margin, yPos);
     yPos += lineHeight;
-    doc.text(`Phone: ${employee.phone}`, margin, yPos);
+    doc.text(`Phone: ${employee.phone || '-'}`, margin, yPos);
     yPos += lineHeight;
     doc.text(`Department: ${employee.department}`, margin, yPos);
     yPos += lineHeight + 5;

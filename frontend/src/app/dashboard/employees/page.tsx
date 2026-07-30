@@ -49,11 +49,11 @@ interface Employee {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
+  phone?: string;
   department: string;
   departments?: string[];
-  position: string;
-  salary: number;
+  position?: string;
+  salary?: number;
   status: 'active' | 'inactive' | 'terminated';
   hireDate: string;
 }
@@ -1064,7 +1064,9 @@ const EmployeeReports = () => {
                       </td>
                       <td className="p-3 text-sm font-medium">{Math.round(emp.attendance.totalHours)}h</td>
                       <td className="p-3 text-sm">{emp.leaves.totalLeaves} days</td>
-                      <td className="p-3 text-sm font-semibold">₹{emp.employee.salary.toLocaleString()}</td>
+                      <td className="p-3 text-sm font-semibold">
+                        {emp.employee.salary != null ? `₹${emp.employee.salary.toLocaleString()}` : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

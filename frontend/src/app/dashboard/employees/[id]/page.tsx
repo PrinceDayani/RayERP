@@ -33,10 +33,10 @@ interface Employee {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
+  phone?: string;
   department: string;
-  position: string;
-  salary: number;
+  position?: string;
+  salary?: number;
   hireDate: string;
   status: 'active' | 'inactive' | 'terminated';
   address: {
@@ -448,7 +448,9 @@ export default function EmployeeDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Salary</p>
-                <p className="text-xl font-bold text-foreground">₹{employee.salary.toLocaleString()}</p>
+                <p className="text-xl font-bold text-foreground">
+                  {employee.salary != null ? `₹${employee.salary.toLocaleString()}` : 'Not set'}
+                </p>
               </div>
               <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
                 <Coins className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -591,7 +593,9 @@ export default function EmployeeDetailPage() {
                   </div>
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <span className="text-sm text-muted-foreground">Salary</span>
-                    <span className="font-medium text-sm">₹{employee.salary.toLocaleString()}</span>
+                    <span className="font-medium text-sm">
+                      {employee.salary != null ? `₹${employee.salary.toLocaleString()}` : 'Not set'}
+                    </span>
                   </div>
                 </div>
                 

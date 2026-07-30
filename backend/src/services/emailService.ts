@@ -56,6 +56,62 @@ class EmailService {
     }
   }
 
+  async sendAccountPendingApproval(to: string, applicantName: string, applicantEmail: string) {
+    const result = await this.transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to,
+      subject: `New account awaiting approval - ${process.env.COMPANY_NAME || 'RayERP'}`,
+      html: this.getNoticeTemplate(
+        'New account awaiting approval',
+        `<p><strong>${applicantName}</strong> (${applicantEmail}) has registered and is waiting for approval.</p>
+         <p>Review the request in the Users section of ${process.env.COMPANY_NAME || 'RayERP'} to assign a role or reject the account.</p>`
+      )
+    });
+    return { success: true, messageId: result.messageId };
+  }
+
+  async sendAccountApproved(to: string, name: string, roleName: string) {
+    const loginUrl = `${process.env.FRONTEND_URL || ''}/login`;
+    const result = await this.transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to,
+      subject: `Your account has been approved - ${process.env.COMPANY_NAME || 'RayERP'}`,
+      html: this.getNoticeTemplate(
+        'Your account is ready',
+        `<p>Hello ${name},</p>
+         <p>Your account has been approved and assigned the <strong>${roleName}</strong> role. You can now sign in.</p>
+         <p><a href="${loginUrl}">${loginUrl}</a></p>`
+      )
+    });
+    return { success: true, messageId: result.messageId };
+  }
+
+  async sendAccountRejected(to: string, name: string, reason?: string) {
+    const result = await this.transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to,
+      subject: `Update on your account request - ${process.env.COMPANY_NAME || 'RayERP'}`,
+      html: this.getNoticeTemplate(
+        'Account request not approved',
+        `<p>Hello ${name},</p>
+         <p>Your account request was not approved.</p>
+         ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+         <p>Contact your administrator if you believe this is a mistake.</p>`
+      )
+    });
+    return { success: true, messageId: result.messageId };
+  }
+
+  private getNoticeTemplate(heading: string, body: string): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">${heading}</h2>
+        ${body}
+        <p style="margin-top: 24px;">Regards,<br>${process.env.COMPANY_NAME || 'RayERP Team'}</p>
+      </div>
+    `;
+  }
+
   private getInvoiceEmailTemplate(invoice: any): string {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

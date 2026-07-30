@@ -126,6 +126,89 @@ const UserManagement = () => {
   const [statusReason, setStatusReason] = useState('');
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
+  const [pendingUsers, setPendingUsers] = useState<User[]>([]);
+  const [approvalRole, setApprovalRole] = useState<Record<string, string>>({});
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+
+  const authHeaders = () => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
+  });
+
+  // Fetch accounts awaiting approval
+  const fetchPendingUsers = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/pending-users`, {
+        method: 'GET',
+        headers: authHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch pending users');
+      }
+
+      const data = await response.json();
+      setPendingUsers(data.data || []);
+    } catch (err: any) {
+      console.error('Fetch pending users error:', err);
+    }
+  };
+
+  const handleApproveSignup = async (userId: string) => {
+    const roleId = approvalRole[userId];
+    if (!roleId) {
+      toast({
+        title: "Select a role",
+        description: "Choose the role this user should receive.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setDecidingId(userId);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/pending-users/${userId}/approve`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ roleId })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to approve user');
+      }
+
+      toast({ title: "User approved", description: "The account is now active." });
+      await Promise.all([fetchPendingUsers(), fetchUsers()]);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setDecidingId(null);
+    }
+  };
+
+  const handleRejectSignup = async (userId: string) => {
+    try {
+      setDecidingId(userId);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/pending-users/${userId}/reject`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({})
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to reject user');
+      }
+
+      toast({ title: "Signup rejected", description: "The account has been disabled." });
+      await Promise.all([fetchPendingUsers(), fetchUsers()]);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setDecidingId(null);
+    }
+  };
 
   // Fetch all users
   const fetchUsers = async () => {
@@ -421,6 +504,7 @@ const UserManagement = () => {
   useEffect(() => {
     fetchUsers();
     fetchPendingRequests();
+    fetchPendingUsers();
   }, []);
 
   // Get role name from role object or string
@@ -621,6 +705,15 @@ const UserManagement = () => {
                     <UserCog className="h-4 w-4" />
                     User Management
                   </TabsTrigger>
+                  <TabsTrigger value="pending" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300 flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Pending Approval
+                    {pendingUsers.length > 0 && (
+                      <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5">
+                        {pendingUsers.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
                   {hasPermission('roles.view') && (
                     <TabsTrigger value="roles" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300 flex items-center gap-2">
                       <Settings className="h-4 w-4" />
@@ -628,6 +721,79 @@ const UserManagement = () => {
                     </TabsTrigger>
                   )}
                 </TabsList>
+
+                <TabsContent value="pending" className="space-y-6">
+                  {pendingUsers.length === 0 ? (
+                    <div className="text-center py-16 text-muted-foreground">
+                      <Clock className="h-10 w-10 mx-auto mb-4 opacity-40" />
+                      <p className="text-sm">No accounts are awaiting approval.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {pendingUsers.map((pending) => (
+                        <div
+                          key={pending._id}
+                          className="flex flex-col gap-4 rounded-xl border border-border/50 bg-muted/20 p-5 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{pending.name}</p>
+                            <p className="text-sm text-muted-foreground truncate">{pending.email}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Requested {new Date(pending.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center shrink-0">
+                            <Select
+                              value={approvalRole[pending._id] || ''}
+                              onValueChange={(value) =>
+                                setApprovalRole((prev) => ({ ...prev, [pending._id]: value }))
+                              }
+                            >
+                              <SelectTrigger className="w-full sm:w-52 rounded-lg">
+                                <SelectValue placeholder="Assign a role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {roles
+                                  .filter((role) => {
+                                    const name = role.name?.toLowerCase();
+                                    return name !== 'root' && name !== 'pending';
+                                  })
+                                  .map((role) => (
+                                    <SelectItem key={role._id} value={role._id}>
+                                      {role.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                className="rounded-lg"
+                                disabled={decidingId === pending._id}
+                                onClick={() => handleApproveSignup(pending._id)}
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-lg"
+                                disabled={decidingId === pending._id}
+                                onClick={() => handleRejectSignup(pending._id)}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
                 
                 <TabsContent value="users" className="space-y-6">
                   {error && (

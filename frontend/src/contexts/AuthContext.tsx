@@ -37,7 +37,7 @@ interface AuthContextType {
   token: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, password: string, roleId?: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string) => Promise<boolean>;
   error: string | null;
   isLoading: boolean;
   loading: boolean;
@@ -256,26 +256,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (name: string, email: string, password: string, roleId?: string): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string): Promise<boolean> => {
     setError(null);
     setIsLoading(true);
     
     try {
-      // Check if this is initial setup
-      const setupResponse = await fetch(`${API_URL}/api/auth/initial-setup`);
-      const setupData = await setupResponse.json();
-      const isInitialSetup = setupData.isInitialSetup;
-      
-      // Use appropriate endpoint
-      const endpoint = isInitialSetup ? '/api/auth/initial-setup' : '/api/auth/register';
-      
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      // Self-registration always lands in the approval queue; the server assigns
+      // the Pending role and ignores any client-supplied role.
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ name, email, password, roleId })
+        body: JSON.stringify({ name, email, password })
       });
 
       const data = await response.json();

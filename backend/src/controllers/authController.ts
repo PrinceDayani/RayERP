@@ -1,19 +1,30 @@
 //path: backend/src/controllers/authController.ts
 
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { Role } from '../models/Role';
+import Notification from '../models/Notification';
 import { logger } from '../utils/logger';
-import { seedDefaultRoles, ensureRootRole } from '../utils/seedDefaultRoles';
+import { seedDefaultRoles, ensureRootRole, ensurePendingRole } from '../utils/seedDefaultRoles';
 import { generateDeviceFingerprint, compareFingerprints, isSuspiciousChange } from '../utils/deviceFingerprint';
 
-// Register a new user
+const MIN_PASSWORD_LENGTH = 8;
+
+// Create a user on behalf of an authenticated Admin/Root
 export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, password, roleId } = req.body;
 
-    // Check if all fields are provided
+    // This handler is mounted behind `protect`; an anonymous caller must never reach it.
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -21,7 +32,20 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if user already exists
+    if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+      });
+    }
+
+    if (!roleId || !mongoose.Types.ObjectId.isValid(roleId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid role must be specified'
+      });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -30,42 +54,7 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    await seedDefaultRoles();
-
-    let assignedRoleId = roleId;
-    const usersCount = await User.countDocuments();
-
-    if (usersCount === 0) {
-      // First user is Root
-      const rootRole = await ensureRootRole();
-      if (!rootRole) {
-        return res.status(500).json({
-          success: false,
-          message: 'System error: Root role not found'
-        });
-      }
-      assignedRoleId = rootRole._id;
-    } else {
-      // Check if trying to create another Root user
-      const role = await Role.findById(assignedRoleId || '');
-      if (role?.name === 'Root') {
-        const rootExists = await User.findOne().populate('role');
-        if (rootExists && (rootExists.role as any)?.name === 'Root') {
-          return res.status(403).json({
-            success: false,
-            message: 'Root user already exists. Only one Root user is allowed.'
-          });
-        }
-      }
-
-      if (!assignedRoleId) {
-        const defaultRole = await Role.findOne({ isDefault: true }).sort({ level: 1 });
-        assignedRoleId = defaultRole?._id;
-      }
-    }
-
-    // Verify role exists
-    const role = await Role.findById(assignedRoleId);
+    const role = await Role.findById(roleId);
     if (!role) {
       return res.status(400).json({
         success: false,
@@ -73,36 +62,32 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    if (req.user) {
-      const currentUserRole = await Role.findById((req.user as any).role);
-
-      if (role.name?.toLowerCase() === 'root') {
-        return res.status(403).json({
-          success: false,
-          message: 'Cannot assign Root role. Only one Root user is allowed.'
-        });
-      }
-
-      if (currentUserRole && role.level >= currentUserRole.level) {
-        return res.status(403).json({
-          success: false,
-          message: 'You cannot create users with equal or higher role level'
-        });
-      }
+    if (role.name?.toLowerCase() === 'root') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot assign Root role. Only one Root user is allowed.'
+      });
     }
 
-    // Create new user
+    const currentUserRole = await Role.findById((req.user as any).role);
+    if (!currentUserRole || role.level >= currentUserRole.level) {
+      return res.status(403).json({
+        success: false,
+        message: 'You cannot create users with equal or higher role level'
+      });
+    }
+
     const user = await User.create({
       name,
       email,
       password,
-      role: assignedRoleId
+      role: role._id,
+      status: 'active'
     });
 
-    // Populate role and remove password
     const populatedUser = await User.findById(user._id).populate('role').select('-password');
 
-    logger.info(`User registered: ${email} with role: ${role.name}`);
+    logger.info(`User created by ${(req.user as any)._id}: ${email} with role: ${role.name}`);
 
     res.status(201).json({
       success: true,
@@ -115,6 +100,184 @@ export const register = async (req: Request, res: Response) => {
       success: false,
       message: error.message || 'An error occurred during registration',
     });
+  }
+};
+
+/**
+ * Public bootstrap of the very first (Root) user. Refuses once any user exists,
+ * so it cannot be used to self-provision against an initialised system.
+ */
+export const initialSetup = async (req: Request, res: Response) => {
+  try {
+    const { name, email, password } = req.body;
+
+    const usersCount = await User.countDocuments();
+    if (usersCount > 0) {
+      logger.warn(`Initial-setup attempt against an initialised system from ${req.ip}`);
+      return res.status(403).json({
+        success: false,
+        message: 'System is already initialised. Initial setup is no longer available.'
+      });
+    }
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields'
+      });
+    }
+
+    if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+      });
+    }
+
+    await seedDefaultRoles();
+
+    const rootRole = await ensureRootRole();
+    if (!rootRole) {
+      return res.status(500).json({
+        success: false,
+        message: 'System error: Root role not found'
+      });
+    }
+
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role: rootRole._id,
+      status: 'active'
+    });
+
+    const populatedUser = await User.findById(user._id).populate('role').select('-password');
+
+    logger.info(`Initial setup completed, Root user created: ${email}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Root account created successfully',
+      user: populatedUser,
+    });
+  } catch (error: any) {
+    logger.error(`Initial setup error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'An error occurred during initial setup',
+    });
+  }
+};
+
+/**
+ * Public self-registration. The account is inert until an Admin/Root approves it:
+ * it holds the Pending role (level 0, no permissions) and status pending_approval,
+ * which login rejects. Any client-supplied roleId is ignored by design.
+ */
+export const publicSignup = async (req: Request, res: Response) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide your name, email and password'
+      });
+    }
+
+    if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+      });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists'
+      });
+    }
+
+    const pendingRole = await ensurePendingRole();
+    if (!pendingRole) {
+      logger.error('Signup blocked: Pending role could not be resolved');
+      return res.status(503).json({
+        success: false,
+        message: 'Registration is temporarily unavailable. Please try again later.'
+      });
+    }
+
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role: pendingRole._id,
+      status: 'pending_approval'
+    });
+
+    logger.info(`Signup pending approval: ${user.email}`);
+
+    await notifyApproversOfSignup(user._id.toString(), user.name, user.email);
+
+    res.status(201).json({
+      success: true,
+      pending: true,
+      message: 'Account created. An administrator must approve it before you can sign in.',
+    });
+  } catch (error: any) {
+    logger.error(`Signup error: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred during registration',
+    });
+  }
+};
+
+/**
+ * Best-effort fan-out to approvers. Never throws: a notification or mail failure
+ * must not roll back a successful signup.
+ */
+const notifyApproversOfSignup = async (userId: string, name: string, email: string) => {
+  try {
+    const approverRoles = await Role.find({ level: { $gte: 80 } }).select('_id');
+    if (approverRoles.length === 0) return;
+
+    const approvers = await User.find({
+      role: { $in: approverRoles.map(r => r._id) },
+      status: 'active'
+    }).select('_id email');
+
+    if (approvers.length === 0) return;
+
+    await Notification.insertMany(
+      approvers.map(a => ({
+        userId: a._id,
+        type: 'system' as const,
+        title: 'New account awaiting approval',
+        message: `${name} (${email}) signed up and is waiting for approval.`,
+        priority: 'high' as const,
+        actionUrl: '/dashboard/users',
+        metadata: { pendingUserId: userId }
+      }))
+    );
+
+    const { default: emailService } = await import('../services/emailService');
+    await Promise.all(
+      approvers
+        .filter(a => a.email)
+        .map(a =>
+          emailService
+            .sendAccountPendingApproval(a.email, name, email)
+            .catch((err: any) =>
+              logger.warn(`Approval email failed for ${a.email}: ${err.message}`)
+            )
+        )
+    );
+  } catch (error: any) {
+    logger.warn(`Failed to notify approvers of signup: ${error.message}`);
   }
 };
 

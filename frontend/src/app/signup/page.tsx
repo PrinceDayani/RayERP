@@ -36,24 +36,8 @@ export default function Signup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isInitialSetup, setIsInitialSetup] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
-
-  // Check if this is the initial setup
-  useEffect(() => {
-    const checkInitialSetup = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/initial-setup`);
-        const data = await response.json();
-        setIsInitialSetup(data.isInitialSetup);
-      } catch (err) {
-        console.error("Error checking initial setup:", err);
-        setIsInitialSetup(false);
-      }
-    };
-
-    checkInitialSetup();
-  }, []);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -93,8 +77,8 @@ export default function Signup() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
       return;
     }
 
@@ -105,7 +89,7 @@ export default function Signup() {
       const success = await register(name, email, password);
 
       if (success) {
-        router.push('/login?registered=true');
+        setSubmitted(true);
       }
     } catch (err: any) {
       setError(err.message || authError || 'Registration failed');
@@ -199,40 +183,48 @@ export default function Signup() {
         <div className="w-full max-w-[420px] relative z-10 pt-16 sm:pt-0">
           {/* Glassmorphic Card */}
           <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur-xl shadow-2xl shadow-primary/5 p-6 sm:p-8 dark:bg-black/40 dark:border-white/10 dark:shadow-white/5" style={{ animation: 'auth-fade-in-up 0.5s ease-out' }}>
+            {submitted ? (
+              <div className="text-center">
+                <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-2xl bg-primary/10 mb-6">
+                  <Shield className="h-10 w-10 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight">Account pending approval</h2>
+                <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+                  Thanks {name.split(' ')[0] || 'for signing up'} — your account has been created.
+                  An administrator needs to approve it and assign your role before you can sign in.
+                  You&apos;ll be notified once that happens.
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full h-12 rounded-xl text-base mt-6 border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-300 dark:border-white/10 dark:text-white dark:hover:bg-white/5"
+                  onClick={() => router.push('/login')}
+                >
+                  Back to Sign In
+                </Button>
+              </div>
+            ) : (
+            <>
             {/* Header */}
             <div className="text-center mb-6">
               <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-2xl bg-white shadow-xl shadow-primary/10 mb-6 p-3">
-                {isInitialSetup ? (
-                  <Shield className="h-10 w-10 text-primary" />
-                ) : (
-                  <Image src="/RAYlogo.webp" alt="RayERP Logo" width={72} height={72} className="object-contain" priority />
-                )}
+                <Image src="/RAYlogo.webp" alt="RayERP Logo" width={72} height={72} className="object-contain" priority />
               </div>
               <h2 className="text-2xl font-bold tracking-tight" style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.1s both' }}>
-                {isInitialSetup ? 'Create Admin Account' : 'Create Account'}
+                Create Account
               </h2>
               <p className="text-muted-foreground mt-2 text-sm" style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.15s both' }}>
-                {isInitialSetup
-                  ? 'Set up your RayERP system administrator account'
-                  : 'Join RayERP and start managing your business'
-                }
+                Join RayERP and start managing your business
               </p>
             </div>
 
-            {/* Initial Setup Notice */}
-            {isInitialSetup && (
-              <Alert className="mb-5 border-primary/20 bg-primary/5 dark:bg-primary/10 rounded-xl">
-                <Shield className="h-4 w-4 text-primary" />
-                <AlertDescription>
-                  <div className="space-y-1">
-                    <p className="font-medium text-primary text-sm">Initial System Setup</p>
-                    <p className="text-xs text-muted-foreground">
-                      This account will have root access to configure and manage the entire system.
-                    </p>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
+            <Alert className="mb-5 border-primary/20 bg-primary/5 dark:bg-primary/10 rounded-xl">
+              <Shield className="h-4 w-4 text-primary" />
+              <AlertDescription>
+                <p className="text-xs text-muted-foreground">
+                  New accounts require administrator approval before first sign-in.
+                </p>
+              </AlertDescription>
+            </Alert>
 
             {/* Error Message */}
             {(error || authError) && (
@@ -287,11 +279,11 @@ export default function Signup() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Create a password (min. 6 characters)"
+                    placeholder="Create a password (min. 8 characters)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={8}
                     disabled={isSubmitting}
                     className="h-12 rounded-xl bg-muted/30 border-border/50 pr-11 text-sm transition-all duration-300 focus:bg-background focus:shadow-md focus:shadow-primary/10 dark:bg-white/5 dark:border-white/10 dark:text-white dark:focus:bg-white/10"
                   />
@@ -393,7 +385,7 @@ export default function Signup() {
                   ) : (
                     <div className="flex items-center gap-2">
                       <UserPlus className="h-4 w-4" />
-                      {isInitialSetup ? 'Create Admin Account' : 'Create Account'}
+                      Create Account
                     </div>
                   )}
                 </Button>
@@ -401,56 +393,26 @@ export default function Signup() {
             </form>
 
             {/* Login Link */}
-            {!isInitialSetup && (
-              <>
-                <div className="relative my-6" style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.45s both' }}>
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-border/50 dark:border-white/10" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card/70 dark:bg-black/40 backdrop-blur-sm px-3 text-muted-foreground dark:text-white/60 font-medium">Already have an account?</span>
-                  </div>
-                </div>
-
-                <div style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.5s both' }}>
-                  <Button
-                    variant="outline"
-                    className="w-full h-12 rounded-xl text-base border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-300 dark:border-white/10 dark:text-white dark:hover:bg-white/5 dark:hover:border-white/20"
-                    onClick={() => router.push("/login")}
-                    disabled={isSubmitting}
-                  >
-                    Sign In
-                  </Button>
-                </div>
-              </>
-            )}
-
-            {/* Initial Setup Info */}
-            {isInitialSetup && (
-              <div className="mt-5 rounded-xl bg-muted/30 border border-border/40 p-4 dark:bg-white/5 dark:border-white/10" style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.45s both' }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <Shield className="h-4 w-4 text-primary" />
-                  <h4 className="font-medium text-sm">Admin Account Privileges</h4>
-                </div>
-                <ul className="text-xs space-y-2 text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                    Create and manage user accounts
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                    Configure system-wide settings
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                    Access all application features
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                    Manage roles and permissions
-                  </li>
-                </ul>
+            <div className="relative my-6" style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.45s both' }}>
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border/50 dark:border-white/10" />
               </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card/70 dark:bg-black/40 backdrop-blur-sm px-3 text-muted-foreground dark:text-white/60 font-medium">Already have an account?</span>
+              </div>
+            </div>
+
+            <div style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.5s both' }}>
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-xl text-base border-border/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-300 dark:border-white/10 dark:text-white dark:hover:bg-white/5 dark:hover:border-white/20"
+                onClick={() => router.push("/login")}
+                disabled={isSubmitting}
+              >
+                Sign In
+              </Button>
+            </div>
+            </>
             )}
           </div>
 
