@@ -99,10 +99,42 @@ export const scheduleReportingReminders = () => {
   });
 };
 
+export const scheduleWorkflowJobs = () => {
+  // Every 15 minutes: escalate SLA-breached steps and advance elapsed timer steps.
+  // Both operations are idempotent (escalation flags slaBreached, timers complete once).
+  cron.schedule('*/15 * * * *', async () => {
+    const startedAt = Date.now();
+    try {
+      const { WorkflowEngine } = await import('../services/workflowEngine');
+
+      const breached = await WorkflowEngine.findBreachedWorkflows();
+      let escalated = 0;
+      for (const instance of breached) {
+        const now = new Date();
+        for (const step of instance.steps) {
+          if (step.status === 'active' && step.stepType !== 'timer' && step.dueAt && step.dueAt < now && !step.slaBreached) {
+            await WorkflowEngine.escalateStep(instance._id.toString(), step.stepId);
+            escalated++;
+          }
+        }
+      }
+
+      const timersAdvanced = await WorkflowEngine.processDueTimerSteps();
+
+      if (escalated > 0 || timersAdvanced > 0) {
+        logger.info(`Workflow cron: ${escalated} step(s) escalated, ${timersAdvanced} timer step(s) advanced in ${Date.now() - startedAt}ms`);
+      }
+    } catch (error) {
+      logger.error('Workflow cron error:', error);
+    }
+  });
+};
+
 export const initializeCronJobs = () => {
   scheduleBillReminders();
   scheduleRecurringBills();
   scheduleRecurringEntries();
   scheduleReportingReminders();
-  logger.info('✅ Cron jobs initialized (bills, recurring entries, reporting reminders)');
+  scheduleWorkflowJobs();
+  logger.info('✅ Cron jobs initialized (bills, recurring entries, reporting reminders, workflow SLA/timers)');
 };

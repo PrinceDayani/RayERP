@@ -106,6 +106,40 @@ export const requirePermission = (permission: string) => {
   };
 };
 
+/**
+ * True when the user can administer workflows (templates, skipping steps,
+ * viewing all instances): Root, wildcard or workflows.manage permission,
+ * or a high-level role (level >= 80). Root bypass per repo RBAC rules.
+ */
+export function canManageWorkflows(user: any): boolean {
+  if (!user) return false;
+  const role = user.role;
+  const roleName = resolveRoleName(role);
+  if (isRootRole(roleName)) return true;
+
+  const permissions = new Set<string>(resolvePermissions(role));
+  if (Array.isArray(user.permissions)) {
+    user.permissions.forEach((perm: string) => permissions.add(perm));
+  }
+  if (permissions.has('*') || permissions.has('workflows.manage')) return true;
+
+  const level = (role && typeof role === 'object' && 'level' in role ? Number(role.level) : 0) || 0;
+  return level >= 80;
+}
+
+export const requireWorkflowManager = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+  if (!canManageWorkflows(req.user)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Workflow template management requires administrator access'
+    });
+  }
+  next();
+};
+
 export const requireAnyPermission = (permissions: string[]) => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {

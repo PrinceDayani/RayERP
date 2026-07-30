@@ -74,7 +74,7 @@ export interface IWorkflowComment {
 
 export interface IWorkflowAuditEntry {
   action: string;
-  performedBy: mongoose.Types.ObjectId;
+  performedBy?: mongoose.Types.ObjectId; // absent for system-generated entries
   stepId?: string;
   details?: Record<string, any>;
   timestamp: Date;
@@ -182,7 +182,7 @@ const workflowCommentSchema = new Schema({
 
 const workflowAuditSchema = new Schema({
   action: { type: String, required: true },
-  performedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  performedBy: { type: Schema.Types.ObjectId, ref: 'User' }, // absent for system entries
   stepId: String,
   details: Schema.Types.Mixed,
   timestamp: { type: Date, default: Date.now }

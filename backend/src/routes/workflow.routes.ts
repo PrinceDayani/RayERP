@@ -32,6 +32,7 @@ import {
 
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth.middleware');
+import { requireWorkflowManager } from '../middleware/rbac.middleware';
 
 // Apply authentication to all routes
 router.use(authenticateToken);
@@ -39,12 +40,13 @@ router.use(authenticateToken);
 // ==========================================
 // WORKFLOW TEMPLATE ROUTES
 // ==========================================
-router.post('/templates', createTemplate);
+// Templates define who approves what; managing them is admin-only
+router.post('/templates', requireWorkflowManager, createTemplate);
 router.get('/templates', getTemplates);
 router.get('/templates/:id', getTemplateById);
-router.put('/templates/:id', updateTemplate);
-router.delete('/templates/:id', deleteTemplate);
-router.post('/templates/:id/clone', cloneTemplate);
+router.put('/templates/:id', requireWorkflowManager, updateTemplate);
+router.delete('/templates/:id', requireWorkflowManager, deleteTemplate);
+router.post('/templates/:id/clone', requireWorkflowManager, cloneTemplate);
 
 // ==========================================
 // WORKFLOW INSTANCE ROUTES

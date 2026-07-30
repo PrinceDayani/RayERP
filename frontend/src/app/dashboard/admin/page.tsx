@@ -11,7 +11,8 @@ import { AdminStats } from "@/components/admin/AdminStats";
 import { AdminOverview } from "@/components/admin/AdminOverview";
 import RoleGuard from "@/components/RoleGuard";
 import { UserRole } from "@/contexts/AuthContext";
-import { UsersIcon, SettingsIcon, ActivityIcon, LayoutDashboardIcon } from "lucide-react";
+import { UsersIcon, SettingsIcon, ActivityIcon, LayoutDashboardIcon, FileSpreadsheetIcon } from "lucide-react";
+import { ExcelImport } from "@/components/admin/ExcelImport";
 
 export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -56,6 +57,10 @@ export default function AdminPage() {
             <TabsTrigger value="logs" className="flex items-center space-x-2">
               <ActivityIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Activity</span>
+            </TabsTrigger>
+            <TabsTrigger value="import" className="flex items-center space-x-2">
+              <FileSpreadsheetIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Import</span>
             </TabsTrigger>
           </TabsList>
           
@@ -110,6 +115,23 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <ActivityLogs isLoading={isLoading} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="import" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileSpreadsheetIcon className="h-5 w-5" />
+                  <span>Excel Data Import</span>
+                </CardTitle>
+                <CardDescription>
+                  Import tasks, roadmap and announcements from the ERP workbook
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ExcelImport />
               </CardContent>
             </Card>
           </TabsContent>
