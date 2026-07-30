@@ -84,8 +84,7 @@ export default function SalesReportsPage() {
         : `/sales-reports/report?${params}`;
       
       const response = await apiClient.get(endpoint);
-      console.log('API Response:', response.data);
-      
+
       if (selectedAccount !== 'all') {
         // Transform ledger entries to sales format
         const ledgerEntries = response.data.entries || [];
@@ -182,8 +181,6 @@ export default function SalesReportsPage() {
       </div>
     );
   }
-
-  console.log('Sales state:', sales, 'Length:', sales.length);
 
   return (
     <div className="min-h-screen bg-background p-6 space-y-6">

@@ -192,9 +192,7 @@ const AttendanceManagement = () => {
         params.employee = selectedEmployee;
       }
       
-      console.log('Fetching attendance with params:', params);
       const data = await attendanceAPI.getAll(params);
-      console.log('Received attendance data:', data);
       const attendanceData = Array.isArray(data) ? data : [];
       setAttendance(attendanceData);
       

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import TaxRecord from '../models/TaxRecord';
 import TaxConfig from '../models/TaxConfig';
 import mongoose from 'mongoose';
+import { logger } from '../utils/logger';
 
 // Get all tax records with pagination and filters
 export const getTaxRecords = async (req: Request, res: Response) => {
@@ -43,7 +44,7 @@ export const getTaxRecords = async (req: Request, res: Response) => {
             }
         });
     } catch (error: any) {
-        console.error('Error fetching tax records:', error);
+        logger.error('Error fetching tax records', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to fetch tax records'
@@ -85,7 +86,7 @@ export const getTaxLiabilities = async (req: Request, res: Response) => {
             total: taxRecords.length
         });
     } catch (error: any) {
-        console.error('Error fetching tax liabilities:', error);
+        logger.error('Error fetching tax liabilities', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to fetch tax liabilities'
@@ -123,7 +124,7 @@ export const getTaxById = async (req: Request, res: Response) => {
             data: taxRecord
         });
     } catch (error: any) {
-        console.error('Error fetching tax record:', error);
+        logger.error('Error fetching tax record', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to fetch tax record'
@@ -158,7 +159,7 @@ export const createTaxRecord = async (req: Request, res: Response) => {
         });
     } catch (error: any) {
         await session.abortTransaction();
-        console.error('Error creating tax record:', error);
+        logger.error('Error creating tax record', { message: error?.message });
 
         if (error.name === 'ValidationError') {
             return res.status(400).json({
@@ -220,7 +221,7 @@ export const updateTaxRecord = async (req: Request, res: Response) => {
         });
     } catch (error: any) {
         await session.abortTransaction();
-        console.error('Error updating tax record:', error);
+        logger.error('Error updating tax record', { message: error?.message });
 
         if (error.name === 'ValidationError') {
             return res.status(400).json({
@@ -285,7 +286,7 @@ export const softDeleteTaxRecord = async (req: Request, res: Response) => {
         });
     } catch (error: any) {
         await session.abortTransaction();
-        console.error('Error deleting tax record:', error);
+        logger.error('Error deleting tax record', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to delete tax record'
@@ -320,7 +321,7 @@ export const calculateTDS = async (req: Request, res: Response) => {
             }
         });
     } catch (error: any) {
-        console.error('Error calculating TDS:', error);
+        logger.error('Error calculating TDS', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to calculate TDS'
@@ -367,7 +368,7 @@ export const calculateIncomeTax = async (req: Request, res: Response) => {
             }
         });
     } catch (error: any) {
-        console.error('Error calculating income tax:', error);
+        logger.error('Error calculating income tax', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to calculate income tax'
@@ -413,7 +414,7 @@ export const getGSTReturns = async (req: Request, res: Response) => {
             data: gstReturns
         });
     } catch (error: any) {
-        console.error('Error fetching GST returns:', error);
+        logger.error('Error fetching GST returns', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to fetch GST returns'
@@ -442,7 +443,7 @@ export const getTaxStats = async (req: Request, res: Response) => {
             data: stats
         });
     } catch (error: any) {
-        console.error('Error fetching tax stats:', error);
+        logger.error('Error fetching tax stats', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to fetch tax statistics'
@@ -486,7 +487,7 @@ export const exportTaxRecords = async (req: Request, res: Response) => {
         res.setHeader('Content-Disposition', `attachment; filename=tax-records-${Date.now()}.csv`);
         res.send(csv);
     } catch (error: any) {
-        console.error('Error exporting tax records:', error);
+        logger.error('Error exporting tax records', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to export tax records'
@@ -532,7 +533,7 @@ export const uploadTaxDocument = async (req: Request, res: Response) => {
             filename: req.file.filename
         });
     } catch (error: any) {
-        console.error('Error uploading tax document:', error);
+        logger.error('Error uploading tax document', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to upload document'
@@ -563,7 +564,7 @@ export const getTaxDocuments = async (req: Request, res: Response) => {
             data: taxRecord.attachments || []
         });
     } catch (error: any) {
-        console.error('Error fetching tax documents:', error);
+        logger.error('Error fetching tax documents', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to fetch documents'
@@ -599,7 +600,7 @@ export const deleteTaxDocument = async (req: Request, res: Response) => {
             message: 'Document deleted successfully'
         });
     } catch (error: any) {
-        console.error('Error deleting tax document:', error);
+        logger.error('Error deleting tax document', { message: error?.message });
         res.status(500).json({
             success: false,
             message: 'Failed to delete document'

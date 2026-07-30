@@ -9,6 +9,7 @@ import JournalEntry from '../models/JournalEntry';
 import Account from '../models/ChartOfAccount';
 import ChartOfAccount from '../models/ChartOfAccount';
 import FiscalYear from '../models/FiscalYear';
+import { logger } from '../utils/logger';
 
 // Multi-Currency
 export const getCurrencies = async (req: Request, res: Response) => {
@@ -296,7 +297,7 @@ export const uploadDocument = async (req: Request, res: Response) => {
     
     res.status(201).json({ success: true, document: populated });
   } catch (error: any) {
-    console.error('Upload error:', error);
+    logger.error('Upload error', { message: error?.message });
     res.status(400).json({ success: false, message: error.message });
   }
 };

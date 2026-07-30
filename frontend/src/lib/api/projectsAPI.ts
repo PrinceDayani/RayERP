@@ -1,6 +1,7 @@
 //path: frontend/src/lib/api/projectsAPI.ts
 import api from './api';
 import { Task } from './tasksAPI';
+import { unwrapResponse } from './unwrap';
 
 export interface Milestone {
   _id?: string;
@@ -73,32 +74,32 @@ export const projectsAPI = {
 
   getById: async (id: string) => {
     const response = await api.get(`/projects/${id}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   create: async (projectData: Partial<Project>) => {
     const response = await api.post("/projects", projectData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   edit: async (id: string, projectData: Partial<Project>) => {
     const response = await api.put(`/projects/${id}`, projectData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   update: async (id: string, projectData: Partial<Project>) => {
     const response = await api.put(`/projects/${id}`, projectData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   delete: async (id: string) => {
     const response = await api.delete(`/projects/${id}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   archive: async (id: string) => {
     const response = await api.patch(`/projects/${id}/status`, { status: 'archived' });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   manageTeam: async (id: string, action: 'add' | 'remove', memberId: string) => {
@@ -135,7 +136,7 @@ export const projectsAPI = {
   // Dashboard stats
   getStats: async () => {
     const response = await api.get("/projects/stats");
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Reports
@@ -171,13 +172,13 @@ export const projectsAPI = {
   // Milestones
   updateMilestones: async (projectId: string, milestones: Milestone[]) => {
     const response = await api.put(`/projects/${projectId}/milestones`, { milestones });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Risks
   updateRisks: async (projectId: string, risks: Risk[]) => {
     const response = await api.put(`/projects/${projectId}/risks`, { risks });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Clone project
@@ -189,24 +190,24 @@ export const projectsAPI = {
   // Calculate progress
   calculateProgress: async (projectId: string) => {
     const response = await api.post(`/projects/${projectId}/calculate-progress`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Templates
   getTemplates: async () => {
     const response = await api.get("/projects/templates/list");
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Optimized data loading
   getEmployeesMinimal: async () => {
     const response = await api.get("/projects/employees/minimal");
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getDepartmentsMinimal: async () => {
     const response = await api.get("/projects/departments/minimal");
-    return response.data;
+    return unwrapResponse(response.data);
   },
 };
 

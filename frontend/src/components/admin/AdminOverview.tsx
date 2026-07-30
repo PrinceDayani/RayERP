@@ -75,9 +75,7 @@ export function AdminOverview({ isLoading }: AdminOverviewProps) {
         alert('Authentication required. Please log in again.');
         return;
       }
-      
-      console.log('Attempting to export logs as:', format);
-      
+
       try {
         // Try the blob method first
         const blob = await adminAPI.exportLogs(format);
@@ -139,11 +137,9 @@ export function AdminOverview({ isLoading }: AdminOverviewProps) {
   const handleSystemBackup = async () => {
     try {
       setIsBackupLoading(true);
-      console.log('Starting system backup...');
-      
+
       const blob = await backupAPI.downloadSystemBackup();
-      console.log('Backup blob received:', blob.size, 'bytes');
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -173,11 +169,7 @@ export function AdminOverview({ isLoading }: AdminOverviewProps) {
     try {
       const token = localStorage.getItem('auth-token');
       const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
-      
-      console.log('Testing API connection...');
-      console.log('API URL:', API_URL);
-      console.log('Token present:', !!token);
-      
+
       const response = await fetch(`${API_URL}/api/admin/stats`, {
         method: 'GET',
         headers: {
@@ -186,13 +178,9 @@ export function AdminOverview({ isLoading }: AdminOverviewProps) {
         },
         credentials: 'include'
       });
-      
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-      
+
       if (response.ok) {
         const data = await response.json();
-        console.log('API test successful:', data);
         alert('API connection test successful!');
       } else {
         const errorText = await response.text();

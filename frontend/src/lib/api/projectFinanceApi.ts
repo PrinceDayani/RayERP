@@ -5,8 +5,9 @@ import {
   ProjectBalanceSheet, 
   ProjectCashFlow, 
   ProjectLedgerEntry, 
-  ProjectJournalEntry 
+  ProjectJournalEntry
 } from '@/types/project-finance.types';
+import { unwrapResponse } from './unwrap';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
@@ -111,8 +112,8 @@ export const projectFinanceApi = {
         'Content-Type': 'application/json'
       }
     });
-    
-    return handleResponse(response);
+
+    return unwrapResponse(await handleResponse(response));
   },
 
   // Journal Entries
@@ -132,8 +133,8 @@ export const projectFinanceApi = {
         'Content-Type': 'application/json'
       }
     });
-    
-    return handleResponse(response);
+
+    return unwrapResponse(await handleResponse(response));
   },
 
   // Create Journal Entry
@@ -146,8 +147,8 @@ export const projectFinanceApi = {
       },
       body: JSON.stringify(entryData)
     });
-    
-    return handleResponse(response);
+
+    return unwrapResponse(await handleResponse(response));
   },
 
   // Update Journal Entry
@@ -160,8 +161,8 @@ export const projectFinanceApi = {
       },
       body: JSON.stringify(entryData)
     });
-    
-    return handleResponse(response);
+
+    return unwrapResponse(await handleResponse(response));
   },
 
   // Post Journal Entry
@@ -173,8 +174,8 @@ export const projectFinanceApi = {
         'Content-Type': 'application/json'
       }
     });
-    
-    return handleResponse(response);
+
+    return unwrapResponse(await handleResponse(response));
   },
 
   // Delete Journal Entry
@@ -193,7 +194,6 @@ export const projectFinanceApi = {
   // Export functions
   exportReport: async (reportType: string, projectId: string, format: 'pdf' | 'excel', filters?: ProjectFinanceFilters) => {
     // Mock export - would typically return a blob or download URL
-    console.log(`Exporting ${reportType} for project ${projectId} as ${format}`);
     return { success: true, message: 'Report exported successfully' };
   }
 };

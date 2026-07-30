@@ -1,6 +1,7 @@
 import Budget from '../models/Budget';
 import BudgetAlert from '../models/BudgetAlert';
 import Notification from '../models/Notification';
+import { logger } from './logger';
 
 export const checkBudgetAlerts = async (budgetId: string) => {
   try {
@@ -34,8 +35,8 @@ export const checkBudgetAlerts = async (budgetId: string) => {
         await createAlert(budget, 'critical', 100, utilization);
       }
     }
-  } catch (error) {
-    console.error('Error checking budget alerts:', error);
+  } catch (error: any) {
+    logger.error('Error checking budget alerts', { message: error?.message });
   }
 };
 
@@ -106,8 +107,8 @@ const createAlert = async (budget: any, type: string, threshold: number, utiliza
   try {
     const { io } = await import('../server');
     io.emit('budget:alert', { budgetId: budget._id, alert });
-  } catch (error) {
-    console.error('Socket emit error:', error);
+  } catch (error: any) {
+    logger.error('Socket emit error', { message: error?.message });
   }
 };
 
@@ -117,8 +118,8 @@ export const checkAllBudgets = async () => {
     for (const budget of budgets) {
       await checkBudgetAlerts(budget._id.toString());
     }
-  } catch (error) {
-    console.error('Error checking all budgets:', error);
+  } catch (error: any) {
+    logger.error('Error checking all budgets', { message: error?.message });
   }
 };
 

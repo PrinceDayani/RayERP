@@ -39,7 +39,6 @@ export default function DepartmentOverviewPage() {
 
       if (deptRes.status === "fulfilled") {
         const dept = deptRes.value.data?.data || deptRes.value.data;
-        console.log("Department loaded:", dept); // Debug log
         setDepartment(dept);
       }
 

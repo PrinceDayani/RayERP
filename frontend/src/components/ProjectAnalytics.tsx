@@ -28,7 +28,6 @@ export default function ProjectAnalytics({ projectId }: AnalyticsProps) {
           return;
         }
         const headers = { Authorization: `Bearer ${token}` };
-        console.log('Fetching analytics for project:', projectId);
         const baseUrl = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
         const [burndownRes, velocityRes, utilizationRes, performanceRes, riskRes] = await Promise.all([
@@ -44,8 +43,6 @@ export default function ProjectAnalytics({ projectId }: AnalyticsProps) {
         const utilizationData = await utilizationRes.json();
         const performanceData = await performanceRes.json();
         const riskData = await riskRes.json();
-
-        console.log('Analytics data:', { burndownData, velocityData, utilizationData, performanceData, riskData });
 
         setBurndown(burndownData);
         setVelocity(velocityData);

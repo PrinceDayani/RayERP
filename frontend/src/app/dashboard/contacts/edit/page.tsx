@@ -4,18 +4,13 @@ export const dynamic = 'force-dynamic';
 import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import Layout from '@/components/Layout';
 import { SectionLoader } from '@/components/PageLoader';
 import ContactForm from '@/components/Forms/ContactForm';
 import { getContact, updateContact, Contact } from '@/lib/api/index';
 
 // Loading component
 function ContactEditLoading() {
-  return (
-    <Layout>
-      <SectionLoader />
-    </Layout>
-  );
+  return <SectionLoader />;
 }
 
 // Content component with useSearchParams
@@ -129,10 +124,8 @@ function ContactEditContent() {
 // Main page component with Suspense boundary
 export default function DashboardEditContactPage() {
   return (
-    <Layout>
-      <Suspense fallback={<ContactEditLoading />}>
-        <ContactEditContent />
-      </Suspense>
-    </Layout>
+    <Suspense fallback={<ContactEditLoading />}>
+      <ContactEditContent />
+    </Suspense>
   );
 }

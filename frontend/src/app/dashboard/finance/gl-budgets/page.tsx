@@ -59,7 +59,6 @@ export default function GLBudgetsPage() {
         headers: { Authorization: `Bearer ${localStorage.getItem('auth-token')}` }
       });
       const data = await res.json();
-      console.log('Fetched accounts:', data);
       setAccounts(data.accounts || []);
     } catch (error) {
       console.error('Error:', error);

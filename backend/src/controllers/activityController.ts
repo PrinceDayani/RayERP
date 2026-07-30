@@ -11,6 +11,7 @@ import { getUserActivityQuery, clearUserProjectCache } from '../utils/activityQu
 import { ACTIVITY_BATCH_SIZE, ACTIVITY_EXPORT_LIMIT, CACHE_TTL } from '../constants/activity.constants';
 import { getCache, setCache, deleteCachePattern } from '../utils/redis';
 import { addHashToActivity, verifyActivityIntegrity, verifyChainIntegrity } from '../utils/activityIntegrity';
+import { logger } from '../utils/logger';
 
 // Activity cache - now using Redis with fallback
 const clearActivityCache = async () => {
@@ -127,26 +128,13 @@ export const createActivity = async (req: AuthRequest, res: Response) => {
       io.emit('activity:created', activity);
     }
 
-    console.log(`[Activity Created] ${requestId}`, {
-      user: user?.name,
-      action,
-      resource,
-      projectName,
-      duration: `${Date.now() - startTime}ms`
-    });
-
     res.status(201).json({
       success: true,
       data: activity
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Activity Create Error] ${requestId}`, {
-      error: error instanceof Error ? error.message : 'Unknown',
-      stack: error instanceof Error ? error.stack : undefined,
-      duration: `${duration}ms`
-    });
-    
+    logger.error('Error creating activity log', { message: error instanceof Error ? error.message : 'Unknown', requestId });
+
     res.status(500).json({
       success: false,
       message: 'Error creating activity log',
@@ -166,7 +154,6 @@ export const getBatchActivities = async (req: AuthRequest, res: Response) => {
     
     const cached = await getCache(cacheKey);
     if (cached) {
-      console.log(`[Batch Activities] ${requestId} - Cache hit`, { duration: `${Date.now() - startTime}ms` });
       return res.status(200).json({ success: true, data: JSON.parse(cached), cached: true });
     }
 
@@ -185,24 +172,13 @@ export const getBatchActivities = async (req: AuthRequest, res: Response) => {
 
     await setCache(cacheKey, JSON.stringify(filteredActivities), 300);
 
-    console.log(`[Batch Activities] ${requestId} - Success`, {
-      count: filteredActivities.length,
-      user: user.name,
-      duration: `${Date.now() - startTime}ms`
-    });
-
     res.status(200).json({
       success: true,
       data: filteredActivities
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Batch Activities Error] ${requestId}`, {
-      error: error instanceof Error ? error.message : 'Unknown',
-      stack: error instanceof Error ? error.stack : undefined,
-      duration: `${duration}ms`
-    });
-    
+    logger.error('Error fetching activities', { message: error instanceof Error ? error.message : 'Unknown', requestId });
+
     res.status(500).json({
       success: false,
       message: 'Error fetching activities',
@@ -244,7 +220,6 @@ export const getActivities = async (req: AuthRequest, res: Response) => {
     
     const cached = await getCache(cacheKey);
     if (cached) {
-      console.log(`[Get Activities] ${requestId} - Cache hit`, { duration: `${Date.now() - startTime}ms` });
       return res.status(200).json({ ...JSON.parse(cached), cached: true });
     }
 
@@ -336,25 +311,10 @@ export const getActivities = async (req: AuthRequest, res: Response) => {
 
     await setCache(cacheKey, JSON.stringify(response), 300);
 
-    console.log(`[Get Activities] ${requestId} - Success`, {
-      count: activities.length,
-      total,
-      page,
-      filters: { resourceType, projectId, projectName, action, status, ipAddress, sessionId, minDuration, maxDuration },
-      user: user.name,
-      duration: `${Date.now() - startTime}ms`
-    });
-
     res.status(200).json(response);
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Get Activities Error] ${requestId}`, {
-      error: error instanceof Error ? error.message : 'Unknown',
-      stack: error instanceof Error ? error.stack : undefined,
-      query: req.query,
-      duration: `${duration}ms`
-    });
-    
+    logger.error('Error fetching activities', { message: error instanceof Error ? error.message : 'Unknown', requestId });
+
     res.status(500).json({
       success: false,
       message: 'Error fetching activities',
@@ -381,7 +341,7 @@ export const getActivityById = async (req: AuthRequest, res: Response) => {
       .lean();
 
     if (!activity) {
-      console.warn(`[Get Activity By ID] ${requestId} - Not found`, { id, duration: `${Date.now() - startTime}ms` });
+      logger.warn('Get activity by id - not found', { id, requestId });
       return res.status(404).json({
         success: false,
         message: 'Activity not found'
@@ -389,7 +349,7 @@ export const getActivityById = async (req: AuthRequest, res: Response) => {
     }
 
     if (!hasViewAllPermission && activity.visibility === 'management') {
-      console.warn(`[Get Activity By ID] ${requestId} - Access denied (management only)`, { id, user: user.name });
+      logger.warn('Get activity by id - access denied (management only)', { id, requestId });
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -398,7 +358,7 @@ export const getActivityById = async (req: AuthRequest, res: Response) => {
 
     const activityUserId = activity.user?._id?.toString() || activity.user?.toString();
     if (!hasViewAllPermission && activity.visibility === 'private' && activityUserId !== user.id) {
-      console.warn(`[Get Activity By ID] ${requestId} - Access denied (private)`, { id, user: user.name });
+      logger.warn('Get activity by id - access denied (private)', { id, requestId });
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -408,27 +368,13 @@ export const getActivityById = async (req: AuthRequest, res: Response) => {
     const roleLevel = hasViewAllPermission ? 80 : 0;
     const filteredActivity = filterSensitiveFields(activity, roleLevel);
 
-    console.log(`[Get Activity By ID] ${requestId} - Success`, {
-      id,
-      action: activity.action,
-      resource: activity.resource,
-      projectName: activity.projectName,
-      duration: `${Date.now() - startTime}ms`
-    });
-
     res.status(200).json({
       success: true,
       data: filteredActivity
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Get Activity By ID Error] ${requestId}`, {
-      error: error instanceof Error ? error.message : 'Unknown',
-      stack: error instanceof Error ? error.stack : undefined,
-      id: req.params.id,
-      duration: `${duration}ms`
-    });
-    
+    logger.error('Error fetching activity details', { message: error instanceof Error ? error.message : 'Unknown', id: req.params.id, requestId });
+
     res.status(500).json({
       success: false,
       message: 'Error fetching activity details',
@@ -447,7 +393,6 @@ export const getActivityStats = async (req: AuthRequest, res: Response) => {
     const cached = await getCache(cacheKey);
     
     if (cached) {
-      console.log(`[Activity Stats] ${requestId} - Cache hit`, { duration: `${Date.now() - startTime}ms` });
       return res.status(200).json({ success: true, data: JSON.parse(cached), cached: true });
     }
 
@@ -487,27 +432,13 @@ export const getActivityStats = async (req: AuthRequest, res: Response) => {
 
     await setCache(cacheKey, JSON.stringify(statsData), 300);
 
-    console.log(`[Activity Stats] ${requestId} - Success`, {
-      total: totalActivities,
-      today: todayActivities,
-      week: weekActivities,
-      month: monthActivities,
-      user: user.name,
-      duration: `${Date.now() - startTime}ms`
-    });
-
     res.status(200).json({
       success: true,
       data: statsData
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Activity Stats Error] ${requestId}`, {
-      error: error instanceof Error ? error.message : 'Unknown',
-      stack: error instanceof Error ? error.stack : undefined,
-      duration: `${duration}ms`
-    });
-    
+    logger.error('Error fetching activity stats', { message: error instanceof Error ? error.message : 'Unknown', requestId });
+
     res.status(500).json({
       success: false,
       message: 'Error fetching activity stats',
@@ -544,26 +475,14 @@ export const exportActivities = async (req: AuthRequest, res: Response) => {
       .limit(ACTIVITY_EXPORT_LIMIT)
       .lean();
 
-    console.log(`[Export Activities] ${requestId} - Success`, {
-      count: activities.length,
-      format,
-      user: user.name,
-      duration: `${Date.now() - startTime}ms`
-    });
-
     res.status(200).json({
       success: true,
       data: activities,
       count: activities.length
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Export Activities Error] ${requestId}`, {
-      error: error instanceof Error ? error.message : 'Unknown',
-      stack: error instanceof Error ? error.stack : undefined,
-      duration: `${duration}ms`
-    });
-    
+    logger.error('Error exporting activities', { message: error instanceof Error ? error.message : 'Unknown', requestId });
+
     res.status(500).json({
       success: false,
       message: 'Error exporting activities',
@@ -638,7 +557,7 @@ export const revertActivity = async (req: AuthRequest, res: Response) => {
           return res.status(400).json({ success: false, message: 'Revert not supported for this action type' });
       }
     } catch (revertError) {
-      console.error(`[Revert Error] ${requestId}`, revertError);
+      logger.error('Failed to revert activity', { message: revertError instanceof Error ? revertError.message : 'Unknown', requestId });
       return res.status(500).json({ success: false, message: 'Failed to revert activity', error: revertError instanceof Error ? revertError.message : 'Unknown' });
     }
 
@@ -676,14 +595,6 @@ export const revertActivity = async (req: AuthRequest, res: Response) => {
 
       clearActivityCache();
 
-      console.log(`[Revert Activity] ${requestId} - Success`, {
-        activityId: id,
-        action: activity.action,
-        resource: activity.resource,
-        revertedBy: user.name,
-        duration: `${Date.now() - startTime}ms`
-      });
-
       res.status(200).json({
         success: true,
         message: revertMessage,
@@ -693,13 +604,8 @@ export const revertActivity = async (req: AuthRequest, res: Response) => {
       res.status(500).json({ success: false, message: 'Revert operation failed' });
     }
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Revert Activity Error] ${requestId}`, {
-      error: error instanceof Error ? error.message : 'Unknown',
-      stack: error instanceof Error ? error.stack : undefined,
-      duration: `${duration}ms`
-    });
-    
+    logger.error('Error reverting activity', { message: error instanceof Error ? error.message : 'Unknown', requestId });
+
     res.status(500).json({
       success: false,
       message: 'Error reverting activity',
@@ -743,14 +649,6 @@ export const searchActivities = async (req: AuthRequest, res: Response) => {
       ActivityLog.countDocuments(searchQuery)
     ]);
 
-    console.log(`[Search Activities] ${requestId} - Success`, {
-      query: q,
-      count: activities.length,
-      total,
-      user: user.name,
-      duration: `${Date.now() - startTime}ms`
-    });
-
     res.status(200).json({
       success: true,
       data: activities,
@@ -762,13 +660,8 @@ export const searchActivities = async (req: AuthRequest, res: Response) => {
       }
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Search Activities Error] ${requestId}`, {
-      error: error instanceof Error ? error.message : 'Unknown',
-      stack: error instanceof Error ? error.stack : undefined,
-      duration: `${duration}ms`
-    });
-    
+    logger.error('Error searching activities', { message: error instanceof Error ? error.message : 'Unknown', requestId });
+
     res.status(500).json({
       success: false,
       message: 'Error searching activities',
@@ -799,23 +692,13 @@ export const verifyActivity = async (req: AuthRequest, res: Response) => {
 
     const result = await verifyActivityIntegrity(id);
 
-    console.log(`[Verify Activity] ${requestId} - ${result.valid ? 'Valid' : 'Invalid'}`, {
-      id,
-      user: user.name,
-      duration: `${Date.now() - startTime}ms`
-    });
-
     res.status(200).json({
       success: true,
       data: result
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Verify Activity Error] ${requestId}`, {
-      error: error instanceof Error ? error.message : 'Unknown',
-      duration: `${duration}ms`
-    });
-    
+    logger.error('Error verifying activity', { message: error instanceof Error ? error.message : 'Unknown', requestId });
+
     res.status(500).json({
       success: false,
       message: 'Error verifying activity',
@@ -845,24 +728,13 @@ export const verifyChain = async (req: AuthRequest, res: Response) => {
 
     const result = await verifyChainIntegrity(Number(limit));
 
-    console.log(`[Verify Chain] ${requestId} - ${result.valid ? 'Valid' : 'Invalid'}`, {
-      totalChecked: result.totalChecked,
-      invalidCount: result.invalidActivities.length,
-      user: user.name,
-      duration: `${Date.now() - startTime}ms`
-    });
-
     res.status(200).json({
       success: true,
       data: result
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Verify Chain Error] ${requestId}`, {
-      error: error instanceof Error ? error.message : 'Unknown',
-      duration: `${duration}ms`
-    });
-    
+    logger.error('Error verifying chain integrity', { message: error instanceof Error ? error.message : 'Unknown', requestId });
+
     res.status(500).json({
       success: false,
       message: 'Error verifying chain integrity',

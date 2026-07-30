@@ -5,6 +5,7 @@ import ReferenceBalance from '../models/ReferenceBalance';
 import JournalEntry from '../models/JournalEntry';
 import ChartOfAccount from '../models/ChartOfAccount';
 import mongoose from 'mongoose';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ router.get('/outstanding-references', auth, async (req, res) => {
     
     res.json({ success: true, references, count: references.length });
   } catch (error: any) {
-    console.error('Error fetching references:', error);
+    logger.error('Error fetching references', { message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -55,7 +56,7 @@ router.get('/reference/:id', auth, async (req, res) => {
     
     res.json({ success: true, reference });
   } catch (error: any) {
-    console.error('Error fetching reference:', error);
+    logger.error('Error fetching reference', { message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -119,7 +120,7 @@ router.post('/pay-reference', auth, async (req, res) => {
     res.json({ success: true, payment, reference, message: 'Payment allocated successfully' });
   } catch (error: any) {
     await session.abortTransaction();
-    console.error('Error paying reference:', error);
+    logger.error('Error paying reference', { message: error.message });
     res.status(400).json({ success: false, message: error.message });
   } finally {
     session.endSession();
@@ -184,7 +185,7 @@ router.post('/create-reference', auth, async (req, res) => {
     await refBalance.save();
     res.json({ success: true, reference: refBalance, message: 'Reference created successfully' });
   } catch (error: any) {
-    console.error('Error creating reference:', error);
+    logger.error('Error creating reference', { message: error.message });
     res.status(400).json({ success: false, message: error.message });
   }
 });
@@ -281,7 +282,7 @@ router.post('/auto-create-from-je/:jeId', auth, async (req, res) => {
       created: created.length
     });
   } catch (error: any) {
-    console.error('Error auto-creating references:', error);
+    logger.error('Error auto-creating references', { message: error.message });
     res.status(400).json({ success: false, message: error.message });
   }
 });
@@ -329,7 +330,7 @@ router.put('/reference/:id', auth, async (req, res) => {
     await reference.save();
     res.json({ success: true, reference, message: 'Reference updated successfully' });
   } catch (error: any) {
-    console.error('Error updating reference:', error);
+    logger.error('Error updating reference', { message: error.message });
     res.status(400).json({ success: false, message: error.message });
   }
 });
@@ -353,7 +354,7 @@ router.delete('/reference/:id', auth, async (req, res) => {
     await ReferenceBalance.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Reference deleted successfully' });
   } catch (error: any) {
-    console.error('Error deleting reference:', error);
+    logger.error('Error deleting reference', { message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -399,7 +400,7 @@ router.delete('/reference/:refId/payment/:paymentId', auth, async (req, res) => 
     res.json({ success: true, reference, payment, message: 'Payment allocation removed successfully' });
   } catch (error: any) {
     await session.abortTransaction();
-    console.error('Error removing payment allocation:', error);
+    logger.error('Error removing payment allocation', { message: error.message });
     res.status(400).json({ success: false, message: error.message });
   } finally {
     session.endSession();

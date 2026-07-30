@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import Finance, { Payment as PaymentModel, Invoice as InvoiceModel } from '../models/Finance';
 import JournalEntry from '../models/JournalEntry';
 import Account from '../models/ChartOfAccount';
+import { logger } from '../utils/logger';
 
 // Cache implementation
 interface CacheEntry<T> {
@@ -526,7 +527,7 @@ export const getFinanceAnalytics = async (req: Request, res: Response) => {
     setCache(cacheKey, response);
     res.json(response);
   } catch (error: any) {
-    console.error('Finance analytics error:', error);
+    logger.error('Finance analytics error', { message: error?.message });
     res.json({
       success: true,
       data: {
@@ -801,7 +802,7 @@ export const downloadFinancePDF = async (req: Request, res: Response) => {
     // Finalize PDF
     doc.end();
   } catch (error: any) {
-    console.error('PDF generation error:', error);
+    logger.error('PDF generation error', { message: error?.message });
     res.status(500).json({ success: false, message: `PDF generation failed: ${error.message}` });
   }
 };

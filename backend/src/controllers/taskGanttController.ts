@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Task from '../models/Task';
+import { logger } from '../utils/logger';
 
 export const getGanttChartData = async (req: Request, res: Response) => {
   try {
@@ -98,7 +99,7 @@ export const getGanttChartData = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Gantt chart error:', error);
+    logger.error('Gantt chart error:', { message: error?.message });
     res.status(500).json({ message: 'Error generating Gantt chart', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -128,7 +129,7 @@ export const updateGanttTask = async (req: Request, res: Response) => {
     
     res.json({ success: true, task });
   } catch (error) {
-    console.error('Gantt update error:', error);
+    logger.error('Gantt update error:', { message: error?.message });
     res.status(500).json({ message: 'Error updating task from Gantt', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

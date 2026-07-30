@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Role } from '../models/Role';
 import User from '../models/User';
+import { logger } from '../utils/logger';
 
 export const reduceRolePermissions = async (req: Request, res: Response) => {
   try {
@@ -60,7 +61,7 @@ export const reduceRolePermissions = async (req: Request, res: Response) => {
       removedCount: originalCount - updatedPermissions.length
     });
   } catch (error: any) {
-    console.error('Error reducing permissions:', error);
+    logger.error('Error reducing permissions', { message: error?.message });
     res.status(500).json({ success: false, message: 'Error reducing permissions', error: error.message });
   }
 };
@@ -99,7 +100,7 @@ export const getUsersByRoleLevel = async (req: Request, res: Response) => {
 
     res.json({ success: true, users, count: users.length, minLevel: level });
   } catch (error: any) {
-    console.error('Error fetching users:', error);
+    logger.error('Error fetching users', { message: error?.message });
     res.status(500).json({ success: false, message: 'Error fetching users', error: error.message });
   }
 };

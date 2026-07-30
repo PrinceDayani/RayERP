@@ -3,6 +3,7 @@
 import cron from 'node-cron';
 import Task from '../models/Task';
 import { NotificationEmitter } from './notificationEmitter';
+import { logger } from './logger';
 
 export const initializeTaskReminders = () => {
   // Run every hour
@@ -49,8 +50,8 @@ export const initializeTaskReminders = () => {
         task.reminderSentOverdue = true;
         await task.save();
       }
-    } catch (error) {
-      console.error('Task reminder error:', error);
+    } catch (error: any) {
+      logger.error('Task reminder error', { message: error?.message });
     }
   });
 };

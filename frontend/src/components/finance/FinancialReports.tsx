@@ -710,11 +710,6 @@ const FinancialReports = () => {
     }
     try {
       // Mock batch export - in production would call backend
-      for (const reportType of selectedReports) {
-        const tempFilters = { ...filters, reportType };
-        // Simulate export
-        console.log(`Exporting ${reportType}...`);
-      }
       setShowBatchDialog(false);
       setSelectedReports([]);
       alert(`Successfully exported ${selectedReports.length} reports`);

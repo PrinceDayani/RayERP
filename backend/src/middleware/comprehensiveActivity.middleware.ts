@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logActivity, logUserActivity, logSystemActivity } from '../utils/activityLogger';
+import { logger } from '../utils/logger';
 
 interface ActivityConfig {
   action: string;
@@ -60,8 +61,8 @@ export const logComprehensiveActivity = (config: ActivityConfig) => {
             status: status as any,
             ipAddress: req.ip || req.socket.remoteAddress || 'unknown'
           });
-        } catch (error) {
-          console.error('Failed to log comprehensive activity:', error);
+        } catch (error: any) {
+          logger.error('Failed to log comprehensive activity', { message: error?.message });
         }
       });
       

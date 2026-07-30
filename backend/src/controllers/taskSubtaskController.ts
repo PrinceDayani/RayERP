@@ -2,6 +2,7 @@
 
 import { Request, Response } from 'express';
 import Task from '../models/Task';
+import { logger } from '../utils/logger';
 
 export const addSubtask = async (req: Request, res: Response) => {
   try {
@@ -29,7 +30,7 @@ export const addSubtask = async (req: Request, res: Response) => {
     
     res.json({ success: true, subtask });
   } catch (error) {
-    console.error('Add subtask error:', error);
+    logger.error('Add subtask error:', { message: error?.message });
     res.status(500).json({ message: 'Error adding subtask', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -60,7 +61,7 @@ export const updateChecklistItem = async (req: Request, res: Response) => {
     
     res.json({ success: true, checklist: task.checklist });
   } catch (error) {
-    console.error('Update checklist error:', error);
+    logger.error('Update checklist error:', { message: error?.message });
     res.status(500).json({ message: 'Error updating checklist', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -81,7 +82,7 @@ export const addChecklistItem = async (req: Request, res: Response) => {
     
     res.json({ success: true, checklist: task.checklist });
   } catch (error) {
-    console.error('Add checklist error:', error);
+    logger.error('Add checklist error:', { message: error?.message });
     res.status(500).json({ message: 'Error adding checklist item', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -97,7 +98,7 @@ export const getSubtaskProgress = async (req: Request, res: Response) => {
     
     res.json({ total, completed, progress });
   } catch (error) {
-    console.error('Subtask progress error:', error);
+    logger.error('Subtask progress error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching progress', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

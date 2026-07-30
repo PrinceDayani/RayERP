@@ -5,6 +5,7 @@ import Task from '../models/Task';
 import Project from '../models/Project';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
 import { logActivity } from '../utils/activityLogger';
+import { logger } from '../utils/logger';
 
 const emitProjectStats = async () => {
   try {
@@ -28,7 +29,7 @@ const emitProjectStats = async () => {
     const { io } = await import('../server');
     io.emit('project:stats', stats);
   } catch (error) {
-    console.error('Error emitting project stats:', error);
+    logger.error('Error emitting project stats', { message: error?.message });
   }
 };
 
@@ -312,7 +313,7 @@ export const createTask = async (req: Request, res: Response) => {
     
     res.status(201).json(task);
   } catch (error) {
-    console.error('Error creating task:', error);
+    logger.error('Error creating task', { message: error?.message });
     res.status(400).json({ message: 'Error creating task', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -386,7 +387,7 @@ export const updateTask = async (req: Request, res: Response) => {
     
     res.json(task);
   } catch (error) {
-    console.error('Error updating task:', error);
+    logger.error('Error updating task', { message: error?.message });
     res.status(400).json({ message: 'Error updating task', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -430,7 +431,7 @@ export const deleteTask = async (req: Request, res: Response) => {
     
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
-    console.error('Error deleting task:', error);
+    logger.error('Error deleting task', { message: error?.message });
     res.status(500).json({ message: 'Error deleting task', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -463,7 +464,7 @@ export const addTaskComment = async (req: Request, res: Response) => {
         user
       );
     } catch (timelineError) {
-      console.error('Timeline event creation failed:', timelineError);
+      logger.error('Timeline event creation failed', { message: (timelineError as any)?.message });
     }
 
     // Log activity
@@ -487,7 +488,7 @@ export const addTaskComment = async (req: Request, res: Response) => {
     io.emit('task:comment:added', { taskId: req.params.id, comment: task.comments[task.comments.length - 1] });
     res.json(task);
   } catch (error) {
-    console.error('Error adding comment:', error);
+    logger.error('Error adding comment', { message: error?.message });
     res.status(400).json({ message: 'Error adding comment', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -513,7 +514,7 @@ export const getTaskTimeline = async (req: Request, res: Response) => {
     const timeline = await getEntityTimeline('task', req.params.id);
     res.json(timeline);
   } catch (error) {
-    console.error('Error fetching task timeline:', error);
+    logger.error('Error fetching task timeline', { message: error?.message });
     res.status(500).json({ message: 'Error fetching task timeline', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -549,7 +550,7 @@ export const addTimelineEntry = async (req: Request, res: Response) => {
     
     res.json({ message: 'Timeline entry added successfully' });
   } catch (error) {
-    console.error('Error adding timeline entry:', error);
+    logger.error('Error adding timeline entry', { message: error?.message });
     res.status(400).json({ message: 'Error adding timeline entry', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -603,7 +604,7 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
         }
       );
     } catch (timelineError) {
-      console.error('Timeline event creation failed:', timelineError);
+      logger.error('Timeline event creation failed', { message: (timelineError as any)?.message });
       // Continue execution even if timeline fails
     }
     
@@ -624,7 +625,7 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
     
     res.json(task);
   } catch (error) {
-    console.error('Error updating task status:', error);
+    logger.error('Error updating task status', { message: error?.message });
     res.status(400).json({ message: 'Error updating task status', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -782,7 +783,7 @@ export const startTimeTracking = async (req: Request, res: Response) => {
     
     res.json({ success: true, entry: task.timeEntries[task.timeEntries.length - 1] });
   } catch (error) {
-    console.error('Error starting timer:', error);
+    logger.error('Error starting timer', { message: error?.message });
     res.status(500).json({ message: 'Error starting timer', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -809,7 +810,7 @@ export const stopTimeTracking = async (req: Request, res: Response) => {
     
     res.json({ success: true, entry, actualHours: task.actualHours });
   } catch (error) {
-    console.error('Error stopping timer:', error);
+    logger.error('Error stopping timer', { message: error?.message });
     res.status(500).json({ message: 'Error stopping timer', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -852,7 +853,7 @@ export const addAttachment = async (req: Request, res: Response) => {
     const responseAttachment = task.attachments[task.attachments.length - 1] as any;
     res.json({ success: true, attachment: responseAttachment });
   } catch (error) {
-    console.error('Error adding attachment:', error);
+    logger.error('Error adding attachment', { message: error?.message });
     // Clean up file on error
     if (req.file) {
       try {
@@ -861,7 +862,7 @@ export const addAttachment = async (req: Request, res: Response) => {
         const filePath = path.join(__dirname, '../../uploads', req.file.filename);
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       } catch (cleanupError) {
-        console.error('Error cleaning up file:', cleanupError);
+        logger.error('Error cleaning up file', { message: (cleanupError as any)?.message });
       }
     }
     res.status(500).json({ message: 'Error adding attachment', error: error instanceof Error ? error.message : 'Unknown error' });
@@ -890,7 +891,7 @@ export const removeAttachment = async (req: Request, res: Response) => {
         fs.unlinkSync(filePath);
       }
     } catch (fileError) {
-      console.error('Error deleting file:', fileError);
+      logger.error('Error deleting file', { message: (fileError as any)?.message });
       // Continue even if file deletion fails
     }
     
@@ -899,7 +900,7 @@ export const removeAttachment = async (req: Request, res: Response) => {
     
     res.json({ success: true, message: 'Attachment removed successfully' });
   } catch (error) {
-    console.error('Error removing attachment:', error);
+    logger.error('Error removing attachment', { message: error?.message });
     res.status(500).json({ message: 'Error removing attachment', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -929,7 +930,7 @@ export const addTag = async (req: Request, res: Response) => {
     
     res.json({ success: true, tag: task.tags[task.tags.length - 1] });
   } catch (error) {
-    console.error('Error adding tag:', error);
+    logger.error('Error adding tag', { message: error?.message });
     res.status(500).json({ message: 'Error adding tag', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -957,7 +958,7 @@ export const removeTag = async (req: Request, res: Response) => {
     
     res.json({ success: true, message: 'Tag removed successfully' });
   } catch (error) {
-    console.error('Error removing tag:', error);
+    logger.error('Error removing tag', { message: error?.message });
     res.status(500).json({ message: 'Error removing tag', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -992,7 +993,7 @@ export const addCustomField = async (req: Request, res: Response) => {
     
     res.json({ success: true, field: task.customFields[task.customFields.length - 1] });
   } catch (error) {
-    console.error('Error adding custom field:', error);
+    logger.error('Error adding custom field', { message: error?.message });
     res.status(500).json({ message: 'Error adding custom field', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -1020,7 +1021,7 @@ export const removeCustomField = async (req: Request, res: Response) => {
     
     res.json({ success: true, message: 'Custom field removed successfully' });
   } catch (error) {
-    console.error('Error removing custom field:', error);
+    logger.error('Error removing custom field', { message: error?.message });
     res.status(500).json({ message: 'Error removing custom field', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -1046,7 +1047,7 @@ export const updateCustomField = async (req: Request, res: Response) => {
     
     res.json({ success: true, field });
   } catch (error) {
-    console.error('Error updating custom field:', error);
+    logger.error('Error updating custom field', { message: error?.message });
     res.status(500).json({ message: 'Error updating custom field', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

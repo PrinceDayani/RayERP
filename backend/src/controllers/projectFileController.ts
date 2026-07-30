@@ -10,6 +10,7 @@ import sharp from 'sharp';
 import ProjectFile from '../models/ProjectFile';
 import Project from '../models/Project';
 import { logActivity } from '../utils/activityLogger';
+import { logger } from '../utils/logger';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -61,20 +62,20 @@ export const getProjectFiles = async (req: Request, res: Response) => {
     // Check if project exists
     const project = await Project.findById(projectId);
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
     const files = await ProjectFile.find({ project: projectId })
       .select('-fileData')
-      .populate('uploadedBy', 'firstName lastName email')
+      .populate('uploadedBy', 'name email')
       .populate('sharedWithDepartments', 'name description')
       .populate('sharedWithUsers', 'name email')
       .sort({ createdAt: -1 });
 
-    res.json(files);
+    res.json({ success: true, data: files });
   } catch (error) {
-    console.error('Error fetching project files:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    logger.error('Error fetching project files:', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -88,11 +89,11 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
     // Check if project exists
     const project = await Project.findById(projectId);
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
     if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
 
     // Read file data
@@ -111,13 +112,9 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
         
         if (optimized.length < originalSize) {
           finalData = Buffer.from(optimized);
-          const reduction = ((1 - optimized.length / originalSize) * 100).toFixed(2);
-          console.log(`Image optimized (lossless): ${originalSize} -> ${optimized.length} bytes (${reduction}% reduction)`);
-        } else {
-          console.log(`Image optimization skipped (no benefit): ${req.file.originalname}`);
         }
       } catch (error) {
-        console.log(`Image optimization failed, using original: ${req.file.originalname}`);
+        // Optimization failed; fall back to original buffer
       }
     }
     // Gzip compression for documents
@@ -128,8 +125,6 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
       if (compressedData.length < originalSize * 0.95) {
         finalData = Buffer.from(compressedData);
         isCompressed = true;
-        const reduction = ((1 - compressedData.length / originalSize) * 100).toFixed(2);
-        console.log(`Document compressed: ${originalSize} -> ${compressedData.length} bytes (${reduction}% reduction)`);
       }
     }
 
@@ -159,7 +154,7 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
       fs.unlinkSync(req.file.path);
     }
 
-    await projectFile.populate('uploadedBy', 'firstName lastName email');
+    await projectFile.populate('uploadedBy', 'name email');
 
     // Log activity
     const user = (req as any).user;
@@ -180,10 +175,10 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
     const response = projectFile.toObject();
     delete response.fileData;
 
-    res.status(201).json(response);
+    res.status(201).json({ success: true, data: response });
   } catch (error) {
-    console.error('Error uploading file:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    logger.error('Error uploading file:', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -222,7 +217,7 @@ export const downloadProjectFile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'File data not found' });
     }
   } catch (error) {
-    console.error('Error downloading file:', error);
+    logger.error('Error downloading file:', { message: error?.message });
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -270,7 +265,7 @@ export const shareProjectFile = async (req: Request, res: Response) => {
     delete response.fileData;
     res.json(response);
   } catch (error) {
-    console.error('Error sharing file:', error);
+    logger.error('Error sharing file:', { message: error?.message });
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -298,7 +293,7 @@ export const getSharedFiles = async (req: Request, res: Response) => {
 
     res.json(files);
   } catch (error) {
-    console.error('Error fetching shared files:', error);
+    logger.error('Error fetching shared files:', { message: error?.message });
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -316,7 +311,7 @@ export const deleteProjectFile = async (req: Request, res: Response) => {
     });
 
     if (!file) {
-      return res.status(404).json({ message: 'File not found' });
+      return res.status(404).json({ success: false, message: 'File not found' });
     }
 
     const fileName = file.originalName;
@@ -343,9 +338,9 @@ export const deleteProjectFile = async (req: Request, res: Response) => {
       metadata: { fileName }
     });
 
-    res.json({ message: 'File deleted successfully' });
+    res.json({ success: true, data: { message: 'File deleted successfully' } });
   } catch (error) {
-    console.error('Error deleting file:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    logger.error('Error deleting file:', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 }

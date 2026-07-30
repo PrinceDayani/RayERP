@@ -1,6 +1,7 @@
 //path: frontend/src/lib/api/tasksAPI.ts
 
 import api from './api';
+import { unwrapResponse } from './unwrap';
 
 export interface Task {
   _id: string;
@@ -451,7 +452,7 @@ export const tasksAPI = {
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     const response = await api.get('/tasks/analytics', { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getProductivityMetrics: async (userId: string, startDate?: string, endDate?: string) => {
@@ -459,24 +460,24 @@ export const tasksAPI = {
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     const response = await api.get('/tasks/analytics/productivity', { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getProjectAnalytics: async (projectId: string) => {
     const response = await api.get('/tasks/analytics/project', { params: { projectId } });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getVelocity: async (projectId?: string) => {
     const params = projectId ? { projectId } : {};
     const response = await api.get('/tasks/analytics/velocity', { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getTeamPerformance: async (projectId?: string) => {
     const params = projectId ? { projectId } : {};
     const response = await api.get('/tasks/analytics/team-performance', { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Gantt Chart

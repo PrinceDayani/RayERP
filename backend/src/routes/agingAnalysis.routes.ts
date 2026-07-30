@@ -1,6 +1,7 @@
 import express from 'express';
 import { protect } from '../middleware/auth.middleware';
 import { validateRequiredFields } from '../middleware/validation.middleware';
+import { logger } from '../utils/logger';
 const { query } = require('express-validator');
 
 const router = express.Router();
@@ -61,8 +62,8 @@ router.get('/',
         type,
         asOfDate
       });
-    } catch (error) {
-      console.error('Error fetching aging analysis:', error);
+    } catch (error: any) {
+      logger.error('Error fetching aging analysis', { message: error?.message });
       res.status(500).json({
         success: false,
         message: 'Failed to fetch aging analysis'
@@ -99,8 +100,8 @@ router.get('/summary',
         data: summary,
         type
       });
-    } catch (error) {
-      console.error('Error fetching aging summary:', error);
+    } catch (error: any) {
+      logger.error('Error fetching aging summary', { message: error?.message });
       res.status(500).json({
         success: false,
         message: 'Failed to fetch aging summary'
@@ -155,8 +156,8 @@ router.get('/buckets',
         data: buckets,
         type
       });
-    } catch (error) {
-      console.error('Error fetching aging buckets:', error);
+    } catch (error: any) {
+      logger.error('Error fetching aging buckets', { message: error?.message });
       res.status(500).json({
         success: false,
         message: 'Failed to fetch aging buckets'
@@ -202,8 +203,8 @@ router.get('/customer/:customerId',
         success: true,
         data: customerAging
       });
-    } catch (error) {
-      console.error('Error fetching customer aging:', error);
+    } catch (error: any) {
+      logger.error('Error fetching customer aging', { message: error?.message });
       res.status(500).json({
         success: false,
         message: 'Failed to fetch customer aging details'
@@ -235,8 +236,8 @@ router.post('/report',
         data: report,
         message: 'Aging report generated successfully'
       });
-    } catch (error) {
-      console.error('Error generating aging report:', error);
+    } catch (error: any) {
+      logger.error('Error generating aging report', { message: error?.message });
       res.status(500).json({
         success: false,
         message: 'Failed to generate aging report'
@@ -265,8 +266,8 @@ router.post('/send-reminders',
         data: reminderResults,
         message: `Payment reminders sent to ${customerIds.length} customers`
       });
-    } catch (error) {
-      console.error('Error sending reminders:', error);
+    } catch (error: any) {
+      logger.error('Error sending reminders', { message: error?.message });
       res.status(500).json({
         success: false,
         message: 'Failed to send payment reminders'
@@ -307,8 +308,8 @@ router.get('/trends',
         data: trends,
         period
       });
-    } catch (error) {
-      console.error('Error fetching aging trends:', error);
+    } catch (error: any) {
+      logger.error('Error fetching aging trends', { message: error?.message });
       res.status(500).json({
         success: false,
         message: 'Failed to fetch aging trends'

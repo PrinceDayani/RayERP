@@ -135,8 +135,8 @@ achievementSchema.methods.unverify = function () {
 achievementSchema.statics.getByEmployee = function (employeeId: mongoose.Types.ObjectId) {
     return this.find({ employee: employeeId })
         .sort({ date: -1 })
-        .populate('createdBy', 'username email')
-        .populate('verifiedBy', 'username email');
+        .populate('createdBy', 'name email')
+        .populate('verifiedBy', 'name email');
 };
 
 achievementSchema.statics.getByCategory = function (

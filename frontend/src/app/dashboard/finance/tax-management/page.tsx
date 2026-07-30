@@ -422,7 +422,7 @@ export default function TaxManagementPage() {
               title="Tax Records"
               searchable
               exportable
-              onExport={() => console.log('Export tax records')}
+              onExport={() => {}}
             />
           )}
         </TabsContent>

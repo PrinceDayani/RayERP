@@ -4,6 +4,7 @@ import Project from '../models/Project';
 import Task from '../models/Task';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
 import { WorkflowProjectIntegration } from '../services/workflowProjectIntegration';
+import { logger } from '../utils/logger';
 // Socket will be imported dynamically to avoid circular dependency
 
 // Helper function to emit updated project stats
@@ -29,44 +30,32 @@ const emitProjectStats = async () => {
     const { io } = await import('../server');
     io.emit('project:stats', stats);
   } catch (error) {
-    console.error('Error emitting project stats:', error);
+    logger.error('Error emitting project stats', { message: error?.message });
   }
 };
 
 export const getAllProjects = async (req: Request, res: Response) => {
   try {
-    console.log('\n=== GET ALL PROJECTS REQUEST ===');
     const user = req.user;
     if (!user) {
-      console.log('❌ No user found in request');
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    console.log('User:', { id: user._id, name: user.name, email: user.email });
     const userRole = user.role as any;
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
     const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
-    console.log('Role info:', { level: userRole?.level, name: roleName, roleType: typeof user.role, permissions: rolePermissions });
-    console.log('Has projects.view_all?', rolePermissions.includes('projects.view_all'));
-    
+
     // Root or users with projects.view_all permission get full access to all projects
     if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
-      console.log(`✅ ROOT ACCESS - User ${user.name} fetching all projects`);
-      const count = await Project.countDocuments();
-      console.log(`Total projects in DB: ${count}`);
-      
       const projects = await Project.find({})
         .populate({ path: 'managers', select: 'name email', strictPopulate: false })
         .populate({ path: 'team', select: 'name email', strictPopulate: false })
         .populate({ path: 'owner', select: 'name email', strictPopulate: false })
-        
+
         .populate({ path: 'departments', select: 'name description', strictPopulate: false });
-      
-      console.log(`✅ Returning ${projects.length} projects:`, projects.map(p => ({ id: p._id, name: p.name })));
-      console.log('=== END REQUEST ===\n');
+
       return res.json(projects);
     }
-    console.log('⚠️ User is not root, applying filters...');
 
     // Get user's department permissions
     const Employee = (await import('../models/Employee')).default;
@@ -125,7 +114,7 @@ export const getAllProjects = async (req: Request, res: Response) => {
     // Return only assigned projects
     res.json(assignedProjects);
   } catch (error) {
-    console.error('Error fetching projects:', error);
+    logger.error('Error fetching projects', { message: error?.message });
     res.status(500).json({ message: 'Error fetching projects', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -151,9 +140,9 @@ export const getProjectById = async (req: Request, res: Response) => {
         .populate({ path: 'departments', select: 'name description', strictPopulate: false });
       
       if (!project) {
-        return res.status(404).json({ message: 'Project not found' });
+        return res.status(404).json({ success: false, message: 'Project not found' });
       }
-      return res.json(project);
+      return res.json({ success: true, data: project });
     }
 
     const project = await Project.findById(req.params.id)
@@ -164,7 +153,7 @@ export const getProjectById = async (req: Request, res: Response) => {
       .populate({ path: 'departments', select: 'name description', strictPopulate: false });
     
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
     // Check if user is assigned to project
@@ -182,7 +171,7 @@ export const getProjectById = async (req: Request, res: Response) => {
     
     // If assigned, return full project details
     if (isAssigned) {
-      return res.json(project);
+      return res.json({ success: true, data: project });
     }
     
     // Check department permission for basic view
@@ -203,23 +192,26 @@ export const getProjectById = async (req: Request, res: Response) => {
         if (hasProjectViewPermission && hasAccessToDepartment) {
           // Return basic project info only
           return res.json({
-            _id: project._id,
-            name: project.name,
-            status: project.status,
-            priority: project.priority,
-            startDate: project.startDate,
-            endDate: project.endDate,
-            departments: project.departments,
-            isBasicView: true
+            success: true,
+            data: {
+              _id: project._id,
+              name: project.name,
+              status: project.status,
+              priority: project.priority,
+              startDate: project.startDate,
+              endDate: project.endDate,
+              departments: project.departments,
+              isBasicView: true
+            }
           });
         }
       }
     }
     
-    return res.status(403).json({ message: 'Access denied: You are not assigned to this project' });
+    return res.status(403).json({ success: false, message: 'Access denied: You are not assigned to this project' });
   } catch (error) {
-    console.error('Error fetching project by ID:', error);
-    res.status(500).json({ message: 'Error fetching project', error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.error('Error fetching project by ID', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching project', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -283,7 +275,7 @@ export const createProject = async (req: Request, res: Response) => {
         });
         await Promise.all(permissionPromises);
       } catch (permError) {
-        console.error('Error creating project permissions:', permError);
+        logger.error('Error creating project permissions', { message: (permError as any)?.message });
         // Don't fail the project creation if permissions fail
       }
     }
@@ -313,7 +305,7 @@ export const createProject = async (req: Request, res: Response) => {
       updatedAt: project.updatedAt
     };
 
-    res.status(201).json(response);
+    res.status(201).json({ success: true, data: response });
 
     // Handle background tasks asynchronously without blocking response
     setImmediate(async () => {
@@ -353,7 +345,7 @@ export const createProject = async (req: Request, res: Response) => {
                 workflowName: result.workflowInstance.templateName
               });
             }
-          }).catch(console.error)
+          }).catch((err: any) => logger.error('Background task error', { message: err?.message }))
         );
 
         // Timeline event
@@ -366,7 +358,7 @@ export const createProject = async (req: Request, res: Response) => {
               'Project Created',
               `Project "${project.name}" was created`,
               project.managers[0].toString()
-            ).catch(console.error)
+            ).catch((err: any) => logger.error('Background task error', { message: err?.message }))
           );
         }
 
@@ -389,7 +381,7 @@ export const createProject = async (req: Request, res: Response) => {
             category: 'project',
             severity: 'medium',
             ipAddress: req.ip || 'unknown'
-          }).catch(console.error)
+          }).catch((err: any) => logger.error('Background task error', { message: err?.message }))
         );
 
         // Socket emissions
@@ -406,18 +398,18 @@ export const createProject = async (req: Request, res: Response) => {
                 metadata: { projectId: project._id, projectName: project.name }
               })
             ]);
-          }).catch(console.error)
+          }).catch((err: any) => logger.error('Background task error', { message: err?.message }))
         );
 
         // Execute all background tasks
         await Promise.allSettled(backgroundTasks);
       } catch (error) {
-        console.error('Background task error:', error);
+        logger.error('Background task error', { message: error?.message });
       }
     });
 
   } catch (error) {
-    console.error('Error creating project:', error);
+    logger.error('Error creating project', { message: error?.message });
     res.status(400).json({ 
       success: false, 
       message: 'Error creating project', 
@@ -428,15 +420,9 @@ export const createProject = async (req: Request, res: Response) => {
 
 export const updateProject = async (req: Request, res: Response) => {
   try {
-    console.log('Update project request:', {
-      projectId: req.params.id,
-      body: req.body,
-      user: req.user?.name
-    });
-
     const oldProject = await Project.findById(req.params.id);
     if (!oldProject) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
     // Access check: Root, projects.edit_all, or project owner/manager only
@@ -449,7 +435,7 @@ export const updateProject = async (req: Request, res: Response) => {
       const isOwner = oldProject.owner?.toString() === updateUser._id.toString();
       const isManager = !!(oldProject.managers && oldProject.managers.some((m: any) => m.toString() === updateUser._id.toString()));
       if (!isRoot && !hasEditAll && !isOwner && !isManager) {
-        return res.status(403).json({ message: 'Access denied: You do not have permission to edit this project' });
+        return res.status(403).json({ success: false, message: 'Access denied: You do not have permission to edit this project' });
       }
     }
     
@@ -483,10 +469,10 @@ export const updateProject = async (req: Request, res: Response) => {
       try {
         updateData.startDate = new Date(req.body.startDate);
         if (isNaN(updateData.startDate.getTime())) {
-          return res.status(400).json({ message: 'Invalid start date format' });
+          return res.status(400).json({ success: false, message: 'Invalid start date format' });
         }
       } catch (error) {
-        return res.status(400).json({ message: 'Invalid start date format' });
+        return res.status(400).json({ success: false, message: 'Invalid start date format' });
       }
     }
     
@@ -494,19 +480,17 @@ export const updateProject = async (req: Request, res: Response) => {
       try {
         updateData.endDate = new Date(req.body.endDate);
         if (isNaN(updateData.endDate.getTime())) {
-          return res.status(400).json({ message: 'Invalid end date format' });
+          return res.status(400).json({ success: false, message: 'Invalid end date format' });
         }
       } catch (error) {
-        return res.status(400).json({ message: 'Invalid end date format' });
+        return res.status(400).json({ success: false, message: 'Invalid end date format' });
       }
     }
     
     // Validate date range if both dates are provided
     if (updateData.startDate && updateData.endDate && updateData.startDate > updateData.endDate) {
-      return res.status(400).json({ message: 'Start date must be before end date' });
+      return res.status(400).json({ success: false, message: 'Start date must be before end date' });
     }
-    
-    console.log('Sanitized update data:', updateData);
     
     const project = await Project.findByIdAndUpdate(
       req.params.id,
@@ -518,17 +502,15 @@ export const updateProject = async (req: Request, res: Response) => {
      .populate('departments', 'name description');
     
     if (!project) {
-      return res.status(404).json({ message: 'Project not found after update' });
+      return res.status(404).json({ success: false, message: 'Project not found after update' });
     }
-    
-    console.log('Project updated successfully:', project._id);
     
     // Safely get manager ID for timeline
     const managerId = req.body.updatedBy || 
                      (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null);
     
     if (!managerId) {
-      console.warn('No manager ID found for timeline event');
+      logger.warn('No manager ID found for timeline event');
     } else {
       // Create timeline event
       try {
@@ -557,7 +539,7 @@ export const updateProject = async (req: Request, res: Response) => {
           );
         }
       } catch (timelineError) {
-        console.error('Timeline event creation failed:', timelineError);
+        logger.error('Timeline event creation failed', { message: (timelineError as any)?.message });
       }
     }
     
@@ -608,34 +590,37 @@ export const updateProject = async (req: Request, res: Response) => {
           metadata: { projectId: project._id, projectName: project.name, status: project.status }
         });
       } catch (error) {
-        console.error('Background task error:', error);
+        logger.error('Background task error', { message: error?.message });
       }
     });
     
-    res.json(project);
+    res.json({ success: true, data: project });
   } catch (error) {
-    console.error('Error updating project:', error);
+    logger.error('Error updating project', { message: error?.message });
     
     // Provide more specific error messages
     if (error instanceof Error) {
       if (error.message.includes('validation')) {
-        return res.status(400).json({ 
-          message: 'Validation error', 
+        return res.status(400).json({
+          success: false,
+          message: 'Validation error',
           error: error.message,
           details: 'Please check your input data format'
         });
       }
       if (error.message.includes('Cast to ObjectId')) {
-        return res.status(400).json({ 
-          message: 'Invalid ID format', 
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid ID format',
           error: 'One or more IDs are not in valid format'
         });
       }
     }
-    
-    res.status(400).json({ 
-      message: 'Error updating project', 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+
+    res.status(400).json({
+      success: false,
+      message: 'Error updating project',
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 };
@@ -645,15 +630,15 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     const { status, user } = req.body;
     
     if (!status) {
-      return res.status(400).json({ message: 'Status is required' });
+      return res.status(400).json({ success: false, message: 'Status is required' });
     }
     
     const project = await Project.findById(req.params.id);
-    
+
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
-    
+
     const oldStatus = project.status;
     project.status = status;
     await project.save();
@@ -666,7 +651,7 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     const userId = user || (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null);
     
     if (!userId) {
-      return res.status(400).json({ message: 'User ID is required for timeline event' });
+      return res.status(400).json({ success: false, message: 'User ID is required for timeline event' });
     }
     
     await createTimelineEvent(
@@ -693,12 +678,12 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
       oldStatus,
       status,
       userId
-    ).catch(err => console.error('Error syncing workflow on status change:', err));
+    ).catch((err: any) => logger.error('Error syncing workflow on status change', { message: err?.message }));
     
-    res.json(project);
+    res.json({ success: true, data: project });
   } catch (error) {
-    console.error('Error updating project status:', error);
-    res.status(400).json({ message: 'Error updating project status', error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.error('Error updating project status', { message: error?.message });
+    res.status(400).json({ success: false, message: 'Error updating project status', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -714,19 +699,19 @@ export const deleteProject = async (req: Request, res: Response) => {
       if (!isRoot && !hasEditAll) {
         const projectToCheck = await Project.findById(req.params.id);
         if (!projectToCheck) {
-          return res.status(404).json({ message: 'Project not found' });
+          return res.status(404).json({ success: false, message: 'Project not found' });
         }
         const isOwner = projectToCheck.owner?.toString() === deleteUser._id.toString();
         const isManager = !!(projectToCheck.managers && projectToCheck.managers.some((m: any) => m.toString() === deleteUser._id.toString()));
         if (!isOwner && !isManager) {
-          return res.status(403).json({ message: 'Access denied: You do not have permission to delete this project' });
+          return res.status(403).json({ success: false, message: 'Access denied: You do not have permission to delete this project' });
         }
       }
     }
 
     const project = await Project.findByIdAndDelete(req.params.id);
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
     
     await Task.deleteMany({ project: req.params.id });
@@ -782,10 +767,10 @@ export const deleteProject = async (req: Request, res: Response) => {
       metadata: { projectId: project._id, projectName: project.name }
     });
     
-    res.json({ message: 'Project deleted successfully' });
+    res.json({ success: true, data: { message: 'Project deleted successfully' } });
   } catch (error) {
-    console.error('Error deleting project:', error);
-    res.status(500).json({ message: 'Error deleting project', error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.error('Error deleting project', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error deleting project', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -864,7 +849,7 @@ export const createProjectTask = async (req: Request, res: Response) => {
           assignedById
         );
       } catch (timelineError) {
-        console.error('Timeline event creation failed:', timelineError);
+        logger.error('Timeline event creation failed', { message: (timelineError as any)?.message });
       }
     }
     
@@ -917,7 +902,7 @@ export const createProjectTask = async (req: Request, res: Response) => {
     
     res.status(201).json(transformedTask);
   } catch (error) {
-    console.error('Error creating project task:', error);
+    logger.error('Error creating project task', { message: error?.message });
     res.status(400).json({ message: 'Error creating project task', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -967,9 +952,9 @@ export const getProjectStats = async (req: Request, res: Response) => {
       overdueProjects: await Project.countDocuments({ ...query, endDate: { $lt: new Date() }, status: { $ne: 'completed' } })
     };
     
-    res.json(stats);
+    res.json({ success: true, data: stats });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching project stats', error });
+    res.status(500).json({ success: false, message: 'Error fetching project stats', error });
   }
 };
 
@@ -1014,7 +999,7 @@ export const cloneProject = async (req: Request, res: Response) => {
     
     res.status(201).json(clonedProject);
   } catch (error) {
-    console.error('Error cloning project:', error);
+    logger.error('Error cloning project', { message: error?.message });
     res.status(400).json({ message: 'Error cloning project', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -1029,15 +1014,15 @@ export const updateProjectMilestones = async (req: Request, res: Response) => {
     );
     
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
-    
+
     const { io } = await import('../server');
     io.emit('project:milestones:updated', { projectId: project._id, milestones: project.milestones });
     
-    res.json(project);
+    res.json({ success: true, data: project });
   } catch (error) {
-    res.status(400).json({ message: 'Error updating milestones', error });
+    res.status(400).json({ success: false, message: 'Error updating milestones', error });
   }
 };
 
@@ -1051,15 +1036,15 @@ export const updateProjectRisks = async (req: Request, res: Response) => {
     );
     
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
-    
+
     const { io } = await import('../server');
     io.emit('project:risks:updated', { projectId: project._id, risks: project.risks });
     
-    res.json(project);
+    res.json({ success: true, data: project });
   } catch (error) {
-    res.status(400).json({ message: 'Error updating risks', error });
+    res.status(400).json({ success: false, message: 'Error updating risks', error });
   }
 };
 
@@ -1069,13 +1054,13 @@ export const calculateProjectProgress = async (req: Request, res: Response) => {
     const project = await Project.findById(projectId);
     
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
-    
+
     const tasks = await Task.find({ project: projectId });
     
     if (tasks.length === 0) {
-      return res.json({ progress: 0, message: 'No tasks found' });
+      return res.json({ success: true, data: { progress: 0, message: 'No tasks found' } });
     }
     
     const completedTasks = tasks.filter(t => t.status === 'completed').length;
@@ -1087,9 +1072,9 @@ export const calculateProjectProgress = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('project:progress:updated', { projectId, progress });
     
-    res.json({ progress, totalTasks: tasks.length, completedTasks });
+    res.json({ success: true, data: { progress, totalTasks: tasks.length, completedTasks } });
   } catch (error) {
-    res.status(500).json({ message: 'Error calculating progress', error });
+    res.status(500).json({ success: false, message: 'Error calculating progress', error });
   }
 };
 
@@ -1128,7 +1113,7 @@ export const getProjectTimelineData = async (req: Request, res: Response) => {
     
     res.json(timelineData);
   } catch (error) {
-    console.error('Error fetching project timeline data:', error);
+    logger.error('Error fetching project timeline data', { message: error?.message });
     res.status(500).json({ message: 'Error fetching project timeline data', error });
   }
 };
@@ -1186,7 +1171,7 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
     
     res.json(timelineData);
   } catch (error) {
-    console.error('Error fetching all projects timeline data:', error);
+    logger.error('Error fetching all projects timeline data', { message: error?.message });
     res.status(500).json({ message: 'Error fetching timeline data', error });
   }
 };
@@ -1249,7 +1234,7 @@ export const updateProjectTask = async (req: Request, res: Response) => {
     
     res.json(transformedTask);
   } catch (error) {
-    console.error('Error updating project task:', error);
+    logger.error('Error updating project task', { message: error?.message });
     res.status(400).json({ message: 'Error updating project task', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -1304,7 +1289,7 @@ export const deleteProjectTask = async (req: Request, res: Response) => {
     
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
-    console.error('Error deleting project task:', error);
+    logger.error('Error deleting project task', { message: error?.message });
     res.status(500).json({ message: 'Error deleting project task', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -1320,7 +1305,7 @@ export const getProjectTimeline = async (req: Request, res: Response) => {
     const timeline = await getEntityTimeline('project', req.params.id);
     res.json(timeline);
   } catch (error) {
-    console.error('Error fetching project timeline:', error);
+    logger.error('Error fetching project timeline', { message: error?.message });
     res.status(500).json({ message: 'Error fetching project timeline', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -1345,7 +1330,7 @@ export const addProjectMember = async (req: Request, res: Response) => {
     
     res.json({ success: true, message: 'Member added successfully', team: project.team });
   } catch (error) {
-    console.error('Error adding project member:', error);
+    logger.error('Error adding project member', { message: error?.message });
     res.status(500).json({ success: false, message: 'Error adding member', error });
   }
 };
@@ -1366,7 +1351,7 @@ export const removeProjectMember = async (req: Request, res: Response) => {
     
     res.json({ success: true, message: 'Member removed successfully', team: project.team });
   } catch (error) {
-    console.error('Error removing project member:', error);
+    logger.error('Error removing project member', { message: error?.message });
     res.status(500).json({ success: false, message: 'Error removing member', error });
   }
 };
@@ -1387,7 +1372,7 @@ export const getProjectMembers = async (req: Request, res: Response) => {
       team: project.team 
     });
   } catch (error) {
-    console.error('Error fetching project members:', error);
+    logger.error('Error fetching project members', { message: error?.message });
     res.status(500).json({ success: false, message: 'Error fetching members', error });
   }
 };
@@ -1432,7 +1417,7 @@ export const getProjectActivity = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching project activity:', error);
+    logger.error('Error fetching project activity', { message: error?.message });
     res.status(500).json({ message: 'Error fetching project activity', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -1616,9 +1601,9 @@ export const getProjectTemplates = async (req: Request, res: Response) => {
       { id: 'research', name: 'Research & Development', description: 'R&D project template' },
       { id: 'event', name: 'Event Planning', description: 'Event management template' }
     ];
-    res.json(templates);
+    res.json({ success: true, data: templates });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching templates', error });
+    res.status(500).json({ success: false, message: 'Error fetching templates', error });
   }
 };
 
@@ -1694,7 +1679,7 @@ export const createProjectFast = async (req: Request, res: Response) => {
       updatedAt: project.updatedAt
     };
 
-    res.status(201).json(response);
+    res.status(201).json({ success: true, data: response });
 
     // Handle background tasks asynchronously without blocking response
     setImmediate(async () => {
@@ -1725,7 +1710,7 @@ export const createProjectFast = async (req: Request, res: Response) => {
               'Project Created',
               `Project "${project.name}" was created`,
               project.managers[0].toString()
-            ).catch(console.error)
+            ).catch((err: any) => logger.error('Background task error', { message: err?.message }))
           );
         }
 
@@ -1748,7 +1733,7 @@ export const createProjectFast = async (req: Request, res: Response) => {
             category: 'project',
             severity: 'medium',
             ipAddress: req.ip || 'unknown'
-          }).catch(console.error)
+          }).catch((err: any) => logger.error('Background task error', { message: err?.message }))
         );
 
         // Socket emissions
@@ -1765,18 +1750,18 @@ export const createProjectFast = async (req: Request, res: Response) => {
                 metadata: { projectId: project._id, projectName: project.name }
               })
             ]);
-          }).catch(console.error)
+          }).catch((err: any) => logger.error('Background task error', { message: err?.message }))
         );
 
         // Execute all background tasks
         await Promise.allSettled(backgroundTasks);
       } catch (error) {
-        console.error('Background task error:', error);
+        logger.error('Background task error', { message: error?.message });
       }
     });
 
   } catch (error) {
-    console.error('Error creating project:', error);
+    logger.error('Error creating project', { message: error?.message });
     res.status(400).json({ 
       success: false, 
       message: 'Error creating project', 
@@ -1796,10 +1781,10 @@ export const getEmployeesMinimal = async (req: Request, res: Response) => {
       'firstName lastName _id'
     ).lean().limit(100);
 
-    res.json(employees);
+    res.json({ success: true, data: employees });
   } catch (error) {
-    console.error('Error fetching employees:', error);
-    res.status(500).json({ message: 'Error fetching employees' });
+    logger.error('Error fetching employees', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching employees' });
   }
 };
 
@@ -1813,10 +1798,10 @@ export const getDepartmentsMinimal = async (req: Request, res: Response) => {
       'name _id'
     ).lean().limit(50);
 
-    res.json(departments);
+    res.json({ success: true, data: departments });
   } catch (error) {
-    console.error('Error fetching departments:', error);
-    res.status(500).json({ message: 'Error fetching departments' });
+    logger.error('Error fetching departments', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching departments' });
   }
 };
 

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Project from '../../../models/Project';
 import Task from '../../../models/Task';
 import { getEntityTimeline } from '../../../utils/timelineHelper';
+import { logger } from '../../../utils/logger';
 
 export const getProjectTimeline = async (req: Request, res: Response) => {
   try {
@@ -13,7 +14,7 @@ export const getProjectTimeline = async (req: Request, res: Response) => {
     const timeline = await getEntityTimeline('project', req.params.id);
     res.json(timeline);
   } catch (error) {
-    console.error('Error fetching project timeline:', error);
+    logger.error('Error fetching project timeline', { message: error?.message });
     res.status(500).json({ message: 'Error fetching project timeline', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -53,7 +54,7 @@ export const getProjectTimelineData = async (req: Request, res: Response) => {
 
     res.json(timelineData);
   } catch (error) {
-    console.error('Error fetching project timeline data:', error);
+    logger.error('Error fetching project timeline data', { message: error?.message });
     res.status(500).json({ message: 'Error fetching project timeline data', error });
   }
 };
@@ -109,7 +110,7 @@ export const getAllProjectsTimelineData = async (req: Request, res: Response) =>
 
     res.json(timelineData);
   } catch (error) {
-    console.error('Error fetching all projects timeline data:', error);
+    logger.error('Error fetching all projects timeline data', { message: error?.message });
     res.status(500).json({ message: 'Error fetching timeline data', error });
   }
 };

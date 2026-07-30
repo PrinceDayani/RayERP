@@ -26,20 +26,21 @@ export const createTransferRequest = async (req: Request, res: Response) => {
 
     if (!fromBudget || !toBudget) {
       await session.abortTransaction();
-      return res.status(404).json({ message: 'Budget not found' });
+      return res.status(404).json({ success: false, message: 'Budget not found' });
     }
 
     // Validate same fiscal year
     if (fromBudget.fiscalYear !== toBudget.fiscalYear) {
       await session.abortTransaction();
-      return res.status(400).json({ message: 'Budgets must be in same fiscal year' });
+      return res.status(400).json({ success: false, message: 'Budgets must be in same fiscal year' });
     }
 
     // Validate available balance
     const availableBalance = (fromBudget as any).totalAmount - (fromBudget as any).allocatedAmount;
     if (amount > availableBalance) {
       await session.abortTransaction();
-      return res.status(400).json({ 
+      return res.status(400).json({
+        success: false,
         message: 'Insufficient available balance',
         available: availableBalance,
         requested: amount
@@ -60,19 +61,20 @@ export const createTransferRequest = async (req: Request, res: Response) => {
     }], { session });
 
     await session.commitTransaction();
-    
+
     const populatedTransfer = await BudgetTransfer.findById(transfer[0]._id)
       .populate('fromBudget', 'budgetName departmentId')
       .populate('toBudget', 'budgetName departmentId')
       .populate('requestedBy', 'name email');
 
     res.status(201).json({
+      success: true,
       message: 'Transfer request created successfully',
-      transfer: populatedTransfer
+      data: populatedTransfer
     });
   } catch (error: any) {
     await session.abortTransaction();
-    res.status(500).json({ message: 'Error creating transfer request', error: error.message });
+    res.status(500).json({ success: false, message: 'Error creating transfer request' });
   } finally {
     session.endSession();
   }
@@ -91,12 +93,12 @@ export const approveTransfer = async (req: Request, res: Response) => {
     const transfer = await BudgetTransfer.findById(transferId).session(session);
     if (!transfer) {
       await session.abortTransaction();
-      return res.status(404).json({ message: 'Transfer not found' });
+      return res.status(404).json({ success: false, message: 'Transfer not found' });
     }
 
     if (transfer.status !== 'pending') {
       await session.abortTransaction();
-      return res.status(400).json({ message: 'Transfer already processed' });
+      return res.status(400).json({ success: false, message: 'Transfer already processed' });
     }
 
     // Get budgets
@@ -107,14 +109,14 @@ export const approveTransfer = async (req: Request, res: Response) => {
 
     if (!fromBudget || !toBudget) {
       await session.abortTransaction();
-      return res.status(404).json({ message: 'Budget not found' });
+      return res.status(404).json({ success: false, message: 'Budget not found' });
     }
 
     // Validate balance again
     const availableBalance = (fromBudget as any).totalAmount - (fromBudget as any).allocatedAmount;
     if (transfer.amount > availableBalance) {
       await session.abortTransaction();
-      return res.status(400).json({ message: 'Insufficient balance at approval time' });
+      return res.status(400).json({ success: false, message: 'Insufficient balance at approval time' });
     }
 
     // Execute transfer
@@ -143,12 +145,13 @@ export const approveTransfer = async (req: Request, res: Response) => {
       .populate('approvedBy', 'name email');
 
     res.json({
+      success: true,
       message: 'Transfer approved and completed successfully',
-      transfer: populatedTransfer
+      data: populatedTransfer
     });
   } catch (error: any) {
     await session.abortTransaction();
-    res.status(500).json({ message: 'Error approving transfer', error: error.message });
+    res.status(500).json({ success: false, message: 'Error approving transfer' });
   } finally {
     session.endSession();
   }
@@ -163,11 +166,11 @@ export const rejectTransfer = async (req: Request, res: Response) => {
 
     const transfer = await BudgetTransfer.findById(transferId);
     if (!transfer) {
-      return res.status(404).json({ message: 'Transfer not found' });
+      return res.status(404).json({ success: false, message: 'Transfer not found' });
     }
 
     if (transfer.status !== 'pending') {
-      return res.status(400).json({ message: 'Transfer already processed' });
+      return res.status(400).json({ success: false, message: 'Transfer already processed' });
     }
 
     transfer.status = 'rejected';
@@ -183,11 +186,12 @@ export const rejectTransfer = async (req: Request, res: Response) => {
       .populate('approvedBy', 'name email');
 
     res.json({
+      success: true,
       message: 'Transfer rejected successfully',
-      transfer: populatedTransfer
+      data: populatedTransfer
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error rejecting transfer', error: error.message });
+    res.status(500).json({ success: false, message: 'Error rejecting transfer' });
   }
 };
 
@@ -208,9 +212,9 @@ export const getAllTransfers = async (req: Request, res: Response) => {
       .populate('approvedBy', 'name email')
       .sort({ createdAt: -1 });
 
-    res.json({ transfers, count: transfers.length });
+    res.json({ success: true, data: transfers, count: transfers.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching transfers', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching transfers' });
   }
 };
 
@@ -226,12 +230,12 @@ export const getTransferById = async (req: Request, res: Response) => {
       .populate('approvedBy', 'name email');
 
     if (!transfer) {
-      return res.status(404).json({ message: 'Transfer not found' });
+      return res.status(404).json({ success: false, message: 'Transfer not found' });
     }
 
-    res.json({ transfer });
+    res.json({ success: true, data: transfer });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching transfer', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching transfer' });
   }
 };
 
@@ -244,9 +248,9 @@ export const getPendingTransfers = async (req: Request, res: Response) => {
       .populate('requestedBy', 'name email')
       .sort({ createdAt: -1 });
 
-    res.json({ transfers, count: transfers.length });
+    res.json({ success: true, data: transfers, count: transfers.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching pending transfers', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching pending transfers' });
   }
 };
 
@@ -265,8 +269,8 @@ export const getBudgetTransferHistory = async (req: Request, res: Response) => {
       .populate('approvedBy', 'name email')
       .sort({ completionDate: -1 });
 
-    res.json({ transfers, count: transfers.length });
+    res.json({ success: true, data: transfers, count: transfers.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching transfer history', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching transfer history' });
   }
 };

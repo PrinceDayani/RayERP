@@ -20,12 +20,12 @@ export const getEmployeeAchievements = async (req: Request, res: Response) => {
 
         const achievements = await Achievement.find(filter)
             .sort({ date: -1 })
-            .populate('createdBy', 'username email')
-            .populate('verifiedBy', 'username email');
+            .populate('createdBy', 'name email')
+            .populate('verifiedBy', 'name email');
 
-        res.json(achievements);
+        res.json({ success: true, data: achievements });
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -34,8 +34,8 @@ export const getAchievement = async (req: Request, res: Response) => {
     try {
         const achievement = await Achievement.findById(req.params.id)
             .populate('employee', 'firstName lastName employeeId')
-            .populate('createdBy', 'username email')
-            .populate('verifiedBy', 'username email');
+            .populate('createdBy', 'name email')
+            .populate('verifiedBy', 'name email');
 
         if (!achievement) {
             return res.status(404).json({ message: 'Achievement not found' });
@@ -55,7 +55,7 @@ export const createAchievement = async (req: Request, res: Response) => {
         // Verify employee exists
         const employee = await Employee.findById(employeeId);
         if (!employee) {
-            return res.status(404).json({ message: 'Employee not found' });
+            return res.status(404).json({ success: false, message: 'Employee not found' });
         }
 
         const achievement = new Achievement({
@@ -66,11 +66,11 @@ export const createAchievement = async (req: Request, res: Response) => {
 
         await achievement.save();
 
-        const populated = await achievement.populate('createdBy', 'username email');
+        const populated = await achievement.populate('createdBy', 'name email');
 
-        res.status(201).json(populated);
+        res.status(201).json({ success: true, data: populated });
     } catch (error: any) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
@@ -84,16 +84,16 @@ export const updateAchievement = async (req: Request, res: Response) => {
             updateData,
             { new: true, runValidators: true }
         )
-            .populate('createdBy', 'username email')
-            .populate('verifiedBy', 'username email');
+            .populate('createdBy', 'name email')
+            .populate('verifiedBy', 'name email');
 
         if (!achievement) {
-            return res.status(404).json({ message: 'Achievement not found' });
+            return res.status(404).json({ success: false, message: 'Achievement not found' });
         }
 
-        res.json(achievement);
+        res.json({ success: true, data: achievement });
     } catch (error: any) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
@@ -118,18 +118,18 @@ export const verifyAchievement = async (req: Request, res: Response) => {
         const achievement = await Achievement.findById(req.params.id);
 
         if (!achievement) {
-            return res.status(404).json({ message: 'Achievement not found' });
+            return res.status(404).json({ success: false, message: 'Achievement not found' });
         }
 
         await achievement.verify((req as any).user._id);
 
         const updated = await Achievement.findById(req.params.id)
-            .populate('createdBy', 'username email')
-            .populate('verifiedBy', 'username email');
+            .populate('createdBy', 'name email')
+            .populate('verifiedBy', 'name email');
 
-        res.json(updated);
+        res.json({ success: true, data: updated });
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -145,7 +145,7 @@ export const unverifyAchievement = async (req: Request, res: Response) => {
         await achievement.unverify();
 
         const updated = await Achievement.findById(req.params.id)
-            .populate('createdBy', 'username email');
+            .populate('createdBy', 'name email');
 
         res.json(updated);
     } catch (error: any) {
@@ -159,9 +159,9 @@ export const getExpiringCertifications = async (req: Request, res: Response) => 
         const { employeeId } = req.params;
 
         const expiring = await (Achievement as any).getExpiring(employeeId);
-        res.json(expiring);
+        res.json({ success: true, data: expiring });
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -208,8 +208,8 @@ export const getAchievementStats = async (req: Request, res: Response) => {
             stats.byCategory[achievement.category]++;
         });
 
-        res.json(stats);
+        res.json({ success: true, data: stats });
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };

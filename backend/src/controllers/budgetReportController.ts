@@ -50,7 +50,7 @@ export const generateReport = async (req: Request, res: Response) => {
       report.status = 'failed';
       report.errorMessage = 'No budgets found matching criteria';
       await report.save();
-      return res.status(404).json({ message: 'No budgets found matching criteria' });
+      return res.status(404).json({ success: false, message: 'No budgets found matching criteria' });
     }
 
     // Generate report based on format
@@ -111,11 +111,12 @@ export const generateReport = async (req: Request, res: Response) => {
       .populate('generatedBy', 'name email');
 
     res.status(201).json({
+      success: true,
       message: 'Report generated successfully',
-      report: populatedReport
+      data: populatedReport
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error generating report', error: error.message });
+    res.status(500).json({ success: false, message: 'Error generating report' });
   }
 };
 
@@ -134,9 +135,9 @@ export const getAllReports = async (req: Request, res: Response) => {
       .populate('generatedBy', 'name email')
       .sort({ createdAt: -1 });
 
-    res.json({ reports, count: reports.length });
+    res.json({ success: true, data: reports, count: reports.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching reports', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching reports' });
   }
 };
 
@@ -150,12 +151,12 @@ export const getReportById = async (req: Request, res: Response) => {
       .populate('generatedBy', 'name email');
 
     if (!report) {
-      return res.status(404).json({ message: 'Report not found' });
+      return res.status(404).json({ success: false, message: 'Report not found' });
     }
 
-    res.json({ report });
+    res.json({ success: true, data: report });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching report', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching report' });
   }
 };
 
@@ -166,25 +167,25 @@ export const downloadReport = async (req: Request, res: Response) => {
 
     const report = await BudgetReport.findById(reportId);
     if (!report) {
-      return res.status(404).json({ message: 'Report not found' });
+      return res.status(404).json({ success: false, message: 'Report not found' });
     }
 
     if (report.status !== 'completed') {
-      return res.status(400).json({ message: 'Report is not ready for download' });
+      return res.status(400).json({ success: false, message: 'Report is not ready for download' });
     }
 
     if (!report.fileUrl) {
-      return res.status(404).json({ message: 'Report file not found' });
+      return res.status(404).json({ success: false, message: 'Report file not found' });
     }
 
     const filePath = path.join(__dirname, '../..', report.fileUrl);
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'Report file not found on server' });
+      return res.status(404).json({ success: false, message: 'Report file not found on server' });
     }
 
     res.download(filePath);
   } catch (error: any) {
-    res.status(500).json({ message: 'Error downloading report', error: error.message });
+    res.status(500).json({ success: false, message: 'Error downloading report' });
   }
 };
 
@@ -196,11 +197,11 @@ export const deleteReport = async (req: Request, res: Response) => {
 
     const report = await BudgetReport.findById(reportId);
     if (!report) {
-      return res.status(404).json({ message: 'Report not found' });
+      return res.status(404).json({ success: false, message: 'Report not found' });
     }
 
     if (report.generatedBy.toString() !== userId?.toString()) {
-      return res.status(403).json({ message: 'Not authorized to delete this report' });
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this report' });
     }
 
     // Delete file
@@ -213,9 +214,9 @@ export const deleteReport = async (req: Request, res: Response) => {
 
     await BudgetReport.findByIdAndDelete(reportId);
 
-    res.json({ message: 'Report deleted successfully' });
+    res.json({ success: true, message: 'Report deleted successfully' });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error deleting report', error: error.message });
+    res.status(500).json({ success: false, message: 'Error deleting report' });
   }
 };
 
@@ -237,11 +238,12 @@ export const generateVarianceReport = async (req: Request, res: Response) => {
     const reportData = generateVarianceReportData(budgets, variances);
 
     res.json({
+      success: true,
       message: 'Variance report generated',
       data: reportData
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error generating variance report', error: error.message });
+    res.status(500).json({ success: false, message: 'Error generating variance report' });
   }
 };
 
@@ -260,11 +262,12 @@ export const generateComparisonReport = async (req: Request, res: Response) => {
     const reportData = generateComparisonReportData(budgets);
 
     res.json({
+      success: true,
       message: 'Comparison report generated',
       data: reportData
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error generating comparison report', error: error.message });
+    res.status(500).json({ success: false, message: 'Error generating comparison report' });
   }
 };
 
@@ -288,11 +291,14 @@ export const getReportStatistics = async (req: Request, res: Response) => {
     const completedReports = await BudgetReport.countDocuments({ generatedBy: userId, status: 'completed' });
 
     res.json({
-      totalReports,
-      completedReports,
-      byType: stats
+      success: true,
+      data: {
+        totalReports,
+        completedReports,
+        byType: stats
+      }
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching statistics', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching statistics' });
   }
 };

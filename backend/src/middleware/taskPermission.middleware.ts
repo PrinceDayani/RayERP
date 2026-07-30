@@ -4,6 +4,7 @@ import Employee from '../models/Employee';
 import Department from '../models/Department';
 import Task from '../models/Task';
 import Project from '../models/Project';
+import { logger } from '../utils/logger';
 
 const getUserPermissions = async (userId: string): Promise<Set<string>> => {
   const user = await User.findById(userId).populate('role');
@@ -100,8 +101,8 @@ export const requireTaskPermission = (permission: string, requiresAssignment = f
       }
 
       next();
-    } catch (error) {
-      console.error('Task permission error:', error);
+    } catch (error: any) {
+      logger.error('Task permission error', { message: error?.message });
       res.status(500).json({ message: 'Internal server error' });
     }
   };
@@ -149,8 +150,8 @@ export const requireProjectPermission = (permission: string, requiresAssignment 
       }
 
       next();
-    } catch (error) {
-      console.error('Project permission error:', error);
+    } catch (error: any) {
+      logger.error('Project permission error', { message: error?.message });
       res.status(500).json({ message: 'Internal server error' });
     }
   };

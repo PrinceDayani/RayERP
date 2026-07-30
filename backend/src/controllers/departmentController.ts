@@ -6,6 +6,7 @@ import { logActivity } from '../utils/activityLogger';
 import Project from '../models/Project';
 import ActivityLog from '../models/ActivityLog';
 import { registerCacheInvalidator } from '../utils/dashboardCache';
+import { logger } from '../utils/logger';
 
 // Enhanced cache with 5min TTL
 const CACHE_TTL = 300000;
@@ -125,8 +126,6 @@ export const createDepartment = async (req: Request, res: Response) => {
     const { name, description, manager, location, budget, status, managerId, employeeIds } = req.body;
     const user = (req as any).user;
 
-    console.log('Create department request:', { name, description, manager, location, budget, status, managerId, employeeIds });
-
     if (!name || !description) {
       return res.status(400).json({ success: false, message: 'Name and description are required' });
     }
@@ -201,11 +200,10 @@ export const createDepartment = async (req: Request, res: Response) => {
       ipAddress: req.ip
     });
 
-    console.log('Department created successfully:', department);
     clearDepartmentCache();
     res.status(201).json({ success: true, data: department, message: 'Department created successfully' });
   } catch (error: any) {
-    console.error('Error creating department:', error);
+    logger.error('Error creating department:', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -741,8 +739,8 @@ export const getDepartmentProjects = async (req: Request, res: Response) => {
     }
 
     const projects = await Project.find({ departments: department._id })
-      .populate('manager', 'firstName lastName email')
-      .populate('team', 'firstName lastName email')
+      .populate('managers', 'name email')
+      .populate('team', 'name email')
       .sort({ createdAt: -1 });
 
     setCache(cacheKey, projects);

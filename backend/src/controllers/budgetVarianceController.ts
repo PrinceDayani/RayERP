@@ -12,13 +12,13 @@ export const generateVarianceReport = async (req: Request, res: Response) => {
 
     const budget = await Budget.findById(budgetId);
     if (!budget) {
-      return res.status(404).json({ message: 'Budget not found' });
+      return res.status(404).json({ success: false, message: 'Budget not found' });
     }
 
     // Get actual spending data from transactions
     const Transaction = require('../models/Transaction').default;
     const varianceItems = await Transaction.aggregate([
-      { $match: { 
+      { $match: {
         budgetId: budget._id,
         date: { $gte: new Date(startDate), $lte: new Date(endDate) }
       }},
@@ -77,11 +77,12 @@ export const generateVarianceReport = async (req: Request, res: Response) => {
       .populate('generatedBy', 'name email');
 
     res.status(201).json({
+      success: true,
       message: 'Variance report generated successfully',
-      variance: populatedVariance
+      data: populatedVariance
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error generating variance report', error: error.message });
+    res.status(500).json({ success: false, message: 'Error generating variance report' });
   }
 };
 
@@ -99,9 +100,9 @@ export const getBudgetVarianceReports = async (req: Request, res: Response) => {
       .populate('generatedBy', 'name email')
       .sort({ 'period.startDate': -1 });
 
-    res.json({ reports, count: reports.length });
+    res.json({ success: true, data: reports, count: reports.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching variance reports', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching variance reports' });
   }
 };
 
@@ -115,12 +116,12 @@ export const getVarianceReportById = async (req: Request, res: Response) => {
       .populate('generatedBy', 'name email');
 
     if (!report) {
-      return res.status(404).json({ message: 'Variance report not found' });
+      return res.status(404).json({ success: false, message: 'Variance report not found' });
     }
 
-    res.json({ report });
+    res.json({ success: true, data: report });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching variance report', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching variance report' });
   }
 };
 
@@ -134,7 +135,7 @@ export const getVarianceSummary = async (req: Request, res: Response) => {
       .populate('budget', 'budgetName totalAmount');
 
     if (!latestReport) {
-      return res.status(404).json({ message: 'No variance reports found' });
+      return res.status(404).json({ success: false, message: 'No variance reports found' });
     }
 
     const summary = {
@@ -152,9 +153,9 @@ export const getVarianceSummary = async (req: Request, res: Response) => {
         .slice(0, 5)
     };
 
-    res.json({ summary });
+    res.json({ success: true, data: summary });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching variance summary', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching variance summary' });
   }
 };
 
@@ -170,7 +171,7 @@ export const compareVarianceTrends = async (req: Request, res: Response) => {
       .populate('budget', 'budgetName');
 
     if (reports.length === 0) {
-      return res.status(404).json({ message: 'No variance reports found' });
+      return res.status(404).json({ success: false, message: 'No variance reports found' });
     }
 
     const trends = reports.reverse().map(report => ({
@@ -182,19 +183,20 @@ export const compareVarianceTrends = async (req: Request, res: Response) => {
     }));
 
     const avgVariance = trends.reduce((sum, t) => sum + t.variancePercent, 0) / trends.length;
-    const improving = trends.length > 1 && 
+    const improving = trends.length > 1 &&
       Math.abs(trends[trends.length - 1].variancePercent) < Math.abs(trends[0].variancePercent);
 
     res.json({
-      budgetName: (reports[0].budget as any).budgetName,
-      trends,
-      avgVariance,
-      improving,
-      periodsAnalyzed: trends.length
+      success: true,
+      data: {
+        budgetName: (reports[0].budget as any).budgetName,
+        trends,
+        avgVariance,
+        improving,
+        periodsAnalyzed: trends.length
+      }
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error comparing variance trends', error: error.message });
+    res.status(500).json({ success: false, message: 'Error comparing variance trends' });
   }
 };
-
-

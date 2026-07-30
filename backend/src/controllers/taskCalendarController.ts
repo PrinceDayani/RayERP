@@ -2,6 +2,7 @@
 
 import { Request, Response } from 'express';
 import Task from '../models/Task';
+import { logger } from '../utils/logger';
 
 export const getCalendarView = async (req: Request, res: Response) => {
   try {
@@ -34,7 +35,7 @@ export const getCalendarView = async (req: Request, res: Response) => {
     
     res.json({ events });
   } catch (error) {
-    console.error('Calendar view error:', error);
+    logger.error('Calendar view error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching calendar view', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -88,7 +89,7 @@ export const exportICalendar = async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', 'attachment; filename="tasks.ics"');
     res.send(icalContent.filter(Boolean).join('\r\n'));
   } catch (error) {
-    console.error('iCal export error:', error);
+    logger.error('iCal export error:', { message: error?.message });
     res.status(500).json({ message: 'Error exporting calendar', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -126,7 +127,7 @@ export const getTimelineView = async (req: Request, res: Response) => {
     
     res.json({ timeline });
   } catch (error) {
-    console.error('Timeline view error:', error);
+    logger.error('Timeline view error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching timeline view', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -146,7 +147,7 @@ export const syncGoogleCalendar = async (req: Request, res: Response) => {
       note: 'Implement Google Calendar API integration with OAuth2'
     });
   } catch (error) {
-    console.error('Google Calendar sync error:', error);
+    logger.error('Google Calendar sync error:', { message: error?.message });
     res.status(500).json({ message: 'Error syncing with Google Calendar', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

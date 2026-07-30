@@ -10,6 +10,7 @@ import Chat from '../models/Chat';
 import FileShare from '../models/FileShare';
 import Contact from '../models/Contact';
 import { registerCacheInvalidator } from '../utils/dashboardCache';
+import { logger } from '../utils/logger';
 
 let comprehensiveCache: { data: any; timestamp: number } | null = null;
 const CACHE_TTL = 120000; // 2 minutes
@@ -68,7 +69,7 @@ export const getDashboardAnalytics = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: dashboardData });
   } catch (error) {
-    console.error('Error fetching dashboard analytics:', error);
+    logger.error('Error fetching dashboard analytics', { message: (error as Error)?.message });
     res.status(500).json({ success: false, message: 'Server error fetching analytics data' });
   }
 };
@@ -123,7 +124,7 @@ export const getProductivityTrends = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: productivityData });
   } catch (error) {
-    console.error('Error fetching productivity trends:', error);
+    logger.error('Error fetching productivity trends', { message: (error as Error)?.message });
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -167,7 +168,7 @@ export const getProjectDues = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: formattedDues });
   } catch (error) {
-    console.error('Error fetching project dues:', error);
+    logger.error('Error fetching project dues', { message: (error as Error)?.message });
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -230,7 +231,7 @@ export const getTopPerformers = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: topPerformers });
   } catch (error) {
-    console.error('Error fetching top performers:', error);
+    logger.error('Error fetching top performers', { message: (error as Error)?.message });
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -302,7 +303,7 @@ export const getBudgetAnalytics = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: budgetAnalytics });
   } catch (error) {
-    console.error('Error fetching budget analytics:', error);
+    logger.error('Error fetching budget analytics', { message: (error as Error)?.message });
     res.status(500).json({ success: false, message: 'Server error fetching budget analytics' });
   }
 };
@@ -462,7 +463,7 @@ export const getComprehensiveAnalytics = async (req: Request, res: Response) => 
     comprehensiveCache = { data: analyticsData, timestamp: Date.now() };
     res.json({ success: true, data: analyticsData });
   } catch (error: any) {
-    console.error('Comprehensive analytics error:', error);
+    logger.error('Comprehensive analytics error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };

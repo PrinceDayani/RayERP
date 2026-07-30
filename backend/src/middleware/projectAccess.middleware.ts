@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import Project from '../models/Project';
 import ProjectPermission from '../models/ProjectPermission';
+import { logger } from '../utils/logger';
 
 type AnyUser = {
   _id: mongoose.Types.ObjectId | string;
@@ -97,8 +98,8 @@ export const checkProjectAccess = async (req: Request, res: Response, next: Next
     }
 
     next();
-  } catch (error) {
-    console.error('Project access middleware error:', error);
+  } catch (error: any) {
+    logger.error('Project access middleware error', { message: error?.message });
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -117,8 +118,8 @@ export const checkProjectManagementAccess = async (req: Request, res: Response, 
     }
 
     next();
-  } catch (error) {
-    console.error('Project management access middleware error:', error);
+  } catch (error: any) {
+    logger.error('Project management access middleware error', { message: error?.message });
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

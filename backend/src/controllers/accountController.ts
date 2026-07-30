@@ -3,8 +3,7 @@ import ChartOfAccount from '../models/ChartOfAccount';
 import { AccountType } from '../models/AccountType';
 import { generateEntryNumber } from '../utils/numberGenerator';
 import { createContactFromAccount } from '../utils/accountContact';
-
-const logger = { warn: (msg: string, data?: any) => console.warn(msg, data) };
+import { logger } from '../utils/logger';
 
 // Bulk create accounts
 export const bulkCreateAccounts = async (req: Request, res: Response) => {
@@ -63,10 +62,7 @@ export const createAccount = async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
-    
-    console.log('=== CREATE ACCOUNT REQUEST ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
+
     // Validate required fields
     if (!req.body.name || !req.body.type) {
       return res.status(400).json({ 
@@ -98,12 +94,9 @@ export const createAccount = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Invalid IFSC code format' });
     }
     
-    console.log('Creating account with data:', JSON.stringify(req.body, null, 2));
     const account = new ChartOfAccount({ ...req.body, createdBy: req.user.id });
-    console.log('Account instance created, validating...');
     await account.save();
-    console.log('Account saved successfully:', account._id);
-    
+
     // Auto-create contact if requested and account is customer/vendor type
     if (req.body.createContact) {
       try {
@@ -118,16 +111,12 @@ export const createAccount = async (req: Request, res: Response) => {
     
     res.status(201).json({ success: true, data: account, message: 'Account created successfully' });
   } catch (error: any) {
-    console.error('=== CREATE ACCOUNT ERROR ===');
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error details:', error);
-    
+    logger.error('Failed to create account', { name: error.name, message: error.message });
+
     if (error.code === 11000) {
       res.status(400).json({ success: false, message: 'Account code already exists' });
     } else if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors || {}).map((e: any) => e.message).join(', ');
-      console.error('Validation errors:', validationErrors);
       res.status(400).json({ success: false, message: `Validation failed: ${validationErrors}` });
     } else {
       res.status(400).json({ success: false, message: error.message });
@@ -170,8 +159,6 @@ const generateAccountCode = async (type: string): Promise<string> => {
 
 export const getAccounts = async (req: Request, res: Response) => {
   try {
-    console.log('getAccounts called with query:', req.query);
-    
     const { projectId, type, search, page = 1, limit = 50, includeInactive = false } = req.query;
     const filter: any = includeInactive === 'true' ? {} : { isActive: true };
     
@@ -190,14 +177,7 @@ export const getAccounts = async (req: Request, res: Response) => {
         { 'contactInfo.city': { $regex: search, $options: 'i' } }
       ];
     }
-    
-    console.log('Filter applied:', filter);
-    
-    // Check total count first
-    const totalCount = await ChartOfAccount.countDocuments({});
-    const activeCount = await ChartOfAccount.countDocuments({ isActive: true });
-    console.log(`Total accounts: ${totalCount}, Active accounts: ${activeCount}`);
-    
+
     const skip = (Number(page) - 1) * Number(limit);
     const accounts = await ChartOfAccount.find(filter)
       .populate('parentId', 'name code')
@@ -208,9 +188,7 @@ export const getAccounts = async (req: Request, res: Response) => {
       .skip(skip)
       .limit(Number(limit))
       .lean();
-      
-    console.log(`Found ${accounts.length} accounts`);
-    
+
     const total = await ChartOfAccount.countDocuments(filter);
     
     // Get summary stats
@@ -235,7 +213,7 @@ export const getAccounts = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('getAccounts error:', error.message, error.stack);
+    logger.error('Failed to fetch accounts', { message: error.message });
     res.status(500).json({ success: false, message: error.message || 'Failed to fetch accounts' });
   }
 };

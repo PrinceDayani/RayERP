@@ -21,7 +21,6 @@ import {
   Calculator,
   PieChart,
   Wallet,
-  Receipt,
   Target,
   ClipboardList,
   UserCog,
@@ -35,8 +34,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/tooltip";
 import BackendStatus from "@/components/BackendStatus";
 import RealTimeNotifications from "@/components/RealTimeNotifications";
@@ -137,7 +134,6 @@ export default function Layout({ children }: LayoutProps) {
       title: "System Administration",
       items: [
         { path: "/dashboard/settings", name: "Settings", icon: Settings, description: "System configuration" } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/backup", name: "System Backup", icon: Receipt, description: "Download system backup", access: isAdmin || isSuperAdmin || isRoot } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/admin", name: "Admin Panel", icon: Shield, description: "Advanced system controls", access: isAdmin || isSuperAdmin || isRoot } as MenuItem & { icon: any; description: string },
       ]
     }
@@ -188,25 +184,6 @@ export default function Layout({ children }: LayoutProps) {
     if (!item.subItems) return false;
     return item.subItems.some((subItem: SubMenuItem) => pathname === subItem.path);
   };
-
-  const getRoleColor = (role: any) => {
-    const roleName = typeof role === 'string' ? role : role?.name || '';
-    switch (roleName.toLowerCase()) {
-      case 'root':
-        return 'bg-red-500';
-      case 'super_admin':
-      case 'superadmin':
-        return 'bg-purple-500';
-      case 'admin':
-        return 'bg-red-500';
-      case 'manager':
-        return 'bg-green-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
-
 
   if (!isClient) {
     return (
@@ -383,45 +360,6 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           </TooltipProvider>
         </nav>
-
-        {/* User Profile */}
-        {user && (
-          <div className="p-4 border-t border-border">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className={`flex items-center space-x-3 p-2 rounded-md hover:bg-accent transition-colors cursor-pointer ${collapsed ? 'justify-center' : ''}`}>
-                    <div className="relative">
-                      <Avatar className="w-9 h-9">
-                        <AvatarFallback className={`${getRoleColor(user.role)} text-white text-sm font-semibold`}>
-                          {user.name?.charAt(0).toUpperCase() || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-card rounded-full" />
-                    </div>
-                    {!collapsed && (
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {user.name}
-                        </p>
-                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                          {typeof user.role === 'string' ? user.role : user.role?.name || 'User'}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side={collapsed ? "right" : "top"} className="ml-2">
-                  <div>
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-xs text-stone-500 dark:text-stone-400">{user.email}</p>
-                    <p className="text-xs text-stone-500 dark:text-stone-400 capitalize">{typeof user.role === 'string' ? user.role : user.role?.name || 'User'} Access</p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        )}
       </div>
 
       {/* Mobile overlay */}

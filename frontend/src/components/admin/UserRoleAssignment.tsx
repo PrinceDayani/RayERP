@@ -55,10 +55,7 @@ export function UserRoleAssignment({ isLoading }: UserRoleAssignmentProps) {
           adminAPI.getUsers(),
           adminAPI.getRoles()
         ]);
-        
-        console.log('Fetched users:', usersData);
-        console.log('Fetched roles:', rolesData);
-        
+
         setUsers(usersData as unknown as User[]);
         setRoles(rolesData);
       } catch (error: any) {
@@ -102,18 +99,7 @@ export function UserRoleAssignment({ isLoading }: UserRoleAssignmentProps) {
     // Store the user and roles in refs for the confirmation step
     userForConfirmation.current = currentUser;
     rolesForConfirmation.current = selectedRoles;
-    
-    // Logging selected roles
-    const selectedRoleNames = roles
-      .filter(role => selectedRoles.includes(role._id))
-      .map(role => role.name);
-    
-    console.log('=== Role Assignment Details ===');
-    console.log('User:', currentUser.name, '(' + currentUser.email + ')');
-    console.log('Selected Role IDs:', selectedRoles);
-    console.log('Selected Role Names:', selectedRoleNames);
-    console.log('Previous Roles:', currentUser.roles?.map(r => r.name) || []);
-    
+
     // Show confirmation dialog
     setIsConfirmOpen(true);
   };
@@ -132,10 +118,7 @@ export function UserRoleAssignment({ isLoading }: UserRoleAssignmentProps) {
       });
       return;
     }
-    
-    console.log('Starting role assignment for:', user.name);
-    console.log('Selected roles:', rolesToAssign);
-    
+
     setIsSaving(true);
     try {
       const updatedUser = await adminAPI.assignRolesToUser(user._id, rolesToAssign);
@@ -157,10 +140,7 @@ export function UserRoleAssignment({ isLoading }: UserRoleAssignmentProps) {
       // Clear the refs
       userForConfirmation.current = null;
       rolesForConfirmation.current = [];
-      
-      // Success logging
-      console.log('✅ Roles successfully assigned to:', userName);
-      
+
       toast({
         title: "Success",
         description: `Roles updated for ${userName}`
@@ -178,14 +158,10 @@ export function UserRoleAssignment({ isLoading }: UserRoleAssignmentProps) {
   };
 
   const handleRoleChange = (roleId: string, checked: boolean) => {
-    const roleName = roles.find(r => r._id === roleId)?.name || 'Unknown';
-    
     if (checked) {
       setSelectedRoles([...selectedRoles, roleId]);
-      console.log('✅ Added role:', roleName);
     } else {
       setSelectedRoles(selectedRoles.filter(id => id !== roleId));
-      console.log('❌ Removed role:', roleName);
     }
   };
 

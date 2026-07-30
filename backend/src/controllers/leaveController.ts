@@ -23,9 +23,9 @@ export const getAllLeaves = async (req: Request, res: Response) => {
       .populate('employee', 'firstName lastName employeeId')
       .populate('approvedBy', 'firstName lastName')
       .sort({ appliedDate: -1 });
-    res.json(leaves);
+    res.json({ success: true, data: leaves });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching leaves', error });
+    res.status(500).json({ success: false, message: 'Error fetching leaves' });
   }
 };
 
@@ -47,9 +47,9 @@ export const createLeave = async (req: Request, res: Response) => {
     
     const { io } = await import('../server');
     io.emit('leave:created', leave);
-    res.status(201).json(leave);
+    res.status(201).json({ success: true, data: leave });
   } catch (error) {
-    res.status(400).json({ message: 'Error creating leave request', error });
+    res.status(400).json({ success: false, message: 'Error creating leave request' });
   }
 };
 
@@ -71,14 +71,14 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
       .populate('approvedBy', 'firstName lastName');
     
     if (!leave) {
-      return res.status(404).json({ message: 'Leave request not found' });
+      return res.status(404).json({ success: false, message: 'Leave request not found' });
     }
-    
+
     const { io } = await import('../server');
     io.emit('leave:updated', leave);
-    res.json(leave);
+    res.json({ success: true, data: leave });
   } catch (error) {
-    res.status(400).json({ message: 'Error updating leave status', error });
+    res.status(400).json({ success: false, message: 'Error updating leave status' });
   }
 };
 
@@ -142,8 +142,8 @@ export const getLeaveBalance = async (req: Request, res: Response) => {
       }
     });
     
-    res.json(balance);
+    res.json({ success: true, data: balance });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching leave balance', error });
+    res.status(500).json({ success: false, message: 'Error fetching leave balance' });
   }
 };

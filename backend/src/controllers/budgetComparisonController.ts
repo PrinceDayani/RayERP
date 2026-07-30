@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Budget from '../models/Budget';
+import { logger } from '../utils/logger';
 
 export const compareBudgets = async (req: Request, res: Response) => {
   try {
@@ -166,7 +167,7 @@ export const compareBudgets = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Budget comparison error:', error);
+    logger.error('Budget comparison error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -220,7 +221,7 @@ export const compareByPeriod = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Period comparison error:', error);
+    logger.error('Period comparison error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };

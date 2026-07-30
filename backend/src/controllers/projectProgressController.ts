@@ -4,6 +4,7 @@ import FinancialEntry from '../models/FinancialEntry';
 import DailyReport from '../models/DailyReport';
 import Project from '../models/Project';
 import Task from '../models/Task';
+import { logger } from '../utils/logger';
 
 // Get progress summary for a reporting-based project
 export const getProgressSummary = async (req: Request, res: Response) => {
@@ -94,7 +95,7 @@ export const getProgressSummary = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Get progress summary error:', error);
+    logger.error('Get progress summary error:', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -211,7 +212,7 @@ export const generateProgressSnapshot = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: snapshot });
   } catch (error: any) {
-    console.error('Generate progress snapshot error:', error);
+    logger.error('Generate progress snapshot error:', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -236,7 +237,7 @@ export const getProgressHistory = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: snapshots });
   } catch (error: any) {
-    console.error('Get progress history error:', error);
+    logger.error('Get progress history error:', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };

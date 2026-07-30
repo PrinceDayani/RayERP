@@ -1,5 +1,6 @@
 import TaxRecord from '../models/TaxRecord';
 import cron from 'node-cron';
+import { logger } from './logger';
 
 /**
  * Archive tax records older than 7 years (regulatory requirement)
@@ -23,10 +24,9 @@ export const archiveOldTaxRecords = async () => {
             }
         );
 
-        console.log(`Archived ${result.modifiedCount} tax records older than 7 years`);
         return result.modifiedCount;
-    } catch (error) {
-        console.error('Error archiving tax records:', error);
+    } catch (error: any) {
+        logger.error('Error archiving tax records', { message: error?.message });
         throw error;
     }
 };
@@ -45,11 +45,10 @@ export const sendTaxReminders = async () => {
             isDeleted: false
         }).populate('createdBy', 'email name');
 
-        console.log(`Found ${upcomingTaxes.length} upcoming tax obligations`);
         // TODO: Integrate with notification system
         return upcomingTaxes.length;
-    } catch (error) {
-        console.error('Error sending tax reminders:', error);
+    } catch (error: any) {
+        logger.error('Error sending tax reminders', { message: error?.message });
         throw error;
     }
 };
@@ -60,15 +59,11 @@ export const sendTaxReminders = async () => {
 export const initializeTaxCronJobs = () => {
     // Archive old records - Run monthly on 1st at 2 AM
     cron.schedule('0 2 1 * *', async () => {
-        console.log('Running tax archival job...');
         await archiveOldTaxRecords();
     });
 
     // Send reminders - Run daily at 9 AM
     cron.schedule('0 9 * * *', async () => {
-        console.log('Running tax reminder job...');
         await sendTaxReminders();
     });
-
-    console.log('Tax management cron jobs initialized');
 };

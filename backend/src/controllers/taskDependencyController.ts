@@ -2,6 +2,7 @@
 
 import { Request, Response } from 'express';
 import Task from '../models/Task';
+import { logger } from '../utils/logger';
 
 export const addDependency = async (req: Request, res: Response) => {
   try {
@@ -29,7 +30,7 @@ export const addDependency = async (req: Request, res: Response) => {
     
     res.json({ success: true, task });
   } catch (error) {
-    console.error('Add dependency error:', error);
+    logger.error('Add dependency error:', { message: error?.message });
     res.status(500).json({ message: 'Error adding dependency', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -49,7 +50,7 @@ export const removeDependency = async (req: Request, res: Response) => {
     
     res.json({ success: true, task });
   } catch (error) {
-    console.error('Remove dependency error:', error);
+    logger.error('Remove dependency error:', { message: error?.message });
     res.status(500).json({ message: 'Error removing dependency', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -78,7 +79,7 @@ export const getDependencyGraph = async (req: Request, res: Response) => {
     
     res.json({ graph });
   } catch (error) {
-    console.error('Dependency graph error:', error);
+    logger.error('Dependency graph error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching dependency graph', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -97,7 +98,7 @@ export const getCriticalPath = async (req: Request, res: Response) => {
     
     res.json({ criticalPath, totalDuration: criticalPath.reduce((sum, t) => sum + t.duration, 0) });
   } catch (error) {
-    console.error('Critical path error:', error);
+    logger.error('Critical path error:', { message: error?.message });
     res.status(500).json({ message: 'Error calculating critical path', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -121,7 +122,7 @@ export const checkBlockedTasks = async (req: Request, res: Response) => {
     
     res.json({ isBlocked: blockedBy.length > 0, blockedBy });
   } catch (error) {
-    console.error('Check blocked error:', error);
+    logger.error('Check blocked error:', { message: error?.message });
     res.status(500).json({ message: 'Error checking blocked tasks', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

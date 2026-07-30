@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Attendance from '../models/Attendance';
 import Employee from '../models/Employee';
+import { logger } from '../utils/logger';
 // Socket will be imported dynamically to avoid circular dependency
 
 // Add a new endpoint for today's dashboard stats
@@ -31,10 +32,10 @@ export const getTodayStats = async (req: Request, res: Response) => {
       attendanceRecords: todayAttendance
     };
     
-    res.json(stats);
+    res.json({ success: true, data: stats });
   } catch (error) {
-    console.error('Error fetching today stats:', error);
-    res.status(500).json({ message: 'Error fetching today stats', error });
+    logger.error('Error fetching today stats', { message: (error as any)?.message });
+    res.status(500).json({ success: false, message: 'Error fetching today stats' });
   }
 };
 
@@ -67,16 +68,14 @@ export const getAllAttendance = async (req: Request, res: Response) => {
       filter.employee = employee;
     }
     
-    console.log('Attendance filter:', filter);
     const attendance = await Attendance.find(filter)
       .populate('employee', 'firstName lastName employeeId')
       .sort({ date: -1, checkIn: -1 });
-    
-    console.log('Found attendance records:', attendance.length);
-    res.json(attendance);
+
+    res.json({ success: true, data: attendance });
   } catch (error) {
-    console.error('Error fetching attendance:', error);
-    res.status(500).json({ message: 'Error fetching attendance', error });
+    logger.error('Error fetching attendance', { message: (error as any)?.message });
+    res.status(500).json({ success: false, message: 'Error fetching attendance' });
   }
 };
 
@@ -87,12 +86,12 @@ export const getAttendanceById = async (req: Request, res: Response) => {
       .populate('employee', 'firstName lastName employeeId');
     
     if (!attendance) {
-      return res.status(404).json({ message: 'Attendance record not found' });
+      return res.status(404).json({ success: false, message: 'Attendance record not found' });
     }
-    
-    res.json(attendance);
+
+    res.json({ success: true, data: attendance });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching attendance record', error });
+    res.status(500).json({ success: false, message: 'Error fetching attendance record' });
   }
 };
 
@@ -145,7 +144,7 @@ export const checkIn = async (req: Request, res: Response) => {
       attendance
     });
   } catch (error) {
-    console.error('Check-in error:', error);
+    logger.error('Check-in error', { message: error.message });
     res.status(400).json({ message: 'Error checking in', error: error.message });
   }
 };
@@ -199,7 +198,7 @@ export const checkOut = async (req: Request, res: Response) => {
       attendance
     });
   } catch (error) {
-    console.error('Check-out error:', error);
+    logger.error('Check-out error', { message: error.message });
     res.status(400).json({ message: 'Error checking out', error: error.message });
   }
 };
@@ -242,9 +241,9 @@ export const getAttendanceStats = async (req: Request, res: Response) => {
       todayAvgHours: todayAttendance.length > 0 ? todayAttendance.reduce((sum, a) => sum + a.totalHours, 0) / todayAttendance.length : 0
     };
     
-    res.json(stats);
+    res.json({ success: true, data: stats });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching attendance stats', error });
+    res.status(500).json({ success: false, message: 'Error fetching attendance stats' });
   }
 };
 
@@ -300,7 +299,7 @@ export const requestAttendance = async (req: Request, res: Response) => {
       attendance
     });
   } catch (error) {
-    console.error('Error requesting attendance:', error);
+    logger.error('Error requesting attendance', { message: error.message });
     res.status(400).json({ message: 'Error requesting attendance', error: error.message });
   }
 };
@@ -340,7 +339,7 @@ export const approveAttendance = async (req: Request, res: Response) => {
       attendance
     });
   } catch (error) {
-    console.error('Error approving attendance:', error);
+    logger.error('Error approving attendance', { message: error.message });
     res.status(400).json({ message: 'Error processing attendance request', error: error.message });
   }
 };
@@ -407,7 +406,7 @@ export const syncCardData = async (req: Request, res: Response) => {
     
     res.json(attendance);
   } catch (error) {
-    console.error('Error syncing card data:', error);
+    logger.error('Error syncing card data', { message: error.message });
     res.status(400).json({ message: 'Error syncing card data', error: error.message });
   }
 };
@@ -421,9 +420,9 @@ export const updateAttendance = async (req: Request, res: Response) => {
     
     const attendance = await Attendance.findById(id);
     if (!attendance) {
-      return res.status(404).json({ message: 'Attendance record not found' });
+      return res.status(404).json({ success: false, message: 'Attendance record not found' });
     }
-    
+
     // Update fields if provided
     if (status) attendance.status = status;
     if (checkIn) attendance.checkIn = new Date(checkIn);
@@ -443,10 +442,10 @@ export const updateAttendance = async (req: Request, res: Response) => {
     
     const { io } = await import('../server');
     io.emit('attendance:updated', attendance);
-    res.json(attendance);
+    res.json({ success: true, data: attendance });
   } catch (error) {
-    console.error('Error updating attendance:', error);
-    res.status(400).json({ message: 'Error updating attendance', error: error.message });
+    logger.error('Error updating attendance', { message: error.message });
+    res.status(400).json({ success: false, message: 'Error updating attendance' });
   }
 };
 
@@ -464,7 +463,7 @@ export const deleteAttendance = async (req: Request, res: Response) => {
     io.emit('attendance:updated', { deleted: id });
     res.json({ message: 'Attendance record deleted successfully' });
   } catch (error) {
-    console.error('Error deleting attendance:', error);
+    logger.error('Error deleting attendance', { message: error.message });
     res.status(400).json({ message: 'Error deleting attendance', error: error.message });
   }
 };

@@ -3,6 +3,7 @@ import { protect } from '../middleware/auth.middleware';
 import Employee from '../models/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -64,7 +65,7 @@ router.get('/trends', protect, async (req, res) => {
       }
     });
   } catch (error: any) {
-    console.error('Trends error:', error);
+    logger.error('Trends error', { message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 });

@@ -19,10 +19,7 @@ export const config = {
     if (!this.apiUrl) {
       throw new Error('API URL is not configured. Please set NEXT_PUBLIC_API_URL environment variable.');
     }
-    
-    console.log(`🔗 API URL: ${this.apiUrl}`);
-    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-    
+
     return true;
   }
 };

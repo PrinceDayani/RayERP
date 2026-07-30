@@ -52,7 +52,6 @@ export default function Navbar({ toggleSidebar, isMobile }: NavbarProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     // Implement search functionality
-    console.log("Searching for:", searchQuery);
   };
 
   const getRoleColor = (role: any) => {

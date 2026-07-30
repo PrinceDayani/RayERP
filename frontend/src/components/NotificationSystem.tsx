@@ -41,12 +41,10 @@ const NotificationSystem: React.FC<NotificationProps> = ({ isAuthenticated }) =>
 
     const handleConnect = () => {
       setIsConnected(true);
-      console.log('✅ Notification system connected');
     };
 
     const handleDisconnect = () => {
       setIsConnected(false);
-      console.log('⚠️ Notification system disconnected');
     };
 
     socket.on('connect', handleConnect);

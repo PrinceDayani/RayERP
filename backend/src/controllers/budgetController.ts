@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Budget from '../models/Budget';
 import Project from '../models/Project';
 import { emitBudgetCreated, emitBudgetUpdated, emitBudgetDeleted, emitBudgetApproved, emitBudgetRejected } from '../utils/budgetSocketEvents';
+import { logger } from '../utils/logger';
 
 export const createBudget = async (req: Request, res: Response) => {
   try {
@@ -79,8 +80,6 @@ export const createBudget = async (req: Request, res: Response) => {
       budgetData.departmentName = dept.name;
     }
 
-    console.log('💾 Creating budget with data:', JSON.stringify(budgetData, null, 2));
-    
     const budget = new Budget(budgetData);
     await budget.save();
 
@@ -92,10 +91,8 @@ export const createBudget = async (req: Request, res: Response) => {
       message: 'Budget created successfully'
     });
   } catch (error: any) {
-    console.error('❌ Budget creation error:', error);
-    console.error('❌ Error details:', error.message);
-    console.error('❌ Validation errors:', error.errors);
-    res.status(400).json({ 
+    logger.error('Budget creation error', { message: error?.message });
+    res.status(400).json({
       success: false, 
       message: error.message,
       errors: error.errors ? Object.keys(error.errors).map(key => ({
@@ -331,7 +328,7 @@ export const approveBudget = async (req: Request, res: Response) => {
       message: 'Budget approved successfully'
     });
   } catch (error: any) {
-    console.error('Approve budget error:', error);
+    logger.error('Approve budget error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -386,7 +383,7 @@ export const rejectBudget = async (req: Request, res: Response) => {
       message: 'Budget rejected'
     });
   } catch (error: any) {
-    console.error('Reject budget error:', error);
+    logger.error('Reject budget error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -28,10 +28,7 @@ export default function DepartmentLayout({ children }: { children: React.ReactNo
         try {
             setLoading(true);
             const response = await departmentApi.getById(params.id as string);
-            console.log("Layout API Response:", response);
-            console.log("Department data:", response.data);
             const dept = response.data?.data || response.data;
-            console.log("Setting department to:", dept);
             setDepartment(dept);
         } catch (error: any) {
             console.error("Department load error:", error);

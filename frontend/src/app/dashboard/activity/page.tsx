@@ -179,26 +179,7 @@ function ActivityPageContent() {
     }
     
     const startTime = performance.now();
-    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    console.group(`[Activity] ${requestId} - Fetching activities`);
-    console.log('Request Parameters:', {
-      page,
-      limit: 20,
-      filters: {
-        resourceType: filter !== 'all' ? filter : 'none',
-        action: actionFilter !== 'all' ? actionFilter : 'none',
-        status: statusFilter !== 'all' ? statusFilter : 'none',
-        category: categoryFilter !== 'all' ? categoryFilter : 'none',
-        userName: debouncedUserNameFilter || 'none'
-      },
-      dateRange: {
-        start: startDate || 'none',
-        end: endDate || 'none'
-      },
-      timestamp: new Date().toISOString()
-    });
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -217,12 +198,7 @@ function ActivityPageContent() {
       const cursorParam = useCursorPagination && cursor ? `&cursor=${cursor}&useCursor=true` : '';
       
       const url = `${process.env.NEXT_PUBLIC_API_URL}/api/activity?page=${page}&limit=20${filterParam}${dateParams}${actionParam}${statusParam}${categoryParam}${userParam}${projectParam}${ipParam}${minDurParam}${maxDurParam}${sessionParam}${userAgentParam}${cursorParam}`;
-      console.log('Full Request URL:', url);
-      console.log('Request Headers:', {
-        Authorization: `Bearer ${token.substring(0, 20)}...`,
-        'Content-Type': 'application/json'
-      });
-      
+
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -230,52 +206,13 @@ function ActivityPageContent() {
         },
       });
 
-      const endTime = performance.now();
-      const duration = (endTime - startTime).toFixed(2);
-      
-      console.log('Response Received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        duration: `${duration}ms`,
-        headers: {
-          contentType: response.headers.get('content-type'),
-          contentLength: response.headers.get('content-length')
-        }
-      });
-
       if (response.ok) {
         const data = await response.json();
-        console.log('Data Parsed Successfully:', {
-          activitiesReceived: data.data?.length || 0,
-          pagination: {
-            currentPage: data.pagination?.page || 0,
-            totalPages: data.pagination?.pages || 0,
-            totalItems: data.pagination?.total || 0,
-            hasMore: (data.pagination?.page || 0) < (data.pagination?.pages || 0),
-            nextCursor: data.pagination?.nextCursor
-          },
-          firstActivity: data.data?.[0] ? {
-            id: data.data[0]._id,
-            user: data.data[0].userName,
-            action: data.data[0].action,
-            resource: data.data[0].resource,
-            timestamp: data.data[0].timestamp
-          } : null,
-          lastActivity: data.data?.[data.data.length - 1] ? {
-            id: data.data[data.data.length - 1]._id,
-            user: data.data[data.data.length - 1].userName,
-            action: data.data[data.data.length - 1].action,
-            resource: data.data[data.data.length - 1].resource,
-            timestamp: data.data[data.data.length - 1].timestamp
-          } : null
-        });
         setActivities(data.data);
         setTotalPages(data.pagination.pages);
         if (data.pagination.nextCursor) {
           setCursor(data.pagination.nextCursor);
         }
-        console.log(`✅ Success - Loaded ${data.data?.length || 0} activities in ${duration}ms`);
       } else {
         const errorText = await response.text();
         console.error('❌ Server Error:', {
@@ -284,7 +221,7 @@ function ActivityPageContent() {
           errorBody: errorText,
           url
         });
-        
+
         // Classify error types - only show toast for critical errors
         if (response.status === 401) {
           setError('Authentication failed. Please log in again.');
@@ -324,25 +261,19 @@ function ActivityPageContent() {
       }
     } finally {
       setLoading(false);
-      console.groupEnd();
     }
   }, [token, page, filter, startDate, endDate, actionFilter, statusFilter, categoryFilter, debouncedUserNameFilter, debouncedProjectNameFilter, debouncedIpAddressFilter, minDurationFilter, maxDurationFilter, debouncedSessionIdFilter, debouncedUserAgentFilter, debouncedSearchQuery, toast]);
 
   const fetchSearchResults = useCallback(async () => {
     if (!token || !debouncedSearchQuery.trim()) return;
     
-    const startTime = performance.now();
-    const requestId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    console.log(`[Activity Search] ${requestId} - Searching:`, debouncedSearchQuery);
-    
     try {
       setIsSearching(true);
       setLoading(true);
       setError(null);
-      
+
       const url = `${process.env.NEXT_PUBLIC_API_URL}/api/activity/search?q=${encodeURIComponent(debouncedSearchQuery)}&page=${page}&limit=20`;
-      
+
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -350,14 +281,10 @@ function ActivityPageContent() {
         },
       });
 
-      const endTime = performance.now();
-      const duration = (endTime - startTime).toFixed(2);
-
       if (response.ok) {
         const data = await response.json();
         setActivities(data.data);
         setTotalPages(data.pagination.pages);
-        console.log(`✅ Search Success - Found ${data.data?.length || 0} results in ${duration}ms`);
       } else {
         const errorText = await response.text();
         console.error('❌ Search Error:', response.status, errorText);
@@ -378,9 +305,6 @@ function ActivityPageContent() {
       return;
     }
     
-    console.log('[Activity Stats] Fetching statistics...');
-    const startTime = performance.now();
-    
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/activity/stats`,
@@ -392,19 +316,8 @@ function ActivityPageContent() {
         }
       );
 
-      const endTime = performance.now();
-      console.log(`[Activity Stats] Request completed in ${(endTime - startTime).toFixed(2)}ms`);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('[Activity Stats] Stats received:', {
-          total: data.data?.totalActivities,
-          today: data.data?.todayActivities,
-          week: data.data?.weekActivities,
-          month: data.data?.monthActivities,
-          resourceTypes: data.data?.resourceTypeStats?.length || 0,
-          actions: data.data?.actionStats?.length || 0
-        });
         setStats(data.data);
       } else {
         console.error('[Activity Stats] Server error:', response.status, response.statusText);
@@ -426,9 +339,6 @@ function ActivityPageContent() {
       return;
     }
     
-    console.log('[Activity Details] Fetching details for:', activityId);
-    const startTime = performance.now();
-    
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/activity/${activityId}`,
@@ -440,17 +350,8 @@ function ActivityPageContent() {
         }
       );
 
-      const endTime = performance.now();
-      console.log(`[Activity Details] Request completed in ${(endTime - startTime).toFixed(2)}ms`);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('[Activity Details] Details received:', {
-          id: data.data?._id,
-          action: data.data?.action,
-          user: data.data?.userName,
-          resource: data.data?.resource
-        });
         setSelectedActivity(data.data);
         setShowDetailModal(true);
       } else {
@@ -502,8 +403,6 @@ function ActivityPageContent() {
   }, []);
 
   const handleExport = useCallback((format: 'csv' | 'excel' | 'pdf') => {
-    console.log('[Activity Export] Starting export:', { format, count: activities.length });
-    
     if (activities.length === 0) {
       console.warn('[Activity Export] No activities to export');
       toast({ title: 'No data', description: 'No activities to export', variant: 'destructive' });
@@ -519,7 +418,6 @@ function ActivityPageContent() {
       } else if (format === 'pdf') {
         exportToPDF(activities, `${filename}.pdf`);
       }
-      console.log('[Activity Export] Export successful:', { format, filename, count: activities.length });
       toast({ title: 'Success', description: `Exported ${activities.length} activities` });
     } catch (error) {
       console.error('[Activity Export] Export failed:', {
@@ -532,8 +430,7 @@ function ActivityPageContent() {
 
   const handleExportAll = useCallback(async (format: 'csv' | 'excel' | 'pdf') => {
     if (!token) return;
-    
-    console.log('[Activity Export All] Starting full export:', { format });
+
     toast({ title: 'Exporting', description: 'Fetching all activities...', duration: 2000 });
     
     try {
@@ -560,7 +457,6 @@ function ActivityPageContent() {
         exportToPDF(allActivities, `${filename}.pdf`);
       }
 
-      console.log('[Activity Export All] Export successful:', { format, count: allActivities.length });
       toast({ title: 'Success', description: `Exported ${allActivities.length} activities` });
     } catch (error) {
       setExportProgress(null);
@@ -579,7 +475,6 @@ function ActivityPageContent() {
       return;
     }
 
-    console.log('[Activity Revert] Starting revert:', { activityId });
     toast({ title: 'Reverting', description: 'Processing revert request...', duration: 2000 });
 
     try {
@@ -596,7 +491,6 @@ function ActivityPageContent() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('[Activity Revert] Success:', data);
         toast({ title: 'Success', description: data.message || 'Activity reverted successfully' });
         fetchActivities();
         setShowDetailModal(false);
@@ -727,11 +621,9 @@ function ActivityPageContent() {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('[Activity Socket] Connected:', socket.id);
     });
 
     socket.on('activity:created', (newActivity: Activity) => {
-      console.log('[Activity Socket] New activity received:', newActivity);
       // Optimistic update
       setActivities((prev) => [newActivity, ...prev].slice(0, 20));
       if (stats) {
@@ -750,7 +642,6 @@ function ActivityPageContent() {
     });
 
     socket.on('disconnect', () => {
-      console.log('[Activity Socket] Disconnected');
     });
 
     return () => {

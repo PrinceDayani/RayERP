@@ -150,10 +150,6 @@ const JournalEntry = () => {
   }, [formData.lines.length]);
 
   useEffect(() => {
-    console.log('=== JOURNAL ENTRY INIT ===');
-    console.log('prefilledAccountId:', prefilledAccountId);
-    console.log('editId:', editId);
-    
     fetchAccounts();
     fetchTemplates();
     fetchRecentEntries();
@@ -163,10 +159,6 @@ const JournalEntry = () => {
   // Separate effect for pre-filling account
   useEffect(() => {
     if (prefilledAccountId && !editId && accounts.length > 0) {
-      console.log('Pre-filling account:', prefilledAccountId);
-      const accountExists = accounts.find(a => a._id === prefilledAccountId);
-      console.log('Account exists:', accountExists);
-      
       setFormData(prev => {
         const newData = {
           ...prev,
@@ -175,7 +167,6 @@ const JournalEntry = () => {
             { accountId: '', debit: 0, credit: 0, description: '', refType: 'on-account', refId: '', refAmount: 0 }
           ]
         };
-        console.log('New form data:', newData);
         return newData;
       });
     }
@@ -231,7 +222,6 @@ const JournalEntry = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       const entries = res.data.data || res.data || [];
-      console.log('Recent entries fetched:', entries);
       setRecentEntries(entries.slice(0, 5));
     } catch (error) {
       console.error('Failed to fetch recent entries:', error);

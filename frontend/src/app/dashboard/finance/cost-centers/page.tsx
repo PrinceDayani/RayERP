@@ -35,7 +35,6 @@ export default function CostCentersPage() {
   const fetchCostCenters = async () => {
     try {
       const response = await costCenterAPI.getAll({ hierarchy: true });
-      console.log('Fetch response:', response);
       const centers = response.success ? response.data : (response.data || response || []);
       setCostCenters(Array.isArray(centers) ? centers : []);
     } catch (error) {

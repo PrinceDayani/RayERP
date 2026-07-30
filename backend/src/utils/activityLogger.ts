@@ -1,5 +1,6 @@
 import ActivityLog from '../models/ActivityLog';
 import mongoose from 'mongoose';
+import { logger } from './logger';
 
 interface LogActivityParams {
   userId: string | mongoose.Types.ObjectId;
@@ -39,8 +40,8 @@ export const logActivity = async (params: LogActivityParams) => {
       ipAddress: params.ipAddress || 'system',
       status: params.status || 'success'
     });
-  } catch (error) {
-    console.error('Error logging activity:', error);
+  } catch (error: any) {
+    logger.error('Error logging activity', { message: error?.message });
   }
 };
 

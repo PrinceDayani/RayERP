@@ -3,15 +3,14 @@ import { CostCenter } from '../models/CostCenter';
 import { CostAllocation } from '../models/CostAllocation';
 import JournalEntry from '../models/JournalEntry';
 import { Voucher } from '../models/Voucher';
+import { logger } from '../utils/logger';
 
 export const createCostCenter = async (req: Request, res: Response) => {
   try {
-    console.log('Creating cost center:', req.body);
     const costCenter = await CostCenter.create(req.body);
-    console.log('Cost center created:', costCenter._id);
     res.status(201).json({ success: true, data: costCenter });
   } catch (error: any) {
-    console.error('Error creating cost center:', error);
+    logger.error('Error creating cost center:', { message: error?.message });
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -43,7 +42,7 @@ export const getCostCenters = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: centersWithActuals });
   } catch (error: any) {
-    console.error('Error fetching cost centers:', error);
+    logger.error('Error fetching cost centers:', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };

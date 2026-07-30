@@ -98,7 +98,6 @@ export function UserManagement({ isLoading }: UserManagementProps) {
   );
 
   const handleEditUser = (user: AdminUser) => {
-    console.log('Editing user:', user);
     // Create a copy to avoid mutating the original
     setCurrentUser({ ...user });
     setIsEditUserOpen(true);
@@ -184,8 +183,7 @@ export function UserManagement({ isLoading }: UserManagementProps) {
     try {
       // Extract roleId properly - handle both object and string cases
       const roleId = typeof currentUser.role === 'object' ? (currentUser.role as any)._id : currentUser.role;
-      console.log('Updating user role:', { userId: currentUser.id, roleId, originalRole: currentUser.role });
-      
+
       // Update user role using the role endpoint
       await adminAPI.updateUserRole(currentUser.id, roleId);
       

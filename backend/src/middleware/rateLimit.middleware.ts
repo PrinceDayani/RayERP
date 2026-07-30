@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../types/express';
 import { incrementCounter } from '../utils/redis';
+import { logger } from '../utils/logger';
 
 interface RateLimitConfig {
   windowMs: number;
@@ -34,7 +35,8 @@ export const createRateLimiter = (config: Partial<RateLimitConfig> = {}) => {
       res.setHeader('X-RateLimit-Reset', new Date(Date.now() + finalConfig.windowMs).toISOString());
 
       if (count > finalConfig.maxRequests) {
-        console.warn(`[Rate Limit] User ${user.name} exceeded limit on ${req.path}`, {
+        logger.warn('[Rate Limit] User exceeded limit', {
+          path: req.path,
           count,
           limit: finalConfig.maxRequests,
           ip: req.ip
@@ -48,8 +50,8 @@ export const createRateLimiter = (config: Partial<RateLimitConfig> = {}) => {
       }
 
       next();
-    } catch (error) {
-      console.error('[Rate Limit] Error:', error);
+    } catch (error: any) {
+      logger.error('[Rate Limit] Error', { message: error?.message });
       next();
     }
   };

@@ -142,7 +142,6 @@ export default function EnhancedFinancePage() {
   const handleBulkDelete = async () => {
     if (confirm(`Delete ${selectedRecords.size} records?`)) {
       // API call to bulk delete
-      console.log('Bulk delete:', Array.from(selectedRecords));
       setSelectedRecords(new Set());
       fetchRecords();
     }
@@ -150,14 +149,12 @@ export default function EnhancedFinancePage() {
 
   const handleBulkApprove = async () => {
     // API call to bulk approve
-    console.log('Bulk approve:', Array.from(selectedRecords));
     setSelectedRecords(new Set());
     fetchRecords();
   };
 
   const handleBulkSend = async () => {
     // API call to bulk send emails
-    console.log('Bulk send:', Array.from(selectedRecords));
     setSelectedRecords(new Set());
   };
 
@@ -569,7 +566,7 @@ export default function EnhancedFinancePage() {
                               onView={() => router.push(`/dashboard/finance/invoices/${record._id}`)}
                               onDownloadPDF={() => window.open(`/api/finance/${record.type === 'invoice' ? 'invoices' : 'payments'}/${record._id}/pdf`, '_blank')}
                               onSendEmail={() => handleSendEmail(record._id, record.type)}
-                              onDuplicate={() => console.log('Duplicate', record._id)}
+                              onDuplicate={() => {}}
                               onMarkPaid={record.type === 'invoice' ? () => handleMarkPaid(record._id) : undefined}
                               onRecordPayment={record.type === 'invoice' ? () => handleRecordPayment(record._id) : undefined}
                               onViewLedger={() => handleViewLedger(record._id, record.type)}

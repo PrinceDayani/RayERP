@@ -15,10 +15,8 @@ export default function SystemBackup() {
       setError(null);
       setSuccess(null);
 
-      console.log('Starting backup download...');
       const blob = await backupAPI.downloadSystemBackup();
-      console.log('Backup blob received:', blob.size, 'bytes');
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');

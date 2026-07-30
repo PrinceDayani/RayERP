@@ -1,5 +1,7 @@
 //path: frontend/src/lib/fileShareApi.ts
 
+import { unwrapResponse } from './api/unwrap';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 const getAuthHeaders = () => {
@@ -22,8 +24,8 @@ export const fileShareApi = {
     if (!response.ok) {
       throw new Error('Failed to share file');
     }
-    
-    return response.json();
+
+    return unwrapResponse(await response.json());
   },
 
   // Get all files shared with current user
@@ -48,8 +50,8 @@ export const fileShareApi = {
     if (!response.ok) {
       throw new Error('Failed to fetch file shares');
     }
-    
-    return response.json();
+
+    return unwrapResponse(await response.json());
   },
 
   // Get all file shares for a project
@@ -75,8 +77,8 @@ export const fileShareApi = {
     if (!response.ok) {
       throw new Error('Failed to mark as viewed');
     }
-    
-    return response.json();
+
+    return unwrapResponse(await response.json());
   },
 
   // Mark a shared file as downloaded
@@ -89,8 +91,8 @@ export const fileShareApi = {
     if (!response.ok) {
       throw new Error('Failed to mark as downloaded');
     }
-    
-    return response.json();
+
+    return unwrapResponse(await response.json());
   },
 
   // Delete a file share
@@ -103,7 +105,7 @@ export const fileShareApi = {
     if (!response.ok) {
       throw new Error('Failed to delete share');
     }
-    
-    return response.json();
+
+    return unwrapResponse(await response.json());
   }
 };

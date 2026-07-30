@@ -4,6 +4,7 @@ import DailyReport from '../models/DailyReport';
 import Project from '../models/Project';
 import ReportingSchedule, { IReportTemplate } from '../models/ReportingSchedule';
 import { getAccessibleProjectIdsForUser } from '../middleware/projectAccess.middleware';
+import { logger } from '../utils/logger';
 
 // Validate a report payload against the project's report template (if one exists).
 // Returns the templateVersion to snapshot, the normalized customFieldValues, or an error message.
@@ -163,7 +164,7 @@ export const createDailyReport = async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true, data: populatedReport });
   } catch (error: any) {
-    console.error('Create daily report error:', error);
+    logger.error('Create daily report error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -216,7 +217,7 @@ export const getProjectReports = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Get project reports error:', error);
+    logger.error('Get project reports error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -255,7 +256,7 @@ export const getMyReports = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Get my reports error:', error);
+    logger.error('Get my reports error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -276,7 +277,7 @@ export const getReportById = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: report });
   } catch (error: any) {
-    console.error('Get report by ID error:', error);
+    logger.error('Get report by ID error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -339,7 +340,7 @@ export const updateDailyReport = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: populatedReport });
   } catch (error: any) {
-    console.error('Update daily report error:', error);
+    logger.error('Update daily report error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -386,7 +387,7 @@ export const acknowledgeReport = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: report });
   } catch (error: any) {
-    console.error('Acknowledge report error:', error);
+    logger.error('Acknowledge report error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -417,7 +418,7 @@ export const deleteDailyReport = async (req: Request, res: Response) => {
     await DailyReport.findByIdAndDelete(reportId);
     res.json({ success: true, message: 'Report deleted successfully' });
   } catch (error: any) {
-    console.error('Delete daily report error:', error);
+    logger.error('Delete daily report error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -477,7 +478,7 @@ export const getReportingStatus = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Get reporting status error:', error);
+    logger.error('Get reporting status error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -514,7 +515,7 @@ export const resolveBlocker = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: populatedReport });
   } catch (error: any) {
-    console.error('Resolve blocker error:', error);
+    logger.error('Resolve blocker error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -547,7 +548,7 @@ export const getUnresolvedBlockers = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: blockers });
   } catch (error: any) {
-    console.error('Get unresolved blockers error:', error);
+    logger.error('Get unresolved blockers error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -650,7 +651,7 @@ export const getReportsFeed = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Get reports feed error:', error);
+    logger.error('Get reports feed error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -736,7 +737,7 @@ export const getReportsMatrix = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Get reports matrix error:', error);
+    logger.error('Get reports matrix error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -821,7 +822,7 @@ export const getReportsFeedSummary = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Get reports feed summary error:', error);
+    logger.error('Get reports feed summary error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };

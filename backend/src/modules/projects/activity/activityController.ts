@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Project from '../../../models/Project';
+import { logger } from '../../../utils/logger';
 
 export const getProjectActivity = async (req: Request, res: Response) => {
   try {
@@ -38,7 +39,7 @@ export const getProjectActivity = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching project activity:', error);
+    logger.error('Error fetching project activity', { message: error?.message });
     res.status(500).json({ message: 'Error fetching project activity', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

@@ -44,7 +44,6 @@ export const useSocket = (url: string = (process.env.NEXT_PUBLIC_API_URL  || pro
       });
 
       socketRef.current.on('connect', () => {
-        console.log('Socket connected:', socketRef.current?.id);
         setIsConnected(true);
         setSocket(socketRef.current);
         
@@ -63,7 +62,6 @@ export const useSocket = (url: string = (process.env.NEXT_PUBLIC_API_URL  || pro
       });
 
       socketRef.current.on('disconnect', () => {
-        console.log('Socket disconnected');
         setIsConnected(false);
       });
 
@@ -73,7 +71,6 @@ export const useSocket = (url: string = (process.env.NEXT_PUBLIC_API_URL  || pro
       });
 
       socketRef.current.on('reconnect', (attemptNumber: number) => {
-        console.log(`Socket reconnected after ${attemptNumber} attempts`);
         setIsConnected(true);
       });
 

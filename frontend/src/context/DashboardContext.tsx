@@ -133,7 +133,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       // Connection events
       socket.on("connect", () => {
-        console.log("Socket connected in context");
         setSocketConnected(true);
         
         // Clear polling interval if it exists
@@ -150,31 +149,26 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
 
       socket.on("disconnect", (reason: any) => {
-        console.log("Socket disconnected in context:", reason);
         setSocketConnected(false);
-        
+
         // Set up polling as fallback
         if (!pollingIntervalRef.current) {
           pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
-          console.log("Falling back to polling every 30 seconds");
         }
       });
 
       socket.on("connect_error", (err: any) => {
         console.error("Socket connection error in context:", err.message);
         setSocketConnected(false);
-        
+
         // Set up polling as fallback
         if (!pollingIntervalRef.current) {
           pollingIntervalRef.current = setInterval(fetchDashboardData, 30000);
-          console.log("Falling back to polling every 30 seconds");
         }
       });
 
       // Order events
       socket.on("order:new", (order: any) => {
-        console.log("New order received:", order);
-        
         // Update recent orders
         setRecentOrders((prev) => {
           const newOrders = [order, ...prev];

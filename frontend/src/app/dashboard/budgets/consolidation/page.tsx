@@ -26,11 +26,9 @@ export default function BudgetConsolidationPage() {
   const fetchConsolidation = async () => {
     setLoading(true);
     try {
-      console.log('Fetching consolidation with:', { fiscalYear, currency });
       const response = await api.get('/budgets/consolidation', {
         params: { fiscalYear, currency }
       });
-      console.log('Consolidation response:', response);
       setConsolidation(response.data.data);
     } catch (error: any) {
       console.error('Error fetching consolidation:', error);

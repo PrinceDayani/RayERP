@@ -1,6 +1,7 @@
 import Employee from '../models/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
+import { logger } from './logger';
 
 export const createDashboardIndexes = async () => {
   try {
@@ -10,8 +11,7 @@ export const createDashboardIndexes = async () => {
       Project.collection.createIndex({ updatedAt: -1 }),
       Task.collection.createIndex({ status: 1 })
     ]);
-    console.log('✅ Dashboard indexes created successfully');
-  } catch (error) {
-    console.error('❌ Error creating dashboard indexes:', error);
+  } catch (error: any) {
+    logger.error('Error creating dashboard indexes', { message: error?.message });
   }
 };

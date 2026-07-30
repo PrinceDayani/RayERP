@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import Budget from '../models/Budget';
+import { logger } from '../utils/logger';
 
 export const getConsolidatedView = async (req: Request, res: Response) => {
   try {
-    console.log('Consolidation request:', req.query);
     const { fiscalYear, fiscalPeriod, currency = 'INR' } = req.query;
 
     const filter: any = {};
@@ -11,7 +11,6 @@ export const getConsolidatedView = async (req: Request, res: Response) => {
     if (fiscalPeriod) filter.fiscalPeriod = fiscalPeriod;
 
     const budgets = await Budget.find(filter);
-    console.log(`Found ${budgets.length} budgets`);
 
     // Exchange rates (should be fetched from API in production)
     const exchangeRates: any = { USD: 1, INR: 83.12, EUR: 0.92, GBP: 0.79 };
@@ -151,7 +150,7 @@ export const getConsolidatedView = async (req: Request, res: Response) => {
       data: consolidation
     });
   } catch (error: any) {
-    console.error('Consolidation error:', error);
+    logger.error('Consolidation error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message || 'Internal server error', error: error.toString() });
   }
 };

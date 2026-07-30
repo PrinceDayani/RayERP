@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import User from '../models/User';
 import Employee from '../models/Employee';
 import Attendance from '../models/Attendance';
+import { logger } from '../utils/logger';
 
 export const requireAttendancePermission = (permission: string, allowSelfOnly = false) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -69,8 +70,8 @@ export const requireAttendancePermission = (permission: string, allowSelfOnly = 
       }
 
       next();
-    } catch (error) {
-      console.error('Attendance permission error:', error);
+    } catch (error: any) {
+      logger.error('Attendance permission error', { message: error?.message });
       res.status(500).json({ message: 'Internal server error' });
     }
   };
@@ -125,8 +126,8 @@ export const requireManagerPermission = (permission: string) => {
       }
 
       next();
-    } catch (error) {
-      console.error('Manager permission error:', error);
+    } catch (error: any) {
+      logger.error('Manager permission error', { message: error?.message });
       res.status(500).json({ message: 'Internal server error' });
     }
   };

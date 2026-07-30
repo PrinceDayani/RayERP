@@ -13,7 +13,7 @@ export const createComment = async (req: Request, res: Response) => {
 
     const budget = await Budget.findById(budgetId);
     if (!budget) {
-      return res.status(404).json({ message: 'Budget not found' });
+      return res.status(404).json({ success: false, message: 'Budget not found' });
     }
 
     const comment = await BudgetComment.create({
@@ -53,11 +53,12 @@ export const createComment = async (req: Request, res: Response) => {
       .populate('parentComment');
 
     res.status(201).json({
+      success: true,
       message: 'Comment created successfully',
-      comment: populatedComment
+      data: populatedComment
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error creating comment', error: error.message });
+    res.status(500).json({ success: false, message: 'Error creating comment' });
   }
 };
 
@@ -86,9 +87,9 @@ export const getBudgetComments = async (req: Request, res: Response) => {
       replies: replies.filter(r => r.parentComment?.toString() === comment._id.toString())
     }));
 
-    res.json({ comments: threaded, count: topLevelComments.length });
+    res.json({ success: true, data: threaded, count: topLevelComments.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching comments', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching comments' });
   }
 };
 
@@ -101,11 +102,11 @@ export const updateComment = async (req: Request, res: Response) => {
 
     const comment = await BudgetComment.findById(commentId);
     if (!comment) {
-      return res.status(404).json({ message: 'Comment not found' });
+      return res.status(404).json({ success: false, message: 'Comment not found' });
     }
 
     if (comment.author.toString() !== userId?.toString()) {
-      return res.status(403).json({ message: 'Not authorized to edit this comment' });
+      return res.status(403).json({ success: false, message: 'Not authorized to edit this comment' });
     }
 
     comment.content = content;
@@ -118,11 +119,12 @@ export const updateComment = async (req: Request, res: Response) => {
       .populate('mentions', 'name email');
 
     res.json({
+      success: true,
       message: 'Comment updated successfully',
-      comment: populatedComment
+      data: populatedComment
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error updating comment', error: error.message });
+    res.status(500).json({ success: false, message: 'Error updating comment' });
   }
 };
 
@@ -134,20 +136,20 @@ export const deleteComment = async (req: Request, res: Response) => {
 
     const comment = await BudgetComment.findById(commentId);
     if (!comment) {
-      return res.status(404).json({ message: 'Comment not found' });
+      return res.status(404).json({ success: false, message: 'Comment not found' });
     }
 
     if (comment.author.toString() !== userId?.toString()) {
-      return res.status(403).json({ message: 'Not authorized to delete this comment' });
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this comment' });
     }
 
     comment.isDeleted = true;
     comment.deletedAt = new Date();
     await comment.save();
 
-    res.json({ message: 'Comment deleted successfully' });
+    res.json({ success: true, message: 'Comment deleted successfully' });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error deleting comment', error: error.message });
+    res.status(500).json({ success: false, message: 'Error deleting comment' });
   }
 };
 
@@ -160,7 +162,7 @@ export const addReaction = async (req: Request, res: Response) => {
 
     const comment = await BudgetComment.findById(commentId);
     if (!comment) {
-      return res.status(404).json({ message: 'Comment not found' });
+      return res.status(404).json({ success: false, message: 'Comment not found' });
     }
 
     // Remove existing reaction from this user
@@ -178,11 +180,12 @@ export const addReaction = async (req: Request, res: Response) => {
       .populate('reactions.userId', 'name');
 
     res.json({
+      success: true,
       message: 'Reaction added successfully',
-      comment: populatedComment
+      data: populatedComment
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error adding reaction', error: error.message });
+    res.status(500).json({ success: false, message: 'Error adding reaction' });
   }
 };
 
@@ -194,15 +197,15 @@ export const removeReaction = async (req: Request, res: Response) => {
 
     const comment = await BudgetComment.findById(commentId);
     if (!comment) {
-      return res.status(404).json({ message: 'Comment not found' });
+      return res.status(404).json({ success: false, message: 'Comment not found' });
     }
 
     comment.reactions = comment.reactions.filter(r => r.userId.toString() !== userId?.toString());
     await comment.save();
 
-    res.json({ message: 'Reaction removed successfully' });
+    res.json({ success: true, message: 'Reaction removed successfully' });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error removing reaction', error: error.message });
+    res.status(500).json({ success: false, message: 'Error removing reaction' });
   }
 };
 
@@ -220,9 +223,9 @@ export const getBudgetActivity = async (req: Request, res: Response) => {
       .sort({ createdAt: -1 })
       .limit(Number(limit));
 
-    res.json({ activities, count: activities.length });
+    res.json({ success: true, data: activities, count: activities.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching activity', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching activity' });
   }
 };
 
@@ -241,8 +244,8 @@ export const getUserMentions = async (req: Request, res: Response) => {
       .sort({ createdAt: -1 })
       .limit(50);
 
-    res.json({ mentions: comments, count: comments.length });
+    res.json({ success: true, data: comments, count: comments.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching mentions', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching mentions' });
   }
 };

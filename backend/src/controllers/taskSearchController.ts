@@ -3,6 +3,7 @@
 import { Request, Response } from 'express';
 import Task from '../models/Task';
 import mongoose from 'mongoose';
+import { logger } from '../utils/logger';
 
 const SavedSearch = mongoose.model('SavedSearch', new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -70,7 +71,7 @@ export const advancedSearch = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Search error:', error);
+    logger.error('Search error:', { message: error?.message });
     res.status(500).json({ message: 'Error searching tasks', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -91,7 +92,7 @@ export const saveSearch = async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true, savedSearch });
   } catch (error) {
-    console.error('Save search error:', error);
+    logger.error('Save search error:', { message: error?.message });
     res.status(500).json({ message: 'Error saving search', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -104,7 +105,7 @@ export const getSavedSearches = async (req: Request, res: Response) => {
     const searches = await SavedSearch.find({ user: user._id }).sort({ createdAt: -1 });
     res.json({ searches });
   } catch (error) {
-    console.error('Get saved searches error:', error);
+    logger.error('Get saved searches error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching saved searches', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -123,7 +124,7 @@ export const deleteSavedSearch = async (req: Request, res: Response) => {
 
     res.json({ success: true, message: 'Search deleted' });
   } catch (error) {
-    console.error('Delete search error:', error);
+    logger.error('Delete search error:', { message: error?.message });
     res.status(500).json({ message: 'Error deleting search', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -165,7 +166,7 @@ export const getSearchSuggestions = async (req: Request, res: Response) => {
 
     res.json({ suggestions });
   } catch (error) {
-    console.error('Suggestions error:', error);
+    logger.error('Suggestions error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching suggestions', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

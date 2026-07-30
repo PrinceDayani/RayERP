@@ -112,7 +112,6 @@ export default function ResourceDashboard() {
           setAllSkills(skillResponse.data.allSkills || []);
         }
       } catch (error) {
-        console.log('Skill matrix API not available');
         setSkillMatrix([]);
         setAllSkills([]);
       }
@@ -122,7 +121,6 @@ export default function ResourceDashboard() {
         const allocationsResponse = await resourceApi.getResourceAllocations();
         setRecentAllocations(allocationsResponse.data || []);
       } catch (error) {
-        console.log('Resource allocations API not available');
         setRecentAllocations([]);
       }
 

@@ -44,10 +44,10 @@ export const getEmployeeReport = async (req: Request, res: Response) => {
         },
       };
     }));
-    
-    res.json(report);
+
+    res.json({ success: true, data: report });
   } catch (error) {
-    res.status(500).json({ message: 'Error generating employee report', error });
+    res.status(500).json({ success: false, message: 'Error generating employee report' });
   }
 };
 
@@ -58,9 +58,9 @@ export const getDepartmentSummary = async (req: Request, res: Response) => {
       { $sort: { count: -1 } }
     ]);
     
-    res.json(departments);
+    res.json({ success: true, data: departments });
   } catch (error) {
-    res.status(500).json({ message: 'Error generating department summary', error });
+    res.status(500).json({ success: false, message: 'Error generating department summary' });
   }
 };
 
@@ -79,8 +79,8 @@ export const getAttendanceSummary = async (req: Request, res: Response) => {
       }}
     ]);
     
-    res.json(summary);
+    res.json({ success: true, data: summary });
   } catch (error) {
-    res.status(500).json({ message: 'Error generating attendance summary', error });
+    res.status(500).json({ success: false, message: 'Error generating attendance summary' });
   }
 };
