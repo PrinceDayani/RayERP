@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import FinancialEntry from '../models/FinancialEntry';
 import Project from '../models/Project';
+import { logger } from '../utils/logger';
 
 // Helper: Recalculate project financial progress
 const recalculateProjectProgress = async (projectId: string) => {
@@ -83,8 +84,8 @@ const recalculateProjectProgress = async (projectId: string) => {
         }))
       }
     });
-  } catch (error) {
-    console.error('Error recalculating project progress:', error);
+  } catch (error: any) {
+    logger.error('Error recalculating project progress', { message: error?.message });
   }
 };
 
@@ -129,7 +130,7 @@ export const createFinancialEntry = async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true, data: populatedEntry });
   } catch (error: any) {
-    console.error('Create financial entry error:', error);
+    logger.error('Create financial entry error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -192,7 +193,7 @@ export const getProjectFinancialEntries = async (req: Request, res: Response) =>
       }
     });
   } catch (error: any) {
-    console.error('Get financial entries error:', error);
+    logger.error('Get financial entries error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -239,7 +240,7 @@ export const approveFinancialEntry = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: entry });
   } catch (error: any) {
-    console.error('Approve financial entry error:', error);
+    logger.error('Approve financial entry error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -283,7 +284,7 @@ export const rejectFinancialEntry = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: entry });
   } catch (error: any) {
-    console.error('Reject financial entry error:', error);
+    logger.error('Reject financial entry error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -341,7 +342,7 @@ export const getFinancialSummary = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Get financial summary error:', error);
+    logger.error('Get financial summary error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -372,7 +373,7 @@ export const deleteFinancialEntry = async (req: Request, res: Response) => {
     await FinancialEntry.findByIdAndDelete(entryId);
     res.json({ success: true, message: 'Financial entry deleted successfully' });
   } catch (error: any) {
-    console.error('Delete financial entry error:', error);
+    logger.error('Delete financial entry error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -417,7 +418,7 @@ export const exportFinancialEntries = async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename=financial-entries-${projectId}.csv`);
     res.send(csv);
   } catch (error: any) {
-    console.error('Export financial entries error:', error);
+    logger.error('Export financial entries error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -1,4 +1,5 @@
 import api from './api';
+import { unwrapResponse } from './unwrap';
 
 export interface Employee {
   _id: string;
@@ -23,32 +24,32 @@ export const employeesAPI = {
 
   getById: async (id: string) => {
     const response = await api.get(`/employees/${id}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getEmployee: async (id: string) => {
     const response = await api.get(`/employees/${id}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   create: async (employeeData: any) => {
     const response = await api.post('/employees', employeeData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   edit: async (id: string, employeeData: any) => {
     const response = await api.put(`/employees/${id}`, employeeData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   update: async (id: string, employeeData: any) => {
     const response = await api.put(`/employees/${id}`, employeeData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   updateEmployee: async (id: string, employeeData: any) => {
     const response = await api.put(`/employees/${id}`, employeeData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   delete: async (id: string) => {
@@ -63,12 +64,12 @@ export const employeesAPI = {
 
   getTasks: async (id: string, params = {}) => {
     const response = await api.get(`/employees/${id}/tasks`, { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getTaskStats: async (id: string) => {
     const response = await api.get(`/employees/${id}/tasks/stats`);
-    return response.data;
+    return unwrapResponse(response.data);
   }
 };
 

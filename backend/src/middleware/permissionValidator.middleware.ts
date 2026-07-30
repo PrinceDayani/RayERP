@@ -5,6 +5,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { Permission } from '../models/Permission';
+import { logger } from '../utils/logger';
 
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -52,8 +53,8 @@ export const validatePermissionFormat = (permission: string) => {
       const permissionRegex = /^[a-z]+\.[a-z_]+$/;
       
       if (!permissionRegex.test(permission)) {
-        console.error(`Invalid permission format: ${permission}`);
-        return res.status(500).json({ 
+        logger.error('Invalid permission format', { permission });
+        return res.status(500).json({
           message: 'Invalid permission configuration',
           error: 'INVALID_PERMISSION_FORMAT'
         });
@@ -63,13 +64,13 @@ export const validatePermissionFormat = (permission: string) => {
       const exists = await validatePermissionExists(permission);
       
       if (!exists) {
-        console.warn(`Permission not found in database: ${permission}`);
+        logger.warn('Permission not found in database', { permission });
         // Don't block the request, but log for monitoring
       }
 
       next();
-    } catch (error) {
-      console.error('Permission validation error:', error);
+    } catch (error: any) {
+      logger.error('Permission validation error', { message: error?.message });
       next(); // Continue even if validation fails
     }
   };
@@ -96,11 +97,6 @@ export const getAllValidPermissions = async (): Promise<string[]> => {
  */
 export const logPermissionCheck = (permission: string) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const userId = req.user?.id || 'anonymous';
-    const method = req.method;
-    const path = req.path;
-    
-    console.log(`[PERMISSION CHECK] User: ${userId} | Permission: ${permission} | ${method} ${path}`);
     next();
   };
 };

@@ -1,4 +1,5 @@
 import api from './api';
+import { unwrapResponse } from './unwrap';
 
 export interface Attendance {
   _id: string;
@@ -40,12 +41,12 @@ export interface TodayStats {
 export const attendanceAPI = {
   getAll: async (params?: { startDate?: string; endDate?: string; employee?: string }) => {
     const response = await api.get('/attendance', { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getById: async (id: string) => {
     const response = await api.get(`/attendance/${id}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   checkIn: async (employee: string) => {
@@ -60,12 +61,12 @@ export const attendanceAPI = {
 
   getStats: async (params: { employeeId?: string; month: string; year: string }): Promise<AttendanceStats> => {
     const response = await api.get('/attendance/stats', { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getTodayStats: async () => {
     const response = await api.get('/attendance/today-stats');
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   mark: async (data: {
@@ -99,7 +100,7 @@ export const attendanceAPI = {
     notes?: string;
   }) => {
     const response = await api.put(`/attendance/${id}`, data);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   updateAttendance: async (id: string, data: {
@@ -109,7 +110,7 @@ export const attendanceAPI = {
     notes?: string;
   }) => {
     const response = await api.put(`/attendance/${id}`, data);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   deleteAttendance: async (id: string) => {

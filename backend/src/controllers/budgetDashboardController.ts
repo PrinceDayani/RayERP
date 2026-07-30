@@ -40,7 +40,8 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
     const utilizationRate = totalBudgetAmount > 0 ? (totalAllocatedAmount / totalBudgetAmount) * 100 : 0;
 
     res.json({
-      overview: {
+      success: true,
+      data: {
         totalBudgets,
         activeBudgets,
         totalBudgetAmount,
@@ -52,7 +53,7 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching dashboard overview', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching dashboard overview' });
   }
 };
 
@@ -74,9 +75,9 @@ export const getBudgetsByStatus = async (req: Request, res: Response) => {
       }
     ]);
 
-    res.json({ statusData });
+    res.json({ success: true, data: statusData });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching budgets by status', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching budgets by status' });
   }
 };
 
@@ -110,9 +111,9 @@ export const getBudgetsByDepartment = async (req: Request, res: Response) => {
       { $sort: { totalAmount: -1 } }
     ]);
 
-    res.json({ departmentData });
+    res.json({ success: true, data: departmentData });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching budgets by department', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching budgets by department' });
   }
 };
 
@@ -120,7 +121,7 @@ export const getBudgetsByDepartment = async (req: Request, res: Response) => {
 export const getUtilizationTrends = async (req: Request, res: Response) => {
   try {
     const { fiscalYear, months = 12 } = req.query;
-    
+
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - Number(months));
 
@@ -161,9 +162,9 @@ export const getUtilizationTrends = async (req: Request, res: Response) => {
       { $sort: { year: 1, month: 1 } }
     ]);
 
-    res.json({ trends });
+    res.json({ success: true, data: trends });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching utilization trends', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching utilization trends' });
   }
 };
 
@@ -188,9 +189,9 @@ export const getTopBudgets = async (req: Request, res: Response) => {
       utilizationRate: ((b.allocatedAmount / b.totalAmount) * 100).toFixed(2)
     }));
 
-    res.json({ topBudgets: budgetsWithUtilization });
+    res.json({ success: true, data: budgetsWithUtilization });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching top budgets', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching top budgets' });
   }
 };
 
@@ -213,11 +214,14 @@ export const getAlertsSummary = async (req: Request, res: Response) => {
       .limit(10);
 
     res.json({
-      summary: alertsSummary,
-      recentAlerts
+      success: true,
+      data: {
+        summary: alertsSummary,
+        recentAlerts
+      }
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching alerts summary', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching alerts summary' });
   }
 };
 
@@ -254,14 +258,17 @@ export const getTransferActivity = async (req: Request, res: Response) => {
     ]);
 
     res.json({
-      transfers,
-      summary: {
-        totalTransferred: totalTransferred[0]?.total || 0,
-        transferCount: totalTransferred[0]?.count || 0
+      success: true,
+      data: {
+        transfers,
+        summary: {
+          totalTransferred: totalTransferred[0]?.total || 0,
+          transferCount: totalTransferred[0]?.count || 0
+        }
       }
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching transfer activity', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching transfer activity' });
   }
 };
 
@@ -285,11 +292,14 @@ export const getApprovalStats = async (req: Request, res: Response) => {
       .limit(10);
 
     res.json({
-      stats,
-      pendingApprovals
+      success: true,
+      data: {
+        stats,
+        pendingApprovals
+      }
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching approval stats', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching approval stats' });
   }
 };
 
@@ -300,7 +310,7 @@ export const getFiscalYearComparison = async (req: Request, res: Response) => {
     const fiscalYears = years ? (years as string).split(',') : [];
 
     if (fiscalYears.length === 0) {
-      return res.status(400).json({ message: 'Fiscal years required' });
+      return res.status(400).json({ success: false, message: 'Fiscal years required' });
     }
 
     const comparison = await Budget.aggregate([
@@ -316,9 +326,9 @@ export const getFiscalYearComparison = async (req: Request, res: Response) => {
       { $sort: { _id: 1 } }
     ]);
 
-    res.json({ comparison });
+    res.json({ success: true, data: comparison });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching fiscal year comparison', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching fiscal year comparison' });
   }
 };
 
@@ -348,14 +358,17 @@ export const getBudgetHealthScore = async (req: Request, res: Response) => {
     healthScore = Math.max(0, healthScore);
 
     res.json({
-      healthScore,
-      factors: {
-        overUtilizedBudgets: overUtilized,
-        activeAlerts: alerts,
-        pendingApprovals
+      success: true,
+      data: {
+        healthScore,
+        factors: {
+          overUtilizedBudgets: overUtilized,
+          activeAlerts: alerts,
+          pendingApprovals
+        }
       }
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error calculating health score', error: error.message });
+    res.status(500).json({ success: false, message: 'Error calculating health score' });
   }
 };

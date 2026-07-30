@@ -2,6 +2,7 @@ import ReportingSchedule from '../models/ReportingSchedule';
 import DailyReport from '../models/DailyReport';
 import Project from '../models/Project';
 import Notification from '../models/Notification';
+import { logger } from '../utils/logger';
 
 /**
  * Reporting Reminder Service
@@ -68,8 +69,8 @@ export const checkOverdueReports = async () => {
     }
 
     return results;
-  } catch (error) {
-    console.error('Error checking overdue reports:', error);
+  } catch (error: any) {
+    logger.error('Error checking overdue reports', { message: error?.message });
     throw error;
   }
 };
@@ -141,9 +142,9 @@ async function sendNotification(userId: any, type: string, message: string, proj
         isRead: false
       });
     }
-  } catch (error) {
+  } catch (error: any) {
     // Notification model might not exist yet — log and continue
-    console.log(`[ReportingReminder] Would notify ${userId}: ${message}`);
+    logger.warn('[ReportingReminder] Failed to create notification', { message: error?.message });
   }
 }
 

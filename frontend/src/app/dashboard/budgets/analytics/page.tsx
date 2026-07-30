@@ -57,8 +57,6 @@ export default function BudgetAnalyticsPage() {
         return;
       }
 
-      console.log('Fetching budgets with token:', token ? 'Token exists' : 'No token');
-      
       const [budgetRes, projectRes] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/budgets/all`, {
           headers: { 
@@ -73,17 +71,12 @@ export default function BudgetAnalyticsPage() {
           }
         })
       ]);
-      
-      console.log('Budget response status:', budgetRes.status);
-      console.log('Project response status:', projectRes.status);
-      
+
       if (budgetRes.ok) {
         const data = await budgetRes.json();
-        console.log('Budgets loaded:', data);
         // Handle different response formats
         const budgetsArray = Array.isArray(data) ? data : (data.data || data.budgets || []);
         setBudgets(budgetsArray);
-        console.log('Budgets array length:', budgetsArray.length);
       } else {
         const errorText = await budgetRes.text();
         console.error('Budget fetch failed:', budgetRes.status, errorText);
@@ -93,7 +86,6 @@ export default function BudgetAnalyticsPage() {
       if (projectRes.ok) {
         const projectData = await projectRes.json();
         setProjects(projectData.data || projectData);
-        console.log('Projects loaded:', (projectData.data || projectData).length);
       } else {
         const errorText = await projectRes.text();
         console.error('Project fetch failed:', projectRes.status, errorText);
@@ -132,7 +124,6 @@ export default function BudgetAnalyticsPage() {
       b.projectId === project._id?.toString() ||
       b.projectName === project.name
     );
-    console.log(`Project: ${project.name}, ID: ${project._id}, Matched budgets:`, projectBudgets.length);
     const totalBudget = projectBudgets.reduce((sum, b) => sum + (b.totalBudget || 0), 0);
     const totalSpent = projectBudgets.reduce((sum, b) => 
       sum + ((b.categories || []).reduce((s, c) => s + (c.spentAmount || 0), 0) || 0), 0
@@ -146,14 +137,6 @@ export default function BudgetAnalyticsPage() {
       projectId: project._id
     };
   }).filter(p => p.budget > 0) : [];
-  
-  console.log('Final projectBudgetData:', projectBudgetData);
-  if (budgets.length > 0) {
-    console.log('Sample budget projectId:', budgets[0].projectId, 'projectName:', budgets[0].projectName);
-  }
-  if (projects.length > 0) {
-    console.log('Sample project _id:', projects[0]._id, 'name:', projects[0].name);
-  }
 
   const monthlyTrend = budgets && budgets.length > 0 ? budgets.reduce((acc: any[], budget) => {
     const month = new Date(budget.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });

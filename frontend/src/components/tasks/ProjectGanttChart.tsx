@@ -17,8 +17,6 @@ export const ProjectGanttChart: React.FC<ProjectGanttChartProps> = ({ projectId 
     // Simple Gantt visualization without external library
     // For production, install: npm install frappe-gantt
     // Then use: import Gantt from 'frappe-gantt';
-    
-    console.log('Gantt Data:', ganttData);
   }, [ganttData]);
 
   if (isLoading) {

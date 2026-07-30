@@ -1,6 +1,7 @@
 import express from 'express';
 import { Currency, ExchangeRate } from '../models/Currency';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -8,10 +9,9 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const currencies = await Currency.find().sort({ isBaseCurrency: -1, code: 1 });
-    console.log(`[Currency] Found ${currencies.length} currencies`);
     res.json(currencies);
-  } catch (error) {
-    console.error('Error fetching currencies:', error);
+  } catch (error: any) {
+    logger.error('Error fetching currencies', { message: error?.message });
     res.status(500).json({ message: 'Failed to fetch currencies' });
   }
 });
@@ -20,10 +20,9 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/base', authenticateToken, async (req, res) => {
   try {
     const baseCurrency = await Currency.findOne({ isBaseCurrency: true });
-    console.log(`[Currency] Base currency: ${baseCurrency ? baseCurrency.code : 'None (using default USD)'}`);
     res.json(baseCurrency || { code: 'USD', name: 'US Dollar', symbol: '$' });
-  } catch (error) {
-    console.error('Error fetching base currency:', error);
+  } catch (error: any) {
+    logger.error('Error fetching base currency', { message: error?.message });
     res.status(500).json({ message: 'Failed to fetch base currency' });
   }
 });
@@ -39,8 +38,8 @@ router.get('/rates', authenticateToken, async (req, res) => {
     
     const rates = await ExchangeRate.find(query).sort({ date: -1 }).limit(100);
     res.json(rates);
-  } catch (error) {
-    console.error('Error fetching exchange rates:', error);
+  } catch (error: any) {
+    logger.error('Error fetching exchange rates', { message: error?.message });
     res.status(500).json({ message: 'Failed to fetch exchange rates' });
   }
 });
@@ -62,8 +61,8 @@ router.get('/user-settings', authenticateToken, async (req, res) => {
     }
 
     res.json({ success: true, settings });
-  } catch (error) {
-    console.error('Error fetching user currency settings:', error);
+  } catch (error: any) {
+    logger.error('Error fetching user currency settings', { message: error?.message });
     res.status(500).json({ success: false, message: 'Failed to fetch currency settings' });
   }
 });
@@ -88,8 +87,8 @@ router.put('/user-settings', authenticateToken, profileUpdateRateLimiter, async 
     }
 
     res.json({ success: true, settings, message: 'Currency settings updated successfully' });
-  } catch (error) {
-    console.error('Error updating user currency settings:', error);
+  } catch (error: any) {
+    logger.error('Error updating user currency settings', { message: error?.message });
     res.status(500).json({ success: false, message: 'Failed to update currency settings' });
   }
 });

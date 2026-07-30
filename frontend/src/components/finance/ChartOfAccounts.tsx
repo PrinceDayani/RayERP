@@ -123,7 +123,6 @@ const ChartOfAccounts = () => {
                         onClick={() => {
                           if (confirm(`Delete account "${account.name}"?`)) {
                             // Handle delete
-                            console.log('Delete account:', account._id);
                           }
                         }}
                       >

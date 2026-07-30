@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Employee from '../models/Employee';
+import { logger } from '../utils/logger';
 
 /**
  * Get salary information for a specific employee
@@ -27,7 +28,7 @@ export const getEmployeeSalary = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Error fetching employee salary:', error);
+    logger.error('Error fetching employee salary', { message: error?.message });
     res.status(500).json({ 
       success: false,
       message: 'Error fetching salary information',
@@ -95,7 +96,7 @@ export const updateEmployeeSalary = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Error updating employee salary:', error);
+    logger.error('Error updating employee salary', { message: error?.message });
     res.status(500).json({ 
       success: false,
       message: 'Error updating salary information',
@@ -133,7 +134,7 @@ export const getEmployeeSalaryHistory = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Error fetching salary history:', error);
+    logger.error('Error fetching salary history', { message: error?.message });
     res.status(500).json({ 
       success: false,
       message: 'Error fetching salary history',

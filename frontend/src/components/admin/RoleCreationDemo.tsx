@@ -8,7 +8,6 @@ export function RoleCreationDemo() {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleRoleCreated = (role: any) => {
-    console.log("Role created:", role);
     // Handle the created role here
   };
 

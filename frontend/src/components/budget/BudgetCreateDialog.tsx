@@ -28,20 +28,6 @@ export default function BudgetCreateDialog({
   projects = [],
   departments = []
 }: BudgetCreateDialogProps) {
-  console.log('📝 BudgetCreateDialog rendered');
-  console.log('📝 Open:', open);
-  console.log('📝 Projects received:', projects);
-  console.log('📝 Projects count:', projects?.length);
-  console.log('📝 Departments received:', departments);
-  console.log('📝 Departments count:', departments?.length);
-  
-  // Validate projects structure
-  if (projects && projects.length > 0) {
-    console.log('✅ First project:', projects[0]);
-    console.log('✅ Has _id?', !!projects[0]._id);
-    console.log('✅ Has name?', !!projects[0].name);
-  }
-  
   const [formData, setFormData] = useState({
     budgetType: 'project' as 'project' | 'department' | 'special',
     projectId: '',
@@ -137,8 +123,6 @@ export default function BudgetCreateDialog({
       } else if (formData.budgetType === 'special' && formData.projectName) {
         payload.projectName = formData.projectName;
       }
-
-      console.log('📤 Sending budget payload:', JSON.stringify(payload, null, 2));
 
       await createBudget(payload);
 
@@ -251,21 +235,17 @@ export default function BudgetCreateDialog({
               ) : (
                 <>
                   <Select value={formData.projectId} onValueChange={(value) => {
-                    console.log('🎯 Selected project ID:', value);
                     setFormData({ ...formData, projectId: value });
                   }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select project" />
                     </SelectTrigger>
                     <SelectContent>
-                      {projects.map((project, idx) => {
-                        console.log(`📝 Rendering project ${idx}:`, project);
-                        return (
-                          <SelectItem key={project._id} value={project._id}>
-                            {project.name}
-                          </SelectItem>
-                        );
-                      })}
+                      {projects.map((project) => (
+                        <SelectItem key={project._id} value={project._id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">

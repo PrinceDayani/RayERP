@@ -319,7 +319,7 @@ export default function AgingAnalysisPage() {
               title={`${selectedType === 'receivables' ? 'Accounts Receivable' : 'Accounts Payable'} Aging`}
               searchable
               exportable
-              onExport={() => console.log('Export aging data')}
+              onExport={() => {}}
             />
           )}
         </TabsContent>

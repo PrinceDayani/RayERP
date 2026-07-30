@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import mongoose from 'mongoose';
 import { registerCacheInvalidator } from '../utils/dashboardCache';
+import { logger } from '../utils/logger';
 
 // Chat cache with 2min TTL - per user
 let chatsCache: Map<string, { data: any; timestamp: number }> = new Map();
@@ -337,9 +338,8 @@ export const chatController = {
         updatedCount 
       });
     } catch (error: any) {
-      console.error('Error in markAsRead:', {
-        error: error.message,
-        stack: error.stack,
+      logger.error('Error in markAsRead', {
+        message: error?.message,
         chatId: req.params.chatId,
         userId: (req as any).user?.id
       });

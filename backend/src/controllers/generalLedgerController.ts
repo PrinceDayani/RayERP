@@ -296,22 +296,16 @@ export const getAccounts = async (req: Request, res: Response) => {
 // Create new account
 export const createAccount = async (req: Request, res: Response) => {
   try {
-    console.log('=== CREATE ACCOUNT REQUEST ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    
     const accountData = req.body;
     const userId = (req as any).user?.id || (req as any).user?._id;
-    console.log('User ID:', userId);
 
     // Validate required fields
     if (!accountData.name || !accountData.code || !accountData.type) {
-      console.log('Validation failed: Missing required fields');
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Missing required fields',
         required: ['name', 'code', 'type']
       });
     }
-    console.log('Validation passed');
 
     // Check if account code already exists
     const existingAccount = await ChartOfAccount.findOne({ code: accountData.code });
@@ -357,24 +351,16 @@ export const createAccount = async (req: Request, res: Response) => {
       accountDoc.createdBy = userId;
     }
 
-    console.log('Creating account with document:', JSON.stringify(accountDoc, null, 2));
     const account = new ChartOfAccount(accountDoc);
-    console.log('Account model created, attempting to save...');
     await account.save();
-    console.log('Account saved successfully:', account._id);
-    
+
     if (account.parentId) {
       await account.populate('parentId', 'name code');
     }
     
     res.status(201).json(account);
   } catch (error) {
-    console.error('=== ERROR CREATING ACCOUNT ===');
-    console.error('Error type:', error instanceof Error ? error.name : typeof error);
-    console.error('Error message:', error instanceof Error ? error.message : error);
-    console.error('Full error:', error);
-    
-    logger.error('Error creating account:', error);
+    logger.error('Error creating account', { message: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ 
       message: 'Error creating account', 
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -387,10 +373,6 @@ export const createAccount = async (req: Request, res: Response) => {
 // Update account
 export const updateAccount = async (req: Request, res: Response) => {
   try {
-    console.log('=== UPDATE ACCOUNT REQUEST ===');
-    console.log('Account ID:', req.params.id);
-    console.log('Updates:', JSON.stringify(req.body, null, 2));
-    
     const { id } = req.params;
     const updates = req.body;
 
@@ -413,20 +395,15 @@ export const updateAccount = async (req: Request, res: Response) => {
       updates.parentId = null;
     }
 
-    console.log('Cleaned updates:', JSON.stringify(updates, null, 2));
-
     const account = await ChartOfAccount.findByIdAndUpdate(
       id,
       updates,
       { new: true, runValidators: true }
     ).populate('parentId', 'name code');
 
-    console.log('Updated account:', account?._id);
     res.json(account);
   } catch (error) {
-    console.error('=== ERROR UPDATING ACCOUNT ===');
-    console.error('Error:', error);
-    logger.error('Error updating account:', error);
+    logger.error('Error updating account', { message: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ 
       message: 'Error updating account',
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -455,10 +432,10 @@ export const getJournalEntry = async (req: Request, res: Response) => {
     const { id } = req.params;
     const entry = await JournalEntry.findById(id)
       .populate('lines.account', 'code name type')
-      .populate('createdBy', 'firstName lastName name email')
-      .populate('updatedBy', 'firstName lastName name email')
-      .populate('postedBy', 'firstName lastName name email')
-      .populate('changeHistory.changedBy', 'firstName lastName name email')
+      .populate('createdBy', 'name email')
+      .populate('updatedBy', 'name email')
+      .populate('postedBy', 'name email')
+      .populate('changeHistory.changedBy', 'name email')
       .lean();
     
     if (!entry) {
@@ -562,9 +539,8 @@ export const getJournalEntries = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    logger.error('Error fetching journal entries:', error);
-    console.error('Full error:', error);
-    res.status(500).json({ 
+    logger.error('Error fetching journal entries', { message: error instanceof Error ? error.message : String(error) });
+    res.status(500).json({
       message: 'Error fetching journal entries',
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
@@ -688,41 +664,24 @@ export const createJournalEntry = async (req: Request, res: Response) => {
 
     // Auto-post the journal entry and update account balances
     try {
-      console.log('=== AUTO-POSTING JOURNAL ENTRY ===');
-      console.log('Entry ID:', journalEntry._id);
-      console.log('Entry Number:', journalEntry.entryNumber);
-      console.log('Lines count:', sanitizedLines.length);
-      
       for (const line of sanitizedLines) {
         const account = await ChartOfAccount.findById(line.account);
         if (account) {
-          const oldBalance = account.balance;
           let newBalance = account.balance;
           if (['ASSET', 'EXPENSE'].includes(account.type)) {
             newBalance += line.debit - line.credit;
           } else {
             newBalance += line.credit - line.debit;
           }
-          console.log(`Account ${account.code}: ${oldBalance} -> ${newBalance} (Dr:${line.debit} Cr:${line.credit})`);
           await ChartOfAccount.findByIdAndUpdate(line.account, { balance: newBalance });
-        } else {
-          console.log('Account not found:', line.account);
         }
       }
-      
+
       journalEntry.isPosted = true;
       journalEntry.status = 'POSTED';
       await journalEntry.save();
-      console.log('Entry saved with isPosted:', journalEntry.isPosted, 'status:', journalEntry.status);
-      
-      // Verify it was saved
-      const verifyEntry = await JournalEntry.findById(journalEntry._id).lean();
-      console.log('Verification - isPosted:', verifyEntry?.isPosted, 'status:', verifyEntry?.status);
-      console.log('=== AUTO-POST COMPLETE ===');
-    } catch (autoPostError) {
-      console.error('=== AUTO-POST FAILED ===');
-      console.error(autoPostError);
-      logger.error('Auto-post failed:', autoPostError);
+    } catch (autoPostError: any) {
+      logger.error('Auto-post failed', { message: autoPostError?.message });
     }
 
     await journalEntry.populate([
@@ -882,12 +841,12 @@ export const postJournalEntry = async (req: Request, res: Response) => {
     for (const line of entry.lines) {
       const accountId = (line as any).account;
       if (!accountId) {
-        console.error('Line missing account:', line);
+        logger.warn('Journal line missing account', { entryId: entry._id });
         continue;
       }
       const account = await ChartOfAccount.findById(accountId).session(session);
       if (!account) {
-        console.error('Account not found:', accountId);
+        logger.warn('Account not found while posting journal entry', { entryId: entry._id, accountId });
         continue;
       }
 
@@ -933,9 +892,8 @@ export const postJournalEntry = async (req: Request, res: Response) => {
     res.json({ message: 'Journal entry posted successfully' });
   } catch (error) {
     await session.abortTransaction();
-    logger.error('Error posting journal entry:', error);
+    logger.error('Error posting journal entry', { message: error instanceof Error ? error.message : String(error) });
     const errorMessage = error instanceof Error ? error.message : 'Error posting journal entry';
-    console.error('Post journal entry error details:', error);
     res.status(500).json({ message: errorMessage, error: error instanceof Error ? error.stack : String(error) });
   } finally {
     session.endSession();
@@ -1001,23 +959,16 @@ export const getAccountLedger = async (req: Request, res: Response) => {
   try {
     const { accountId } = req.params;
     const { startDate, endDate, from, to, page = 1, limit = 50 } = req.query;
-    
-    console.log('=== GET ACCOUNT LEDGER ===');
-    console.log('Account ID:', accountId);
-    console.log('Date range:', startDate, 'to', endDate);
-    console.log('From/To filter:', from, '/', to);
-    
+
     // Validate accountId
     if (!mongoose.Types.ObjectId.isValid(accountId)) {
       return res.status(400).json({ message: 'Invalid account ID' });
     }
-    
+
     const account = await ChartOfAccount.findById(accountId);
     if (!account) {
-      console.log('Account not found');
       return res.status(404).json({ message: 'Account not found' });
     }
-    console.log('Account found:', account.code, account.name);
 
     // Get journal entries that include this account - use $or to check both account and accountId
     const accountObjectId = new mongoose.Types.ObjectId(accountId);
@@ -1034,8 +985,6 @@ export const getAccountLedger = async (req: Request, res: Response) => {
         $lte: new Date(endDate as string)
       };
     }
-    
-    console.log('Query:', JSON.stringify(journalQuery));
 
     const journalEntries = await JournalEntry.find(journalQuery)
       .populate('lines.account', 'code name type')
@@ -1064,8 +1013,6 @@ export const getAccountLedger = async (req: Request, res: Response) => {
         });
       });
     }
-      
-    console.log('Found', filteredEntries.length, 'journal entries');
 
     // Transform to ledger format with auto-calculated running balance
     let runningBalance = 0;
@@ -1103,11 +1050,8 @@ export const getAccountLedger = async (req: Request, res: Response) => {
           };
         });
     });
-    
-    console.log('Transformed to', entries.length, 'ledger entries');
 
     const total = await JournalEntry.countDocuments(journalQuery);
-    console.log('Total matching entries:', total);
 
     res.json({
       account: {
@@ -1126,9 +1070,7 @@ export const getAccountLedger = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('=== ERROR IN GET ACCOUNT LEDGER ===');
-    console.error(error);
-    logger.error('Error fetching account ledger:', error);
+    logger.error('Error fetching account ledger', { message: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ 
       message: 'Error fetching account ledger',
       error: error instanceof Error ? error.message : 'Unknown error'

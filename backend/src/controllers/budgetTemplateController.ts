@@ -23,11 +23,12 @@ export const createTemplate = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email');
 
     res.status(201).json({
+      success: true,
       message: 'Template created successfully',
-      template: populatedTemplate
+      data: populatedTemplate
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error creating template', error: error.message });
+    res.status(500).json({ success: false, message: 'Error creating template' });
   }
 };
 
@@ -40,7 +41,7 @@ export const createTemplateFromBudget = async (req: Request, res: Response) => {
 
     const budget = await Budget.findById(budgetId);
     if (!budget) {
-      return res.status(404).json({ message: 'Budget not found' });
+      return res.status(404).json({ success: false, message: 'Budget not found' });
     }
 
     const template = await BudgetTemplate.create({
@@ -61,11 +62,12 @@ export const createTemplateFromBudget = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email');
 
     res.status(201).json({
+      success: true,
       message: 'Template created from budget successfully',
-      template: populatedTemplate
+      data: populatedTemplate
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error creating template from budget', error: error.message });
+    res.status(500).json({ success: false, message: 'Error creating template from budget' });
   }
 };
 
@@ -76,7 +78,7 @@ export const getAllTemplates = async (req: Request, res: Response) => {
     const userId = req.user?.userId;
 
     const filter: any = { isActive: true };
-    
+
     // Show public templates + user's own templates
     filter.$or = [
       { isPublic: true },
@@ -103,9 +105,9 @@ export const getAllTemplates = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email')
       .sort({ usageCount: -1, createdAt: -1 });
 
-    res.json({ templates, count: templates.length });
+    res.json({ success: true, data: templates, count: templates.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching templates', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching templates' });
   }
 };
 
@@ -118,12 +120,12 @@ export const getTemplateById = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email');
 
     if (!template) {
-      return res.status(404).json({ message: 'Template not found' });
+      return res.status(404).json({ success: false, message: 'Template not found' });
     }
 
-    res.json({ template });
+    res.json({ success: true, data: template });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching template', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching template' });
   }
 };
 
@@ -136,11 +138,11 @@ export const updateTemplate = async (req: Request, res: Response) => {
 
     const template = await BudgetTemplate.findById(templateId);
     if (!template) {
-      return res.status(404).json({ message: 'Template not found' });
+      return res.status(404).json({ success: false, message: 'Template not found' });
     }
 
     if (template.createdBy.toString() !== userId?.toString()) {
-      return res.status(403).json({ message: 'Not authorized to update this template' });
+      return res.status(403).json({ success: false, message: 'Not authorized to update this template' });
     }
 
     if (templateName) template.templateName = templateName;
@@ -155,11 +157,12 @@ export const updateTemplate = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email');
 
     res.json({
+      success: true,
       message: 'Template updated successfully',
-      template: populatedTemplate
+      data: populatedTemplate
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error updating template', error: error.message });
+    res.status(500).json({ success: false, message: 'Error updating template' });
   }
 };
 
@@ -171,19 +174,19 @@ export const deleteTemplate = async (req: Request, res: Response) => {
 
     const template = await BudgetTemplate.findById(templateId);
     if (!template) {
-      return res.status(404).json({ message: 'Template not found' });
+      return res.status(404).json({ success: false, message: 'Template not found' });
     }
 
     if (template.createdBy.toString() !== userId?.toString()) {
-      return res.status(403).json({ message: 'Not authorized to delete this template' });
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this template' });
     }
 
     template.isActive = false;
     await template.save();
 
-    res.json({ message: 'Template deleted successfully' });
+    res.json({ success: true, message: 'Template deleted successfully' });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error deleting template', error: error.message });
+    res.status(500).json({ success: false, message: 'Error deleting template' });
   }
 };
 
@@ -196,7 +199,7 @@ export const cloneBudgetFromTemplate = async (req: Request, res: Response) => {
 
     const template = await BudgetTemplate.findById(templateId);
     if (!template) {
-      return res.status(404).json({ message: 'Template not found' });
+      return res.status(404).json({ success: false, message: 'Template not found' });
     }
 
     // Calculate categories based on percentages if totalAmount provided
@@ -230,11 +233,12 @@ export const cloneBudgetFromTemplate = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email');
 
     res.status(201).json({
+      success: true,
       message: 'Budget created from template successfully',
-      budget: populatedBudget
+      data: populatedBudget
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error cloning budget from template', error: error.message });
+    res.status(500).json({ success: false, message: 'Error cloning budget from template' });
   }
 };
 
@@ -247,7 +251,7 @@ export const cloneBudget = async (req: Request, res: Response) => {
 
     const sourceBudget = await Budget.findById(budgetId);
     if (!sourceBudget) {
-      return res.status(404).json({ message: 'Source budget not found' });
+      return res.status(404).json({ success: false, message: 'Source budget not found' });
     }
 
     const clonedBudget = await Budget.create({
@@ -269,11 +273,12 @@ export const cloneBudget = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email');
 
     res.status(201).json({
+      success: true,
       message: 'Budget cloned successfully',
-      budget: populatedBudget
+      data: populatedBudget
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error cloning budget', error: error.message });
+    res.status(500).json({ success: false, message: 'Error cloning budget' });
   }
 };
 
@@ -290,8 +295,8 @@ export const getPopularTemplates = async (req: Request, res: Response) => {
       .sort({ usageCount: -1 })
       .limit(Number(limit));
 
-    res.json({ templates, count: templates.length });
+    res.json({ success: true, data: templates, count: templates.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching popular templates', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching popular templates' });
   }
 };

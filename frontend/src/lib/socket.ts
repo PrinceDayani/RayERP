@@ -24,13 +24,11 @@ export const initializeSocket = async (token?: string): Promise<SocketType | nul
 
   // Check if sockets should be enabled
   if (!shouldEnableSocket()) {
-    console.log('🔌 Socket connections disabled');
     return null;
   }
 
   // Disable sockets in production on AWS App Runner
   if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_ENABLE_SOCKET === 'false') {
-    console.log('🔌 Socket connections disabled in production');
     return null;
   }
 
@@ -55,8 +53,7 @@ export const initializeSocket = async (token?: string): Promise<SocketType | nul
   }
 
   isConnecting = true;
-  console.log(`🔌 Initializing socket connection to: ${API_URL}`);
-  
+
   // Log server status for debugging
   await logServerStatus();
 
@@ -95,7 +92,6 @@ export const initializeSocket = async (token?: string): Promise<SocketType | nul
   }
 
   socket.on("connect", () => {
-    console.log("✅ Socket connected:", socket?.id);
     isConnecting = false;
   });
 
@@ -124,7 +120,6 @@ export const initializeSocket = async (token?: string): Promise<SocketType | nul
   });
 
   socket.on("reconnect", (attemptNumber: number) => {
-    console.log(`🔄 Socket reconnected after ${attemptNumber} attempts`);
   });
 
   socket.on("reconnect_error", (err: Error) => {
@@ -145,7 +140,6 @@ export const initializeSocket = async (token?: string): Promise<SocketType | nul
 // Disconnect socket safely
 export const disconnectSocket = (): void => {
   if (socket) {
-    console.log("🔌 Disconnecting socket...");
     socket.removeAllListeners();
     socket.disconnect();
     socket = null;
@@ -190,7 +184,6 @@ export const useSocket = (url?: string): SocketType | null => {
 
         newSocket.on('connect', () => {
           if (mounted) {
-            console.log('✅ Socket connected:', newSocket?.id);
             setSocketInstance(newSocket);
           }
         });

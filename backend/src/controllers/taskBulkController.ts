@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Task from '../models/Task';
+import { logger } from '../utils/logger';
 
 export const bulkDelete = async (req: Request, res: Response) => {
   try {
@@ -14,7 +15,7 @@ export const bulkDelete = async (req: Request, res: Response) => {
     
     res.json({ success: true, deletedCount: result.deletedCount });
   } catch (error) {
-    console.error('Bulk delete error:', error);
+    logger.error('Bulk delete error:', { message: error?.message });
     res.status(500).json({ message: 'Error bulk deleting tasks', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -40,7 +41,7 @@ export const bulkAssign = async (req: Request, res: Response) => {
     
     res.json({ success: true, tasks });
   } catch (error) {
-    console.error('Bulk assign error:', error);
+    logger.error('Bulk assign error:', { message: error?.message });
     res.status(500).json({ message: 'Error bulk assigning tasks', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -70,7 +71,7 @@ export const bulkStatusChange = async (req: Request, res: Response) => {
     
     res.json({ success: true, tasks });
   } catch (error) {
-    console.error('Bulk status change error:', error);
+    logger.error('Bulk status change error:', { message: error?.message });
     res.status(500).json({ message: 'Error changing task statuses', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -100,7 +101,7 @@ export const bulkPriorityChange = async (req: Request, res: Response) => {
     
     res.json({ success: true, tasks });
   } catch (error) {
-    console.error('Bulk priority change error:', error);
+    logger.error('Bulk priority change error:', { message: error?.message });
     res.status(500).json({ message: 'Error changing task priorities', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -129,7 +130,7 @@ export const bulkAddTags = async (req: Request, res: Response) => {
     
     res.json({ success: true, tasks });
   } catch (error) {
-    console.error('Bulk add tags error:', error);
+    logger.error('Bulk add tags error:', { message: error?.message });
     res.status(500).json({ message: 'Error adding tags to tasks', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -154,7 +155,7 @@ export const bulkSetDueDate = async (req: Request, res: Response) => {
     
     res.json({ success: true, tasks });
   } catch (error) {
-    console.error('Bulk set due date error:', error);
+    logger.error('Bulk set due date error:', { message: error?.message });
     res.status(500).json({ message: 'Error setting due dates', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -187,7 +188,7 @@ export const bulkClone = async (req: Request, res: Response) => {
     
     res.json({ success: true, clonedTasks });
   } catch (error) {
-    console.error('Bulk clone error:', error);
+    logger.error('Bulk clone error:', { message: error?.message });
     res.status(500).json({ message: 'Error cloning tasks', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -209,7 +210,7 @@ export const bulkArchive = async (req: Request, res: Response) => {
     
     res.json({ success: true, archivedCount: taskIds.length });
   } catch (error) {
-    console.error('Bulk archive error:', error);
+    logger.error('Bulk archive error:', { message: error?.message });
     res.status(500).json({ message: 'Error archiving tasks', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

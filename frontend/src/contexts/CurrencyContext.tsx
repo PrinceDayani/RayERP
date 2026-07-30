@@ -29,7 +29,6 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Check if user is authenticated
       const token = localStorage.getItem('auth-token');
       if (!token) {
-        console.log('No auth token found, using default currencies');
         const defaultCurrencies = [
           { _id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', isBaseCurrency: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
           { _id: 'eur', code: 'EUR', name: 'Euro', symbol: '€', isBaseCurrency: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
@@ -42,13 +41,11 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return;
       }
       
-      console.log('Fetching currencies from API...');
       const [currenciesData, baseCurrencyData] = await Promise.all([
         currencyAPI.getAll(),
         currencyAPI.getBase()
       ]);
       
-      console.log('Currencies fetched:', currenciesData);
       setCurrencies(currenciesData);
       setBaseCurrency(baseCurrencyData);
     } catch (err) {
@@ -74,7 +71,6 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Listen for auth changes
     const handleStorageChange = (e: StorageEvent) => {
       if ((e.key === 'auth-token' || e.key === 'token') && e.newValue) {
-        console.log('Auth token detected, refreshing currencies');
         fetchCurrencies();
       }
     };

@@ -4,6 +4,7 @@ import Task from '../models/Task';
 import Employee from '../models/Employee';
 import Attendance from '../models/Attendance';
 import mongoose from 'mongoose';
+import { logger } from '../utils/logger';
 
 /**
  * @desc    Get project reports
@@ -239,7 +240,7 @@ export const getTeamProductivity = async (req: Request, res: Response) => {
       data: productivity
     });
   } catch (error) {
-    console.error('Team productivity error:', error);
+    logger.error('Team productivity error', { message: error?.message });
     res.status(500).json({
       success: false,
       message: 'Error fetching team productivity',

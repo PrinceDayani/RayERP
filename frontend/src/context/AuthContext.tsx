@@ -54,8 +54,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `${base}${cleanPath}`;
   };
-  
-  console.log("API URL being used:", apiUrl);
 
   // Function to get role value for comparison
   const getRoleValue = (role: UserRole): number => {
@@ -112,25 +110,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async (): Promise<boolean> => {
     try {
-      console.log("Checking authentication status...");
-      
       // Add token from localStorage if available
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
       };
-      
+
       const token = localStorage.getItem('auth-token');
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-        console.log("Including auth token in request");
-      } else {
-        console.log("No auth token found in localStorage");
       }
-  
+
       // Use the full URL to avoid any path resolution issues
       const fullUrl = buildApiUrl('/api/auth/me');
-      console.log("Making auth check request to:", fullUrl);
-  
+
       const response = await fetch(fullUrl, {
         method: 'GET',
         credentials: 'include',
@@ -139,36 +131,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mode: 'cors'
       });
   
-      console.log("Auth check response status:", response.status);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log("User data received:", data);
-          
+
         // Store user data both in state and localStorage
         setUser(data.user);
         localStorage.setItem('user', JSON.stringify(data.user));
-          
+
         // If we get a token in response, store it
         if (data.token) {
-          console.log("Received new token from server");
           localStorage.setItem('auth-token', data.token);
         }
-          
+
         setIsAuthenticated(true);
         setLoading(false);
         return true;
       } else {
-        console.log("Not authenticated, response status:", response.status);
-        
-        // Try to log response body for debugging
-        try {
-          const errorData = await response.text();
-          console.log("Error response:", errorData);
-        } catch (e) {
-          console.log("Could not read error response");
-        }
-        
         setUser(null);
         setIsAuthenticated(false);
         localStorage.removeItem('user');
@@ -192,9 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const loginUrl = buildApiUrl('/api/auth/login');
-      console.log(`Attempting login for: ${email}`);
-      console.log(`Login request URL: ${loginUrl}`);
-      
+
       const response = await fetch(loginUrl, {
         method: 'POST',
         credentials: 'include',
@@ -204,9 +180,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
   
-      console.log("Login response status:", response.status);
-      console.log("Login response headers:", Object.fromEntries(response.headers.entries()));
-      
       // Check if response is JSON
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
@@ -216,7 +189,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       const data = await response.json();
-      console.log("Login response data:", data);
 
       if (!response.ok) {
         throw new Error(data.message || `Login failed with status ${response.status}`);
@@ -239,8 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.token) {
         localStorage.setItem('auth-token', data.token);
       }
-      
-      console.log('Login successful, redirecting to dashboard');
+
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Login error:", error);
@@ -259,8 +230,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ? buildApiUrl('/api/auth/register')
       : buildApiUrl('/api/auth/initial-setup');
 
-      console.log(`Attempting signup at: ${endpoint}`);
-      
       const registerData: any = { name, email, password };
       if (role) {
         registerData.role = role;
@@ -283,8 +252,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(registerData),
       });
   
-      console.log("Response status:", response.status);
-      
       // Check content type before parsing JSON
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes('application/json')) {
@@ -295,8 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
   
       const data = await response.json();
-      console.log("Response data:", data);
-  
+
       if (!response.ok) {
         throw new Error(data.message || 'Signup failed');
       }
@@ -328,7 +294,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      console.log("Attempting logout");
      await fetch(buildApiUrl('/api/auth/logout'), {
   method: 'POST',
   credentials: 'include',

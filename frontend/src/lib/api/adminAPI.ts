@@ -217,7 +217,6 @@ const adminAPI = {
   getRoles: async (): Promise<any[]> => {
     try {
       const response = await apiClient.get('/rbac/roles');
-      console.log('getRoles response:', response);
       // Handle different response formats
       if (Array.isArray(response)) {
         return response;
@@ -369,8 +368,7 @@ const adminAPI = {
       }
       
       const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
-      console.log('Exporting logs:', { format, API_URL, tokenPresent: !!token });
-      
+
       const response = await fetch(`${API_URL}/api/admin/export-logs?format=${format}`, {
         method: 'GET',
         headers: {
@@ -379,13 +377,7 @@ const adminAPI = {
         },
         credentials: 'include'
       });
-      
-      console.log('Export response:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
+
       if (!response.ok) {
         let errorMessage;
         try {
@@ -398,8 +390,7 @@ const adminAPI = {
       }
       
       const blob = await response.blob();
-      console.log('Blob created:', { size: blob.size, type: blob.type });
-      
+
       if (blob.size === 0) {
         throw new Error('Empty file received');
       }

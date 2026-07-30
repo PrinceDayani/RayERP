@@ -19,7 +19,7 @@ export const getUserAssignments = async (req: Request, res: Response) => {
     res.json(assignments);
   } catch (error: any) {
     logger.error(`Get user assignments error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -59,7 +59,7 @@ export const createAssignment = async (req: Request, res: Response) => {
     res.status(201).json(assignment);
   } catch (error: any) {
     logger.error(`Create assignment error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -75,7 +75,7 @@ export const removeAssignment = async (req: Request, res: Response) => {
     res.json({ message: 'Assignment removed successfully' });
   } catch (error: any) {
     logger.error(`Remove assignment error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -101,6 +101,6 @@ export const checkUserAccess = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error(`Check user access error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };

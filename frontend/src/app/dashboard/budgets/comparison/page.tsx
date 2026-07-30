@@ -30,7 +30,6 @@ export default function BudgetComparisonPage() {
     try {
       const response = await api.get('/budgets/all');
       const budgetData = response.data?.data || response.data || [];
-      console.log('Fetched budgets:', budgetData.length);
       setBudgets(Array.isArray(budgetData) ? budgetData : []);
     } catch (error) {
       console.error('Error fetching budgets:', error);
@@ -48,7 +47,6 @@ export default function BudgetComparisonPage() {
     setLoading(true);
     try {
       const response = await api.post('/budgets/compare', { budgetIds: [budget1, budget2] });
-      console.log('Compare response:', response.data);
       const data = response.data?.data || response.data;
       
       if (!data || !data.budgets || data.budgets.length < 2) {

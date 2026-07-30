@@ -1,6 +1,7 @@
 import Employee from '../models/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
+import { logger } from './logger';
 
 export async function createAnalyticsIndexes() {
   try {
@@ -13,8 +14,7 @@ export async function createAnalyticsIndexes() {
       Task.collection.createIndex({ status: 1 }),
       Task.collection.createIndex({ assignedTo: 1, status: 1 })
     ]);
-    console.log('✅ Analytics indexes created');
-  } catch (error) {
-    console.error('❌ Error creating analytics indexes:', error);
+  } catch (error: any) {
+    logger.error('Error creating analytics indexes', { message: error?.message });
   }
 }

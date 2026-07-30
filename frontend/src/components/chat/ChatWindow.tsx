@@ -129,13 +129,11 @@ export default function ChatWindow({ chat, onSendMessage }: ChatWindowProps) {
 
   const handleDeleteMessage = async (message: Message) => {
     if (confirm('Are you sure you want to delete this message?')) {
-      console.log('Delete message:', message._id);
       // TODO: Implement delete functionality
     }
   };
 
   const handleForwardMessage = (message: Message) => {
-    console.log('Forward message:', message._id);
     // TODO: Implement forward functionality
     alert('Forward functionality will be implemented soon!');
   };

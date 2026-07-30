@@ -179,25 +179,11 @@ export default function BudgetsPage() {
   };
 
   const fetchProjects = async () => {
-    console.log('🚀 fetchProjects CALLED');
     try {
-      console.log('\n=== FRONTEND: Fetching projects ===');
-      console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
-      console.log('Calling: /projects');
-      
       const response = await api.get('/projects');
-      
-      console.log('✅ Response status:', response.status);
-      console.log('✅ Response data type:', typeof response.data);
-      console.log('✅ Response data is Array?:', Array.isArray(response.data));
-      console.log('✅ Response data length:', Array.isArray(response.data) ? response.data.length : 'N/A');
-      console.log('✅ Response data:', response.data);
-      console.log('=== END FRONTEND REQUEST ===\n');
-      
+
       const projectsData = Array.isArray(response.data) ? response.data : (response.data?.data || response.data || []);
-      console.log('📦 projectsData after extraction:', projectsData);
-      console.log('📦 projectsData length:', projectsData.length);
-      
+
       if (!Array.isArray(projectsData)) {
         console.error('❌ projectsData is not an array!', projectsData);
         setProjects([]);
@@ -219,16 +205,13 @@ export default function BudgetsPage() {
       }
       
       const transformedProjects = projectsData.map((p: any) => {
-        console.log('🔄 Transforming project:', p);
         return {
           _id: p._id || p.id,
           name: p.name || p.projectName || 'Unnamed Project'
         };
       });
-      console.log('✅ Transformed projects:', transformedProjects);
-      
+
       setProjects(transformedProjects);
-      console.log('✅ Projects state set with', transformedProjects.length, 'projects');
     } catch (error: any) {
       console.error('❌ Error fetching projects:', error);
       console.error('❌ Error message:', error?.message);

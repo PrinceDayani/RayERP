@@ -146,7 +146,7 @@ export default function TaskManagementPage() {
                     currentFilters={state.filters}
                     onApplySearch={(filters) => actions.setFilters(filters)}
                   />
-                  <TaskAdvancedSearch onSearch={(filters) => console.log(filters)} />
+                  <TaskAdvancedSearch onSearch={(filters) => {}} />
                   <TaskTemplates />
                   <TaskCalendarExport />
                   <TaskGoogleCalendarSync />

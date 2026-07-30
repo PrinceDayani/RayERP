@@ -88,7 +88,6 @@ export default function GeneralLedgerPage() {
       }
       
       const data = await res.json();
-      console.log('Ledger data received:', data);
       setEntries(data.entries || []);
     } catch (error) {
       console.error('Error fetching ledger:', error);

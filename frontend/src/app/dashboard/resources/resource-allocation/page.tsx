@@ -58,8 +58,6 @@ export default function ResourceAllocationPage() {
         getAllProjects()
       ]);
 
-      console.log('Fetched data:', { employeesData, projectsData });
-
       const employees = Array.isArray(employeesData) ? employeesData : employeesData?.data || [];
       const projects = projectsData || [];
 
@@ -94,7 +92,6 @@ export default function ResourceAllocationPage() {
         }
       });
 
-      console.log('Created project allocations:', projectAllocations);
       setEmployees(employees);
       setProjects(projects);
       setAllocations(projectAllocations);

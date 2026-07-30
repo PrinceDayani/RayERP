@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Budget from '../models/Budget';
+import { logger } from '../utils/logger';
 
 export const rolloverBudget = async (req: Request, res: Response) => {
   try {
@@ -59,7 +60,6 @@ export const rolloverBudget = async (req: Request, res: Response) => {
 
 export const bulkRollover = async (req: Request, res: Response) => {
   try {
-    console.log('Bulk rollover request:', req.body);
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
@@ -69,9 +69,7 @@ export const bulkRollover = async (req: Request, res: Response) => {
     const filter: any = { fiscalYear: sourceFiscalYear, status: 'approved' };
     if (budgetType && budgetType !== 'all') filter.budgetType = budgetType;
 
-    console.log('Filter:', filter);
     const sourceBudgets = await Budget.find(filter);
-    console.log(`Found ${sourceBudgets.length} budgets to rollover`);
     const rolledBudgets = [];
 
     for (const sourceBudget of sourceBudgets) {
@@ -116,7 +114,7 @@ export const bulkRollover = async (req: Request, res: Response) => {
       message: `${rolledBudgets.length} budgets rolled over successfully`
     });
   } catch (error: any) {
-    console.error('Bulk rollover error:', error);
+    logger.error('Bulk rollover error', { message: error?.message });
     res.status(500).json({ success: false, message: error.message, error: error.toString() });
   }
 };

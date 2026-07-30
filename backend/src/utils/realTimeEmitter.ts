@@ -2,6 +2,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import Employee from '../models/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
+import { logger } from './logger';
 
 export class RealTimeEmitter {
   private static ioInstance: any = null;
@@ -39,8 +40,8 @@ export class RealTimeEmitter {
       stats.profit = stats.revenue - stats.expenses;
 
       this.ioInstance.emit('dashboard:stats', stats);
-    } catch (error) {
-      console.error('Error emitting dashboard stats:', error);
+    } catch (error: any) {
+      logger.error('Error emitting dashboard stats', { message: error?.message });
     }
   }
 
@@ -91,9 +92,9 @@ export class RealTimeEmitter {
         timestamp: new Date(),
         status: 'success',
         visibility: 'all'
-      }).catch(err => console.error('Failed to store activity:', err));
-    } catch (error) {
-      console.error('Error emitting activity log:', error);
+      }).catch((err: any) => logger.error('Failed to store activity', { message: err?.message }));
+    } catch (error: any) {
+      logger.error('Error emitting activity log', { message: error?.message });
     }
   }
 

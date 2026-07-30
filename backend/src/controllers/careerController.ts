@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import EmployeeCareer from '../models/EmployeeCareer';
 import Employee from '../models/Employee';
+import { logger } from '../utils/logger';
 
 // Get employee career history
 export const getEmployeeCareer = async (req: Request, res: Response) => {
@@ -8,13 +9,13 @@ export const getEmployeeCareer = async (req: Request, res: Response) => {
         const { employeeId } = req.params;
 
         let career = await EmployeeCareer.findOne({ employee: employeeId })
-            .populate('events.createdBy', 'username email');
+            .populate('events.createdBy', 'name email');
 
         if (!career) {
             // Create career record if doesn't exist
             const employee = await Employee.findById(employeeId);
             if (!employee) {
-                return res.status(404).json({ message: 'Employee not found' });
+                return res.status(404).json({ success: false, message: 'Employee not found' });
             }
 
             career = new EmployeeCareer({
@@ -34,10 +35,10 @@ export const getEmployeeCareer = async (req: Request, res: Response) => {
             await career.save();
         }
 
-        res.json(career);
+        res.json({ success: true, data: career });
     } catch (error: any) {
-        console.error('❌ Error in getEmployeeCareer:', error.message, error.stack);
-        res.status(500).json({ message: error.message });
+        logger.error('Error in getEmployeeCareer', { message: error?.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -51,7 +52,7 @@ export const addCareerEvent = async (req: Request, res: Response) => {
         if (!career) {
             const employee = await Employee.findById(employeeId);
             if (!employee) {
-                return res.status(404).json({ message: 'Employee not found' });
+                return res.status(404).json({ success: false, message: 'Employee not found' });
             }
 
             career = new EmployeeCareer({
@@ -81,11 +82,11 @@ export const addCareerEvent = async (req: Request, res: Response) => {
         await career.save();
 
         const updated = await EmployeeCareer.findById(career._id)
-            .populate('events.createdBy', 'username email');
+            .populate('events.createdBy', 'name email');
 
-        res.status(201).json(updated);
+        res.status(201).json({ success: true, data: updated });
     } catch (error: any) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
@@ -96,23 +97,23 @@ export const updateCareerEvent = async (req: Request, res: Response) => {
 
         const career = await EmployeeCareer.findOne({ employee: employeeId });
         if (!career) {
-            return res.status(404).json({ message: 'Career history not found' });
+            return res.status(404).json({ success: false, message: 'Career history not found' });
         }
 
         const event = (career.events as any).id(eventId);
         if (!event) {
-            return res.status(404).json({ message: 'Event not found' });
+            return res.status(404).json({ success: false, message: 'Event not found' });
         }
 
         Object.assign(event, req.body);
         await career.save();
 
         const updated = await EmployeeCareer.findById(career._id)
-            .populate('events.createdBy', 'username email');
+            .populate('events.createdBy', 'name email');
 
-        res.json(updated);
+        res.json({ success: true, data: updated });
     } catch (error: any) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
@@ -174,13 +175,13 @@ export const getRecentEvents = async (req: Request, res: Response) => {
 
         const career = await EmployeeCareer.findOne({ employee: employeeId });
         if (!career) {
-            return res.status(404).json({ message: 'Career history not found' });
+            return res.status(404).json({ success: false, message: 'Career history not found' });
         }
 
         const events = career.getRecentEvents(limit);
-        res.json(events);
+        res.json({ success: true, data: events });
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -191,7 +192,7 @@ export const getCareerStats = async (req: Request, res: Response) => {
 
         const career = await EmployeeCareer.findOne({ employee: employeeId });
         if (!career) {
-            return res.status(404).json({ message: 'Career history not found' });
+            return res.status(404).json({ success: false, message: 'Career history not found' });
         }
 
         const stats = {
@@ -213,8 +214,8 @@ export const getCareerStats = async (req: Request, res: Response) => {
             stats.eventsByType[event.type]++;
         });
 
-        res.json(stats);
+        res.json({ success: true, data: stats });
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };

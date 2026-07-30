@@ -12,16 +12,16 @@ export const shareFile = async (req: Request, res: Response) => {
     const targetUserIds: string[] = req.body.userIds || req.body.employeeIds || [];
     const { message } = req.body;
     const user = (req as any).user;
-    if (!user) return res.status(401).json({ message: 'Authentication required' });
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
 
     const file = await ProjectFile.findById(fileId);
     if (!file) {
-      return res.status(404).json({ message: 'File not found' });
+      return res.status(404).json({ success: false, message: 'File not found' });
     }
 
     const project = await Project.findById(file.project);
     if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
     const fileShare = new FileShare({
@@ -39,9 +39,9 @@ export const shareFile = async (req: Request, res: Response) => {
       .populate('sharedBy', 'name email')
       .populate('sharedWith', 'name email');
 
-    res.status(201).json(populatedShare);
+    res.status(201).json({ success: true, data: populatedShare });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -91,9 +91,9 @@ export const getFileShares = async (req: Request, res: Response) => {
       .populate('downloadedBy.user', 'name email')
       .sort({ createdAt: -1 });
 
-    res.json(shares);
+    res.json({ success: true, data: shares });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -101,15 +101,15 @@ export const markFileViewed = async (req: Request, res: Response) => {
   try {
     const { shareId } = req.params;
     const user = (req as any).user;
-    if (!user) return res.status(401).json({ message: 'Authentication required' });
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
 
     const share = await FileShare.findById(shareId);
     if (!share) {
-      return res.status(404).json({ message: 'Share not found' });
+      return res.status(404).json({ success: false, message: 'Share not found' });
     }
 
     if (!share.sharedWith.some(id => id.toString() === user._id.toString())) {
-      return res.status(403).json({ message: 'Not authorized to view this file' });
+      return res.status(403).json({ success: false, message: 'Not authorized to view this file' });
     }
 
     const alreadyViewed = share.viewedBy.some(
@@ -122,9 +122,9 @@ export const markFileViewed = async (req: Request, res: Response) => {
       await share.save();
     }
 
-    res.json(share);
+    res.json({ success: true, data: share });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -132,15 +132,15 @@ export const markFileDownloaded = async (req: Request, res: Response) => {
   try {
     const { shareId } = req.params;
     const user = (req as any).user;
-    if (!user) return res.status(401).json({ message: 'Authentication required' });
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
 
     const share = await FileShare.findById(shareId);
     if (!share) {
-      return res.status(404).json({ message: 'Share not found' });
+      return res.status(404).json({ success: false, message: 'Share not found' });
     }
 
     if (!share.sharedWith.some(id => id.toString() === user._id.toString())) {
-      return res.status(403).json({ message: 'Not authorized to download this file' });
+      return res.status(403).json({ success: false, message: 'Not authorized to download this file' });
     }
 
     const alreadyDownloaded = share.downloadedBy.some(
@@ -153,9 +153,9 @@ export const markFileDownloaded = async (req: Request, res: Response) => {
       await share.save();
     }
 
-    res.json(share);
+    res.json({ success: true, data: share });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -163,20 +163,20 @@ export const deleteFileShare = async (req: Request, res: Response) => {
   try {
     const { shareId } = req.params;
     const user = (req as any).user;
-    if (!user) return res.status(401).json({ message: 'Authentication required' });
+    if (!user) return res.status(401).json({ success: false, message: 'Authentication required' });
 
     const share = await FileShare.findById(shareId);
     if (!share) {
-      return res.status(404).json({ message: 'Share not found' });
+      return res.status(404).json({ success: false, message: 'Share not found' });
     }
 
     if (share.sharedBy.toString() !== user._id.toString()) {
-      return res.status(403).json({ message: 'Only the sender can delete this share' });
+      return res.status(403).json({ success: false, message: 'Only the sender can delete this share' });
     }
 
     await FileShare.findByIdAndDelete(shareId);
-    res.json({ message: 'Share deleted successfully' });
+    res.json({ success: true, data: { message: 'Share deleted successfully' } });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };

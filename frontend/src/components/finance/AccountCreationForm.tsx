@@ -57,18 +57,15 @@ export default function FinanceAccountCreationForm({ onAccountCreated, duplicate
     try {
       const token = localStorage.getItem('auth-token');
       if (!token) return;
-      
-      console.log('Fetching groups...');
+
       const response = await fetch(`${API_URL}/api/general-ledger/groups`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       const data = await response.json();
-      console.log('Groups response:', data);
-      
+
       if (response.ok && data.success) {
         const groupList = data.data || data.groups || [];
-        console.log('Setting groups:', groupList);
         setGroups(groupList.map((g: any) => ({ value: g._id, label: g.name })));
       }
     } catch (error) {
@@ -135,16 +132,14 @@ export default function FinanceAccountCreationForm({ onAccountCreated, duplicate
     
     try {
       const token = localStorage.getItem('auth-token');
-      console.log('Creating group:', newGroupData);
       const response = await fetch(`${API_URL}/api/general-ledger/groups`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(newGroupData)
       });
-      
+
       const data = await response.json();
-      console.log('Create group response:', data);
-      
+
       if (response.ok && data.success) {
         toast({ title: 'Success', description: 'Group created successfully' });
         setShowGroupDialog(false);

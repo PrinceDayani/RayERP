@@ -28,7 +28,6 @@ class RealTimeSettings {
           headers: getAuthHeaders(),
           body: JSON.stringify({ key, value, scope })
         });
-        console.log(`Auto-saved ${key}`);
       } catch (error) {
         console.error(`Failed to auto-save ${key}:`, error);
       }

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { unwrapResponse } from './unwrap';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
     ? `${process.env.NEXT_PUBLIC_API_URL}/api`
@@ -12,7 +13,7 @@ export const achievementAPI = {
         const response = await axios.get(`${API_URL}/achievements/employee/${employeeId}`, {
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 
     // Get achievement stats
@@ -20,7 +21,7 @@ export const achievementAPI = {
         const response = await axios.get(`${API_URL}/achievements/employee/${employeeId}/stats`, {
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 
     // Get expiring certifications
@@ -28,7 +29,7 @@ export const achievementAPI = {
         const response = await axios.get(`${API_URL}/achievements/employee/${employeeId}/expiring`, {
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 
     // Create achievement
@@ -36,7 +37,7 @@ export const achievementAPI = {
         const response = await axios.post(`${API_URL}/achievements/employee/${employeeId}`, data, {
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 
     // Update achievement
@@ -44,7 +45,7 @@ export const achievementAPI = {
         const response = await axios.put(`${API_URL}/achievements/${id}`, data, {
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 
     // Delete achievement
@@ -60,7 +61,7 @@ export const achievementAPI = {
         const response = await axios.post(`${API_URL}/achievements/${id}/verify`, {}, {
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 };
 
@@ -71,7 +72,7 @@ export const careerAPI = {
         const response = await axios.get(`${API_URL}/career/${employeeId}`, {
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 
     // Get career stats
@@ -79,7 +80,7 @@ export const careerAPI = {
         const response = await axios.get(`${API_URL}/career/${employeeId}/stats`, {
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 
     // Get recent career events
@@ -88,7 +89,7 @@ export const careerAPI = {
             params: { limit },
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 
     // Add career event
@@ -96,7 +97,7 @@ export const careerAPI = {
         const response = await axios.post(`${API_URL}/career/${employeeId}/events`, data, {
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 
     // Update career event
@@ -104,7 +105,7 @@ export const careerAPI = {
         const response = await axios.put(`${API_URL}/career/${employeeId}/events/${eventId}`, data, {
             withCredentials: true,
         });
-        return response.data;
+        return unwrapResponse(response.data);
     },
 
     // Delete career event

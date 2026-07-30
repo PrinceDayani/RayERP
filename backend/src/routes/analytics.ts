@@ -3,6 +3,7 @@ import { protect } from '../middleware/auth.middleware';
 import Project from '../models/Project';
 import Task from '../models/Task';
 import Employee from '../models/Employee';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
@@ -124,7 +125,7 @@ router.get('/analytics', protect, async (req, res) => {
       }
     });
   } catch (error: any) {
-    console.error('Analytics error:', error);
+    logger.error('Analytics error', { message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 });

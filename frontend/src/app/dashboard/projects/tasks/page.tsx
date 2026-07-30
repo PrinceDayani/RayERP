@@ -17,7 +17,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getAllProjects } from '@/lib/api/projectsAPI';
 import tasksAPI, { type Task, type CreateTaskData, type UpdateTaskData } from '@/lib/api/tasksAPI';
 import employeesAPI, { type Employee } from '@/lib/api/employeesAPI';
-import Layout from '@/components/Layout';
 import { useSocket } from '@/hooks/useSocket';
 
 interface Project {
@@ -473,7 +472,7 @@ export default function TaskManagementPage() {
     </form>
   );
 
-  return (<Layout>
+  return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -700,6 +699,6 @@ export default function TaskManagementPage() {
           </Card>
         ))}
       </div>
-    </div></Layout>
+    </div>
   );
 }

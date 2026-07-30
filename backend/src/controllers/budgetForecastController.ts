@@ -12,7 +12,7 @@ export const generateBudgetForecast = async (req: Request, res: Response) => {
 
     const budget = await Budget.findById(budgetId);
     if (!budget) {
-      return res.status(404).json({ message: 'Budget not found' });
+      return res.status(404).json({ success: false, message: 'Budget not found' });
     }
 
     // Get historical spending data from transactions
@@ -33,7 +33,7 @@ export const generateBudgetForecast = async (req: Request, res: Response) => {
     ]);
 
     if (historicalData.length < 2) {
-      return res.status(400).json({ message: 'Insufficient historical data for forecasting' });
+      return res.status(400).json({ success: false, message: 'Insufficient historical data for forecasting' });
     }
 
     // Generate forecast
@@ -61,11 +61,12 @@ export const generateBudgetForecast = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email');
 
     res.status(201).json({
+      success: true,
       message: 'Forecast generated successfully',
-      forecast: populatedForecast
+      data: populatedForecast
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error generating forecast', error: error.message });
+    res.status(500).json({ success: false, message: 'Error generating forecast' });
   }
 };
 
@@ -79,9 +80,9 @@ export const getBudgetForecasts = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email')
       .sort({ generatedDate: -1 });
 
-    res.json({ forecasts, count: forecasts.length });
+    res.json({ success: true, data: forecasts, count: forecasts.length });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching forecasts', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching forecasts' });
   }
 };
 
@@ -95,12 +96,12 @@ export const getForecastById = async (req: Request, res: Response) => {
       .populate('createdBy', 'name email');
 
     if (!forecast) {
-      return res.status(404).json({ message: 'Forecast not found' });
+      return res.status(404).json({ success: false, message: 'Forecast not found' });
     }
 
-    res.json({ forecast });
+    res.json({ success: true, data: forecast });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching forecast', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching forecast' });
   }
 };
 
@@ -113,21 +114,21 @@ export const compareForecastAccuracy = async (req: Request, res: Response) => {
       .populate('budget', 'budgetName allocatedAmount');
 
     if (!forecast) {
-      return res.status(404).json({ message: 'Forecast not found' });
+      return res.status(404).json({ success: false, message: 'Forecast not found' });
     }
 
     const accuracy = forecast.accuracy || 0;
-    
+
     forecast.accuracy = accuracy;
     await forecast.save();
 
     res.json({
+      success: true,
       message: 'Forecast accuracy calculated',
-      accuracy,
-      forecast
+      data: { accuracy, forecast }
     });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error calculating accuracy', error: error.message });
+    res.status(500).json({ success: false, message: 'Error calculating accuracy' });
   }
 };
 
@@ -141,7 +142,7 @@ export const getForecastSummary = async (req: Request, res: Response) => {
       .populate('budget', 'budgetName totalAmount allocatedAmount');
 
     if (!latestForecast) {
-      return res.status(404).json({ message: 'No forecasts found' });
+      return res.status(404).json({ success: false, message: 'No forecasts found' });
     }
 
     const summary = {
@@ -156,9 +157,9 @@ export const getForecastSummary = async (req: Request, res: Response) => {
       generatedDate: latestForecast.generatedDate
     };
 
-    res.json({ summary });
+    res.json({ success: true, data: summary });
   } catch (error: any) {
-    res.status(500).json({ message: 'Error fetching summary', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching summary' });
   }
 };
 
@@ -180,15 +181,15 @@ const getAssumptions = (type: string, dataPoints: number): string[] => {
     'No major organizational changes',
     'Economic conditions remain stable'
   ];
-  
+
   if (type === 'seasonal') {
     common.push('Seasonal patterns repeat annually');
   }
-  
+
   if (dataPoints < 12) {
     common.push('Limited historical data may affect accuracy');
   }
-  
+
   return common;
 };
 

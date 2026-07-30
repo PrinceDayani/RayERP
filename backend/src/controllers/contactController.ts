@@ -771,7 +771,7 @@ export const filterContacts = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error filtering contacts:', error);
+    logger.error('Error filtering contacts', { message: error instanceof Error ? error.message : 'Unknown error' });
     return res.status(500).json({ message: 'Error filtering contacts' });
   }
 };
@@ -921,7 +921,7 @@ export const getContactStats = async (req: Request, res: Response) => {
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error('Error getting contact stats:', error);
+    logger.error('Error getting contact stats', { message: error instanceof Error ? error.message : 'Unknown error' });
     return res.status(500).json({ message: 'Error getting contact statistics' });
   }
 };

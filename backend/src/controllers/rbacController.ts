@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Role } from '../models/Role';
 import { Permission } from '../models/Permission';
 import User from '../models/User';
+import { logger } from '../utils/logger';
 
 // Roles Management
 export const getRoles = async (req: Request, res: Response) => {
@@ -561,10 +562,9 @@ export const initializePermissions = async () => {
         existing++;
       }
     }
-    console.log(`✓ Permissions initialized: ${created} created, ${existing} already exist, ${defaultPermissions.length} total`);
     return { created, existing, total: defaultPermissions.length };
   } catch (error) {
-    console.error('Error initializing permissions:', error);
+    logger.error('Error initializing permissions', { message: (error as any)?.message });
     throw error;
   }
 };

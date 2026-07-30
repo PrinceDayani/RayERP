@@ -32,11 +32,6 @@ class AuditLogger {
       this.logs = this.logs.slice(-this.maxLogs);
     }
 
-    // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[AUDIT]', auditEntry);
-    }
-
     // Store in localStorage for persistence
     this.persistLog(auditEntry);
 

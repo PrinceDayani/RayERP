@@ -57,7 +57,6 @@ export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) 
 
     // Connection event handlers
     newSocket.on('connect', () => {
-      console.log('✅ Socket connected:', newSocket.id);
       setIsConnected(true);
       setConnectionStatus('connected');
       setLastUpdate(new Date());
@@ -73,7 +72,6 @@ export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) 
     });
 
     newSocket.on('disconnect', (reason) => {
-      console.log('❌ Socket disconnected:', reason);
       setIsConnected(false);
       setConnectionStatus('disconnected');
       
@@ -94,7 +92,6 @@ export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) 
     });
 
     newSocket.on('reconnect', (attemptNumber) => {
-      console.log(`🔄 Socket reconnected after ${attemptNumber} attempts`);
       toast.success('Real-time connection restored');
     });
 
@@ -104,7 +101,6 @@ export const RealTimeProvider: React.FC<RealTimeProviderProps> = ({ children }) 
 
     // Authentication events
     newSocket.on('auth_success', (data) => {
-      console.log('✅ Socket authenticated:', data);
       toast.success('Real-time authentication successful');
     });
 

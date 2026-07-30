@@ -3,6 +3,7 @@
 import { Request, Response } from 'express';
 import ProjectJournalEntry, { IProjectJournalEntry } from '../models/ProjectLedger';
 import { generateEntryNumber } from '../utils/numberGenerator';
+import { logger } from '../utils/logger';
 
 // Get all journal entries for a project
 export const getProjectJournalEntries = async (req: Request, res: Response) => {
@@ -28,10 +29,10 @@ export const getProjectJournalEntries = async (req: Request, res: Response) => {
       .populate('approvedBy', 'name email')
       .sort({ date: -1, createdAt: -1 });
 
-    res.json(entries);
+    res.json({ success: true, data: entries });
   } catch (error) {
-    console.error('Error fetching journal entries:', error);
-    res.status(500).json({ message: 'Failed to fetch journal entries' });
+    logger.error('Error fetching journal entries', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Failed to fetch journal entries' });
   }
 };
 
@@ -50,7 +51,7 @@ export const getJournalEntryById = async (req: Request, res: Response) => {
 
     res.json(entry);
   } catch (error) {
-    console.error('Error fetching journal entry:', error);
+    logger.error('Error fetching journal entry', { message: error?.message });
     res.status(500).json({ message: 'Failed to fetch journal entry' });
   }
 };
@@ -67,8 +68,8 @@ export const createJournalEntry = async (req: Request, res: Response) => {
     const totalCredit = lines.reduce((sum: number, line: any) => sum + (line.credit || 0), 0);
 
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
-      return res.status(400).json({ 
-        message: 'Journal entry must be balanced (Total Debits must equal Total Credits)' 
+      return res.status(400).json({
+        success: false, message: 'Journal entry must be balanced (Total Debits must equal Total Credits)'
       });
     }
 
@@ -94,10 +95,10 @@ export const createJournalEntry = async (req: Request, res: Response) => {
     const populatedEntry = await ProjectJournalEntry.findById(journalEntry._id)
       .populate('createdBy', 'name email');
 
-    res.status(201).json(populatedEntry);
+    res.status(201).json({ success: true, data: populatedEntry });
   } catch (error) {
-    console.error('Error creating journal entry:', error);
-    res.status(500).json({ message: 'Failed to create journal entry' });
+    logger.error('Error creating journal entry', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Failed to create journal entry' });
   }
 };
 
@@ -109,13 +110,13 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
 
     const entry = await ProjectJournalEntry.findById(entryId);
     if (!entry) {
-      return res.status(404).json({ message: 'Journal entry not found' });
+      return res.status(404).json({ success: false, message: 'Journal entry not found' });
     }
 
     // Only allow updates if entry is in draft status
     if (entry.status !== 'draft') {
-      return res.status(400).json({ 
-        message: 'Only draft entries can be updated' 
+      return res.status(400).json({
+        success: false, message: 'Only draft entries can be updated'
       });
     }
 
@@ -124,8 +125,8 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
     const totalCredit = lines.reduce((sum: number, line: any) => sum + (line.credit || 0), 0);
 
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
-      return res.status(400).json({ 
-        message: 'Journal entry must be balanced (Total Debits must equal Total Credits)' 
+      return res.status(400).json({
+        success: false, message: 'Journal entry must be balanced (Total Debits must equal Total Credits)'
       });
     }
 
@@ -142,10 +143,10 @@ export const updateJournalEntry = async (req: Request, res: Response) => {
     const populatedEntry = await ProjectJournalEntry.findById(entry._id)
       .populate('createdBy', 'name email');
 
-    res.json(populatedEntry);
+    res.json({ success: true, data: populatedEntry });
   } catch (error) {
-    console.error('Error updating journal entry:', error);
-    res.status(500).json({ message: 'Failed to update journal entry' });
+    logger.error('Error updating journal entry', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Failed to update journal entry' });
   }
 };
 
@@ -156,12 +157,12 @@ export const postJournalEntry = async (req: Request, res: Response) => {
 
     const entry = await ProjectJournalEntry.findById(entryId);
     if (!entry) {
-      return res.status(404).json({ message: 'Journal entry not found' });
+      return res.status(404).json({ success: false, message: 'Journal entry not found' });
     }
 
     if (entry.status !== 'draft') {
-      return res.status(400).json({ 
-        message: 'Only draft entries can be posted' 
+      return res.status(400).json({
+        success: false, message: 'Only draft entries can be posted'
       });
     }
 
@@ -171,10 +172,10 @@ export const postJournalEntry = async (req: Request, res: Response) => {
     const populatedEntry = await ProjectJournalEntry.findById(entry._id)
       .populate('createdBy', 'name email');
 
-    res.json(populatedEntry);
+    res.json({ success: true, data: populatedEntry });
   } catch (error) {
-    console.error('Error posting journal entry:', error);
-    res.status(500).json({ message: 'Failed to post journal entry' });
+    logger.error('Error posting journal entry', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Failed to post journal entry' });
   }
 };
 
@@ -206,7 +207,7 @@ export const approveJournalEntry = async (req: Request, res: Response) => {
 
     res.json(populatedEntry);
   } catch (error) {
-    console.error('Error approving journal entry:', error);
+    logger.error('Error approving journal entry', { message: error?.message });
     res.status(500).json({ message: 'Failed to approve journal entry' });
   }
 };
@@ -231,7 +232,7 @@ export const deleteJournalEntry = async (req: Request, res: Response) => {
     await ProjectJournalEntry.findByIdAndDelete(entryId);
     res.json({ message: 'Journal entry deleted successfully' });
   } catch (error) {
-    console.error('Error deleting journal entry:', error);
+    logger.error('Error deleting journal entry', { message: error?.message });
     res.status(500).json({ message: 'Failed to delete journal entry' });
   }
 };
@@ -285,10 +286,10 @@ export const getProjectLedgerEntries = async (req: Request, res: Response) => {
       });
     });
 
-    res.json(ledgerEntries);
+    res.json({ success: true, data: ledgerEntries });
   } catch (error) {
-    console.error('Error fetching ledger entries:', error);
-    res.status(500).json({ message: 'Failed to fetch ledger entries' });
+    logger.error('Error fetching ledger entries', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Failed to fetch ledger entries' });
   }
 };
 
@@ -341,7 +342,7 @@ export const getProjectTrialBalance = async (req: Request, res: Response) => {
       totalCredits
     });
   } catch (error) {
-    console.error('Error generating trial balance:', error);
+    logger.error('Error generating trial balance', { message: error?.message });
     res.status(500).json({ message: 'Failed to generate trial balance' });
   }
 };

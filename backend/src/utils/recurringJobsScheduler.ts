@@ -2,13 +2,12 @@ import cron from 'node-cron';
 import { Invoice } from '../models/Finance';
 import JournalEntry from '../models/JournalEntry';
 import AllocationRule from '../models/AllocationRule';
+import { logger } from './logger';
 
 // Generate Recurring Invoices - Daily at 1 AM
 export const scheduleRecurringInvoices = () => {
   cron.schedule('0 1 * * *', async () => {
     try {
-      console.log('🔄 Running recurring invoice generation...');
-      
       const today = new Date();
       const recurringInvoices = await Invoice.find({
         isRecurring: true,
@@ -40,9 +39,8 @@ export const scheduleRecurringInvoices = () => {
         generated++;
       }
 
-      console.log(`✅ Generated ${generated} recurring invoices`);
-    } catch (error) {
-      console.error('❌ Error generating recurring invoices:', error);
+    } catch (error: any) {
+      logger.error('Error generating recurring invoices', { message: error?.message });
     }
   });
 };
@@ -51,8 +49,6 @@ export const scheduleRecurringInvoices = () => {
 export const scheduleRecurringJournalEntries = () => {
   cron.schedule('0 2 * * *', async () => {
     try {
-      console.log('🔄 Running recurring journal entry generation...');
-      
       const today = new Date();
       const recurringEntries = await JournalEntry.find({
         isRecurring: true,
@@ -82,9 +78,8 @@ export const scheduleRecurringJournalEntries = () => {
         generated++;
       }
 
-      console.log(`✅ Generated ${generated} recurring journal entries`);
-    } catch (error) {
-      console.error('❌ Error generating recurring journal entries:', error);
+    } catch (error: any) {
+      logger.error('Error generating recurring journal entries', { message: error?.message });
     }
   });
 };
@@ -93,8 +88,6 @@ export const scheduleRecurringJournalEntries = () => {
 export const scheduleReversingEntries = () => {
   cron.schedule('0 3 * * *', async () => {
     try {
-      console.log('🔄 Processing reversing entries...');
-      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -137,9 +130,8 @@ export const scheduleReversingEntries = () => {
         reversed++;
       }
 
-      console.log(`✅ Processed ${reversed} reversing entries`);
-    } catch (error) {
-      console.error('❌ Error processing reversing entries:', error);
+    } catch (error: any) {
+      logger.error('Error processing reversing entries', { message: error?.message });
     }
   });
 };
@@ -148,8 +140,6 @@ export const scheduleReversingEntries = () => {
 export const scheduleLateFees = () => {
   cron.schedule('0 4 * * *', async () => {
     try {
-      console.log('🔄 Applying late fees...');
-      
       const overdueInvoices = await Invoice.find({
         status: 'overdue',
         lateFeePercentage: { $gt: 0 },
@@ -170,9 +160,8 @@ export const scheduleLateFees = () => {
         }
       }
 
-      console.log(`✅ Applied late fees to ${applied} invoices`);
-    } catch (error) {
-      console.error('❌ Error applying late fees:', error);
+    } catch (error: any) {
+      logger.error('Error applying late fees', { message: error?.message });
     }
   });
 };
@@ -181,8 +170,6 @@ export const scheduleLateFees = () => {
 export const scheduleInvoiceReminders = () => {
   cron.schedule('0 9 * * *', async () => {
     try {
-      console.log('🔄 Sending invoice reminders...');
-      
       const today = new Date();
       const reminderDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days before due
       
@@ -204,9 +191,8 @@ export const scheduleInvoiceReminders = () => {
         sent++;
       }
 
-      console.log(`✅ Sent ${sent} invoice reminders`);
-    } catch (error) {
-      console.error('❌ Error sending reminders:', error);
+    } catch (error: any) {
+      logger.error('Error sending reminders', { message: error?.message });
     }
   });
 };
@@ -215,8 +201,6 @@ export const scheduleInvoiceReminders = () => {
 export const scheduleAllocationRules = () => {
   cron.schedule('0 5 * * *', async () => {
     try {
-      console.log('🔄 Running scheduled allocation rules...');
-      
       const today = new Date();
       const rules = await AllocationRule.find({
         isActive: true,
@@ -241,25 +225,20 @@ export const scheduleAllocationRules = () => {
         }
       }
 
-      console.log(`✅ Executed ${executed} allocation rules`);
-    } catch (error) {
-      console.error('❌ Error running allocation rules:', error);
+    } catch (error: any) {
+      logger.error('Error running allocation rules', { message: error?.message });
     }
   });
 };
 
 // Initialize all schedulers
 export const initializeSchedulers = () => {
-  console.log('🚀 Initializing recurring job schedulers...');
-  
   scheduleRecurringInvoices();
   scheduleRecurringJournalEntries();
   scheduleReversingEntries();
   scheduleLateFees();
   scheduleInvoiceReminders();
   scheduleAllocationRules();
-  
-  console.log('✅ All schedulers initialized');
 };
 
 // Helper functions

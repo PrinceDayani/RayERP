@@ -8,6 +8,7 @@ import {
   checkFailedLoginAttempts,
   getGeolocation
 } from '../utils/auditUtils';
+import { logger } from '../utils/logger';
 
 const getClientIp = (req: Request): string => {
   return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
@@ -38,7 +39,7 @@ export const auditLog = (action: string, module: string) => {
           if (action === 'LOGIN' && status === 'Failed') {
             const { shouldAlert } = await checkFailedLoginAttempts(AuditLog, req.user.email, ipAddress);
             if (shouldAlert) {
-              console.warn(`🚨 SECURITY ALERT: Multiple failed login attempts for ${req.user.email} from ${ipAddress}`);
+              logger.warn('Multiple failed login attempts detected', { ip: ipAddress });
               // TODO: Send email/SMS alert to admin
             }
           }
@@ -69,8 +70,8 @@ export const auditLog = (action: string, module: string) => {
               path: req.path
             }
           });
-        } catch (error) {
-          console.error('Audit logging error:', error);
+        } catch (error: any) {
+          logger.error('Audit logging error', { message: error?.message });
         }
       });
 

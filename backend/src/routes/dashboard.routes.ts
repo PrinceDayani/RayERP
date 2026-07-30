@@ -11,6 +11,7 @@ import ActivityLog from '../models/ActivityLog';
 import User from '../models/User';
 import { Role } from '../models/Role';
 import { io } from '../server';
+import { logger } from '../utils/logger';
 // Cache invalidation will be handled by model hooks if needed
 
 const router = express.Router();
@@ -334,8 +335,8 @@ router.get('/trends', protect, requirePermission('dashboard.view'), async (req, 
     };
 
     res.json({ success: true, data: trends });
-  } catch (error) {
-    console.error('Trends error:', error);
+  } catch (error: any) {
+    logger.error('Trends error', { message: error?.message });
     res.status(500).json({ success: false, message: 'Failed to fetch trends' });
   }
 });
@@ -478,8 +479,8 @@ router.get('/user-dashboard', protect, requirePermission('dashboard.view'), asyn
     }
 
     res.json({ success: true, data: responseData });
-  } catch (error) {
-    console.error('User dashboard error:', error);
+  } catch (error: any) {
+    logger.error('User dashboard error', { message: error?.message });
     res.status(500).json({ success: false, message: 'Failed to fetch user dashboard data', error: error.message });
   }
 });

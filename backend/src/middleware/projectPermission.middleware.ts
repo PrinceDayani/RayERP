@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import ProjectPermission from '../models/ProjectPermission';
+import { logger } from '../utils/logger';
 
 export const requireProjectPermission = (permission: string, managerOverride: boolean = false) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -52,8 +53,8 @@ export const requireProjectPermission = (permission: string, managerOverride: bo
         message: `Access denied: Missing permission '${permission}' for this project`
       });
 
-    } catch (error) {
-      console.error('Error checking project permission:', error);
+    } catch (error: any) {
+      logger.error('Error checking project permission', { message: error?.message });
       return res.status(500).json({
         success: false,
         message: 'Error checking permissions'
@@ -74,8 +75,8 @@ export const checkProjectPermissions = async (userId: string, projectId: string,
     return requiredPermissions.every(permission =>
       projectPermission.permissions.includes(permission)
     );
-  } catch (error) {
-    console.error('Error checking project permissions:', error);
+  } catch (error: any) {
+    logger.error('Error checking project permissions', { message: error?.message });
     return false;
   }
 };

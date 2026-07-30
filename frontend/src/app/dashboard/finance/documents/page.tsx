@@ -114,7 +114,6 @@ export default function DocumentsPage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
-      console.log('Stats received:', data);
       setStats(data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -135,17 +134,14 @@ export default function DocumentsPage() {
       formData.append('entityId', 'none');
 
       const token = localStorage.getItem('auth-token');
-      console.log('Uploading file:', file.name, 'Size:', file.size);
-      
+
       const res = await fetch(`${API_URL}/api/finance-advanced/documents`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
 
-      console.log('Upload response status:', res.status);
       const result = await res.json();
-      console.log('Upload result:', result);
 
       if (res.ok) {
         alert('✅ Document uploaded successfully!');
@@ -503,7 +499,7 @@ export default function DocumentsPage() {
               title="All Documents"
               searchable
               exportable
-              onExport={() => console.log('Export documents')}
+              onExport={() => {}}
             />
           )}
         </TabsContent>

@@ -1,25 +1,21 @@
 import cron from 'node-cron';
 import { checkAllBudgets } from './budgetAlertService';
+import { logger } from './logger';
 
 // Check all budgets every hour
 export const startBudgetAlertCron = () => {
   cron.schedule('0 * * * *', async () => {
-    console.log('Running budget alert check...');
     try {
       await checkAllBudgets();
-      console.log('Budget alert check completed');
-    } catch (error) {
-      console.error('Budget alert cron error:', error);
+    } catch (error: any) {
+      logger.error('Budget alert cron error', { message: error?.message });
     }
   });
-  
-  console.log('✅ Budget alert cron job started (runs every hour)');
 };
 
 // Daily budget summary at 9 AM
 export const startBudgetSummaryCron = () => {
   cron.schedule('0 9 * * *', async () => {
-    console.log('Sending daily budget summary...');
     try {
       const Budget = require('../models/Budget').default;
       const BudgetAlert = require('../models/BudgetAlert').default;
@@ -30,8 +26,6 @@ export const startBudgetSummaryCron = () => {
         BudgetAlert.countDocuments({ isActive: true, acknowledged: false })
       ]);
 
-      console.log(`Daily Summary: ${totalBudgets} total, ${activeBudgets} active, ${activeAlerts} alerts`);
-      
       // Send summary notification to admins
       const User = require('../models/User').default;
       const Notification = require('../models/Notification').default;
@@ -46,14 +40,10 @@ export const startBudgetSummaryCron = () => {
           priority: 'low'
         });
       }
-      
-      console.log('Daily budget summary sent');
-    } catch (error) {
-      console.error('Budget summary cron error:', error);
+    } catch (error: any) {
+      logger.error('Budget summary cron error', { message: error?.message });
     }
   });
-  
-  console.log('✅ Budget summary cron job started (runs daily at 9 AM)');
 };
 
 export default {

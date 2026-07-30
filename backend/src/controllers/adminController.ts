@@ -21,7 +21,7 @@ export const getAdminStats = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error(`Get admin stats error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -44,7 +44,7 @@ export const getAdminUsers = async (req: Request, res: Response) => {
     res.json(formattedUsers);
   } catch (error: any) {
     logger.error(`Get admin users error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -55,7 +55,7 @@ export const createAdminUser = async (req: Request, res: Response) => {
     
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+      return res.status(400).json({ success: false, message: 'User already exists' });
     }
 
     const user = await User.create({ name, email, password, role });
@@ -83,7 +83,7 @@ export const createAdminUser = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error(`Create admin user error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -95,7 +95,7 @@ export const updateAdminUser = async (req: Request, res: Response) => {
 
     const user = await User.findByIdAndUpdate(userId, updates, { new: true }).populate('role').select('-password');
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     // Log activity
@@ -122,7 +122,7 @@ export const updateAdminUser = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error(`Update admin user error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -133,7 +133,7 @@ export const deleteAdminUser = async (req: Request, res: Response) => {
     
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     // Delete associated employee if exists
@@ -159,7 +159,7 @@ export const deleteAdminUser = async (req: Request, res: Response) => {
     res.json({ message: `User${employee ? ' and associated employee' : ''} deleted successfully` });
   } catch (error: any) {
     logger.error(`Delete admin user error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -190,7 +190,7 @@ export const getActivityLogs = async (req: Request, res: Response) => {
     res.json(formattedLogs);
   } catch (error: any) {
     logger.error(`Get activity logs error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -207,7 +207,7 @@ export const getAdminSettings = async (req: Request, res: Response) => {
     res.json(settings);
   } catch (error: any) {
     logger.error(`Get admin settings error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -234,7 +234,7 @@ export const updateGeneralSettings = async (req: Request, res: Response) => {
     res.json(settings?.general);
   } catch (error: any) {
     logger.error(`Update general settings error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -261,7 +261,7 @@ export const updateSecuritySettings = async (req: Request, res: Response) => {
     res.json(settings?.security);
   } catch (error: any) {
     logger.error(`Update security settings error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -288,7 +288,7 @@ export const updateNotificationSettings = async (req: Request, res: Response) =>
     res.json(settings?.notifications);
   } catch (error: any) {
     logger.error(`Update notification settings error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -315,7 +315,7 @@ export const updateBackupSettings = async (req: Request, res: Response) => {
     res.json(settings?.backup);
   } catch (error: any) {
     logger.error(`Update backup settings error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -346,7 +346,7 @@ export const triggerManualBackup = async (req: Request, res: Response) => {
     res.json({ success: true, timestamp });
   } catch (error: any) {
     logger.error(`Trigger manual backup error: ${error.message}`);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -362,7 +362,7 @@ export const exportLogs = async (req: Request, res: Response) => {
     const { format } = req.query;
     
     if (!format || !['text', 'pdf', 'excel', 'csv'].includes(format as string)) {
-      return res.status(400).json({ error: 'Invalid format. Use text, pdf, excel, or csv' });
+      return res.status(400).json({ success: false, message: 'Invalid format. Use text, pdf, excel, or csv' });
     }
     
     const logs = await ActivityLog.find().populate('user', 'name email').sort({ timestamp: -1 }).limit(1000);
@@ -451,6 +451,6 @@ export const exportLogs = async (req: Request, res: Response) => {
     logger.info('Export logs completed successfully', { format, user: req.user?.name });
   } catch (error: any) {
     logger.error(`Export logs error: ${error.message}`, { stack: error.stack });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };

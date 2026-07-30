@@ -1,4 +1,5 @@
 import api from './api';
+import { unwrapResponse } from './unwrap';
 
 export interface EmployeeReportData {
   employee: {
@@ -24,17 +25,17 @@ export interface EmployeeReportData {
 export const employeeReportAPI = {
   getEmployeeReport: async (params?: { startDate?: string; endDate?: string; department?: string }) => {
     const response = await api.get('/employee-reports/employee-report', { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getDepartmentSummary: async () => {
     const response = await api.get('/employee-reports/department-summary');
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getAttendanceSummary: async (month: string, year: string) => {
     const response = await api.get('/employee-reports/attendance-summary', { params: { month, year } });
-    return response.data;
+    return unwrapResponse(response.data);
   }
 };
 

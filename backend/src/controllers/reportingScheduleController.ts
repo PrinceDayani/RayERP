@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import ReportingSchedule, { IReportTemplate, TemplateFieldType } from '../models/ReportingSchedule';
 import Project from '../models/Project';
 import { getAccessibleProjectIdsForUser } from '../middleware/projectAccess.middleware';
+import { logger } from '../utils/logger';
 
 const ALLOWED_FIELD_TYPES: TemplateFieldType[] = ['text', 'number', 'select', 'date', 'photo'];
 const ALLOWED_ACTIVITY_CATEGORIES = ['construction', 'procurement', 'design', 'inspection', 'administrative', 'other'];
@@ -180,7 +181,7 @@ export const upsertReportingSchedule = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: schedule });
   } catch (error: any) {
-    console.error('Upsert reporting schedule error:', error);
+    logger.error('Upsert reporting schedule error:', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -200,7 +201,7 @@ export const getReportingSchedule = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: schedule });
   } catch (error: any) {
-    console.error('Get reporting schedule error:', error);
+    logger.error('Get reporting schedule error:', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -227,7 +228,7 @@ export const deactivateReportingSchedule = async (req: Request, res: Response) =
 
     res.json({ success: true, data: schedule, message: 'Reporting schedule deactivated' });
   } catch (error: any) {
-    console.error('Deactivate reporting schedule error:', error);
+    logger.error('Deactivate reporting schedule error:', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -287,7 +288,7 @@ export const listSchedulesGlobal = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: schedules });
   } catch (error: any) {
-    console.error('List schedules (global) error:', error);
+    logger.error('List schedules (global) error:', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -307,7 +308,7 @@ export const getScheduleByIdGlobal = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: schedule });
   } catch (error: any) {
-    console.error('Get schedule by id (global) error:', error);
+    logger.error('Get schedule by id (global) error:', { message: error?.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };

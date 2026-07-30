@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import { Permission } from '../models/Permission';
 import { Role } from '../models/Role';
+import { logger } from '../utils/logger';
 import { clearPermissionCache } from '../middleware/permissionValidator.middleware';
 
 /**
@@ -38,7 +39,7 @@ export const getAllPermissions = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching permissions:', error);
+    logger.error('Error fetching permissions', { message: error?.message });
     res.status(500).json({ 
       success: false, 
       message: 'Error fetching permissions' 
@@ -58,7 +59,7 @@ export const getPermissionCategories = async (req: Request, res: Response) => {
       data: categories.sort()
     });
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    logger.error('Error fetching categories', { message: error?.message });
     res.status(500).json({ 
       success: false, 
       message: 'Error fetching categories' 
@@ -106,7 +107,7 @@ export const createPermission = async (req: Request, res: Response) => {
       message: 'Permission created successfully'
     });
   } catch (error) {
-    console.error('Error creating permission:', error);
+    logger.error('Error creating permission', { message: error?.message });
     res.status(500).json({ 
       success: false, 
       message: 'Error creating permission' 
@@ -143,7 +144,7 @@ export const updatePermission = async (req: Request, res: Response) => {
       message: 'Permission updated successfully'
     });
   } catch (error) {
-    console.error('Error updating permission:', error);
+    logger.error('Error updating permission', { message: error?.message });
     res.status(500).json({ 
       success: false, 
       message: 'Error updating permission' 
@@ -189,7 +190,7 @@ export const deletePermission = async (req: Request, res: Response) => {
       message: 'Permission deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting permission:', error);
+    logger.error('Error deleting permission', { message: error?.message });
     res.status(500).json({ 
       success: false, 
       message: 'Error deleting permission' 
@@ -234,7 +235,7 @@ export const getPermissionStats = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching permission stats:', error);
+    logger.error('Error fetching permission stats', { message: error?.message });
     res.status(500).json({ 
       success: false, 
       message: 'Error fetching permission statistics' 
@@ -285,7 +286,7 @@ export const bulkCreatePermissions = async (req: Request, res: Response) => {
       message: `Created ${results.created.length}, Skipped ${results.skipped.length}, Errors ${results.errors.length}`
     });
   } catch (error) {
-    console.error('Error bulk creating permissions:', error);
+    logger.error('Error bulk creating permissions', { message: error?.message });
     res.status(500).json({ 
       success: false, 
       message: 'Error bulk creating permissions' 

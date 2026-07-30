@@ -9,7 +9,6 @@ import { Search, Calendar, Clock } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import tasksAPI, { type Task } from '@/lib/api/tasksAPI';
-import Layout from '@/components/Layout';
 
 export default function MyTasksPage() {
   const { user } = useAuth();
@@ -88,7 +87,7 @@ export default function MyTasksPage() {
   };
 
   if (loading) {
-    return <Layout><div className="flex justify-center items-center h-64">Loading...</div></Layout>;
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
 
   const tasksByStatus = {
@@ -99,7 +98,6 @@ export default function MyTasksPage() {
   };
 
   return (
-    <Layout>
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -213,6 +211,5 @@ export default function MyTasksPage() {
           ))}
         </div>
       </div>
-    </Layout>
   );
 }

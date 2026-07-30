@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User, { IUser } from '../models/User';
+import { logger } from '../utils/logger';
 
 // Extend the Express Request interface
 declare global {
@@ -36,19 +37,16 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     // Check if token exists
     if (!token || token === 'undefined' || token === 'null') {
-      console.log('[Auth] No token provided');
       return res.status(401).json({
         success: false,
         message: 'Authentication required - no token provided'
       });
     }
 
-    console.log('[Auth] Token received:', token.substring(0, 20) + '...');
-
     // Verify token
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      console.error('JWT_SECRET is not defined in environment variables');
+      logger.error('JWT_SECRET is not defined in environment variables');
       return res.status(500).json({
         success: false,
         message: 'Server configuration error'
@@ -147,7 +145,7 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     UserSession.updateOne(
       { _id: session._id },
       { lastActive: new Date() }
-    ).catch(err => console.error('Failed to update session lastActive:', err));
+    ).catch((err: any) => logger.error('Failed to update session lastActive', { message: err?.message }));
 
     // Store session token hash for session management endpoints
     (req as any).sessionTokenHash = tokenHash;
@@ -210,7 +208,7 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
     next();
   } catch (error: any) {
-    console.error('[Auth] Error:', error.message, '| Token:', token?.substring(0, 20) + '...');
+    logger.error('[Auth] Error', { message: error.message });
 
     if (error.name === 'JsonWebTokenError') {
       if (error.message === 'invalid signature') {
@@ -300,7 +298,7 @@ export const requirePermission = (permission: string) => {
 
       next();
     } catch (error: any) {
-      console.error('[Permission Check] Error:', error.message);
+      logger.error('[Permission Check] Error', { message: error.message });
       res.status(500).json({
         success: false,
         message: 'Error checking permissions'
@@ -340,7 +338,7 @@ export const requireAdminOrRoot = async (req: Request, res: Response, next: Next
 
     next();
   } catch (error: any) {
-    console.error('[Admin Check] Error:', error.message);
+    logger.error('[Admin Check] Error', { message: error.message });
     res.status(500).json({
       success: false,
       message: 'Error checking admin access'

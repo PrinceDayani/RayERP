@@ -1,5 +1,6 @@
 import { Role } from '../models/Role';
 import { Permission } from '../models/Permission';
+import { logger } from './logger';
 
 export const initializeDefaultRoles = async () => {
   try {
@@ -69,25 +70,18 @@ export const initializeDefaultRoles = async () => {
       const existingRole = await Role.findOne({ name: roleData.name });
       if (!existingRole) {
         await Role.create(roleData);
-        console.log(`Created default role: ${roleData.name}`);
       }
     }
-
-    console.log('Default roles initialization completed');
-  } catch (error) {
-    console.error('Error initializing default roles:', error);
+  } catch (error: any) {
+    logger.error('Error initializing default roles', { message: error?.message });
   }
 };
 
 export const initializeOnboardingSystem = async () => {
-  console.log('Initializing onboarding system...');
-  
   // Initialize permissions first (from rbacController)
   const { initializePermissions } = await import('../controllers/rbacController');
   await initializePermissions();
-  
+
   // Then initialize default roles
   await initializeDefaultRoles();
-  
-  console.log('Onboarding system initialization completed');
 };

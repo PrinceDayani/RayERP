@@ -4,6 +4,7 @@ import Task from '../models/Task';
 import User from '../models/User';
 import { Role } from '../models/Role';
 import Department from '../models/Department';
+import { logger } from '../utils/logger';
 // Socket will be imported dynamically to avoid circular dependency
 
 // Helper function to check user permissions
@@ -47,7 +48,7 @@ const checkUserPermission = async (user: any, permission: string): Promise<boole
     
     return userPermissions.has(permission);
   } catch (error) {
-    console.error('Error checking permission:', error);
+    logger.error('Error checking permission', { message: error instanceof Error ? error.message : 'Unknown error' });
     return false;
   }
 };
@@ -122,17 +123,17 @@ export const getEmployeeById = async (req: Request, res: Response) => {
     
     const employee = await Employee.findById(req.params.id).populate('manager', 'firstName lastName');
     if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
+      return res.status(404).json({ success: false, message: 'Employee not found' });
     }
-    
+
     const empObj = employee.toObject();
     if (!hasViewSalary) {
       delete empObj.salary;
     }
-    
-    res.json(empObj);
+
+    res.json({ success: true, data: empObj });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching employee', error });
+    res.status(500).json({ success: false, message: 'Error fetching employee' });
   }
 };
 
@@ -156,7 +157,7 @@ export const createEmployee = async (req: Request, res: Response) => {
       
       attempts++;
       if (attempts >= maxAttempts) {
-        return res.status(500).json({ message: 'Failed to generate unique employee ID. Please try again.' });
+        return res.status(500).json({ success: false, message: 'Failed to generate unique employee ID. Please try again.' });
       }
     }
     
@@ -170,7 +171,7 @@ export const createEmployee = async (req: Request, res: Response) => {
     
     const normalRole = await Role.findOne({ name: 'Normal' });
     if (!normalRole) {
-      return res.status(400).json({ message: 'Normal role not found. Please ensure roles are seeded.' });
+      return res.status(400).json({ success: false, message: 'Normal role not found. Please ensure roles are seeded.' });
     }
     
     // Automatically create user for employee
@@ -184,7 +185,7 @@ export const createEmployee = async (req: Request, res: Response) => {
         status: 'active'
       });
     } catch (userError: any) {
-      return res.status(400).json({ message: 'Failed to create user', error: userError.message });
+      return res.status(400).json({ success: false, message: 'Failed to create user' });
     }
     
     employeeData.user = user._id;
@@ -206,16 +207,16 @@ export const createEmployee = async (req: Request, res: Response) => {
         metadata: { employeeId: employee._id, employeeName: `${employee.firstName} ${employee.lastName}` }
       });
       
-      res.status(201).json(employee);
+      res.status(201).json({ success: true, data: employee });
     } catch (employeeError: any) {
       await User.findByIdAndDelete(user._id);
       
       // Handle duplicate key errors
       if (employeeError.code === 11000) {
         const field = Object.keys(employeeError.keyPattern || {})[0];
-        return res.status(400).json({ 
-          message: `Employee with this ${field} already exists. Please use a different ${field}.`,
-          error: employeeError.message 
+        return res.status(400).json({
+          success: false,
+          message: `Employee with this ${field} already exists. Please use a different ${field}.`
         });
       }
       throw employeeError;
@@ -224,12 +225,12 @@ export const createEmployee = async (req: Request, res: Response) => {
     // Handle duplicate key errors at top level
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern || {})[0];
-      return res.status(400).json({ 
-        message: `Employee with this ${field} already exists. Please use a different ${field}.`,
-        error: error.message 
+      return res.status(400).json({
+        success: false,
+        message: `Employee with this ${field} already exists. Please use a different ${field}.`
       });
     }
-    res.status(400).json({ message: 'Error creating employee', error: error.message });
+    res.status(400).json({ success: false, message: 'Error creating employee' });
   }
 };
 
@@ -250,13 +251,13 @@ export const updateEmployee = async (req: Request, res: Response) => {
     }
     
     if (updateData.user === null || updateData.user === undefined || updateData.user === '') {
-      return res.status(400).json({ message: 'Employee must have an associated user' });
+      return res.status(400).json({ success: false, message: 'Employee must have an associated user' });
     }
     
     if (updateData.user) {
       const userExists = await User.findById(updateData.user);
       if (!userExists) {
-        return res.status(400).json({ message: 'User does not exist' });
+        return res.status(400).json({ success: false, message: 'User does not exist' });
       }
     }
     
@@ -276,9 +277,9 @@ export const updateEmployee = async (req: Request, res: Response) => {
       { new: true, runValidators: true }
     );
     if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
+      return res.status(404).json({ success: false, message: 'Employee not found' });
     }
-    
+
     // Sync user data with employee data
     if (employee.user && (updateData.firstName || updateData.lastName || updateData.email)) {
       const userUpdate: any = {};
@@ -306,9 +307,9 @@ export const updateEmployee = async (req: Request, res: Response) => {
       metadata: { employeeId: employee._id, employeeName: `${employee.firstName} ${employee.lastName}` }
     });
     
-    res.json(employee);
+    res.json({ success: true, data: employee });
   } catch (error: any) {
-    res.status(400).json({ message: 'Error updating employee', error: error.message });
+    res.status(400).json({ success: false, message: 'Error updating employee' });
   }
 };
 
@@ -349,21 +350,27 @@ export const getEmployeeTasks = async (req: Request, res: Response) => {
     }
 
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
-    
+
+    // Resolve the target employee to its User identity; Task.assignedTo refs User, not Employee.
+    const targetEmployee = await Employee.findById(req.params.id).select('user');
+    if (!targetEmployee) {
+      return res.status(404).json({ success: false, message: 'Employee not found' });
+    }
+
     // Non-admin users can only see their own tasks
     if (roleName !== 'Root' && roleName !== 'Super Admin') {
       const employee = await Employee.findOne({ user: user._id });
       if (!employee || employee._id.toString() !== req.params.id) {
-        return res.status(403).json({ message: 'Access denied: You can only view your own tasks' });
+        return res.status(403).json({ success: false, message: 'Access denied: You can only view your own tasks' });
       }
     }
 
-    const tasks = await Task.find({ assignedTo: req.params.id })
+    const tasks = await Task.find({ assignedTo: targetEmployee.user })
       .populate('project', 'name')
-      .populate('assignedBy', 'firstName lastName');
-    res.json(tasks);
+      .populate('assignedBy', 'name email');
+    res.json({ success: true, data: tasks });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching employee tasks', error });
+    res.status(500).json({ success: false, message: 'Error fetching employee tasks' });
   }
 };
 
@@ -380,7 +387,7 @@ export const getEmployeeTaskStats = async (req: Request, res: Response) => {
     if (roleName !== 'Root' && roleName !== 'Super Admin') {
       const employee = await Employee.findOne({ user: user._id });
       if (!employee || employee._id.toString() !== req.params.id) {
-        return res.status(403).json({ message: 'Access denied: You can only view your own statistics' });
+        return res.status(403).json({ success: false, message: 'Access denied: You can only view your own statistics' });
       }
     }
 
@@ -401,8 +408,8 @@ export const getEmployeeTaskStats = async (req: Request, res: Response) => {
       overdue
     };
     
-    res.json(stats);
+    res.json({ success: true, data: stats });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching employee task stats', error });
+    res.status(500).json({ success: false, message: 'Error fetching employee task stats' });
   }
 };

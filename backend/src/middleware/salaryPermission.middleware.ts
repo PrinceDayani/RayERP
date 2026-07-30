@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import User from '../models/User';
 import Employee from '../models/Employee';
 import Department from '../models/Department';
+import { logger } from '../utils/logger';
 
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -62,8 +63,8 @@ export const canViewSalary = async (req: AuthenticatedRequest, res: Response, ne
     }
 
     next();
-  } catch (error) {
-    console.error('Salary permission middleware error:', error);
+  } catch (error: any) {
+    logger.error('Salary permission middleware error', { message: error?.message });
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -123,8 +124,8 @@ export const canEditSalary = async (req: AuthenticatedRequest, res: Response, ne
     }
 
     next();
-  } catch (error) {
-    console.error('Salary permission middleware error:', error);
+  } catch (error: any) {
+    logger.error('Salary permission middleware error', { message: error?.message });
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -178,8 +179,8 @@ export const sanitizeSalaryData = async (req: AuthenticatedRequest, res: Respons
 
     req.user.canViewSalary = userPermissions.has('employees.view_salary');
     next();
-  } catch (error) {
-    console.error('Sanitize salary middleware error:', error);
+  } catch (error: any) {
+    logger.error('Sanitize salary middleware error', { message: error?.message });
     next();
   }
 };

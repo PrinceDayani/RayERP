@@ -9,6 +9,7 @@ import { protect } from '../middleware/auth.middleware';
 import { requireFinanceAccess } from '../middleware/financePermission.middleware';
 import multer from 'multer';
 import fs from 'fs';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 router.use(protect);
@@ -152,7 +153,7 @@ router.get('/', requireFinanceAccess('journal.view'), async (req, res) => {
       .lean();
     res.json({ success: true, data: entries });
   } catch (error: any) {
-    console.error('Journal entries fetch error:', error);
+    logger.error('Journal entries fetch error', { message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -269,8 +270,8 @@ router.post('/:id/post', requireFinanceAccess('journal.post'), async (req, res) 
             }
           }
         }
-      } catch (refError) {
-        console.error('Error creating references:', refError);
+      } catch (refError: any) {
+        logger.error('Error creating references', { message: refError?.message });
         // Don't fail the posting if reference creation fails
       }
     }
@@ -580,13 +581,13 @@ router.get('/:id', requireFinanceAccess('journal.view'), async (req, res) => {
   try {
     const entry = await JournalEntry.findById(req.params.id)
       .populate('lines.account', 'code name type contactInfo')
-      .populate('createdBy', 'firstName lastName name email')
-      .populate('postedBy', 'firstName lastName name email')
+      .populate('createdBy', 'name email')
+      .populate('postedBy', 'name email')
       .lean();
     if (!entry) return res.status(404).json({ success: false, message: 'Entry not found' });
     res.json({ success: true, data: entry });
   } catch (error: any) {
-    console.error('Error fetching journal entry:', error);
+    logger.error('Error fetching journal entry', { message: error.message });
     res.status(500).json({ success: false, message: error.message });
   }
 });

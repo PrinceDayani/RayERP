@@ -151,17 +151,11 @@ export default function AuditTrailPage() {
         params.append('startDate', startDate.toISOString());
       }
 
-      console.log('Fetching audit logs with params:', params.toString());
       const response = await apiClient.get(`/audit-trail?${params}`);
-      console.log('Full API response:', response);
-      console.log('Response data field:', response.data);
-      console.log('Is data.data an array?', Array.isArray(response.data));
-      console.log('data.data length:', response.data?.length);
-      
+
       // Handle both response formats
       const logs = response.data?.data || response.data || [];
-      console.log('Extracted logs:', logs);
-      
+
       setAuditLogs(logs);
       setTotalPages(response.data?.pagination?.pages || 1);
       setRateLimited(false);

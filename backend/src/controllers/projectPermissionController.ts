@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import ProjectPermission from '../models/ProjectPermission';
 import { logActivity } from '../utils/activityLogger';
+import { logger } from '../utils/logger';
 
 export const getProjectPermissions = async (req: Request, res: Response) => {
   try {
@@ -12,7 +13,7 @@ export const getProjectPermissions = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: permissions });
   } catch (error) {
-    console.error('Error fetching project permissions:', error);
+    logger.error('Error fetching project permissions:', { message: error?.message });
     res.status(500).json({ success: false, message: 'Failed to fetch project permissions' });
   }
 };
@@ -67,7 +68,7 @@ export const setProjectPermissions = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: result });
   } catch (error) {
-    console.error('Error setting project permissions:', error);
+    logger.error('Error setting project permissions:', { message: error?.message });
     res.status(500).json({ success: false, message: 'Failed to set project permissions' });
   }
 };
@@ -104,7 +105,7 @@ export const removeProjectPermissions = async (req: Request, res: Response) => {
 
     res.json({ success: true, message: 'Project permissions removed successfully' });
   } catch (error) {
-    console.error('Error removing project permissions:', error);
+    logger.error('Error removing project permissions:', { message: error?.message });
     res.status(500).json({ success: false, message: 'Failed to remove project permissions' });
   }
 };
@@ -124,7 +125,7 @@ export const getEmployeeProjectPermissions = async (req: Request, res: Response)
       data: permission ? permission.permissions : []
     });
   } catch (error) {
-    console.error('Error fetching project permissions:', error);
+    logger.error('Error fetching project permissions:', { message: error?.message });
     res.status(500).json({ success: false, message: 'Failed to fetch project permissions' });
   }
 };

@@ -38,13 +38,8 @@ export default function CreateBillDialog({ onClose, onSuccess }: CreateBillDialo
   const fetchAccounts = async () => {
     try {
       const res = await api.get('/accounts');
-      console.log('Full API response:', res);
-      console.log('Response data:', res.data);
-      console.log('Accounts array:', res.data.data);
-      console.log('Accounts length:', res.data.data?.length);
-      
+
       const accountsData = res.data.data || res.data.accounts || res.data || [];
-      console.log('Setting accounts:', accountsData);
       setAccounts(accountsData);
       
       if (!accountsData || accountsData.length === 0) {

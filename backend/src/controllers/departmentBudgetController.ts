@@ -53,7 +53,7 @@ export const getDepartmentBudgets = async (req: Request, res: Response) => {
 
     const budgets = await DepartmentBudget.find(filter)
       .populate('departmentId', 'name')
-      .populate('approvedBy', 'firstName lastName')
+      .populate('approvedBy', 'name email')
       .sort({ createdAt: -1 });
 
     setCache(cacheKey, budgets);
@@ -71,7 +71,7 @@ export const getDepartmentBudgetById = async (req: Request, res: Response) => {
 
     const budget = await DepartmentBudget.findById(req.params.id)
       .populate('departmentId', 'name')
-      .populate('approvedBy', 'firstName lastName');
+      .populate('approvedBy', 'name email');
 
     if (!budget) {
       return res.status(404).json({ success: false, message: 'Budget not found' });

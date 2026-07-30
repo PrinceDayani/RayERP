@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Task from '../models/Task';
 import mongoose from 'mongoose';
+import { logger } from '../utils/logger';
 
 export const getTaskAnalytics = async (req: Request, res: Response) => {
   try {
@@ -69,7 +70,7 @@ export const getTaskAnalytics = async (req: Request, res: Response) => {
       'self-assigned': tasks.filter(t => t.assignmentType === 'self-assigned').length
     };
     
-    res.json({
+    res.json({ success: true, data: {
       summary: {
         total: tasks.length,
         completed: completedTasks.length,
@@ -91,10 +92,10 @@ export const getTaskAnalytics = async (req: Request, res: Response) => {
         overdueCount: overdueTasks.length,
         overduePercentage: tasks.length > 0 ? Math.round((overdueTasks.length / tasks.length * 100) * 100) / 100 : 0
       }
-    });
+    } });
   } catch (error) {
-    console.error('Analytics error:', error);
-    res.status(500).json({ message: 'Error fetching analytics', error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.error('Analytics error:', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching analytics', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -102,8 +103,8 @@ export const getProductivityMetrics = async (req: Request, res: Response) => {
   try {
     const { userId, startDate, endDate } = req.query;
     
-    if (!userId) return res.status(400).json({ message: 'User ID required' });
-    
+    if (!userId) return res.status(400).json({ success: false, message: 'User ID required' });
+
     const filter: any = { assignedTo: userId, isTemplate: false };
     if (startDate || endDate) {
       filter.createdAt = {};
@@ -130,17 +131,17 @@ export const getProductivityMetrics = async (req: Request, res: Response) => {
         }, 0) / tasksWithTime.length
       : 100;
     
-    res.json({
+    res.json({ success: true, data: {
       totalTasks: tasks.length,
       completedTasks: completed.length,
       completionRate: tasks.length > 0 ? Math.round((completed.length / tasks.length * 100) * 100) / 100 : 0,
       avgEfficiency: Math.round(avgEfficiency * 100) / 100,
       dailyCompletion,
       totalHoursWorked: Math.round(tasks.reduce((sum, t) => sum + (t.actualHours || 0), 0) * 100) / 100
-    });
+    } });
   } catch (error) {
-    console.error('Productivity metrics error:', error);
-    res.status(500).json({ message: 'Error fetching productivity metrics', error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.error('Productivity metrics error:', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching productivity metrics', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -148,8 +149,8 @@ export const getProjectAnalytics = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.query;
     
-    if (!projectId) return res.status(400).json({ message: 'Project ID required' });
-    
+    if (!projectId) return res.status(400).json({ success: false, message: 'Project ID required' });
+
     const tasks = await Task.find({ project: projectId, isTemplate: false })
       .populate('assignedTo', 'name email');
     
@@ -182,7 +183,7 @@ export const getProjectAnalytics = async (req: Request, res: Response) => {
       weeklyVelocity[week] = (weeklyVelocity[week] || 0) + 1;
     });
     
-    res.json({
+    res.json({ success: true, data: {
       totalTasks: tasks.length,
       completedTasks: completedTasks.length,
       teamPerformance: Object.values(teamPerformance),
@@ -190,10 +191,10 @@ export const getProjectAnalytics = async (req: Request, res: Response) => {
       avgVelocity: Object.keys(weeklyVelocity).length > 0
         ? Math.round((Object.values(weeklyVelocity).reduce((a, b) => a + b, 0) / Object.keys(weeklyVelocity).length) * 100) / 100
         : 0
-    });
+    } });
   } catch (error) {
-    console.error('Project analytics error:', error);
-    res.status(500).json({ message: 'Error fetching project analytics', error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.error('Project analytics error:', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching project analytics', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -227,7 +228,7 @@ export const getBurndownChart = async (req: Request, res: Response) => {
     
     res.json({ burndown: dailyData, totalTasks });
   } catch (error) {
-    console.error('Burndown chart error:', error);
+    logger.error('Burndown chart error:', { message: error?.message });
     res.status(500).json({ message: 'Error generating burndown chart', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -236,8 +237,8 @@ export const getVelocityMetrics = async (req: Request, res: Response) => {
   try {
     const { projectId, weeks = 4 } = req.query;
     
-    if (!projectId) return res.status(400).json({ message: 'Project ID required' });
-    
+    if (!projectId) return res.status(400).json({ success: false, message: 'Project ID required' });
+
     const tasks = await Task.find({ project: projectId, isTemplate: false, status: 'completed' });
     
     const weeklyVelocity: { [key: string]: { completed: number; points: number } } = {};
@@ -259,10 +260,10 @@ export const getVelocityMetrics = async (req: Request, res: Response) => {
       ? velocityData.reduce((sum, d) => sum + d.completed, 0) / velocityData.length
       : 0;
     
-    res.json({ velocity: velocityData, avgVelocity: Math.round(avgVelocity * 100) / 100 });
+    res.json({ success: true, data: { velocity: velocityData, avgVelocity: Math.round(avgVelocity * 100) / 100 } });
   } catch (error) {
-    console.error('Velocity metrics error:', error);
-    res.status(500).json({ message: 'Error calculating velocity', error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.error('Velocity metrics error:', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error calculating velocity', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -314,10 +315,10 @@ export const getTeamPerformance = async (req: Request, res: Response) => {
       efficiency: stats.hoursEstimated > 0 ? Math.round((stats.hoursEstimated / stats.hoursActual * 100) * 100) / 100 : 100
     }));
     
-    res.json({ performance });
+    res.json({ success: true, data: { performance } });
   } catch (error) {
-    console.error('Team performance error:', error);
-    res.status(500).json({ message: 'Error fetching team performance', error: error instanceof Error ? error.message : 'Unknown error' });
+    logger.error('Team performance error:', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching team performance', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 

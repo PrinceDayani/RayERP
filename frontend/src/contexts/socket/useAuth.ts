@@ -10,7 +10,6 @@ export const useSocketAuth = (token?: string) => {
     if (!socket || !isConnected) return;
 
     const handleAuthSuccess = (data: { userId: string; timestamp: string }) => {
-      console.log('Socket authenticated:', data.userId);
     };
 
     const handleAuthError = (error: string) => {

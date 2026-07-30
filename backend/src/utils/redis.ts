@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { logger } from './logger';
 
 let redisClient: Redis | null = null;
 let isRedisAvailable = false;
@@ -14,7 +15,7 @@ export const initRedis = () => {
       maxRetriesPerRequest: 3,
       retryStrategy: (times) => {
         if (times > 3) {
-          console.warn('[Redis] Max retries reached, falling back to in-memory cache');
+          logger.warn('[Redis] Max retries reached, falling back to in-memory cache');
           return null;
         }
         return Math.min(times * 100, 2000);
@@ -23,22 +24,21 @@ export const initRedis = () => {
     });
 
     redisClient.on('connect', () => {
-      console.log('[Redis] Connected successfully');
       isRedisAvailable = true;
     });
 
     redisClient.on('error', (err) => {
-      console.warn('[Redis] Connection error, using in-memory fallback:', err.message);
+      logger.warn('[Redis] Connection error, using in-memory fallback', { message: err.message });
       isRedisAvailable = false;
     });
 
     redisClient.connect().catch(() => {
-      console.warn('[Redis] Failed to connect, using in-memory cache');
+      logger.warn('[Redis] Failed to connect, using in-memory cache');
       isRedisAvailable = false;
     });
 
-  } catch (error) {
-    console.warn('[Redis] Initialization failed, using in-memory cache:', error);
+  } catch (error: any) {
+    logger.warn('[Redis] Initialization failed, using in-memory cache', { message: error?.message });
     isRedisAvailable = false;
   }
 };
@@ -47,8 +47,8 @@ export const getCache = async (key: string): Promise<string | null> => {
   if (isRedisAvailable && redisClient) {
     try {
       return await redisClient.get(key);
-    } catch (error) {
-      console.warn('[Redis] Get failed, checking memory cache:', error);
+    } catch (error: any) {
+      logger.warn('[Redis] Get failed, checking memory cache', { message: error?.message });
     }
   }
 
@@ -66,8 +66,8 @@ export const setCache = async (key: string, value: string, ttlSeconds: number = 
     try {
       await redisClient.setex(key, ttlSeconds, value);
       return;
-    } catch (error) {
-      console.warn('[Redis] Set failed, using memory cache:', error);
+    } catch (error: any) {
+      logger.warn('[Redis] Set failed, using memory cache', { message: error?.message });
     }
   }
 
@@ -82,8 +82,8 @@ export const deleteCache = async (key: string): Promise<void> => {
   if (isRedisAvailable && redisClient) {
     try {
       await redisClient.del(key);
-    } catch (error) {
-      console.warn('[Redis] Delete failed:', error);
+    } catch (error: any) {
+      logger.warn('[Redis] Delete failed', { message: error?.message });
     }
   }
   memoryCache.delete(key);
@@ -96,8 +96,8 @@ export const deleteCachePattern = async (pattern: string): Promise<void> => {
       if (keys.length > 0) {
         await redisClient.del(...keys);
       }
-    } catch (error) {
-      console.warn('[Redis] Delete pattern failed:', error);
+    } catch (error: any) {
+      logger.warn('[Redis] Delete pattern failed', { message: error?.message });
     }
   }
 
@@ -118,8 +118,8 @@ export const incrementCounter = async (key: string, ttlSeconds: number = 60): Pr
         await redisClient.expire(key, ttlSeconds);
       }
       return count;
-    } catch (error) {
-      console.warn('[Redis] Increment failed:', error);
+    } catch (error: any) {
+      logger.warn('[Redis] Increment failed', { message: error?.message });
     }
   }
 
@@ -143,7 +143,6 @@ export const isRedisConnected = () => isRedisAvailable;
 export const closeRedis = async () => {
   if (redisClient) {
     await redisClient.quit();
-    console.log('[Redis] Connection closed');
   }
   memoryCache.clear();
 };

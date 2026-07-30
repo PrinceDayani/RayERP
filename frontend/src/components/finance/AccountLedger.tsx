@@ -117,15 +117,11 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
 
       const token = localStorage.getItem('auth-token');
       const url = `${process.env.NEXT_PUBLIC_API_URL}/api/general-ledger/accounts/${accountId}/ledger?${queryParams}`;
-      console.log('=== FETCHING ACCOUNT LEDGER ===');
-      console.log('URL:', url);
-      console.log('Account ID:', accountId);
-      
+
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      console.log('Response status:', response.status);
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error response:', errorText);
@@ -133,10 +129,6 @@ const AccountLedger: React.FC<AccountLedgerProps> = ({ accountId: propAccountId 
       }
 
       const data = await response.json();
-      console.log('Response data:', data);
-      console.log('Account:', data.account);
-      console.log('Entries count:', data.entries?.length);
-      
       setAccount(data.account);
       setEntries(data.entries);
     } catch (err) {

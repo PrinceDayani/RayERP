@@ -3,6 +3,7 @@
 import { Request, Response } from 'express';
 import Task from '../models/Task';
 import cron from 'node-cron';
+import { logger } from '../utils/logger';
 
 export const setRecurring = async (req: Request, res: Response) => {
   try {
@@ -20,7 +21,7 @@ export const setRecurring = async (req: Request, res: Response) => {
     
     res.json({ success: true, task });
   } catch (error) {
-    console.error('Set recurring error:', error);
+    logger.error('Set recurring error:', { message: error?.message });
     res.status(500).json({ message: 'Error setting recurrence', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -55,7 +56,7 @@ export const processRecurringTasks = async () => {
       io.emit('task:recurring:created', { originalId: task._id, newTask });
     }
   } catch (error) {
-    console.error('Process recurring tasks error:', error);
+    logger.error('Process recurring tasks error:', { message: error?.message });
   }
 };
 

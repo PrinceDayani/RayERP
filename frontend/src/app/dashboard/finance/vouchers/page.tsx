@@ -18,10 +18,6 @@ import { AccountSelector } from '@/components/finance/AccountSelector';
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export default function VouchersPage() {
-  // Debug API URL
-  if (typeof window !== 'undefined') {
-    console.log('API_URL:', API_URL);
-  }
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
@@ -84,17 +80,14 @@ export default function VouchersPage() {
       if (filterStatus !== 'all') params.append('status', filterStatus);
       
       const url = `${API_URL}/api/vouchers?${params}`;
-      console.log('Fetching vouchers from:', url);
-      
+
       const res = await fetch(url, {
-        headers: { 
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      
-      console.log('Response status:', res.status);
-      
+
       if (!res.ok) {
         const errorText = await res.text();
         console.error('API Error Response:', errorText);
@@ -102,8 +95,7 @@ export default function VouchersPage() {
       }
       
       const data = await res.json();
-      console.log('Vouchers data:', data);
-      
+
       if (data.success) {
         setVouchers(data.data || []);
         setTotalPages(data.pagination?.pages || 1);
@@ -194,8 +186,7 @@ export default function VouchersPage() {
 
     // Validate lines
     const validLines = lines.filter(l => l.accountId && (parseFloat(String(l.debit)) > 0 || parseFloat(String(l.credit)) > 0));
-    console.log('Valid lines:', validLines);
-    
+
     if (validLines.length === 0) {
       toast({ title: 'Error', description: 'Please add at least one valid transaction line', variant: 'destructive' });
       return;
@@ -203,7 +194,6 @@ export default function VouchersPage() {
 
     const totalDebit = validLines.reduce((sum, l) => sum + (parseFloat(String(l.debit)) || 0), 0);
     const totalCredit = validLines.reduce((sum, l) => sum + (parseFloat(String(l.credit)) || 0), 0);
-    console.log('Totals:', { totalDebit, totalCredit });
 
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
       toast({ title: 'Error', description: `Debits (₹${totalDebit.toFixed(2)}) must equal credits (₹${totalCredit.toFixed(2)})`, variant: 'destructive' });
@@ -244,7 +234,6 @@ export default function VouchersPage() {
         payload.invoiceDate = formData.invoiceDate;
       }
 
-      console.log('Sending voucher payload:', payload);
       const res = await fetch(`${API_URL}/api/vouchers`, {
         method: 'POST',
         headers: {
@@ -255,8 +244,6 @@ export default function VouchersPage() {
       });
 
       const data = await res.json();
-      console.log('Response:', { status: res.status, data });
-      console.log('Response headers:', Object.fromEntries(res.headers.entries()));
 
       if (res.ok) {
         toast({ title: 'Success', description: 'Voucher created successfully' });
@@ -566,8 +553,6 @@ td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 12px; }
       const data = await res.json();
       
       if (data.success) {
-        console.log('Voucher details:', data.data);
-        console.log('Lines:', data.data.lines);
         setSelectedVoucher(data.data);
         setShowViewDialog(true);
       } else {

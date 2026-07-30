@@ -1,6 +1,7 @@
 //path: backend/src/utils/taskUtils.ts
 import Task from '../models/Task';
 import Project from '../models/Project';
+import { logger } from './logger';
 
 export const getTaskStats = async () => {
   try {
@@ -23,8 +24,8 @@ export const getTaskStats = async () => {
       overdueTasks,
       completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
     };
-  } catch (error) {
-    console.error('Error calculating task stats:', error);
+  } catch (error: any) {
+    logger.error('Error calculating task stats', { message: error?.message });
     return null;
   }
 };
@@ -35,8 +36,8 @@ export const getTasksByProject = async (projectId: string) => {
       .populate('assignedTo', 'name email')
       .populate('assignedBy', 'name email')
       .sort({ createdAt: -1 });
-  } catch (error) {
-    console.error('Error fetching tasks by project:', error);
+  } catch (error: any) {
+    logger.error('Error fetching tasks by project', { message: error?.message });
     return [];
   }
 };
@@ -47,8 +48,8 @@ export const getTasksByUser = async (userId: string) => {
       .populate('project', 'name')
       .populate('assignedBy', 'name email')
       .sort({ dueDate: 1 });
-  } catch (error) {
-    console.error('Error fetching tasks by user:', error);
+  } catch (error: any) {
+    logger.error('Error fetching tasks by user', { message: error?.message });
     return [];
   }
 };

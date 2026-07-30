@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import ChartOfAccount from '../models/ChartOfAccount';
 import User from '../models/User';
+import { logger } from './logger';
 
 const defaultAccounts = [
   // Assets
@@ -28,13 +29,10 @@ const defaultAccounts = [
 
 export const seedDefaultAccounts = async () => {
   try {
-    console.log('Seeding default chart of accounts...');
-    
     // Get system user for createdBy field
     const systemUser = await User.findOne({ email: 'admin@rayerp.com' }) || await User.findOne().sort({ createdAt: 1 });
-    
+
     if (!systemUser) {
-      console.log('No user found, skipping chart of accounts seeding');
       return;
     }
     
@@ -47,15 +45,10 @@ export const seedDefaultAccounts = async () => {
           createdBy: systemUser._id
         });
         await account.save();
-        console.log(`Created account: ${accountData.code} - ${accountData.name}`);
-      } else {
-        console.log(`Account already exists: ${accountData.code} - ${accountData.name}`);
       }
     }
-    
-    console.log('Default accounts seeding completed');
-  } catch (error) {
-    console.error('Error seeding default accounts:', error);
+  } catch (error: any) {
+    logger.error('Error seeding default accounts', { message: error?.message });
   }
 };
 

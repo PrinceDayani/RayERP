@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import Project from '../models/Project';
 import Task from '../models/Task';
 import mongoose from 'mongoose';
+import { logger } from '../utils/logger';
 
 export const getBurndownChart = async (req: Request, res: Response) => {
   try {
@@ -39,7 +40,7 @@ export const getBurndownChart = async (req: Request, res: Response) => {
 
     res.json({ burndownData, totalTasks, totalDays });
   } catch (error) {
-    console.error('Burndown chart error:', error);
+    logger.error('Burndown chart error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching burndown chart', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -78,7 +79,7 @@ export const getVelocity = async (req: Request, res: Response) => {
 
     res.json({ velocityData, avgVelocity, totalCompleted: completedTasks.length });
   } catch (error) {
-    console.error('Velocity error:', error);
+    logger.error('Velocity error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching velocity', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -126,7 +127,7 @@ export const getResourceUtilization = async (req: Request, res: Response) => {
 
     res.json({ utilizationData, teamSize: project.team?.length || 0 });
   } catch (error) {
-    console.error('Resource utilization error:', error);
+    logger.error('Resource utilization error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching resource utilization', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -175,7 +176,7 @@ export const getPerformanceIndices = async (req: Request, res: Response) => {
       status: cpi >= 1 && spi >= 1 ? 'on-track' : cpi < 1 ? 'over-budget' : 'behind-schedule'
     });
   } catch (error) {
-    console.error('Performance indices error:', error);
+    logger.error('Performance indices error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching performance indices', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -267,7 +268,7 @@ export const getRiskAssessment = async (req: Request, res: Response) => {
       projectHealth: overallRisk === 'low' ? 'healthy' : overallRisk === 'medium' ? 'at-risk' : 'critical'
     });
   } catch (error) {
-    console.error('Risk assessment error:', error);
+    logger.error('Risk assessment error:', { message: error?.message });
     res.status(500).json({ message: 'Error fetching risk assessment', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

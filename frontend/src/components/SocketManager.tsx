@@ -28,8 +28,7 @@ export default function SocketManager() {
         socket.on('connect', () => {
           if (mounted) {
             setConnectionStatus('connected');
-            console.log('✅ Socket connected successfully');
-            
+
             // Start real-time data simulation when connected
             realTimeDataManager.startSimulation();
           }
@@ -112,11 +111,6 @@ export default function SocketManager() {
       disconnectSocket();
     };
   }, []);
-
-  // Optional: You can expose connection status for debugging
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Socket status:', connectionStatus);
-  }
 
   return null; // This component doesn't render anything
 }

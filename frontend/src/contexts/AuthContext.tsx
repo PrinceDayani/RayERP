@@ -108,7 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         
         socket.on('disconnect', (reason) => {
-          console.log('Socket disconnected:', reason);
         });
       } catch (error) {
         console.warn('Socket initialization failed:', error);

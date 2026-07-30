@@ -1,5 +1,6 @@
 import Timeline from '../models/Timeline';
 import mongoose from 'mongoose';
+import { logger } from './logger';
 
 export const createTimelineEvent = async (
   entityType: 'project' | 'task',
@@ -41,8 +42,8 @@ export const createTimelineEvent = async (
 
     await timelineEvent.save();
     return timelineEvent;
-  } catch (error) {
-    console.error('Error creating timeline event:', error);
+  } catch (error: any) {
+    logger.error('Error creating timeline event', { message: error?.message });
     throw error; // Re-throw to let caller handle
   }
 };
@@ -67,8 +68,8 @@ export const getEntityTimeline = async (entityType: 'project' | 'task', entityId
     .sort({ createdAt: -1 });
 
     return timeline;
-  } catch (error) {
-    console.error('Error fetching timeline:', error);
+  } catch (error: any) {
+    logger.error('Error fetching timeline', { message: error?.message });
     throw error; // Re-throw to let caller handle
   }
 };

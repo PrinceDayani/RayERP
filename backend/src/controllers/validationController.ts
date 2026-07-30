@@ -4,12 +4,7 @@ import { Request, Response } from 'express';
 // import Inventory from '../models/Inventory';
 // import Product from '../models/Product';
 // import Customer from '../models/Customer';
-// import { logger } from '../utils/logger';
-
-// Placeholder logger
-const logger = {
-  error: (message: string) => console.error(message)
-};
+import { logger } from '../utils/logger';
 
 // Validate inventory stock levels for a list of products
 // Commented out until Inventory model is created

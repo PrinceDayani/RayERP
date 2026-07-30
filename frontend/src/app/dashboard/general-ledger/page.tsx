@@ -140,10 +140,7 @@ export default function GeneralLedgerPage() {
         generalLedgerAPI.getAccounts({}),
         generalLedgerAPI.getJournalEntries({ limit: 50, page: 1 })
       ]);
-      
-      console.log('Fetched accounts:', accountsData.accounts);
-      console.log('Groups:', accountsData.accounts?.filter((a: Account) => a.isGroup));
-      console.log('Ledgers:', accountsData.accounts?.filter((a: Account) => !a.isGroup));
+
       setAccounts(accountsData.accounts || []);
       setJournalEntries(journalData.journalEntries || []);
     } catch (error: any) {
@@ -267,11 +264,9 @@ export default function GeneralLedgerPage() {
           code: `${formData.name.substring(0, 3).toUpperCase()}${Date.now()}`,
           level: 0
         };
-        
-        console.log('Creating account with data:', accountData);
-        const result = await generalLedgerAPI.createAccount(accountData);
-        console.log('Account created:', result);
-        
+
+        await generalLedgerAPI.createAccount(accountData);
+
         toast({
           title: 'Success',
           description: 'Account group created successfully'

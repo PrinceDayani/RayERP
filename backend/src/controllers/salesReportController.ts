@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Invoice } from '../models/Finance';
 import { validationResult } from 'express-validator';
+import { logger } from '../utils/logger';
 
 interface InvoiceFilter {
   invoiceType: string;
@@ -100,7 +101,7 @@ export const getSalesReport = async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error fetching sales report:', error.message);
+      logger.error('Error fetching sales report', { message: error.message });
     }
     res.status(500).json({ success: false, message: 'Failed to fetch sales report', code: 'SERVER_ERROR' });
   }
@@ -158,7 +159,7 @@ export const getSalesSummary = async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error fetching sales summary:', error.message);
+      logger.error('Error fetching sales summary', { message: error.message });
     }
     res.status(500).json({ success: false, message: 'Failed to fetch sales summary', code: 'SERVER_ERROR' });
   }
@@ -194,7 +195,7 @@ export const getTopCustomers = async (req: Request, res: Response) => {
     res.json({ success: true, data: topCustomers });
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error fetching top customers:', error.message);
+      logger.error('Error fetching top customers', { message: error.message });
     }
     res.status(500).json({ success: false, message: 'Failed to fetch top customers', code: 'SERVER_ERROR' });
   }
@@ -241,7 +242,7 @@ export const getSalesTrends = async (req: Request, res: Response) => {
     res.json({ success: true, data: trends });
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error fetching sales trends:', error.message);
+      logger.error('Error fetching sales trends', { message: error.message });
     }
     res.status(500).json({ success: false, message: 'Failed to fetch sales trends', code: 'SERVER_ERROR' });
   }
@@ -308,7 +309,7 @@ export const getMonthlyTrends = async (req: Request, res: Response) => {
     res.json({ success: true, data: monthlyData });
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error fetching monthly trends:', error.message);
+      logger.error('Error fetching monthly trends', { message: error.message });
     }
     res.status(500).json({ success: false, message: 'Failed to fetch monthly trends', code: 'SERVER_ERROR' });
   }

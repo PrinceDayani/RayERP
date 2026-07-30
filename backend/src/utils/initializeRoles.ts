@@ -1,4 +1,5 @@
 import { Role } from '../models/Role';
+import { logger } from './logger';
 
 export const initializeDefaultRoles = async () => {
   const defaultRoles = [
@@ -64,18 +65,15 @@ export const initializeDefaultRoles = async () => {
       const existing = await Role.findOne({ name: roleData.name });
       if (!existing) {
         await Role.create(roleData);
-        console.log(`✅ Created default role: ${roleData.name}`);
       } else if (roleData.name === 'Root') {
         // Ensure Root always has all permissions
         existing.permissions = ['*'];
         existing.level = 100;
         existing.isDefault = true;
         await existing.save();
-        console.log(`✅ Updated Root role with all permissions`);
       }
     }
-    console.log('✅ Default roles initialized');
-  } catch (error) {
-    console.error('❌ Error initializing default roles:', error);
+  } catch (error: any) {
+    logger.error('Error initializing default roles', { message: error?.message });
   }
 };

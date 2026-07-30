@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import ActivityLog from '../models/ActivityLog';
+import { logger } from '../utils/logger';
 
 export const logActivity = (action: string, resource: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -21,8 +22,8 @@ export const logActivity = (action: string, resource: string) => {
             details: `${action} ${resource} - ${status}`,
             ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
           });
-        } catch (error) {
-          console.error('Failed to log activity:', error);
+        } catch (error: any) {
+          logger.error('Failed to log activity', { message: error?.message });
         }
       });
       

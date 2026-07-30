@@ -54,26 +54,18 @@ export default function BudgetTemplatesPage() {
   }, [templates, searchQuery]);
 
   const fetchTemplates = async () => {
-    console.log('Fetching templates...');
     try {
       const token = localStorage.getItem('auth-token');
-      console.log('Token exists:', !!token);
-      
+
       const response = await fetch('/api/budget-templates', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
-      console.log('Response status:', response.status);
-      
+
       if (response.ok) {
         const result = await response.json();
-        console.log('Raw result:', result);
-        
+
         const templateData = result.data || result || [];
-        console.log('Template data:', templateData);
-        console.log('Is array:', Array.isArray(templateData));
-        console.log('Length:', templateData.length);
-        
+
         const templates = (Array.isArray(templateData) ? templateData : []).map((t: any) => ({
           ...t,
           categories: (t.categories || []).map((cat: any) => ({
@@ -81,8 +73,7 @@ export default function BudgetTemplatesPage() {
             items: cat.items || []
           }))
         }));
-        
-        console.log('Processed templates:', templates);
+
         setTemplates(templates);
         toast({
           title: "Templates Loaded",

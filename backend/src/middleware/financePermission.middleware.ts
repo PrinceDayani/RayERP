@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import User from '../models/User';
 import Employee from '../models/Employee';
 import Department from '../models/Department';
+import { logger } from '../utils/logger';
 
 const checkFinanceAccess = async (req: Request): Promise<boolean> => {
   if (!req.user) return false;
@@ -70,8 +71,8 @@ export const requireFinanceAccess = (specificPermission: string) => {
       }
 
       next();
-    } catch (error) {
-      console.error('Finance permission error:', error);
+    } catch (error: any) {
+      logger.error('Finance permission error', { message: error?.message });
       res.status(500).json({ message: 'Internal server error' });
     }
   };

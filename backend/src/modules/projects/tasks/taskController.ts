@@ -2,17 +2,18 @@ import { Request, Response } from 'express';
 import Task from '../../../models/Task';
 import Project from '../../../models/Project';
 import { createTimelineEvent } from '../../../utils/timelineHelper';
+import { logger } from '../../../utils/logger';
 
 export const getProjectTasks = async (req: Request, res: Response) => {
   try {
     const tasks = await Task.find({ project: req.params.id, taskType: 'project' })
       .populate('assignedTo', 'name email')
       .populate('assignedBy', 'name email')
-      .populate('comments.user', 'firstName lastName')
+      .populate('comments.user', 'name email')
       .populate('dependencies.taskId', 'title')
       .populate('subtasks', 'title status')
       .populate('parentTask', 'title')
-      .populate('watchers', 'firstName lastName');
+      .populate('watchers', 'name email');
     
     const transformedTasks = tasks.map(task => ({
       ...task.toObject(),
@@ -41,8 +42,8 @@ export const createProjectTask = async (req: Request, res: Response) => {
     const task = new Task(taskData);
     await task.save();
     await task.populate('project', 'name');
-    await task.populate('assignedTo', 'firstName lastName');
-    await task.populate('assignedBy', 'firstName lastName');
+    await task.populate('assignedTo', 'name email');
+    await task.populate('assignedBy', 'name email');
     
     const assignedById = task.assignedBy ? 
                         (task.assignedBy._id?.toString() || task.assignedBy.toString()) : 
@@ -56,7 +57,7 @@ export const createProjectTask = async (req: Request, res: Response) => {
         'Task Created',
         `Task "${task.title}" was created in project "${project.name}"`,
         assignedById
-      ).catch(console.error);
+      ).catch((err: any) => logger.error('Background task error', { message: err?.message }));
     }
     
     const transformedTask = {
@@ -69,7 +70,7 @@ export const createProjectTask = async (req: Request, res: Response) => {
     
     res.status(201).json(transformedTask);
   } catch (error) {
-    console.error('Error creating project task:', error);
+    logger.error('Error creating project task', { message: error?.message });
     res.status(400).json({ message: 'Error creating project task', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -87,10 +88,10 @@ export const updateProjectTask = async (req: Request, res: Response) => {
       { _id: taskId, project: projectId, taskType: 'project' },
       req.body,
       { new: true, runValidators: true }
-    ).populate('assignedTo', 'firstName lastName')
-     .populate('assignedBy', 'firstName lastName')
-     .populate('comments.user', 'firstName lastName')
-     .populate('watchers', 'firstName lastName');
+    ).populate('assignedTo', 'name email')
+     .populate('assignedBy', 'name email')
+     .populate('comments.user', 'name email')
+     .populate('watchers', 'name email');
     
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -105,7 +106,7 @@ export const updateProjectTask = async (req: Request, res: Response) => {
         'Task Updated',
         `Task "${task.title}" was updated`,
         userId
-      ).catch(console.error);
+      ).catch((err: any) => logger.error('Background task error', { message: err?.message }));
     }
     
     const transformedTask = {
@@ -118,7 +119,7 @@ export const updateProjectTask = async (req: Request, res: Response) => {
     
     res.json(transformedTask);
   } catch (error) {
-    console.error('Error updating project task:', error);
+    logger.error('Error updating project task', { message: error?.message });
     res.status(400).json({ message: 'Error updating project task', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -148,7 +149,7 @@ export const deleteProjectTask = async (req: Request, res: Response) => {
         'Task Deleted',
         `Task "${task.title}" was deleted`,
         userId
-      ).catch(console.error);
+      ).catch((err: any) => logger.error('Background task error', { message: err?.message }));
     }
     
     const { io } = await import('../../../server');
@@ -156,7 +157,7 @@ export const deleteProjectTask = async (req: Request, res: Response) => {
     
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
-    console.error('Error deleting project task:', error);
+    logger.error('Error deleting project task', { message: error?.message });
     res.status(500).json({ message: 'Error deleting project task', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
@@ -206,7 +207,7 @@ export const addProjectTaskComment = async (req: Request, res: Response) => {
     
     task.comments.push({ user, comment, mentions: [], createdAt: new Date() });
     await task.save();
-    await task.populate('comments.user', 'firstName lastName');
+    await task.populate('comments.user', 'name email');
     
     const { io } = await import('../../../server');
     io.emit('task:comment:added', { taskId, comment: task.comments[task.comments.length - 1] });
@@ -446,7 +447,7 @@ export const removeProjectTaskAttachment = async (req: Request, res: Response) =
       const filePath = path.join(__dirname, '../../../uploads', attachment.filename);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     } catch (fileError) {
-      console.error('Error deleting file:', fileError);
+      logger.error('Error deleting file', { message: (fileError as any)?.message });
     }
     
     res.json({ success: true, message: 'Attachment removed successfully' });
@@ -590,8 +591,8 @@ export const updateProjectTaskStatus = async (req: Request, res: Response) => {
     await task.save();
     
     await task.populate('project', 'name');
-    await task.populate('assignedTo', 'firstName lastName');
-    await task.populate('assignedBy', 'firstName lastName');
+    await task.populate('assignedTo', 'name email');
+    await task.populate('assignedBy', 'name email');
     
     const userId = user || task.assignedBy?.toString();
     if (userId) {
@@ -604,7 +605,7 @@ export const updateProjectTaskStatus = async (req: Request, res: Response) => {
         `Task status changed from "${oldStatus}" to "${status}"`,
         userId,
         { field: 'status', oldValue: oldStatus, newValue: status }
-      ).catch(console.error);
+      ).catch((err: any) => logger.error('Background task error', { message: err?.message }));
     }
     
     const { io } = await import('../../../server');

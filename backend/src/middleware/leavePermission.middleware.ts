@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import User from '../models/User';
 import Employee from '../models/Employee';
 import Leave from '../models/Leave';
+import { logger } from '../utils/logger';
 
 export const requireLeavePermission = (permission: string, allowSelfOnly = false) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -59,8 +60,8 @@ export const requireLeavePermission = (permission: string, allowSelfOnly = false
       }
 
       next();
-    } catch (error) {
-      console.error('Leave permission error:', error);
+    } catch (error: any) {
+      logger.error('Leave permission error', { message: error?.message });
       res.status(500).json({ message: 'Internal server error' });
     }
   };
@@ -115,8 +116,8 @@ export const requireLeaveManagerPermission = (permission: string) => {
       }
 
       next();
-    } catch (error) {
-      console.error('Leave manager permission error:', error);
+    } catch (error: any) {
+      logger.error('Leave manager permission error', { message: error?.message });
       res.status(500).json({ message: 'Internal server error' });
     }
   };

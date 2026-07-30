@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import AuditLog from '../models/AuditLog';
 import mongoose from 'mongoose';
 import { Parser } from 'json2csv';
+import { logger } from '../utils/logger';
 const { validationResult } = require('express-validator');
 import {
   calculateRiskLevel,
@@ -107,7 +108,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error fetching audit logs:', error.message);
+      logger.error('Error fetching audit logs', { message: error.message });
     }
     res.status(500).json({ success: false, message: 'Failed to fetch audit logs', code: 'SERVER_ERROR' });
   }
@@ -148,7 +149,7 @@ export const getAuditStats = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching audit stats:', error);
+    logger.error('Error fetching audit stats', { message: (error as Error)?.message });
     res.status(500).json({ success: false, message: 'Failed to fetch statistics', code: 'SERVER_ERROR' });
   }
 };
@@ -170,7 +171,7 @@ export const getAuditLogById = async (req: Request, res: Response) => {
     res.json({ success: true, data: log });
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error fetching audit log:', error.message);
+      logger.error('Error fetching audit log', { message: error.message });
     }
     res.status(500).json({ success: false, message: 'Failed to fetch audit log', code: 'SERVER_ERROR' });
   }
@@ -222,7 +223,7 @@ export const createAuditLog = async (req: Request, res: Response) => {
     res.status(201).json({ success: true, data: log });
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error creating audit log:', error.message);
+      logger.error('Error creating audit log', { message: error.message });
     }
     res.status(500).json({ success: false, message: 'Failed to create audit log', code: 'SERVER_ERROR' });
   }
@@ -244,7 +245,7 @@ export const getSecurityEvents = async (req: Request, res: Response) => {
     res.json({ success: true, data: events });
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error fetching security events:', error.message);
+      logger.error('Error fetching security events', { message: error.message });
     }
     res.status(500).json({ success: false, message: 'Failed to fetch security events', code: 'SERVER_ERROR' });
   }
@@ -291,7 +292,7 @@ export const getSecurityAlerts = async (req: Request, res: Response) => {
 
     res.json({ success: true, data: alerts, count: alerts.length });
   } catch (error) {
-    console.error('Error fetching security alerts:', error);
+    logger.error('Error fetching security alerts', { message: (error as Error)?.message });
     res.status(500).json({ success: false, message: 'Failed to fetch security alerts', code: 'SERVER_ERROR' });
   }
 };
@@ -344,7 +345,7 @@ export const exportAuditLogs = async (req: Request, res: Response) => {
       status: 'Success'
     });
   } catch (error) {
-    console.error('Error exporting audit logs:', error);
+    logger.error('Error exporting audit logs', { message: (error as Error)?.message });
     res.status(500).json({ success: false, message: 'Failed to export audit logs', code: 'SERVER_ERROR' });
   }
 };
@@ -385,7 +386,7 @@ export const getComplianceMetrics = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching compliance metrics:', error);
+    logger.error('Error fetching compliance metrics', { message: (error as Error)?.message });
     res.status(500).json({ success: false, message: 'Failed to fetch compliance metrics', code: 'SERVER_ERROR' });
   }
 };
@@ -414,7 +415,7 @@ export const cleanupOldLogs = async (req: Request, res: Response) => {
 
     res.json({ success: true, message: `Deleted ${result.deletedCount} old audit logs`, deletedCount: result.deletedCount });
   } catch (error) {
-    console.error('Error cleaning up logs:', error);
+    logger.error('Error cleaning up logs', { message: (error as Error)?.message });
     res.status(500).json({ success: false, message: 'Failed to cleanup logs', code: 'SERVER_ERROR' });
   }
 };

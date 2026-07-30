@@ -1,6 +1,7 @@
 //path: frontend/src/lib/api/projectFilesAPI.ts
 
 import api from './api';
+import { unwrapResponse } from './unwrap';
 
 export interface ProjectFile {
   _id: string;
@@ -22,7 +23,7 @@ export interface ProjectFile {
 export const projectFilesAPI = {
   getByProject: async (projectId: string) => {
     const response = await api.get(`/projects/${projectId}/files`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   upload: async (projectId: string, formData: FormData) => {
@@ -31,7 +32,7 @@ export const projectFilesAPI = {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   download: async (projectId: string, fileId: string) => {
@@ -43,7 +44,7 @@ export const projectFilesAPI = {
 
   delete: async (projectId: string, fileId: string) => {
     const response = await api.delete(`/projects/${projectId}/files/${fileId}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 };
 

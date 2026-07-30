@@ -83,7 +83,6 @@ export default function ChartOfAccountsPage() {
         }
       });
       const result = await response.json();
-      console.log('Recalculate result:', result);
       toast({
         title: 'Success',
         description: `Reset ${result.accountsReset} accounts, processed ${result.entriesProcessed} entries, updated ${result.balancesUpdated} balances`
@@ -250,9 +249,7 @@ export default function ChartOfAccountsPage() {
       if (!selectedAccount) return;
       
       try {
-        console.log('Updating account:', selectedAccount._id, formData);
-        const result = await generalLedgerAPI.updateAccount(selectedAccount._id, formData);
-        console.log('Update result:', result);
+        await generalLedgerAPI.updateAccount(selectedAccount._id, formData);
 
         toast({
           title: 'Success',

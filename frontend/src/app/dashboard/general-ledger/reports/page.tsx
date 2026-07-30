@@ -46,11 +46,10 @@ export default function ReportsPage() {
   const generateProfitLoss = async () => {
     try {
       setLoading(true);
-      const data = await generalLedgerAPI.getFinancialReports('profit-loss', {
+      await generalLedgerAPI.getFinancialReports('profit-loss', {
         startDate: reportParams.startDate,
         endDate: reportParams.endDate
       });
-      console.log('P&L Report:', data);
       toast({
         title: 'Success',
         description: 'Profit & Loss report generated successfully'
@@ -70,10 +69,9 @@ export default function ReportsPage() {
   const generateBalanceSheet = async () => {
     try {
       setLoading(true);
-      const data = await generalLedgerAPI.getFinancialReports('balance-sheet', {
+      await generalLedgerAPI.getFinancialReports('balance-sheet', {
         endDate: reportParams.asOfDate
       });
-      console.log('Balance Sheet:', data);
       toast({
         title: 'Success',
         description: 'Balance Sheet generated successfully'

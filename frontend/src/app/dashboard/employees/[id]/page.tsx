@@ -705,7 +705,6 @@ export default function EmployeeDetailPage() {
               employeeId={employeeId}
               projects={projects}
               onProjectsUpdate={(updated) => {
-                console.log("Project updated:", updated);
               }}
             />
           )}
@@ -723,7 +722,6 @@ export default function EmployeeDetailPage() {
                 employeeId={employeeId}
                 skills={skillsMatrix as any}
                 onSkillsUpdate={(updated) => {
-                  console.log("Skills updated:", updated);
                 }}
                 editable={false}
               />

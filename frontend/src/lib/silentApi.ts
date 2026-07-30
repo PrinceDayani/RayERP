@@ -5,7 +5,6 @@ export const silentApiClient = {
   get: async (endpoint: string) => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
-      console.log('GET Request:', `${API_URL}${endpoint}`);
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'GET',
         headers: {
@@ -15,8 +14,7 @@ export const silentApiClient = {
       });
       
       const result = await response.json();
-      console.log('GET Response Status:', response.status, result);
-      
+
       if (!response.ok) {
         console.error('GET Failed:', response.status, result);
         return result; // Return error response instead of null
@@ -32,7 +30,6 @@ export const silentApiClient = {
   post: async (endpoint: string, data: any) => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
-      console.log('POST Request:', `${API_URL}${endpoint}`, data);
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: {
@@ -43,8 +40,7 @@ export const silentApiClient = {
       });
       
       const result = await response.json();
-      console.log('POST Response Status:', response.status, result);
-      
+
       if (!response.ok) {
         console.error('POST Failed:', response.status, result);
         return result; // Return error response instead of null

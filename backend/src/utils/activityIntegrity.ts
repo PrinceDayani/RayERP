@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import ActivityLog, { IActivityLog } from '../models/ActivityLog';
+import { logger } from './logger';
 
 export const calculateHash = (activity: Partial<IActivityLog>, previousHash: string = ''): string => {
   const data = {
@@ -30,8 +31,8 @@ export const addHashToActivity = async (activity: IActivityLog): Promise<void> =
     const previousHash = lastActivity?.hash || '0';
     activity.hash = calculateHash(activity, previousHash);
     activity.previousHash = previousHash;
-  } catch (error) {
-    console.error('[Hash Chain] Error adding hash:', error);
+  } catch (error: any) {
+    logger.error('[Hash Chain] Error adding hash', { message: error?.message });
     activity.hash = calculateHash(activity, '0');
     activity.previousHash = '0';
   }

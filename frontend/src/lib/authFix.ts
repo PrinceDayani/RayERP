@@ -26,12 +26,6 @@ export const authFix = {
 
   // Debug authentication state
   debugAuth: () => {
-    const token = localStorage.getItem('auth-token');
-    console.log('🔍 Auth Debug:', {
-      hasToken: !!token,
-      isValid: authFix.isTokenValid(token),
-      apiUrl: process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL
-    });
   }
 };
 

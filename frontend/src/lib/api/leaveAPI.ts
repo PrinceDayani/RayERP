@@ -1,4 +1,5 @@
 import api from './api';
+import { unwrapResponse } from './unwrap';
 
 export interface Leave {
   _id: string;
@@ -39,32 +40,32 @@ export interface LeaveBalance {
 export const leaveAPI = {
   getAll: async (params?: { status?: string; employee?: string; startDate?: string; endDate?: string }) => {
     const response = await api.get('/leaves', { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   apply: async (leaveData: { employee: string; leaveType: string; startDate: string; endDate: string; reason: string }) => {
     const response = await api.post('/leaves', leaveData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   create: async (leaveData: { employee: string; leaveType: string; startDate: string; endDate: string; reason: string }) => {
     const response = await api.post('/leaves', leaveData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   cancel: async (id: string) => {
     const response = await api.put(`/leaves/${id}/status`, { status: 'cancelled' });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   updateStatus: async (id: string, statusData: { status: string; approvedBy?: string; rejectionReason?: string }) => {
     const response = await api.put(`/leaves/${id}/status`, statusData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getBalance: async (employeeId: string): Promise<LeaveBalance> => {
     const response = await api.get(`/leaves/balance/${employeeId}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getTodayLeaves: async () => {
@@ -76,7 +77,7 @@ export const leaveAPI = {
         endDate: today 
       } 
     });
-    return { onLeave: response.data.length };
+    return { onLeave: unwrapResponse<any[]>(response.data).length };
   }
 };
 
