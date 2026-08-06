@@ -10,11 +10,12 @@ interface Employee {
     position?: string;
     employeeId: string;
     hireDate?: string;
+    // Records created by the staff-register import carry no address at all.
     address?: {
-        street: string;
-        city: string;
-        state: string;
-        country: string;
+        street?: string;
+        city?: string;
+        state?: string;
+        country?: string;
     };
 }
 

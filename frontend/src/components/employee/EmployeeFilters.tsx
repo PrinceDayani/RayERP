@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Filter, X, Users, Calendar, MapPin, Briefcase } from "lucide-react";
+import { Search, Filter, X, Users, Calendar, MapPin, Briefcase, Building2, IdCard } from "lucide-react";
 
 interface FilterState {
   search: string;
@@ -16,6 +16,9 @@ interface FilterState {
   status: string;
   hireYear: string;
   skills: string[];
+  workLocation: string;
+  projectAssignment: string;
+  employmentCategory: string;
 }
 
 interface EmployeeFiltersProps {
@@ -24,14 +27,20 @@ interface EmployeeFiltersProps {
   departments: string[];
   positions: string[];
   skills: string[];
+  workLocations: string[];
+  projectAssignments: string[];
+  employmentCategories: string[];
 }
 
-export default function EmployeeFilters({ 
-  filters, 
-  onFiltersChange, 
-  departments, 
-  positions, 
-  skills 
+export default function EmployeeFilters({
+  filters,
+  onFiltersChange,
+  departments,
+  positions,
+  skills,
+  workLocations,
+  projectAssignments,
+  employmentCategories
 }: EmployeeFiltersProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -56,12 +65,16 @@ export default function EmployeeFilters({
       position: '',
       status: '',
       hireYear: '',
-      skills: []
+      skills: [],
+      workLocation: '',
+      projectAssignment: '',
+      employmentCategory: ''
     });
   };
 
-  const hasActiveFilters = filters.search || filters.department || filters.position || 
-                          filters.status || filters.hireYear || filters.skills.length > 0;
+  const hasActiveFilters = filters.search || filters.department || filters.position ||
+                          filters.status || filters.hireYear || filters.skills.length > 0 ||
+                          filters.workLocation || filters.projectAssignment || filters.employmentCategory;
 
   return (
     <Card className="mb-6">
@@ -178,6 +191,63 @@ export default function EmployeeFilters({
                 </div>
               </div>
 
+              {/* Posting and employment class, as recorded in the staff register */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    <MapPin className="w-4 h-4 inline mr-1" />
+                    Work Location
+                  </Label>
+                  <Select value={filters.workLocation} onValueChange={(value) => updateFilter('workLocation', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All locations" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All locations</SelectItem>
+                      {workLocations.map(loc => (
+                        <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    <Building2 className="w-4 h-4 inline mr-1" />
+                    Project / Posting
+                  </Label>
+                  <Select value={filters.projectAssignment} onValueChange={(value) => updateFilter('projectAssignment', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All postings" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All postings</SelectItem>
+                      {projectAssignments.map(proj => (
+                        <SelectItem key={proj} value={proj}>{proj}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    <IdCard className="w-4 h-4 inline mr-1" />
+                    Employment Type
+                  </Label>
+                  <Select value={filters.employmentCategory} onValueChange={(value) => updateFilter('employmentCategory', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All types</SelectItem>
+                      {employmentCategories.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               {/* Skills Filter */}
               <div>
                 <Label className="text-sm font-medium mb-2 block">Skills</Label>
@@ -221,6 +291,15 @@ export default function EmployeeFilters({
               )}
               {filters.hireYear && (
                 <Badge variant="outline">Hired: {filters.hireYear}</Badge>
+              )}
+              {filters.workLocation && (
+                <Badge variant="outline">Location: {filters.workLocation}</Badge>
+              )}
+              {filters.projectAssignment && (
+                <Badge variant="outline">Posting: {filters.projectAssignment}</Badge>
+              )}
+              {filters.employmentCategory && (
+                <Badge variant="outline">Type: {filters.employmentCategory}</Badge>
               )}
               {filters.skills.map(skill => (
                 <Badge key={skill} variant="outline">Skill: {skill}</Badge>

@@ -5,3 +5,4 @@ export { default as SkillMatrix } from './SkillMatrix';
 export { default as ProjectHistory } from './ProjectHistory';
 export { default as AttendanceInsights } from './AttendanceInsights';
 export { default as AttendanceDashboard } from './AttendanceDashboard';
+export { default as PayrollDetails } from './PayrollDetails';

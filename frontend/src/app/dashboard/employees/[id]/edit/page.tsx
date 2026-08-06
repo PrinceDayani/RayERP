@@ -13,11 +13,16 @@ import Link from 'next/link';
 import { employeesAPI } from '@/lib/api';
 import { toast } from '@/components/ui/use-toast';
 import { departmentApi } from '@/lib/api/departments';
+import { EMPLOYMENT_CATEGORIES } from '@/lib/api/employeesAPI';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function EditEmployeePage() {
   const router = useRouter();
   const params = useParams();
   const employeeId = params?.id as string;
+  const { hasPermission } = useAuth();
+  const canViewBank = hasPermission('employees.view_bank_details');
+  const canEditBank = hasPermission('employees.edit_bank_details');
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [departments, setDepartments] = useState<Array<{ _id: string; name: string }>>([]);
@@ -26,12 +31,28 @@ export default function EditEmployeePage() {
     lastName: '',
     email: '',
     phone: '',
+    alternatePhone: '',
     department: '',
     departments: [] as string[],
     position: '',
     salary: '',
     hireDate: '',
     status: 'active',
+    workLocation: '',
+    projectAssignment: '',
+    reportingAuthority: '',
+    qualification: '',
+    employmentCategory: '',
+    dateOfBirth: '',
+    dateOfRelieving: '',
+    bankDetails: {
+      accountNumber: '',
+      bankName: '',
+      ifscCode: ''
+    },
+    statutory: {
+      uanNumber: ''
+    },
     address: {
       street: '',
       city: '',
@@ -74,12 +95,29 @@ export default function EditEmployeePage() {
         lastName: employee.lastName || '',
         email: employee.email || '',
         phone: employee.phone || '',
+        alternatePhone: employee.alternatePhone || '',
         department: employee.department || '',
         departments: employee.departments || [],
         position: employee.position || '',
         salary: employee.salary?.toString() || '',
         hireDate: employee.hireDate ? new Date(employee.hireDate).toISOString().split('T')[0] : '',
         status: employee.status || 'active',
+        workLocation: employee.workLocation || '',
+        projectAssignment: employee.projectAssignment || '',
+        reportingAuthority: employee.reportingAuthority || '',
+        qualification: employee.qualification || '',
+        employmentCategory: employee.employmentCategory || '',
+        dateOfBirth: employee.dateOfBirth ? new Date(employee.dateOfBirth).toISOString().split('T')[0] : '',
+        dateOfRelieving: employee.dateOfRelieving ? new Date(employee.dateOfRelieving).toISOString().split('T')[0] : '',
+        // Absent from the response unless the viewer holds employees.view_bank_details
+        bankDetails: {
+          accountNumber: employee.bankDetails?.accountNumber || '',
+          bankName: employee.bankDetails?.bankName || '',
+          ifscCode: employee.bankDetails?.ifscCode || ''
+        },
+        statutory: {
+          uanNumber: employee.statutory?.uanNumber || ''
+        },
         address: {
           street: employee.address?.street || '',
           city: employee.address?.city || '',
@@ -126,11 +164,25 @@ export default function EditEmployeePage() {
     setLoading(true);
 
     try {
-      const submitData = {
+      const submitData: Record<string, any> = {
         ...formData,
         salary: parseFloat(formData.salary),
         skills: formData.skills.split(',').map(skill => skill.trim()).filter(Boolean)
       };
+
+      // Blank optional fields are omitted rather than stored as empty strings,
+      // so an unset date never reaches Mongoose as ''.
+      for (const key of ['workLocation', 'projectAssignment', 'reportingAuthority',
+        'qualification', 'employmentCategory', 'dateOfBirth', 'dateOfRelieving', 'alternatePhone']) {
+        if (!submitData[key]) delete submitData[key];
+      }
+      // Never echo back banking fields the viewer could not load — the server
+      // strips them without employees.view_bank_details, and sending the blanks
+      // would either trip the permission gate or wipe stored values.
+      if (!canEditBank) {
+        delete submitData.bankDetails;
+        delete submitData.statutory;
+      }
 
       await employeesAPI.updateEmployee(employeeId, submitData);
       
@@ -244,6 +296,14 @@ export default function EditEmployeePage() {
                     required
                   />
                 </div>
+                <div>
+                  <Label htmlFor="alternatePhone">Alternate Phone</Label>
+                  <Input
+                    id="alternatePhone"
+                    value={formData.alternatePhone}
+                    onChange={(e) => handleInputChange('alternatePhone', e.target.value)}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -349,6 +409,133 @@ export default function EditEmployeePage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Posting &amp; HR Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="workLocation">Work Location</Label>
+                  <Input
+                    id="workLocation"
+                    value={formData.workLocation}
+                    onChange={(e) => handleInputChange('workLocation', e.target.value)}
+                    placeholder="e.g. Ahmedabad Office"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="projectAssignment">Project / Posting</Label>
+                  <Input
+                    id="projectAssignment"
+                    value={formData.projectAssignment}
+                    onChange={(e) => handleInputChange('projectAssignment', e.target.value)}
+                    placeholder="e.g. VMC Water Supply Project"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="reportingAuthority">Reporting Authority</Label>
+                  <Input
+                    id="reportingAuthority"
+                    value={formData.reportingAuthority}
+                    onChange={(e) => handleInputChange('reportingAuthority', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="qualification">Qualification</Label>
+                  <Input
+                    id="qualification"
+                    value={formData.qualification}
+                    onChange={(e) => handleInputChange('qualification', e.target.value)}
+                    placeholder="e.g. BE Civil"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="employmentCategory">Employment Type</Label>
+                  <Select
+                    value={formData.employmentCategory}
+                    onValueChange={(value) => handleInputChange('employmentCategory', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EMPLOYMENT_CATEGORIES.map((category) => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="dateOfRelieving">Date of Relieving</Label>
+                  <Input
+                    id="dateOfRelieving"
+                    type="date"
+                    value={formData.dateOfRelieving}
+                    onChange={(e) => handleInputChange('dateOfRelieving', e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {canViewBank && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Bank &amp; Statutory Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="bankName">Bank Name</Label>
+                    <Input
+                      id="bankName"
+                      value={formData.bankDetails.bankName}
+                      onChange={(e) => handleInputChange('bankDetails.bankName', e.target.value)}
+                      disabled={!canEditBank}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="accountNumber">Account Number</Label>
+                    <Input
+                      id="accountNumber"
+                      value={formData.bankDetails.accountNumber}
+                      onChange={(e) => handleInputChange('bankDetails.accountNumber', e.target.value)}
+                      disabled={!canEditBank}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="ifscCode">IFSC Code</Label>
+                    <Input
+                      id="ifscCode"
+                      value={formData.bankDetails.ifscCode}
+                      onChange={(e) => handleInputChange('bankDetails.ifscCode', e.target.value)}
+                      disabled={!canEditBank}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="uanNumber">UAN Number</Label>
+                    <Input
+                      id="uanNumber"
+                      value={formData.statutory.uanNumber}
+                      onChange={(e) => handleInputChange('statutory.uanNumber', e.target.value)}
+                      disabled={!canEditBank}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>

@@ -25,6 +25,8 @@ import ProjectHistory from '@/components/employee/ProjectHistory';
 import CareerTimeline from '@/components/employee/CareerTimeline';
 import WorkSummaryDashboard from '@/components/employee/WorkSummaryDashboard';
 import AchievementsSection from '@/components/employee/AchievementsSection';
+import PayrollDetails from '@/components/employee/PayrollDetails';
+import type { Compensation, BankDetails, StatutoryDetails, SalaryRevision } from '@/lib/api/employeesAPI';
 import { achievementAPI, careerAPI } from '@/lib/api/employeeProfileAPI';
 
 interface Employee {
@@ -35,25 +37,44 @@ interface Employee {
   email: string;
   phone?: string;
   department: string;
+  departments?: string[];
   position?: string;
   salary?: number;
   hireDate: string;
   status: 'active' | 'inactive' | 'terminated';
-  address: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
+  // Optional on the model, and absent on records created by the staff-register
+  // import, so every read of these must be guarded.
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
   };
-  emergencyContact: {
-    name: string;
-    relationship: string;
-    phone: string;
+  emergencyContact?: {
+    name?: string;
+    relationship?: string;
+    phone?: string;
   };
-  skills: string[];
+  skills?: string[];
   projects?: any[];
   skillsMatrix?: any[];
+  workLocation?: string;
+  projectAssignment?: string;
+  reportingAuthority?: string;
+  manager?: { firstName?: string; lastName?: string } | string;
+  qualification?: string;
+  employmentCategory?: string;
+  dateOfBirth?: string;
+  dateOfRelieving?: string;
+  totalExperienceYears?: number;
+  alternatePhone?: string;
+  experienceInCompany?: string;
+  registerSerialNo?: number;
+  compensation?: Compensation;
+  bankDetails?: BankDetails;
+  statutory?: StatutoryDetails;
+  salaryHistory?: SalaryRevision[];
   createdAt: string;
   updatedAt: string;
 }
@@ -506,6 +527,7 @@ export default function EmployeeDetailPage() {
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList className="bg-card dark:bg-card shadow-sm border border-border">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="payroll">Payroll &amp; HR</TabsTrigger>
           <TabsTrigger value="projects">Projects</TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
@@ -550,21 +572,35 @@ export default function EmployeeDetailPage() {
                       <span className="text-sm text-muted-foreground">Address</span>
                     </div>
                     <div className="text-right text-sm">
-                      <p className="font-medium">{employee.address.street}</p>
-                      <p className="text-muted-foreground">{employee.address.city}, {employee.address.state}</p>
+                      {employee.address?.street || employee.address?.city ? (
+                        <>
+                          <p className="font-medium">{employee.address.street}</p>
+                          <p className="text-muted-foreground">
+                            {[employee.address.city, employee.address.state].filter(Boolean).join(', ')}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-muted-foreground">Not recorded</p>
+                      )}
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Emergency Contact */}
                 <div className="pt-4 border-t">
                   <h4 className="font-semibold mb-3 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-red-500" /> Emergency Contact
                   </h4>
                   <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800">
-                    <p className="font-medium">{employee.emergencyContact.name}</p>
-                    <p className="text-sm text-muted-foreground">{employee.emergencyContact.relationship}</p>
-                    <p className="text-sm font-medium">{employee.emergencyContact.phone}</p>
+                    {employee.emergencyContact?.name ? (
+                      <>
+                        <p className="font-medium">{employee.emergencyContact.name}</p>
+                        <p className="text-sm text-muted-foreground">{employee.emergencyContact.relationship}</p>
+                        <p className="text-sm font-medium">{employee.emergencyContact.phone}</p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Not recorded</p>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -605,14 +641,17 @@ export default function EmployeeDetailPage() {
                     <Award className="w-4 h-4 text-primary" /> Skills
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {employee.skills.slice(0, 6).map((skill, index) => (
+                    {(employee.skills ?? []).length === 0 && (
+                      <span className="text-sm text-muted-foreground">No skills recorded</span>
+                    )}
+                    {(employee.skills ?? []).slice(0, 6).map((skill, index) => (
                       <Badge key={index} variant="secondary" className="text-xs">
                         {skill}
                       </Badge>
                     ))}
-                    {employee.skills.length > 6 && (
+                    {(employee.skills ?? []).length > 6 && (
                       <Badge variant="outline" className="text-xs">
-                        +{employee.skills.length - 6} more
+                        +{(employee.skills ?? []).length - 6} more
                       </Badge>
                     )}
                   </div>
@@ -620,6 +659,35 @@ export default function EmployeeDetailPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="payroll" className="space-y-6">
+          <PayrollDetails
+            employeeId={employee.employeeId}
+            email={employee.email}
+            phone={employee.phone}
+            status={employee.status}
+            department={employee.department}
+            departments={employee.departments}
+            position={employee.position}
+            workLocation={employee.workLocation}
+            projectAssignment={employee.projectAssignment}
+            reportingAuthority={employee.reportingAuthority}
+            manager={employee.manager}
+            qualification={employee.qualification}
+            employmentCategory={employee.employmentCategory}
+            dateOfBirth={employee.dateOfBirth}
+            hireDate={employee.hireDate}
+            dateOfRelieving={employee.dateOfRelieving}
+            totalExperienceYears={employee.totalExperienceYears}
+            alternatePhone={employee.alternatePhone}
+            experienceInCompany={employee.experienceInCompany}
+            registerSerialNo={employee.registerSerialNo}
+            compensation={employee.compensation}
+            bankDetails={employee.bankDetails}
+            statutory={employee.statutory}
+            salaryHistory={employee.salaryHistory}
+          />
         </TabsContent>
 
         <TabsContent value="attendance" className="space-y-6">

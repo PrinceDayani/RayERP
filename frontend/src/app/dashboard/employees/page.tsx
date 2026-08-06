@@ -56,6 +56,9 @@ interface Employee {
   salary?: number;
   status: 'active' | 'inactive' | 'terminated';
   hireDate: string;
+  workLocation?: string;
+  projectAssignment?: string;
+  employmentCategory?: string;
 }
 
 interface EmployeeStats {
@@ -106,7 +109,10 @@ const EmployeeManagementDashboard = () => {
     position: '',
     status: '',
     hireYear: '',
-    skills: []
+    skills: [],
+    workLocation: '',
+    projectAssignment: '',
+    employmentCategory: ''
   });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
@@ -224,9 +230,12 @@ const EmployeeManagementDashboard = () => {
     const emailMatch = employee.email.toLowerCase().includes(searchLower);
     const deptMatch = employee.department?.toLowerCase().includes(searchLower) || false;
     const deptsMatch = employee.departments?.some(dept => dept.toLowerCase().includes(searchLower)) || false;
-    
-    const searchMatches = !searchLower || nameMatch || idMatch || emailMatch || deptMatch || deptsMatch;
-    
+    const locationMatch = employee.workLocation?.toLowerCase().includes(searchLower) || false;
+    const postingMatch = employee.projectAssignment?.toLowerCase().includes(searchLower) || false;
+
+    const searchMatches = !searchLower || nameMatch || idMatch || emailMatch || deptMatch || deptsMatch ||
+      locationMatch || postingMatch;
+
     // Department filter
     const departmentMatches = !filters.department || 
       employee.department === filters.department ||
@@ -244,15 +253,24 @@ const EmployeeManagementDashboard = () => {
     
     // Skills filter (would need skills data in employee object)
     const skillsMatch = filters.skills.length === 0; // Placeholder for skills filtering
-    
-    return searchMatches && departmentMatches && positionMatches && statusMatches && hireYearMatches && skillsMatch;
+
+    // Staff-register posting filters
+    const locationMatches = !filters.workLocation || employee.workLocation === filters.workLocation;
+    const postingMatches = !filters.projectAssignment || employee.projectAssignment === filters.projectAssignment;
+    const categoryMatches = !filters.employmentCategory || employee.employmentCategory === filters.employmentCategory;
+
+    return searchMatches && departmentMatches && positionMatches && statusMatches && hireYearMatches &&
+      skillsMatch && locationMatches && postingMatches && categoryMatches;
   });
 
   // Get unique values for filters
-  const departments = [...new Set(employees.flatMap(emp => 
+  const departments = [...new Set(employees.flatMap(emp =>
     emp.departments && emp.departments.length > 0 ? emp.departments : [emp.department]
   ).filter(Boolean))];
   const positions = [...new Set(employees.map(emp => emp.position).filter(Boolean))];
+  const workLocations = [...new Set(employees.map(emp => emp.workLocation).filter(Boolean))].sort() as string[];
+  const projectAssignments = [...new Set(employees.map(emp => emp.projectAssignment).filter(Boolean))].sort() as string[];
+  const employmentCategories = [...new Set(employees.map(emp => emp.employmentCategory).filter(Boolean))].sort() as string[];
   const skills = []; // Placeholder - would come from employee skills data
 
   const getStatusColor = (status: string) => {
@@ -478,6 +496,9 @@ const EmployeeManagementDashboard = () => {
               departments={departments}
               positions={positions}
               skills={skills}
+              workLocations={workLocations}
+              projectAssignments={projectAssignments}
+              employmentCategories={employmentCategories}
             />
             
             <Card className="border-0 shadow-lg shadow-[#970E2C]/5">
@@ -516,6 +537,7 @@ const EmployeeManagementDashboard = () => {
                           <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Employee</th>
                           <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Department</th>
                           <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Position</th>
+                          <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Posting</th>
                           <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Status</th>
                           <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Hire Date</th>
                           <th className="text-left p-4 font-semibold text-sm text-muted-foreground">Actions</th>
@@ -560,6 +582,18 @@ const EmployeeManagementDashboard = () => {
                               )}
                             </td>
                             <td className="p-4 text-sm">{employee.position}</td>
+                            <td className="p-4 text-sm">
+                              {employee.projectAssignment || employee.workLocation ? (
+                                <div className="min-w-0">
+                                  <p className="truncate max-w-[220px]">{employee.projectAssignment || '—'}</p>
+                                  {employee.workLocation && (
+                                    <p className="text-xs text-muted-foreground truncate max-w-[220px]">{employee.workLocation}</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
                             <td className="p-4">
                               <Badge className={getStatusColor(employee.status)} variant="secondary">
                                 {employee.status}
