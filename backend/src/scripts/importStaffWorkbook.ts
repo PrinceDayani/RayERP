@@ -42,6 +42,15 @@ const SHEET = 'Sheet1';
 const HEADER_ROW = 2;
 const STAFF_EMAIL_DOMAIN = 'staff.rayerp.local';
 
+/**
+ * Register rows whose pay must not be loaded, by serial number in column 1.
+ * Their directory details (name, posting, contact) are still imported; only the
+ * salary, compensation and payroll periods are skipped. 33 and 66 are the staff
+ * carried as excluded on the monthly salary sheet, 89-93 are the KPMG contract
+ * staff, who are payrolled separately.
+ */
+const NO_PAYROLL = new Set([33, 66, 89, 90, 91, 92, 93]);
+
 // Column positions in the staff register.
 const COL = {
   serialNo: 1, name: 2, designation: 3, location: 4, project: 5, reportsTo: 6,
@@ -303,6 +312,7 @@ const report = {
   departmentLabels: new Set<string>(),
   missingHireDate: [] as string[],
   missingSalary: [] as string[],
+  payrollSkipped: [] as string[],
   relieved: [] as string[],
 };
 
@@ -318,7 +328,8 @@ function buildUpdate(row: StaffRow) {
 
   if (isDepartment) report.departmentLabels.add(row.posting);
   if (!row.hireDate) report.missingHireDate.push(row.name);
-  if (current === null) report.missingSalary.push(row.name);
+  if (NO_PAYROLL.has(row.serialNo ?? -1)) report.payrollSkipped.push(`#${row.serialNo} ${row.name}`);
+  else if (current === null) report.missingSalary.push(row.name);
   if (row.dateOfRelieving) report.relieved.push(row.name);
 
   const update: Record<string, any> = {
@@ -345,7 +356,7 @@ function buildUpdate(row: StaffRow) {
     update.departments = [row.posting];
   }
 
-  if (current !== null) {
+  if (current !== null && !NO_PAYROLL.has(row.serialNo ?? -1)) {
     // `salary` stays the annual gross the rest of the ERP already assumes;
     // the register's monthly figures live in `compensation`.
     update.salary = current * 12;
@@ -360,13 +371,34 @@ function buildUpdate(row: StaffRow) {
       esic: row.esic ?? undefined,
       effectiveFrom: row.asOf ?? paid[paid.length - 1].effectiveFrom,
     };
-    update.salaryHistory = row.salaries.map<ISalaryRevision>(s => ({
-      effectiveFrom: s.effectiveFrom,
-      label: s.label,
-      monthlyGross: s.monthlyGross,
-      reason: 'Staff register import',
-      recordedAt: new Date(),
-    }));
+    // The register carries a single deduction snapshot, stated "as of" the
+    // Current Mount date, so it describes the last month it lists. Attaching it
+    // to that period keeps the figures with the month they were paid in;
+    // earlier months get the gross only, which is all the register states.
+    const lastPaid = paid[paid.length - 1];
+    const deductions = {
+      tds: row.tds ?? undefined,
+      providentFund: row.pf ?? undefined,
+      professionalTax: row.ptax ?? undefined,
+      esic: row.esic ?? undefined,
+    };
+    const hasDeductions = Object.values(deductions).some(v => v !== undefined);
+
+    update.salaryHistory = row.salaries.map<ISalaryRevision>(s => {
+      const isLast = s.label === lastPaid.label;
+      return {
+        effectiveFrom: s.effectiveFrom,
+        label: s.label,
+        monthlyGross: s.monthlyGross,
+        ...(isLast ? {
+          grossPaid: s.monthlyGross,
+          netPaid: row.netSalary ?? undefined,
+          ...(hasDeductions ? { deductions } : {}),
+        } : {}),
+        reason: 'Staff register import',
+        recordedAt: new Date(),
+      };
+    });
   }
 
   if (row.bankAccount || row.bankName || row.ifsc) {
@@ -398,6 +430,44 @@ interface Resolved {
   employeeId: mongoose.Types.ObjectId | null; // null in dry-run for new records
   name: string;
 }
+
+/**
+ * Folds the register's periods into whatever salary history the employee
+ * already has, instead of replacing the array: later payroll runs (a monthly
+ * salary sheet) must survive a re-import of the register. `compensation` is
+ * only moved when the register is at least as recent as what is stored, so a
+ * re-run cannot roll a live figure back to an older month.
+ */
+async function mergeSalary(id: mongoose.Types.ObjectId, update: Record<string, any>) {
+  if (!update.salaryHistory) return {};
+  const doc: any = await Employee.findById(id).select('salaryHistory compensation salary').lean();
+  const existing: ISalaryRevision[] = doc?.salaryHistory ?? [];
+  const incoming: ISalaryRevision[] = update.salaryHistory;
+
+  const byLabel = new Map<string, ISalaryRevision>();
+  for (const rev of existing) byLabel.set(rev.label ?? String(rev.effectiveFrom), rev);
+  for (const rev of incoming) {
+    const key = rev.label ?? String(rev.effectiveFrom);
+    // Keep any richer detail a later payroll run already recorded.
+    const prev = byLabel.get(key);
+    byLabel.set(key, prev ? { ...prev, ...rev, deductions: rev.deductions ?? prev.deductions } : rev);
+  }
+  const salaryHistory = [...byLabel.values()]
+    .sort((a, b) => new Date(a.effectiveFrom).getTime() - new Date(b.effectiveFrom).getTime());
+
+  const storedAt = doc?.compensation?.effectiveFrom ? new Date(doc.compensation.effectiveFrom).getTime() : -Infinity;
+  const incomingAt = update.compensation?.effectiveFrom ? new Date(update.compensation.effectiveFrom).getTime() : -Infinity;
+  if (incomingAt < storedAt) {
+    // Stored figures are newer; keep them, but restore any field the register
+    // supplies and the newer sheet did not carry (increment amount/percent).
+    const restored = { ...update.compensation, ...pruneUndefined(doc.compensation) };
+    return { salaryHistory, compensation: restored, salary: doc.salary ?? update.salary };
+  }
+  return { salaryHistory };
+}
+
+const pruneUndefined = (o: Record<string, any> = {}) =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null));
 
 async function upsertStaff(rows: StaffRow[], pendingRoleId: mongoose.Types.ObjectId | null): Promise<Resolved[]> {
   console.log('\n-- Staff --');
@@ -472,7 +542,14 @@ async function upsertStaff(rows: StaffRow[], pendingRoleId: mongoose.Types.Objec
     if (existing) {
       resolved.push({ row, employeeId: existing._id, name: row.name });
       if (DRY_RUN) continue;
-      await Employee.updateOne({ _id: existing._id }, { $set: { firstName, lastName, ...update } });
+      // Excluded rows keep their directory entry but must carry no pay, so a
+      // re-run also clears figures an earlier import may have written.
+      const clearPay = NO_PAYROLL.has(row.serialNo ?? -1);
+      const merged = clearPay ? {} : await mergeSalary(existing._id, update);
+      await Employee.updateOne({ _id: existing._id }, {
+        $set: { firstName, lastName, ...update, ...merged },
+        ...(clearPay ? { $unset: { salary: '', compensation: '', salaryHistory: '' } } : {}),
+      });
       await User.updateOne({ _id: (await Employee.findById(existing._id).select('user'))!.user }, {
         $set: { name: row.name },
       });
@@ -595,6 +672,10 @@ async function run() {
   if (report.missingHireDate.length) {
     console.log(`\nNo joining date in the register (${report.missingHireDate.length}):`);
     for (const n of report.missingHireDate) console.log(`    ${n}`);
+  }
+  if (report.payrollSkipped.length) {
+    console.log(`\nPay NOT loaded — excluded rows (${report.payrollSkipped.length}):`);
+    for (const n of report.payrollSkipped) console.log(`    ${n}`);
   }
   if (report.missingSalary.length) {
     console.log(`\nNo salary figure in the register (${report.missingSalary.length}):`);
