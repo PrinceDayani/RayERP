@@ -37,10 +37,21 @@ export interface Compensation {
   effectiveFrom?: string;
 }
 
+/** One payroll period. Paid fields differ from `monthlyGross` when a month is
+ *  prorated on days for a mid-month joiner or leaver. */
 export interface SalaryRevision {
   effectiveFrom: string;
   label?: string;
   monthlyGross: number;
+  daysPaid?: number;
+  grossPaid?: number;
+  netPaid?: number;
+  deductions?: {
+    tds?: number;
+    providentFund?: number;
+    professionalTax?: number;
+    esic?: number;
+  };
   reason?: string;
   recordedBy?: { _id: string; name?: string; email?: string } | string;
   recordedAt?: string;

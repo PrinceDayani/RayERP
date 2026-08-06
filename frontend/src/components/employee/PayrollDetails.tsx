@@ -303,30 +303,52 @@ export default function PayrollDetails({
                     <thead className="border-b">
                       <tr>
                         <th className="text-left py-2 font-medium text-muted-foreground">Period</th>
-                        <th className="text-left py-2 font-medium text-muted-foreground">Effective</th>
-                        <th className="text-right py-2 font-medium text-muted-foreground">Monthly Gross</th>
-                        <th className="text-right py-2 pl-4 font-medium text-muted-foreground">Change</th>
-                        <th className="text-left py-2 pl-4 font-medium text-muted-foreground">Reason</th>
+                        <th className="text-right py-2 pl-3 font-medium text-muted-foreground">Days</th>
+                        <th className="text-right py-2 pl-3 font-medium text-muted-foreground">Monthly Gross</th>
+                        <th className="text-right py-2 pl-3 font-medium text-muted-foreground">Gross Paid</th>
+                        <th className="text-right py-2 pl-3 font-medium text-muted-foreground">Deductions</th>
+                        <th className="text-right py-2 pl-3 font-medium text-muted-foreground">Net Paid</th>
+                        <th className="text-right py-2 pl-3 font-medium text-muted-foreground">Change</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {history.map((rev, index) => (
-                        <tr key={`${rev.effectiveFrom}-${index}`}>
-                          <td className="py-2">{rev.label || '—'}</td>
-                          <td className="py-2 text-muted-foreground">{formatDate(rev.effectiveFrom)}</td>
-                          <td className="py-2 text-right font-medium">{amount(rev.monthlyGross)}</td>
-                          <td className="py-2 pl-4 text-right">
-                            {rev.change == null || rev.change === 0 ? (
-                              <span className="text-muted-foreground">—</span>
-                            ) : (
-                              <span className={rev.change > 0 ? 'text-green-600' : 'text-red-600'}>
-                                {rev.change > 0 ? '+' : ''}{amount(rev.change)}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2 pl-4 text-muted-foreground">{rev.reason || '—'}</td>
-                        </tr>
-                      ))}
+                      {history.map((rev, index) => {
+                        const d = rev.deductions;
+                        const totalDed = d
+                          ? (d.tds ?? 0) + (d.providentFund ?? 0) + (d.professionalTax ?? 0) + (d.esic ?? 0)
+                          : null;
+                        return (
+                          <tr key={`${rev.effectiveFrom}-${index}`}>
+                            <td className="py-2 whitespace-nowrap">
+                              {rev.label || formatDate(rev.effectiveFrom)}
+                              {rev.reason && <span className="block text-xs text-muted-foreground">{rev.reason}</span>}
+                            </td>
+                            <td className="py-2 pl-3 text-right text-muted-foreground">{rev.daysPaid ?? '—'}</td>
+                            <td className="py-2 pl-3 text-right font-medium">{amount(rev.monthlyGross)}</td>
+                            {/* Differs from monthly gross only on a prorated month. */}
+                            <td className="py-2 pl-3 text-right">
+                              {rev.grossPaid == null ? '—' : (
+                                <span className={rev.grossPaid < rev.monthlyGross ? 'text-amber-600' : ''}>
+                                  {amount(rev.grossPaid)}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2 pl-3 text-right text-red-600">
+                              {totalDed == null || totalDed === 0 ? '—' : `- ${amount(totalDed)}`}
+                            </td>
+                            <td className="py-2 pl-3 text-right font-semibold">{rev.netPaid == null ? '—' : amount(rev.netPaid)}</td>
+                            <td className="py-2 pl-3 text-right">
+                              {rev.change == null || rev.change === 0 ? (
+                                <span className="text-muted-foreground">—</span>
+                              ) : (
+                                <span className={rev.change > 0 ? 'text-green-600' : 'text-red-600'}>
+                                  {rev.change > 0 ? '+' : ''}{amount(rev.change)}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

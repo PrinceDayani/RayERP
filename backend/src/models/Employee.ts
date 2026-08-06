@@ -56,10 +56,22 @@ export interface ICompensation {
   effectiveFrom?: Date;
 }
 
+// One payroll period. `monthlyGross` is the contracted figure; the paid fields
+// are what the period actually ran at, which differ when someone joins or
+// leaves mid-month and the month is prorated on days.
 export interface ISalaryRevision {
   effectiveFrom: Date;
   label?: string; // payroll period the figure was recorded against, e.g. 'June-26'
   monthlyGross: number;
+  daysPaid?: number;
+  grossPaid?: number; // prorated gross for the period
+  netPaid?: number; // take-home after the deductions below
+  deductions?: {
+    tds?: number;
+    providentFund?: number;
+    professionalTax?: number;
+    esic?: number;
+  };
   reason?: string;
   recordedBy?: mongoose.Types.ObjectId;
   recordedAt?: Date;
@@ -208,6 +220,15 @@ const employeeSchema = new Schema<IEmployee>({
     effectiveFrom: { type: Date, required: true },
     label: { type: String, trim: true },
     monthlyGross: { type: Number, required: true, min: 0 },
+    daysPaid: { type: Number, min: 0 },
+    grossPaid: { type: Number, min: 0 },
+    netPaid: { type: Number, min: 0 },
+    deductions: {
+      tds: { type: Number, min: 0 },
+      providentFund: { type: Number, min: 0 },
+      professionalTax: { type: Number, min: 0 },
+      esic: { type: Number, min: 0 }
+    },
     reason: { type: String, trim: true },
     recordedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     recordedAt: { type: Date, default: Date.now }

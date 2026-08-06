@@ -1,6 +1,8 @@
-# Source workbooks dropped at the repo root for one-off imports. They carry
-# staff PII (bank accounts, UAN, salaries, dates of birth) and must never be
-# committed; the data belongs in the database, not in git history.
+# Source workbooks and salary sheets dropped at the repo root for one-off
+# imports. They carry staff PII (bank accounts, UAN, salaries, dates of birth)
+# and must never be committed; the data belongs in the database, not in git
+# history.
 /*.xlsx
 /*.xls
 /*.csv
+/*.pdf
