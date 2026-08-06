@@ -6,7 +6,8 @@ import {
   updateEmployee,
   deleteEmployee,
   getEmployeeTasks,
-  getEmployeeTaskStats
+  getEmployeeTaskStats,
+  getEmployeeFilterOptions
 } from '../controllers/employeeController';
 import { protect } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/rbac.middleware';
@@ -16,6 +17,8 @@ const router = Router();
 router.use(protect);
 
 router.get('/', requirePermission('employees.view'), getAllEmployees);
+// Distinct work locations / project postings / employment categories for filters
+router.get('/filter-options', requirePermission('employees.view'), getEmployeeFilterOptions);
 router.get('/:id', requirePermission('employees.view'), getEmployeeById);
 router.post('/', requirePermission('employees.create'), createEmployee);
 router.put('/:id', requirePermission('employees.edit'), updateEmployee);

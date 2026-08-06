@@ -429,6 +429,8 @@ export const initializePermissions = async () => {
     { name: 'employees.delete', description: 'Remove employees', category: 'Employee Management' },
     { name: 'employees.view_salary', description: 'View salary information', category: 'Employee Management' },
     { name: 'employees.edit_salary', description: 'Edit salary details', category: 'Employee Management' },
+    { name: 'employees.view_bank_details', description: 'View bank account and UAN details', category: 'Employee Management' },
+    { name: 'employees.edit_bank_details', description: 'Edit bank account and UAN details', category: 'Employee Management' },
     { name: 'attendance.view', description: 'View attendance records', category: 'Employee Management' },
     { name: 'attendance.mark', description: 'Mark attendance', category: 'Employee Management' },
     { name: 'attendance.edit', description: 'Edit attendance records', category: 'Employee Management' },

@@ -53,54 +53,81 @@ const checkUserPermission = async (user: any, permission: string): Promise<boole
   }
 };
 
+// Pay and banking columns are permission-gated; everything else in the record
+// is visible to anyone holding employees.view.
+const sanitizeEmployee = (employee: any, hasViewSalary: boolean, hasViewBank: boolean) => {
+  const empObj = typeof employee.toObject === 'function' ? employee.toObject() : employee;
+  if (!hasViewSalary) {
+    delete empObj.salary;
+    delete empObj.compensation;
+    delete empObj.salaryHistory;
+  }
+  if (!hasViewBank) {
+    delete empObj.bankDetails;
+    if (empObj.statutory) {
+      const { uanNumber, ...rest } = empObj.statutory;
+      empObj.statutory = rest;
+    }
+  }
+  return empObj;
+};
+
+// Escape user input before it reaches a $regex operator.
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export const getAllEmployees = async (req: Request, res: Response) => {
   try {
     const user = req.user;
     const hasViewSalary = await checkUserPermission(user, 'employees.view_salary');
-    
+    const hasViewBank = await checkUserPermission(user, 'employees.view_bank_details');
+
     // Pagination parameters
     const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const skip = (page - 1) * limit;
     const search = req.query.search as string || '';
     const status = req.query.status as string;
     const department = req.query.department as string;
-    
+    const workLocation = req.query.workLocation as string;
+    const projectAssignment = req.query.projectAssignment as string;
+    const employmentCategory = req.query.employmentCategory as string;
+
     // Build query
     const query: any = {};
+    const and: any[] = [];
     if (search) {
-      query.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { employeeId: { $regex: search, $options: 'i' } },
-        { position: { $regex: search, $options: 'i' } }
-      ];
+      const rx = { $regex: escapeRegex(search), $options: 'i' };
+      and.push({
+        $or: [
+          { firstName: rx },
+          { lastName: rx },
+          { email: rx },
+          { employeeId: rx },
+          { position: rx },
+          { workLocation: rx },
+          { projectAssignment: rx },
+          { reportingAuthority: rx }
+        ]
+      });
     }
     if (status) query.status = status;
     if (department) {
-      query.$or = [
-        { department: department },
-        { departments: department }
-      ];
+      and.push({ $or: [{ department }, { departments: department }] });
     }
-    
+    if (workLocation) query.workLocation = workLocation;
+    if (projectAssignment) query.projectAssignment = projectAssignment;
+    if (employmentCategory) query.employmentCategory = employmentCategory;
+    if (and.length) query.$and = and;
+
     const total = await Employee.countDocuments(query);
     const employees = await Employee.find(query)
       .populate('manager', 'firstName lastName')
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
-    
-    // Hide salary if user doesn't have permission
-    const sanitizedEmployees = employees.map(emp => {
-      const empObj = emp.toObject();
-      if (!hasViewSalary) {
-        delete empObj.salary;
-      }
-      return empObj;
-    });
-    
+
+    const sanitizedEmployees = employees.map(emp => sanitizeEmployee(emp, hasViewSalary, hasViewBank));
+
     res.json({
       success: true,
       data: sanitizedEmployees,
@@ -120,27 +147,71 @@ export const getEmployeeById = async (req: Request, res: Response) => {
   try {
     const user = req.user;
     const hasViewSalary = await checkUserPermission(user, 'employees.view_salary');
-    
+    const hasViewBank = await checkUserPermission(user, 'employees.view_bank_details');
+
     const employee = await Employee.findById(req.params.id).populate('manager', 'firstName lastName');
     if (!employee) {
       return res.status(404).json({ success: false, message: 'Employee not found' });
     }
 
-    const empObj = employee.toObject();
-    if (!hasViewSalary) {
-      delete empObj.salary;
-    }
-
-    res.json({ success: true, data: empObj });
+    res.json({ success: true, data: sanitizeEmployee(employee, hasViewSalary, hasViewBank) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching employee' });
+  }
+};
+
+// Distinct values backing the directory filter dropdowns.
+export const getEmployeeFilterOptions = async (_req: Request, res: Response) => {
+  try {
+    const [workLocations, projectAssignments, employmentCategories] = await Promise.all([
+      Employee.distinct('workLocation'),
+      Employee.distinct('projectAssignment'),
+      Employee.distinct('employmentCategory')
+    ]);
+
+    const clean = (values: any[]) => values.filter((v): v is string => typeof v === 'string' && v.length > 0).sort();
+
+    res.json({
+      success: true,
+      data: {
+        workLocations: clean(workLocations),
+        projectAssignments: clean(projectAssignments),
+        employmentCategories: clean(employmentCategories)
+      }
+    });
+  } catch (error: any) {
+    logger.error('Error fetching employee filter options', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching filter options' });
   }
 };
 
 export const createEmployee = async (req: Request, res: Response) => {
   try {
     const employeeData = req.body;
-    
+
+    // Same gates the update path applies, so create cannot be used to set
+    // pay or banking fields the caller is not cleared for.
+    if (employeeData.salary !== undefined || employeeData.compensation !== undefined) {
+      const hasEditSalary = await checkUserPermission(req.user, 'employees.edit_salary');
+      if (!hasEditSalary) {
+        return res.status(403).json({
+          success: false,
+          message: 'Insufficient permissions to set salary',
+          required: 'employees.edit_salary'
+        });
+      }
+    }
+    if (employeeData.bankDetails !== undefined || employeeData.statutory !== undefined) {
+      const hasEditBank = await checkUserPermission(req.user, 'employees.edit_bank_details');
+      if (!hasEditBank) {
+        return res.status(403).json({
+          success: false,
+          message: 'Insufficient permissions to set bank or statutory details',
+          required: 'employees.edit_bank_details'
+        });
+      }
+    }
+
     // Generate unique employeeId with retry logic
     let nextId: string;
     let attempts = 0;
@@ -240,16 +311,26 @@ export const updateEmployee = async (req: Request, res: Response) => {
     const updateData = req.body;
     
     // Check if salary is being updated
-    if (updateData.salary !== undefined) {
+    if (updateData.salary !== undefined || updateData.compensation !== undefined || updateData.salaryHistory !== undefined) {
       const hasEditSalary = await checkUserPermission(user, 'employees.edit_salary');
       if (!hasEditSalary) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           message: 'Insufficient permissions to edit salary',
           required: 'employees.edit_salary'
         });
       }
     }
-    
+
+    if (updateData.bankDetails !== undefined || updateData.statutory !== undefined) {
+      const hasEditBank = await checkUserPermission(user, 'employees.edit_bank_details');
+      if (!hasEditBank) {
+        return res.status(403).json({
+          message: 'Insufficient permissions to edit bank or statutory details',
+          required: 'employees.edit_bank_details'
+        });
+      }
+    }
+
     if (updateData.user === null || updateData.user === undefined || updateData.user === '') {
       return res.status(400).json({ success: false, message: 'Employee must have an associated user' });
     }

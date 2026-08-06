@@ -10,12 +10,13 @@ export const getEmployeeSalary = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
-    const employee = await Employee.findById(id).select('employeeId firstName lastName salary');
-    
+    const employee = await Employee.findById(id)
+      .select('employeeId firstName lastName salary compensation employmentCategory');
+
     if (!employee) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'Employee not found' 
+        message: 'Employee not found'
       });
     }
 
@@ -24,7 +25,9 @@ export const getEmployeeSalary = async (req: Request, res: Response) => {
       data: {
         employeeId: employee.employeeId,
         name: `${employee.firstName} ${employee.lastName}`,
-        salary: employee.salary
+        salary: employee.salary,
+        employmentCategory: employee.employmentCategory,
+        compensation: employee.compensation
       }
     });
   } catch (error: any) {
@@ -64,6 +67,23 @@ export const updateEmployeeSalary = async (req: Request, res: Response) => {
 
     const oldSalary = employee.salary;
     employee.salary = salary;
+
+    // Keep the monthly breakdown and the revision trail in step with the annual figure.
+    const monthlyGross = Math.round(salary / 12);
+    const effectiveFrom = effectiveDate ? new Date(effectiveDate) : new Date();
+    employee.compensation = { ...(employee.compensation || {}), monthlyGross, effectiveFrom };
+    employee.salaryHistory = [
+      ...(employee.salaryHistory || []),
+      {
+        effectiveFrom,
+        label: effectiveFrom.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+        monthlyGross,
+        reason,
+        recordedBy: req.user?._id,
+        recordedAt: new Date()
+      }
+    ].sort((a, b) => new Date(a.effectiveFrom).getTime() - new Date(b.effectiveFrom).getTime());
+
     await employee.save();
 
     // Log the salary change
@@ -106,31 +126,35 @@ export const updateEmployeeSalary = async (req: Request, res: Response) => {
 };
 
 /**
- * Get salary history for an employee (if implemented)
+ * Get the salary revision trail for an employee
  * Requires: employees.view_salary permission
  */
 export const getEmployeeSalaryHistory = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    const employee = await Employee.findById(id).select('employeeId firstName lastName salary');
-    
+
+    const employee = await Employee.findById(id)
+      .select('employeeId firstName lastName salary compensation salaryHistory')
+      .populate('salaryHistory.recordedBy', 'name email');
+
     if (!employee) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: 'Employee not found' 
+        message: 'Employee not found'
       });
     }
 
-    // Placeholder for salary history - would need a separate SalaryHistory model
+    const history = [...(employee.salaryHistory || [])]
+      .sort((a, b) => new Date(b.effectiveFrom).getTime() - new Date(a.effectiveFrom).getTime());
+
     res.json({
       success: true,
-      message: 'Salary history feature coming soon',
       data: {
         employeeId: employee.employeeId,
         name: `${employee.firstName} ${employee.lastName}`,
         currentSalary: employee.salary,
-        history: []
+        compensation: employee.compensation,
+        history
       }
     });
   } catch (error: any) {
