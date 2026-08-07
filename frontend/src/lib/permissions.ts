@@ -211,23 +211,48 @@ export const ROLE_LEVELS = {
 } as const;
 
 /**
- * Check if user is Root (has all permissions)
+ * Roles are named for humans ("Super Admin"), so compare on a form that is
+ * insensitive to spacing and case. Matching the raw string meant a role called
+ * "Super Admin" never equalled the "super_admin" the UI looked for.
  */
-export const isRootUser = (user: User | null): boolean => {
-  if (!user || !user.role) return false;
-  const role = typeof user.role === 'string' ? user.role : user.role?.name || '';
-  return role.toLowerCase() === 'root';
+export const normaliseRoleName = (name: string): string =>
+  name.toLowerCase().replace(/[\s_-]+/g, '');
+
+/** At or above this level a role bypasses individual permission checks. */
+export const ELEVATED_ROLE_LEVEL = 80;
+
+/** The role object, or null when only a role name was populated. */
+const roleOf = (user: User | null) =>
+  !user || !user.role || typeof user.role === 'string' ? null : user.role;
+
+export const roleNameOf = (user: User | null): string => {
+  if (!user || !user.role) return '';
+  return typeof user.role === 'string' ? user.role : user.role?.name || '';
 };
 
 /**
- * Check if user has a specific permission (Root bypasses)
+ * Check if user is Root (has all permissions)
+ */
+export const isRootUser = (user: User | null): boolean =>
+  normaliseRoleName(roleNameOf(user)) === 'root';
+
+/**
+ * Check if user has a specific permission.
+ *
+ * This is the single implementation the whole app must use. It previously
+ * honoured only Root-by-name and an exact string match, so a role holding the
+ * '*' wildcard was still refused and the sidebar hid itself from anyone who
+ * had been granted everything.
  */
 export const hasPermission = (user: User | null, permission: string): boolean => {
   if (!user || !user.role) return false;
-  if (isRootUser(user)) return true; // Root has all permissions
+  if (isRootUser(user)) return true;
 
-  const role = typeof user.role === 'string' ? null : user.role;
+  const role = roleOf(user);
   if (!role) return false;
+
+  if (role.permissions?.includes('*')) return true;
+  if ((role.level ?? 0) >= ELEVATED_ROLE_LEVEL) return true;
 
   return role.permissions?.includes(permission) || false;
 };
