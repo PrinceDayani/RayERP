@@ -683,17 +683,21 @@ export const deleteProject = async (req: Request, res: Response) => {
       }
     }
 
-    const project = await Project.findByIdAndDelete(req.params.id);
+    // Soft delete. A project is referenced by ~28 collections including
+    // FinancialEntry, ProjectLedger and Voucher; removing the document would
+    // leave accounting records pointing at a dead id. Tasks are retained too.
+    const project = await Project.findOneAndUpdate(
+      { _id: req.params.id },
+      { $set: { deletedAt: new Date(), deletedBy: req.user?._id ?? null } },
+      { new: true }
+    );
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
-    
-    await Task.deleteMany({ project: req.params.id });
-    
-    // Safely get manager ID
-    const managerId = project.managers && project.managers.length > 0 ? project.managers[0].toString() : null;
-    
-    if (managerId) {
+
+    const actorId = req.user?._id?.toString() || null;
+
+    if (actorId) {
       // Create timeline event
       await createTimelineEvent(
         'project',
@@ -701,7 +705,7 @@ export const deleteProject = async (req: Request, res: Response) => {
         'deleted',
         'Project Deleted',
         `Project "${project.name}" was deleted`,
-        managerId
+        actorId
       );
     }
     
@@ -719,7 +723,7 @@ export const deleteProject = async (req: Request, res: Response) => {
       resource: `Project: ${project.name}`,
       resourceType: 'project',
       resourceId: req.params.id,
-      details: `Deleted project "${project.name}" and all associated tasks`,
+      details: `Deleted project "${project.name}" (soft delete; tasks and financial records retained)`,
       metadata: { 
         projectId: project._id, 
         projectName: project.name,
@@ -745,6 +749,44 @@ export const deleteProject = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Error deleting project', { message: error?.message });
     res.status(500).json({ success: false, message: 'Error deleting project', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+// Restores a soft-deleted project. The explicit deletedAt predicate opts this
+// query out of the schema's default exclusion, and makes restoring a project
+// that was never deleted a 404 rather than a silent no-op.
+export const restoreProject = async (req: Request, res: Response) => {
+  try {
+    const project = await Project.findOneAndUpdate(
+      { _id: req.params.id, deletedAt: { $ne: null } },
+      { $set: { deletedAt: null, deletedBy: null } },
+      { new: true }
+    );
+
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found or not deleted' });
+    }
+
+    const actorId = req.user?._id?.toString() || null;
+    if (actorId) {
+      await createTimelineEvent(
+        'project',
+        req.params.id,
+        'updated',
+        'Project Restored',
+        `Project "${project.name}" was restored`,
+        actorId
+      );
+    }
+
+    const { io } = await import('../server');
+    io.emit('project:restored', { id: req.params.id });
+    await emitProjectStats();
+
+    res.json({ success: true, data: project });
+  } catch (error) {
+    logger.error('Error restoring project', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error restoring project', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 

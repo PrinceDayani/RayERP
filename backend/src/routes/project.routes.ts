@@ -22,6 +22,7 @@ import {
   deleteProjectInstruction,
   getProjectsByView,
   createProjectFast,
+  restoreProject,
   getEmployeesMinimal,
   getDepartmentsMinimal
 } from '../controllers/projectController';
@@ -80,6 +81,8 @@ router.put('/:id',
   updateProject
 );
 router.delete('/:id', validateObjectId(), requirePermission('projects.delete'), deleteProject);
+// Restores a soft-deleted project.
+router.post('/:id/restore', validateObjectId(), requirePermission('projects.delete'), restoreProject);
 router.patch('/:id/status',
   validateObjectId(),
   checkProjectAccess,
