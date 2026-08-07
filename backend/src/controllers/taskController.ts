@@ -4,12 +4,27 @@ import { Request, Response } from 'express';
 import Task from '../models/Task';
 import Project from '../models/Project';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
-import { logActivity } from '../utils/activityLogger';
 import { logger } from '../utils/logger';
-import { emitProjectStats } from '../utils/socketEvents';
 import mongoose from 'mongoose';
-import { recalculateProjectProgress } from '../utils/projectProgress';
 import { parseListParams, escapeRegex } from '../utils/helpers';
+import * as taskService from '../services/taskService';
+import { TaskServiceError } from '../services/taskService';
+
+const actorOf = (req: Request) => ({
+  userId: req.user!._id.toString(),
+  userName: req.user?.name
+});
+
+const fail = (res: Response, error: any, fallback: string) => {
+  if (error instanceof TaskServiceError) {
+    return res.status(error.status).json({ success: false, message: error.message });
+  }
+  logger.error(fallback, { message: error?.message });
+  return res.status(500).json({ success: false, message: fallback });
+};
+
+const ok = (res: Response, data: any, status = 200) =>
+  res.status(status).json({ success: true, data });
 
 const TASK_SORT_MAP: Record<string, Record<string, 1 | -1>> = {
   dueDate: { dueDate: 1 },
@@ -288,265 +303,43 @@ export const getTaskById = async (req: Request, res: Response) => {
 
 export const createTask = async (req: Request, res: Response) => {
   try {
-    const user = req.user;
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
-    const taskData = { ...req.body };
-
-    if (!taskData.taskType) {
-      taskData.taskType = taskData.project ? 'project' : 'individual';
-    }
-
-    if (!taskData.assignmentType) {
-      taskData.assignmentType = 'assigned';
-    }
-
-    if (taskData.assignmentType === 'self-assigned') {
-      taskData.assignedTo = user._id;
-      taskData.assignedBy = user._id;
-    }
-
-    if (!taskData.assignedBy) {
-      taskData.assignedBy = user._id;
-    }
-
-    if (taskData.assignmentType === 'assigned' && taskData.assignedTo?.toString() !== user._id.toString()) {
-      const userRole = user.role as any;
-      if (userRole?.level < 50 && userRole?.name?.toLowerCase() !== 'root') {
-        return res.status(403).json({ message: 'Insufficient permissions to assign tasks to others' });
-      }
-    }
-    
-    const task = new Task(taskData);
-    await task.save();
-    
-    if (task.project) {
-      await task.populate('project', 'name');
-    }
-    await task.populate('assignedTo', 'name email');
-    await task.populate('assignedBy', 'name email');
-    
-    const assignedById = task.assignedBy ? 
-                        (task.assignedBy as any)._id.toString() : 
-                        req.body.assignedBy;
-    
-    if (!assignedById) {
-      return res.status(400).json({ message: 'AssignedBy user is required for timeline event' });
-    }
-    
-    await createTimelineEvent(
-      'task',
-      task._id.toString(),
-      'created',
-      'Task Created',
-      `Task "${task.title}" was created`,
-      assignedById
-    );
-    
-    const { io } = await import('../server');
-    io.emit('task:created', task);
-    await emitProjectStats();
-    await recalculateProjectProgress(task.project);
-    
-    // Send notification if task is assigned to someone else
-    if (task.assignmentType === 'assigned' && task.assignedTo?.toString() !== user._id.toString()) {
-      const { NotificationEmitter } = await import('../utils/notificationEmitter');
-      await NotificationEmitter.taskAssigned(task, task.assignedTo.toString());
-    }
-    
-    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
-    await RealTimeEmitter.emitDashboardStats();
-    await RealTimeEmitter.emitActivityLog({
-      type: 'task',
-      message: `New task "${task.title}" created`,
-      user: req.user?.name || 'System',
-      userId: req.user?._id?.toString(),
-      metadata: { taskId: task._id, taskTitle: task.title, status: task.status, taskType: task.taskType }
-    });
-    
-    res.status(201).json(task);
+    const task = await taskService.createTask(req.body, actorOf(req));
+    return ok(res, task, 201);
   } catch (error) {
-    logger.error('Error creating task', { message: error?.message });
-    res.status(400).json({ message: 'Error creating task', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error creating task');
   }
 };
 
 export const updateTask = async (req: Request, res: Response) => {
   try {
-    const oldTask = await Task.findById(req.params.id);
-    if (!oldTask) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-    
-    const task = await Task.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('project', 'name')
-     .populate('assignedTo', 'name email')
-     .populate('assignedBy', 'name email');
-    
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-    
-    // Safely get user ID for timeline
-    const updatedBy = req.body.updatedBy || 
-                     (task.assignedBy ? (task.assignedBy as any)._id.toString() : null);
-    
-    if (!updatedBy) {
-      return res.status(400).json({ message: 'Unable to determine user for timeline event' });
-    }
-    
-    if (oldTask.status !== task.status) {
-      await createTimelineEvent(
-        'task',
-        task._id.toString(),
-        'status_changed',
-        'Status Updated',
-        `Task status changed from "${oldTask.status}" to "${task.status}"`,
-        updatedBy,
-        {
-          field: 'status',
-          oldValue: oldTask.status,
-          newValue: task.status
-        }
-      );
-    } else {
-      await createTimelineEvent(
-        'task',
-        task._id.toString(),
-        'updated',
-        'Task Updated',
-        `Task "${task.title}" was updated`,
-        updatedBy
-      );
-    }
-    
-    const { io } = await import('../server');
-    io.emit('task:updated', task);
-    await emitProjectStats();
-    await recalculateProjectProgress(task.project);
-    
-    // Emit dashboard stats update
-    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
-    await RealTimeEmitter.emitDashboardStats();
-    await RealTimeEmitter.emitActivityLog({
-      type: 'task',
-      message: `Task "${task.title}" updated`,
-      user: req.user?.name || 'System',
-      userId: req.user?._id?.toString(),
-      metadata: { taskId: task._id, taskTitle: task.title, status: task.status }
-    });
-    
-    res.json(task);
+    const task = await taskService.updateTask(req.params.id, req.body, actorOf(req));
+    return ok(res, task);
   } catch (error) {
-    logger.error('Error updating task', { message: error?.message });
-    res.status(400).json({ message: 'Error updating task', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error updating task');
   }
 };
 
 export const deleteTask = async (req: Request, res: Response) => {
   try {
-    const task = await Task.findByIdAndDelete(req.params.id);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-    
-    // Safely get assignedBy ID
-    const assignedById = task.assignedBy ? 
-      (task.assignedBy as any)._id.toString() : null;
-    
-    if (assignedById) {
-      await createTimelineEvent(
-        'task',
-        req.params.id,
-        'deleted',
-        'Task Deleted',
-        `Task "${task.title}" was deleted`,
-        assignedById
-      );
-    }
-    
-    const { io } = await import('../server');
-    io.emit('task:deleted', { id: req.params.id });
-    await emitProjectStats();
-    await recalculateProjectProgress(task.project);
-    
-    // Emit dashboard stats update
-    const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
-    await RealTimeEmitter.emitDashboardStats();
-    await RealTimeEmitter.emitActivityLog({
-      type: 'task',
-      message: `Task "${task.title}" deleted`,
-      user: req.user?.name || 'System',
-      userId: req.user?._id?.toString(),
-      metadata: { taskId: task._id, taskTitle: task.title }
-    });
-    
-    res.json({ message: 'Task deleted successfully' });
+    await taskService.deleteTask(req.params.id, actorOf(req));
+    return ok(res, { message: 'Task deleted successfully' });
   } catch (error) {
-    logger.error('Error deleting task', { message: error?.message });
-    res.status(500).json({ message: 'Error deleting task', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error deleting task');
   }
 };
 
 export const addTaskComment = async (req: Request, res: Response) => {
   try {
-    const { comment, user } = req.body;
-    
-    if (!comment || !user) {
-      return res.status(400).json({ message: 'Comment and user are required' });
-    }
-    
-    const task = await Task.findById(req.params.id).populate('project', 'name');
-    
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-    
-    task.comments.push({ user, comment, mentions: [], createdAt: new Date() });
-    await task.save();
-    await task.populate('comments.user', 'name email');
-    
-    try {
-      await createTimelineEvent(
-        'task',
-        req.params.id,
-        'comment_added',
-        'Comment Added',
-        comment,
-        user
-      );
-    } catch (timelineError) {
-      logger.error('Timeline event creation failed', { message: (timelineError as any)?.message });
-    }
-
-    // Log activity
-    const currentUser = (req as any).user;
-    const User = (await import('../models/User')).default;
-    const commenter = await User.findById(user).select('name');
-    await logActivity({
-      userId: currentUser?.id || user,
-      userName: commenter?.name || currentUser?.name || 'Unknown',
-      action: 'comment',
-      resource: `Task: ${task.title}`,
-      resourceType: 'comment',
-      resourceId: task._id,
-      projectId: task.project._id,
-      details: `Commented on task "${task.title}": ${comment.substring(0, 100)}${comment.length > 100 ? '...' : ''}`,
-      visibility: 'project_team',
-      metadata: { comment, taskTitle: task.title }
-    });
-    
-    const { io } = await import('../server');
-    io.emit('task:comment:added', { taskId: req.params.id, comment: task.comments[task.comments.length - 1] });
-    res.json(task);
+    const { comment } = await taskService.addComment(
+      req.params.id,
+      req.body?.comment,
+      actorOf(req),
+      undefined,
+      Array.isArray(req.body?.mentions) ? req.body.mentions : []
+    );
+    return ok(res, comment, 201);
   } catch (error) {
-    logger.error('Error adding comment', { message: error?.message });
-    res.status(400).json({ message: 'Error adding comment', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error adding comment');
   }
 };
 
@@ -614,93 +407,34 @@ export const addTimelineEntry = async (req: Request, res: Response) => {
 
 export const updateTaskStatus = async (req: Request, res: Response) => {
   try {
-    const { status } = req.body;
+    const { task, oldStatus } = await taskService.updateTaskStatus(
+      req.params.id,
+      req.body?.status,
+      actorOf(req)
+    );
 
-    if (!status) {
-      return res.status(400).json({ message: 'Status is required' });
-    }
-
-    const task = await Task.findById(req.params.id);
-    
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-    
-    // Clean up invalid tags before saving
-    task.tags = task.tags.filter(tag => tag.name && tag.name.trim());
-    
-    const oldStatus = task.status;
-    task.status = status;
-    await task.save({ validateBeforeSave: true });
-    
-    await task.populate('project', 'name');
-    await task.populate('assignedTo', 'name email');
-    await task.populate('assignedBy', 'name email');
-    
-    // Timeline actor is always the authenticated user; never client-supplied.
-    const userId = req.user?._id?.toString();
-
-    if (!userId) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
-
-    try {
-      await createTimelineEvent(
-        'task',
-        task._id.toString(),
-        'status_changed',
-        'Status Updated',
-        `Task status changed from "${oldStatus}" to "${status}"`,
-        userId,
-        {
-          field: 'status',
-          oldValue: oldStatus,
-          newValue: status
-        }
-      );
-    } catch (timelineError) {
-      logger.error('Timeline event creation failed', { message: (timelineError as any)?.message });
-      // Continue execution even if timeline fails
-    }
-    
-    const { io } = await import('../server');
-    io.emit('task:status:updated', task);
-    await emitProjectStats();
-    await recalculateProjectProgress(task.project);
-    
-    // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
     await RealTimeEmitter.emitDashboardStats();
     await RealTimeEmitter.emitActivityLog({
       type: 'task',
-      message: `Task "${task.title}" status changed to ${status}`,
+      message: `Task "${task.title}" status changed to ${task.status}`,
       user: req.user?.name || 'System',
       userId: req.user?._id?.toString(),
-      metadata: { taskId: task._id, taskTitle: task.title, oldStatus: oldStatus, newStatus: status }
+      metadata: { taskId: task._id, taskTitle: task.title, oldStatus, newStatus: task.status }
     });
-    
-    res.json(task);
+
+    return ok(res, task);
   } catch (error) {
-    logger.error('Error updating task status', { message: error?.message });
-    res.status(400).json({ message: 'Error updating task status', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error updating task status');
   }
 };
 
 export const cloneTask = async (req: Request, res: Response) => {
   try {
-    const task = await Task.findById(req.params.id);
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const { _id, createdAt, updatedAt, ...taskData } = task.toObject();
-    const clonedTask = new Task({ ...taskData, title: `${taskData.title} (Copy)` });
-    await clonedTask.save();
-    await clonedTask.populate('project assignedTo assignedBy');
-    
-    const { io } = await import('../server');
-    io.emit('task:created', clonedTask);
-    res.status(201).json(clonedTask);
+    const clone = await taskService.cloneTask(req.params.id, actorOf(req));
+    return ok(res, clone, 201);
   } catch (error) {
-    res.status(400).json({ message: 'Error cloning task', error });
+    return fail(res, error, 'Error cloning task');
   }
 };
 
@@ -722,31 +456,19 @@ export const bulkUpdateTasks = async (req: Request, res: Response) => {
 
 export const addWatcher = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.body;
-    const task = await Task.findById(req.params.id);
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    if (!task.watchers.includes(userId)) {
-      task.watchers.push(userId);
-      await task.save();
-    }
-    res.json(task);
+    const watchers = await taskService.addWatcher(req.params.id, req.body?.userId);
+    return ok(res, watchers);
   } catch (error) {
-    res.status(400).json({ message: 'Error adding watcher', error });
+    return fail(res, error, 'Error adding watcher');
   }
 };
 
 export const removeWatcher = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.body;
-    const task = await Task.findById(req.params.id);
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    task.watchers = task.watchers.filter(w => w.toString() !== userId);
-    await task.save();
-    res.json(task);
+    const watchers = await taskService.removeWatcher(req.params.id, req.body?.userId);
+    return ok(res, watchers);
   } catch (error) {
-    res.status(400).json({ message: 'Error removing watcher', error });
+    return fail(res, error, 'Error removing watcher');
   }
 };
 
@@ -821,53 +543,19 @@ export const deleteTemplate = async (req: Request, res: Response) => {
 
 export const startTimeTracking = async (req: Request, res: Response) => {
   try {
-    const { user, description } = req.body;
-    
-    if (!user) return res.status(400).json({ message: 'User ID is required' });
-    
-    const task = await Task.findById(req.params.id);
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const activeEntry = task.timeEntries.find(e => e.user.toString() === user && !e.endTime);
-    if (activeEntry) return res.status(400).json({ message: 'Timer already running for this user' });
-    
-    task.timeEntries.push({ user, startTime: new Date(), duration: 0, description: description?.trim() });
-    await task.save();
-    
-    const { io } = await import('../server');
-    io.emit('task:timer:started', { taskId: task._id, userId: user });
-    
-    res.json({ success: true, entry: task.timeEntries[task.timeEntries.length - 1] });
+    const entry = await taskService.startTimer(req.params.id, actorOf(req), req.body?.description);
+    return ok(res, entry);
   } catch (error) {
-    logger.error('Error starting timer', { message: error?.message });
-    res.status(500).json({ message: 'Error starting timer', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error starting time tracking');
   }
 };
 
 export const stopTimeTracking = async (req: Request, res: Response) => {
   try {
-    const { user } = req.body;
-    
-    if (!user) return res.status(400).json({ message: 'User ID is required' });
-    
-    const task = await Task.findById(req.params.id);
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const entry = task.timeEntries.find(e => e.user.toString() === user && !e.endTime);
-    if (!entry) return res.status(400).json({ message: 'No active timer found for this user' });
-    
-    entry.endTime = new Date();
-    entry.duration = Math.max(1, Math.round((entry.endTime.getTime() - entry.startTime.getTime()) / 1000 / 60));
-    task.actualHours = Number(task.timeEntries.reduce((sum, e) => sum + (e.duration / 60), 0).toFixed(2));
-    await task.save();
-    
-    const { io } = await import('../server');
-    io.emit('task:timer:stopped', { taskId: task._id, userId: user, duration: entry.duration });
-    
-    res.json({ success: true, entry, actualHours: task.actualHours });
+    const result = await taskService.stopTimer(req.params.id, actorOf(req));
+    return ok(res, result);
   } catch (error) {
-    logger.error('Error stopping timer', { message: error?.message });
-    res.status(500).json({ message: 'Error stopping timer', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error stopping time tracking');
   }
 };
 
@@ -963,63 +651,25 @@ export const removeAttachment = async (req: Request, res: Response) => {
 
 export const addTag = async (req: Request, res: Response) => {
   try {
-    const { name, color } = req.body;
-    
-    if (!name?.trim()) return res.status(400).json({ message: 'Tag name is required' });
-    
-    const task = await Task.findById(req.params.id);
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const trimmedName = name.trim();
-    if (task.tags.some(t => t.name.toLowerCase() === trimmedName.toLowerCase())) {
-      return res.status(400).json({ message: 'Tag already exists' });
-    }
-    
-    const hexColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
-    const validColor = color && hexColorRegex.test(color) ? color : '#3b82f6';
-    
-    task.tags.push({ name: trimmedName, color: validColor });
-    await task.save();
-    
-    const { io } = await import('../server');
-    io.emit('task:tag:added', { taskId: task._id, tag: task.tags[task.tags.length - 1] });
-    
-    res.json({ success: true, tag: task.tags[task.tags.length - 1] });
+    const tag = await taskService.addTag(req.params.id, {
+      name: req.body?.name,
+      color: req.body?.color
+    });
+    return ok(res, tag, 201);
   } catch (error) {
-    logger.error('Error adding tag', { message: error?.message });
-    res.status(500).json({ message: 'Error adding tag', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error adding tag');
   }
 };
 
 export const removeTag = async (req: Request, res: Response) => {
   try {
-    const { name } = req.body;
-    
-    if (!name) return res.status(400).json({ message: 'Tag name is required' });
-    
-    const task = await Task.findById(req.params.id);
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const initialLength = task.tags.length;
-    task.tags = task.tags.filter(t => t.name !== name);
-    
-    if (task.tags.length === initialLength) {
-      return res.status(404).json({ message: 'Tag not found' });
-    }
-    
-    await task.save();
-    
-    const { io } = await import('../server');
-    io.emit('task:tag:removed', { taskId: task._id, tagName: name });
-    
-    res.json({ success: true, message: 'Tag removed successfully' });
+    const tags = await taskService.removeTag(req.params.id, req.body?.name);
+    return ok(res, tags);
   } catch (error) {
-    logger.error('Error removing tag', { message: error?.message });
-    res.status(500).json({ message: 'Error removing tag', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error removing tag');
   }
 };
 
-// Custom Fields
 export const addCustomField = async (req: Request, res: Response) => {
   try {
     const { fieldName, fieldType, value, options } = req.body;

@@ -342,7 +342,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
 
     setLoading(true);
     try {
-      await tasksAPI.addComment(commentDialog.task._id, newComment, user._id);
+      await tasksAPI.addComment(commentDialog.task._id, newComment);
       setNewComment('');
       commentDialog.onOpenChange(false);
     } catch (error) {

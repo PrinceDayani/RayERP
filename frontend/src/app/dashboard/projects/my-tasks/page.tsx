@@ -41,7 +41,7 @@ export default function MyTasksPage() {
 
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
     try {
-      await tasksAPI.updateStatus(taskId, newStatus, user?._id);
+      await tasksAPI.updateStatus(taskId, newStatus);
       await fetchMyTasks(); // Refresh tasks
       toast({
         title: "Success",

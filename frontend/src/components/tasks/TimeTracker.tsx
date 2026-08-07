@@ -46,7 +46,7 @@ export default function TimeTracker({ taskId, userId, timeEntries = [], onUpdate
 
   const handleStart = async () => {
     try {
-      await tasksAPI.startTimer(taskId, userId, description);
+      await tasksAPI.startTimer(taskId, description);
       setIsRunning(true);
       setDescription('');
       onUpdate?.();
@@ -58,7 +58,7 @@ export default function TimeTracker({ taskId, userId, timeEntries = [], onUpdate
 
   const handleStop = async () => {
     try {
-      await tasksAPI.stopTimer(taskId, userId);
+      await tasksAPI.stopTimer(taskId);
       setIsRunning(false);
       setElapsed(0);
       onUpdate?.();

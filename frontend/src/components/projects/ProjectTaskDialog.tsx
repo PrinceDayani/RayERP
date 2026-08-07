@@ -220,7 +220,7 @@ export default function ProjectTaskDialog({ open, onOpenChange, task, projectId,
   const handleAddComment = async () => {
     if (!newComment.trim() || !task?._id) return;
     try {
-      await tasksAPI.addComment(task._id, newComment, formData.assignedTo);
+      await tasksAPI.addComment(task._id, newComment);
       setComments([...comments, { comment: newComment, createdAt: new Date(), user: { firstName: 'You' } }]);
       setNewComment('');
     } catch (error) {
@@ -231,7 +231,7 @@ export default function ProjectTaskDialog({ open, onOpenChange, task, projectId,
   const handleStartTimer = async () => {
     if (!task?._id) return;
     try {
-      await tasksAPI.startTimer(task._id, formData.assignedTo);
+      await tasksAPI.startTimer(task._id);
       const newEntry = { startTime: new Date(), endTime: null, duration: 0, user: formData.assignedTo };
       setTimeEntries([...timeEntries, newEntry]);
       setActiveTimer(newEntry);
@@ -243,7 +243,7 @@ export default function ProjectTaskDialog({ open, onOpenChange, task, projectId,
   const handleStopTimer = async () => {
     if (!task?._id || !activeTimer) return;
     try {
-      await tasksAPI.stopTimer(task._id, formData.assignedTo);
+      await tasksAPI.stopTimer(task._id);
       setActiveTimer(null);
       // Refresh time entries
       const updatedTask = await tasksAPI.getById(task._id);

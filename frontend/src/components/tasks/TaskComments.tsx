@@ -55,7 +55,7 @@ export function TaskComments({ taskId, comments, onCommentAdded }: TaskCommentsP
 
     try {
       setAdding(true);
-      await tasksAPI.addComment(taskId, newComment, user?._id || "");
+      await tasksAPI.addComment(taskId, newComment);
       setNewComment("");
       setMentions([]);
       toast({ title: "Success", description: "Comment added" });

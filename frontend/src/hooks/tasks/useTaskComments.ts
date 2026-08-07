@@ -5,10 +5,10 @@ import { toast } from "@/components/ui/use-toast";
 export function useTaskComments(taskId: string) {
   const [loading, setLoading] = useState(false);
 
-  const addComment = async (comment: string, userId: string) => {
+  const addComment = async (comment: string) => {
     try {
       setLoading(true);
-      await tasksAPI.addComment(taskId, comment, userId);
+      await tasksAPI.addComment(taskId, comment);
       return true;
     } catch (error) {
       toast({ title: "Error", description: "Failed to add comment", variant: "destructive" });
