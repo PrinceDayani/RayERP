@@ -7,7 +7,82 @@ import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper'
 import { logActivity } from '../utils/activityLogger';
 import { logger } from '../utils/logger';
 import { emitProjectStats } from '../utils/socketEvents';
+import mongoose from 'mongoose';
 import { recalculateProjectProgress } from '../utils/projectProgress';
+import { parseListParams, escapeRegex } from '../utils/helpers';
+
+const TASK_SORT_MAP: Record<string, Record<string, 1 | -1>> = {
+  dueDate: { dueDate: 1 },
+  created: { createdAt: -1 },
+  recent: { updatedAt: -1 },
+  title: { title: 1 },
+  order: { order: 1 }
+};
+
+const TASK_LIST_POPULATE = [
+  { path: 'project', select: 'name' },
+  { path: 'assignedTo', select: 'name email' },
+  { path: 'assignedBy', select: 'name email' },
+  { path: 'dependencies.taskId', select: 'title' },
+  { path: 'subtasks', select: 'title status' },
+  { path: 'parentTask', select: 'title' }
+];
+
+// Ids of soft-deleted projects, so their tasks stop surfacing in task lists.
+// Project queries already exclude them, but a task can also be reached through
+// assignedTo/assignedBy without going via its project.
+const getDeletedProjectIds = async (): Promise<any[]> => {
+  const ProjectModel = (await import('../models/Project')).default;
+  const deleted = await ProjectModel.find({ deletedAt: { $ne: null } })
+    .select('_id')
+    .lean();
+  return deleted.map(p => p._id);
+};
+
+const buildTaskFilter = (query: any, search: string | null) => {
+  const filter: any = { isTemplate: { $ne: true } };
+
+  const validStatuses = ['todo', 'in-progress', 'review', 'completed', 'blocked'];
+  const validPriorities = ['low', 'medium', 'high', 'critical'];
+
+  const statuses = String(query.status || '')
+    .split(',')
+    .map((s: string) => s.trim())
+    .filter((s: string) => validStatuses.includes(s));
+  if (statuses.length) filter.status = { $in: statuses };
+
+  const priorities = String(query.priority || '')
+    .split(',')
+    .map((p: string) => p.trim())
+    .filter((p: string) => validPriorities.includes(p));
+  if (priorities.length) filter.priority = { $in: priorities };
+
+  if (query.taskType === 'individual' || query.taskType === 'project') {
+    filter.taskType = query.taskType;
+  }
+
+  if (typeof query.project === 'string' && mongoose.Types.ObjectId.isValid(query.project)) {
+    filter.project = new mongoose.Types.ObjectId(query.project);
+  }
+
+  if (typeof query.assignedTo === 'string' && mongoose.Types.ObjectId.isValid(query.assignedTo)) {
+    filter.assignedTo = new mongoose.Types.ObjectId(query.assignedTo);
+  }
+
+  if (query.overdue === 'true') {
+    filter.dueDate = { $lt: new Date() };
+    filter.status = filter.status
+      ? { ...filter.status, $ne: 'completed' }
+      : { $ne: 'completed' };
+  }
+
+  if (search) {
+    const pattern = new RegExp(escapeRegex(search), 'i');
+    filter.$and = [{ $or: [{ title: pattern }, { description: pattern }] }];
+  }
+
+  return filter;
+};
 
 export const getAllTasks = async (req: Request, res: Response) => {
   try {
@@ -17,93 +92,96 @@ export const getAllTasks = async (req: Request, res: Response) => {
     }
 
     const userRole = user.role as any;
-    const { taskType } = req.query;
-    
-    // Root/Director get full access to all tasks
-    if (userRole?.level >= 80) {
-      const filter: any = { isTemplate: { $ne: true } };
-      if (taskType) filter.taskType = taskType;
-      
-      const tasks = await Task.find(filter)
-        .populate('project', 'name')
-        .populate('assignedTo', 'name email')
-        .populate('assignedBy', 'name email')
-        .populate('dependencies.taskId', 'title')
-        .populate('subtasks', 'title status')
-        .populate('parentTask', 'title');
+    const { page, limit, skip, paginate, search, sort } = parseListParams(req.query, {
+      sortMap: TASK_SORT_MAP,
+      defaultSort: 'dueDate'
+    });
+
+    const filter: any = buildTaskFilter(req.query, search);
+
+    const deletedProjectIds = await getDeletedProjectIds();
+    if (deletedProjectIds.length) {
+      filter.project = filter.project
+        ? filter.project
+        : { $nin: deletedProjectIds };
+    }
+
+    // Root/Director see every task; everyone else sees their own plus the
+    // tasks of projects they are attached to.
+    if (!(userRole?.level >= 80)) {
+      const ProjectModel = (await import('../models/Project')).default;
+      const assignedProjects = await ProjectModel.find({
+        $or: [{ owner: user._id }, { team: user._id }, { managers: user._id }]
+      })
+        .select('_id')
+        .lean();
+
+      const assignedProjectIds = assignedProjects.map(p => p._id);
+
+      filter.$and = [
+        ...(filter.$and || []),
+        {
+          $or: [
+            { assignedTo: user._id },
+            { assignedBy: user._id },
+            { taskType: 'project', project: { $in: assignedProjectIds } }
+          ]
+        }
+      ];
+    }
+
+    const query = Task.find(filter).sort(sort).populate(TASK_LIST_POPULATE).lean();
+    if (paginate) query.skip(skip).limit(limit);
+
+    const [tasks, total] = await Promise.all([
+      query.exec(),
+      paginate ? Task.countDocuments(filter) : Promise.resolve(0)
+    ]);
+
+    if (!paginate) {
+      // Unparameterised calls keep the original bare-array contract.
       return res.json(tasks);
     }
 
-    const individualTaskQuery: any = {
-      isTemplate: { $ne: true },
-      taskType: 'individual',
-      $or: [
-        { assignedTo: user._id },
-        { assignedBy: user._id }
-      ]
-    };
-
-    const Project = (await import('../models/Project')).default;
-    const assignedProjects = await Project.find({
-      $or: [
-        { owner: user._id },
-        { team: user._id },
-        { managers: user._id }
-      ]
-    }).select('_id');
-
-    const assignedProjectIds = assignedProjects.map(p => p._id);
-
-    const projectTaskQuery: any = {
-      isTemplate: { $ne: true },
-      taskType: 'project',
-      $or: [
-        { project: { $in: assignedProjectIds } },
-        { assignedTo: user._id },
-        { assignedBy: user._id }
-      ]
-    };
-
-    // Filter by taskType if specified
-    let tasks;
-    if (taskType === 'individual') {
-      tasks = await Task.find(individualTaskQuery)
-        .populate('assignedTo', 'name email')
-        .populate('assignedBy', 'name email')
-        .populate('dependencies.taskId', 'title')
-        .populate('subtasks', 'title status')
-        .populate('parentTask', 'title');
-    } else if (taskType === 'project') {
-      tasks = await Task.find(projectTaskQuery)
-        .populate('project', 'name')
-        .populate('assignedTo', 'name email')
-        .populate('assignedBy', 'name email')
-        .populate('dependencies.taskId', 'title')
-        .populate('subtasks', 'title status')
-        .populate('parentTask', 'title');
-    } else {
-      // Get both types
-      const individualTasks = await Task.find(individualTaskQuery)
-        .populate('assignedTo', 'name email')
-        .populate('assignedBy', 'name email')
-        .populate('dependencies.taskId', 'title')
-        .populate('subtasks', 'title status')
-        .populate('parentTask', 'title');
-      
-      const projectTasks = await Task.find(projectTaskQuery)
-        .populate('project', 'name')
-        .populate('assignedTo', 'name email')
-        .populate('assignedBy', 'name email')
-        .populate('dependencies.taskId', 'title')
-        .populate('subtasks', 'title status')
-        .populate('parentTask', 'title');
-      
-      tasks = [...individualTasks, ...projectTasks];
-    }
-    
-    res.json(tasks);
+    return res.json({
+      success: true,
+      data: tasks,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+    });
   } catch (error) {
+    logger.error('Error fetching tasks', { message: (error as any)?.message });
     res.status(500).json({ message: 'Error fetching tasks', error });
+  }
+};
+
+// Id/title pairs for pickers, mirroring /projects/minimal.
+export const getTasksMinimal = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const userRole = user.role as any;
+    const filter: any = { isTemplate: { $ne: true } };
+
+    if (typeof req.query.project === 'string' && mongoose.Types.ObjectId.isValid(req.query.project)) {
+      filter.project = new mongoose.Types.ObjectId(req.query.project);
+    }
+
+    if (!(userRole?.level >= 80)) {
+      filter.$or = [{ assignedTo: user._id }, { assignedBy: user._id }];
+    }
+
+    const tasks = await Task.find(filter)
+      .select('title status project')
+      .sort({ title: 1 })
+      .lean();
+
+    res.json({ success: true, data: tasks });
+  } catch (error) {
+    logger.error('Error fetching minimal tasks', { message: (error as any)?.message });
+    res.status(500).json({ success: false, message: 'Error fetching tasks' });
   }
 };
 

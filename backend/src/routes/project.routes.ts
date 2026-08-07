@@ -23,6 +23,7 @@ import {
   getProjectsByView,
   createProjectFast,
   restoreProject,
+  getProjectsMinimal,
   getEmployeesMinimal,
   getDepartmentsMinimal
 } from '../controllers/projectController';
@@ -54,6 +55,8 @@ const router = Router();
 router.use(authenticateToken);
 
 // --- Fast/Optimized Routes ---
+// Id/name pairs for dropdowns; avoids fetching full project documents.
+router.get('/minimal', requirePermission('projects.view'), getProjectsMinimal);
 router.get('/employees/minimal', requirePermission('projects.view'), getEmployeesMinimal);
 router.get('/departments/minimal', requirePermission('projects.view'), getDepartmentsMinimal);
 

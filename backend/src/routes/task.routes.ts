@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import {
   getAllTasks,
+  getTasksMinimal,
   getTaskById,
   createTask,
   updateTask,
@@ -103,6 +104,9 @@ router.get('/stats', requirePermission('tasks.view'), async (req, res) => {
   }
 });
 
+// Id/title pairs for dropdowns; declared before /:id so it is not
+// swallowed by the id route.
+router.get('/minimal', requirePermission('tasks.view'), getTasksMinimal);
 router.get('/', requireTaskPermission('tasks.view_all', false), getAllTasks);
 router.get('/:id', validateObjectId(), requirePermission('tasks.view'), getTaskById);
 router.post('/', 

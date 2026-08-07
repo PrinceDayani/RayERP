@@ -7,7 +7,79 @@ import { WorkflowProjectIntegration } from '../services/workflowProjectIntegrati
 import { logger } from '../utils/logger';
 import { emitProjectStats } from '../utils/socketEvents';
 import { computeProjectProgress } from '../utils/projectProgress';
+import { parseListParams, escapeRegex } from '../utils/helpers';
 // Socket will be imported dynamically to avoid circular dependency
+
+const PROJECT_SORT_MAP: Record<string, Record<string, 1 | -1>> = {
+  recent: { updatedAt: -1 },
+  created: { createdAt: -1 },
+  name: { name: 1 },
+  endDate: { endDate: 1 },
+  startDate: { startDate: 1 },
+  progress: { progress: -1 }
+};
+
+const PROJECT_LIST_POPULATE = [
+  { path: 'managers', select: 'name email', strictPopulate: false },
+  { path: 'team', select: 'name email', strictPopulate: false },
+  { path: 'owner', select: 'name email', strictPopulate: false },
+  { path: 'departments', select: 'name description', strictPopulate: false }
+];
+
+// Fields a user may see for a project they are not assigned to but can reach
+// through a department-level projects.view grant.
+const PROJECT_BASIC_FIELDS = [
+  '_id',
+  'name',
+  'status',
+  'priority',
+  'startDate',
+  'endDate',
+  'departments'
+] as const;
+
+const toBasicProject = (project: any) => {
+  const basic: any = { isBasicView: true };
+  for (const field of PROJECT_BASIC_FIELDS) basic[field] = project[field];
+  return basic;
+};
+
+// Translates status/priority/tag/search query params into a Mongo filter.
+// Every value is validated against the schema's own enums rather than passed
+// through, and free text is regex-escaped before it reaches the query.
+const buildProjectFilter = (query: any, search: string | null) => {
+  const filter: any = {};
+
+  const validStatuses = ['planning', 'active', 'on-hold', 'completed', 'archived', 'cancelled'];
+  const validPriorities = ['low', 'medium', 'high', 'critical'];
+
+  const statuses = String(query.status || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => validStatuses.includes(s));
+  if (statuses.length) filter.status = { $in: statuses };
+
+  const priorities = String(query.priority || '')
+    .split(',')
+    .map(p => p.trim())
+    .filter(p => validPriorities.includes(p));
+  if (priorities.length) filter.priority = { $in: priorities };
+
+  if (typeof query.projectType === 'string' && ['instruction', 'reporting'].includes(query.projectType)) {
+    filter.projectType = query.projectType;
+  }
+
+  if (typeof query.tag === 'string' && query.tag.trim()) {
+    filter.tags = query.tag.trim();
+  }
+
+  if (search) {
+    const pattern = new RegExp(escapeRegex(search), 'i');
+    filter.$and = [{ $or: [{ name: pattern }, { client: pattern }] }];
+  }
+
+  return filter;
+};
 
 export const getAllProjects = async (req: Request, res: Response) => {
   try {
@@ -16,81 +88,122 @@ export const getAllProjects = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    const userRole = user.role as any;
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
     const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
 
-    // Root or users with projects.view_all permission get full access to all projects
-    if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
-      const projects = await Project.find({})
-        .populate({ path: 'managers', select: 'name email', strictPopulate: false })
-        .populate({ path: 'team', select: 'name email', strictPopulate: false })
-        .populate({ path: 'owner', select: 'name email', strictPopulate: false })
+    const { page, limit, skip, paginate, search, sort } = parseListParams(req.query, {
+      sortMap: PROJECT_SORT_MAP,
+      defaultSort: 'recent'
+    });
 
-        .populate({ path: 'departments', select: 'name description', strictPopulate: false });
+    const filter: any = buildProjectFilter(req.query, search);
+    const seesEverything = roleName === 'Root' || rolePermissions.includes('projects.view_all');
 
-      return res.json(projects);
-    }
+    // Ids the user is directly attached to; everything else they can see is
+    // department-derived and returned in the reduced shape.
+    let assignedIds: Set<string> | null = null;
 
-    // Get user's department permissions
-    const Employee = (await import('../models/Employee')).default;
-    const Department = (await import('../models/Department')).default;
-    const employee = await Employee.findOne({ user: user._id });
-    
-    let hasProjectViewPermission = false;
-    if (employee) {
-      const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
-      if (departmentNames.length > 0) {
-        const departments = await Department.find({ name: { $in: departmentNames }, status: 'active' });
-        hasProjectViewPermission = departments.some(dept => 
-          dept.permissions && dept.permissions.includes('projects.view')
-        );
+    if (!seesEverything) {
+      const assignedConditions: any[] = [
+        { owner: user._id },
+        { team: user._id },
+        { managers: user._id }
+      ];
+
+      const Employee = (await import('../models/Employee')).default;
+      const Department = (await import('../models/Department')).default;
+      const employee = await Employee.findOne({ user: user._id }).select('department departments').lean();
+
+      if (employee) {
+        const departmentNames = employee.departments?.length
+          ? employee.departments
+          : (employee.department ? [employee.department] : []);
+
+        if (departmentNames.length > 0) {
+          const departments = await Department.find({
+            name: { $in: departmentNames },
+            status: 'active'
+          }).select('_id permissions').lean();
+
+          const grantsProjectView = departments.some(
+            dept => dept.permissions && dept.permissions.includes('projects.view')
+          );
+
+          // Project.departments holds Department ids, while Employee.departments
+          // holds names, so the ids have to be resolved before matching.
+          if (grantsProjectView && departments.length) {
+            assignedConditions.push({ departments: { $in: departments.map(d => d._id) } });
+          }
+        }
       }
+
+      const assigned = await Project.find({
+        $or: [{ owner: user._id }, { team: user._id }, { managers: user._id }]
+      }).select('_id').lean();
+      assignedIds = new Set(assigned.map(p => p._id.toString()));
+
+      filter.$and = [...(filter.$and || []), { $or: assignedConditions }];
     }
 
-    // Find projects user is assigned to (full access)
-    const assignedConditions: any[] = [
-      { owner: user._id },
-      { team: user._id },
-      { managers: user._id }
-    ];
-    
-    const assignedProjects = await Project.find({ $or: assignedConditions })
-      .populate({ path: 'managers', select: 'name email', strictPopulate: false })
-      .populate({ path: 'team', select: 'name email', strictPopulate: false })
-      .populate({ path: 'owner', select: 'name email', strictPopulate: false })
-      
-      .populate({ path: 'departments', select: 'name description', strictPopulate: false });
+    const query = Project.find(filter)
+      .sort(sort)
+      .populate(PROJECT_LIST_POPULATE)
+      .lean();
 
-    // If user has department permission, also show basic info of department projects
-    if (hasProjectViewPermission && employee) {
-      const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
-      const departmentProjects = await Project.find({ 
-        departments: { $in: departmentNames },
-        _id: { $nin: assignedProjects.map(p => p._id) } // Exclude already assigned projects
-      }).select('name status priority startDate endDate departments');
-      
-      // Return assigned projects with full details + department projects with basic info
-      return res.json([
-        ...assignedProjects,
-        ...departmentProjects.map(p => ({
-          _id: p._id,
-          name: p.name,
-          status: p.status,
-          priority: p.priority,
-          startDate: p.startDate,
-          endDate: p.endDate,
-          departments: p.departments,
-          isBasicView: true // Flag to indicate limited access
-        }))
-      ]);
+    if (paginate) query.skip(skip).limit(limit);
+
+    const [projects, total] = await Promise.all([
+      query.exec(),
+      paginate ? Project.countDocuments(filter) : Promise.resolve(0)
+    ]);
+
+    const shaped = assignedIds
+      ? projects.map(p => (assignedIds!.has(p._id.toString()) ? p : toBasicProject(p)))
+      : projects;
+
+    if (!paginate) {
+      // Unparameterised calls keep the original bare-array contract.
+      return res.json(shaped);
     }
-    
-    // Return only assigned projects
-    res.json(assignedProjects);
+
+    return res.json({
+      success: true,
+      data: shaped,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+    });
   } catch (error) {
     logger.error('Error fetching projects', { message: error?.message });
     res.status(500).json({ message: 'Error fetching projects', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+// Id/name pairs for pickers and dropdowns, which need every project the user
+// can see but none of the detail. Mirrors the existing /employees/minimal and
+// /departments/minimal endpoints.
+export const getProjectsMinimal = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
+    const seesEverything = roleName === 'Root' || rolePermissions.includes('projects.view_all');
+
+    const filter: any = seesEverything
+      ? {}
+      : { $or: [{ owner: user._id }, { team: user._id }, { managers: user._id }] };
+
+    const projects = await Project.find(filter)
+      .select('name status')
+      .sort({ name: 1 })
+      .lean();
+
+    res.json({ success: true, data: projects });
+  } catch (error) {
+    logger.error('Error fetching minimal projects', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching projects' });
   }
 };
 
