@@ -65,11 +65,50 @@ export interface Project {
 
 export type { Task };
 
+export interface ProjectListParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  priority?: string;
+  projectType?: string;
+  tag?: string;
+  q?: string;
+  sort?: 'recent' | 'created' | 'name' | 'endDate' | 'startDate' | 'progress';
+}
+
+export interface PaginatedProjects {
+  data: Project[];
+  pagination: { page: number; limit: number; total: number; pages: number };
+}
+
 export const projectsAPI = {
-  // Projects
-  getAll: async (params = {}) => {
+  // Projects. Without paging params the API returns a bare array, so this
+  // keeps returning one for existing callers.
+  getAll: async (params: ProjectListParams = {}) => {
     const response = await api.get("/projects", { params });
-    return response.data;
+    return unwrapResponse(response.data);
+  },
+
+  // Server-side filtered and paged listing.
+  getPaged: async (params: ProjectListParams): Promise<PaginatedProjects> => {
+    const response = await api.get("/projects", {
+      params: { page: 1, limit: 25, ...params }
+    });
+    return {
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination ?? { page: 1, limit: 25, total: 0, pages: 0 }
+    };
+  },
+
+  // Id/name pairs for dropdowns.
+  getMinimal: async () => {
+    const response = await api.get("/projects/minimal");
+    return unwrapResponse(response.data);
+  },
+
+  restore: async (id: string) => {
+    const response = await api.post(`/projects/${id}/restore`);
+    return unwrapResponse(response.data);
   },
 
   getById: async (id: string) => {
@@ -234,5 +273,8 @@ export const updateProjectRisks = projectsAPI.updateRisks;
 export const cloneProject = projectsAPI.cloneProject;
 export const calculateProjectProgress = projectsAPI.calculateProgress;
 export const getProjectTemplates = projectsAPI.getTemplates;
+export const getProjectsPaged = projectsAPI.getPaged;
+export const getProjectsMinimal = projectsAPI.getMinimal;
+export const restoreProject = projectsAPI.restore;
 
 export default projectsAPI;

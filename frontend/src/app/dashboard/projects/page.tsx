@@ -15,7 +15,7 @@ import {
   Briefcase, Target, Activity, Zap, GanttChartSquare, Trash2
 } from "lucide-react";
 import { TieredAccessWrapper } from "@/components/common/TieredAccessWrapper";
-import { getProjectStats, getAllProjects, updateProject, deleteProject, type Project } from "@/lib/api/projectsAPI";
+import { getProjectStats, getAllProjects, getProjectsPaged, getProjectsMinimal, updateProject, deleteProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { useSocket } from "@/hooks/useSocket";
 import tasksAPI, { type Task, type CreateTaskData } from "@/lib/api/tasksAPI";
@@ -30,6 +30,16 @@ import ProjectCurrencySwitcher from "@/components/projects/ProjectCurrencySwitch
 import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
 import { SectionLoader } from '@/components/PageLoader';
 import { Skeleton } from "@/components/ui/skeleton";
+
+const PAGE_SIZE = 25;
+
+// Maps the UI sort labels onto the API sort keys.
+const SORT_PARAM: Record<string, 'recent' | 'name' | 'progress' | 'endDate'> = {
+  recent: 'recent',
+  name: 'name',
+  progress: 'progress',
+  dueDate: 'endDate'
+};
 
 interface ProjectStats {
   totalProjects: number;
@@ -52,22 +62,31 @@ const ProjectManagementDashboard: React.FC = () => {
     overdueTasks: 0, totalTasks: 0, completedTasks: 0,
   });
   const [projects, setProjects] = useState<Project[]>([]);
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [totalProjects, setTotalProjects] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const socket = useSocket();
 
+  // Filtering, sorting and paging happen server-side; the search box is
+  // debounced so typing does not fire a request per keystroke.
   useEffect(() => {
-    if (isAuthenticated && user) {
-      const token = localStorage.getItem('auth-token');
-      if (token && token !== 'null' && token !== 'undefined') {
-        fetchData();
-      }
-    }
-  }, [isAuthenticated, user]);
+    if (!isAuthenticated || !user) return;
+    const token = localStorage.getItem('auth-token');
+    if (!token || token === 'null' || token === 'undefined') return;
+
+    const timer = setTimeout(fetchData, searchTerm ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, user, page, searchTerm, statusFilter, priorityFilter, sortBy]);
+
+  // Any filter change returns to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter, priorityFilter, sortBy]);
 
   useEffect(() => {
     if (!socket) return;
@@ -98,7 +117,7 @@ const ProjectManagementDashboard: React.FC = () => {
         setLoading(false);
         return;
       }
-      const [statsData, projectsData, tasksData] = await Promise.all([
+      const [statsData, projectsPage] = await Promise.all([
         getProjectStats().catch((err) => {
           console.error('Stats fetch error:', err.message);
           return {
@@ -106,18 +125,22 @@ const ProjectManagementDashboard: React.FC = () => {
             overdueTasks: 0, totalTasks: 0, completedTasks: 0
           };
         }),
-        getAllProjects().catch((err) => {
+        getProjectsPaged({
+          page,
+          limit: PAGE_SIZE,
+          sort: SORT_PARAM[sortBy] ?? 'recent',
+          ...(searchTerm ? { q: searchTerm } : {}),
+          ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+          ...(priorityFilter !== 'all' ? { priority: priorityFilter } : {})
+        }).catch((err) => {
           console.error('Projects fetch error:', err.message);
-          return [];
-        }),
-        tasksAPI.getAll().catch((err) => {
-          console.error('Tasks fetch error:', err.message);
-          return [];
+          return { data: [], pagination: { page: 1, limit: PAGE_SIZE, total: 0, pages: 0 } };
         })
       ]);
       if (statsData) setStats(statsData);
-      setProjects(projectsData || []);
-      setAllTasks(tasksData || []);
+      setProjects(projectsPage.data || []);
+      setPageCount(projectsPage.pagination.pages || 1);
+      setTotalProjects(projectsPage.pagination.total || 0);
     } catch (error: any) {
       console.error('Data fetch error:', error.message);
       toast({ 
@@ -140,21 +163,8 @@ const ProjectManagementDashboard: React.FC = () => {
     }
   };
 
-  const filteredProjects = projects.filter(p => {
-    const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || p.status === statusFilter;
-    const matchesPriority = priorityFilter === "all" || p.priority === priorityFilter;
-    return matchesSearch && matchesStatus && matchesPriority;
-  }).sort((a, b) => {
-    switch (sortBy) {
-      case 'name': return a.name.localeCompare(b.name);
-      case 'progress': return b.progress - a.progress;
-      case 'dueDate': return new Date(a.endDate).getTime() - new Date(b.endDate).getTime();
-      case 'recent': return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      default: return 0;
-    }
-  });
+  // Already filtered, sorted and paged by the API.
+  const filteredProjects = projects;
 
   const handleCloneProject = async (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -572,6 +582,32 @@ const ProjectManagementDashboard: React.FC = () => {
               ))
             )}
           </div>
+
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <p className="text-sm text-muted-foreground">
+                Page {page} of {pageCount} &middot; {totalProjects} project{totalProjects === 1 ? '' : 's'}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= pageCount || loading}
+                  onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="projects">
@@ -652,11 +688,13 @@ const MyTasksContent: React.FC = () => {
 
   const fetchMyTasks = async () => {
     try {
-      const allTasks = await tasksAPI.getAll();
-      const myTasks = allTasks.filter((task: Task) => 
-        task.assignedTo && (typeof task.assignedTo === 'object' ? task.assignedTo._id === user?._id : task.assignedTo === user?._id)
-      );
-      setTasks(myTasks);
+      if (!user?._id) {
+        setTasks([]);
+        return;
+      }
+      // Filtered by the API rather than by fetching every task and discarding
+      // most of them in the browser.
+      setTasks(await tasksAPI.getAll({ assignedTo: user._id }));
     } catch {
       setTasks([]);
     } finally {
@@ -666,8 +704,8 @@ const MyTasksContent: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
-      const projectsData = await getAllProjects();
-      setProjects(projectsData);
+      // Only id/name are needed for the project picker.
+      setProjects(await getProjectsMinimal());
     } catch {
       // silently handled
     }

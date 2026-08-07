@@ -104,8 +104,18 @@ export interface UpdateTaskData {
 
 export const tasksAPI = {
   // Get all tasks
-  getAll: async () => {
-    const response = await api.get('/tasks');
+  // Without paging params the API returns a bare array, so existing callers
+  // are unaffected. Pass filters to have the server do the work.
+  getAll: async (params: Record<string, any> = {}) => {
+    const response = await api.get('/tasks', { params });
+    return unwrapResponse(response.data);
+  },
+
+  // Id/title pairs for dropdowns.
+  getMinimal: async (projectId?: string) => {
+    const response = await api.get('/tasks/minimal', {
+      params: projectId ? { project: projectId } : {}
+    });
     return unwrapResponse(response.data);
   },
 
