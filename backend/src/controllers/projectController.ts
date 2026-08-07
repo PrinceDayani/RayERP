@@ -8,6 +8,7 @@ import { logger } from '../utils/logger';
 import { emitProjectStats } from '../utils/socketEvents';
 import { computeProjectProgress } from '../utils/projectProgress';
 import { parseListParams, escapeRegex } from '../utils/helpers';
+import { isValidProjectStatusTransition, allowedProjectStatusTransitions, findProjectDependencyCycle } from '../utils/projectValidation';
 // Socket will be imported dynamically to avoid circular dependency
 
 const PROJECT_SORT_MAP: Record<string, Record<string, 1 | -1>> = {
@@ -534,7 +535,16 @@ export const updateProject = async (req: Request, res: Response) => {
     if (req.body.name !== undefined) updateData.name = req.body.name;
     if (req.body.description !== undefined) updateData.description = req.body.description;
     if (req.body.projectType !== undefined) updateData.projectType = req.body.projectType;
-    if (req.body.status !== undefined) updateData.status = req.body.status;
+    if (req.body.status !== undefined) {
+      if (!isValidProjectStatusTransition(oldProject.status, req.body.status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot move a project from "${oldProject.status}" to "${req.body.status}"`,
+          allowed: allowedProjectStatusTransitions(oldProject.status)
+        });
+      }
+      updateData.status = req.body.status;
+    }
     if (req.body.priority !== undefined) updateData.priority = req.body.priority;
     if (req.body.budget !== undefined) updateData.budget = parseFloat(req.body.budget) || 0;
     if (req.body.progress !== undefined) updateData.progress = Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100);
@@ -544,6 +554,25 @@ export const updateProject = async (req: Request, res: Response) => {
     if (req.body.team !== undefined) updateData.team = Array.isArray(req.body.team) ? req.body.team : [];
     if (req.body.departments !== undefined) updateData.departments = Array.isArray(req.body.departments) ? req.body.departments : [];
     if (req.body.tags !== undefined) updateData.tags = Array.isArray(req.body.tags) ? req.body.tags : [];
+
+    if (req.body.dependencies !== undefined) {
+      const dependencies = Array.isArray(req.body.dependencies) ? req.body.dependencies : [];
+
+      if (dependencies.some((d: any) => d?.toString() === req.params.id)) {
+        return res.status(400).json({ success: false, message: 'A project cannot depend on itself' });
+      }
+
+      const cycleAt = await findProjectDependencyCycle(req.params.id, dependencies);
+      if (cycleAt) {
+        return res.status(400).json({
+          success: false,
+          message: 'These dependencies would create a circular dependency',
+          conflictingProject: cycleAt
+        });
+      }
+
+      updateData.dependencies = dependencies;
+    }
     
     // When switching to reporting type, set progressMode to financial
     if (req.body.projectType === 'reporting') {
@@ -727,6 +756,15 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     }
 
     const oldStatus = project.status;
+
+    if (!isValidProjectStatusTransition(oldStatus, status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot move a project from "${oldStatus}" to "${status}"`,
+        allowed: allowedProjectStatusTransitions(oldStatus)
+      });
+    }
+
     project.status = status;
     await project.save();
     await project.populate('managers', 'name email');

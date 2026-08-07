@@ -17,6 +17,36 @@ async function resolveAllocationUserId(body: any): Promise<string | null> {
   return null;
 }
 
+// Hard ceiling on concurrent allocated hours for one user. 40h is the
+// nominal week; above that the caller gets a warning, above MAX it is refused.
+const MAX_ALLOCATED_HOURS = 60;
+const NOMINAL_WEEK_HOURS = 40;
+
+// Sums a user's overlapping allocations and reports whether adding `hours`
+// would breach the ceiling. Shared by the create, update and bulk paths so
+// they cannot disagree.
+async function checkAllocationCapacity(params: {
+  userId: any;
+  hours: number;
+  startDate: Date | string;
+  endDate: Date | string;
+  excludeId?: string;
+}): Promise<{ withinCapacity: boolean; totalHours: number; conflicts: any[] }> {
+  const filter: any = {
+    user: params.userId,
+    status: { $in: ['active', 'planned'] },
+    startDate: { $lte: new Date(params.endDate) },
+    endDate: { $gte: new Date(params.startDate) }
+  };
+  if (params.excludeId) filter._id = { $ne: params.excludeId };
+
+  const conflicts = await ResourceAllocation.find(filter);
+  const totalHours =
+    conflicts.reduce((sum, alloc) => sum + alloc.allocatedHours, 0) + (params.hours || 0);
+
+  return { withinCapacity: totalHours <= MAX_ALLOCATED_HOURS, totalHours, conflicts };
+}
+
 export const allocateResource = async (req: Request, res: Response) => {
   try {
     const { allocatedHours, startDate, endDate } = req.body;
@@ -1000,13 +1030,63 @@ export const bulkUpdateAllocations = async (req: Request, res: Response) => {
   try {
     const { updates } = req.body;
     
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ message: 'updates must be a non-empty array' });
+    }
+
+    // Fields a client may set here. The single-allocation endpoints validate
+    // capacity; this one used to skip both that and any field filtering, so a
+    // user could be pushed past the ceiling through the bulk route.
+    const BULK_WRITABLE = ['allocatedHours', 'startDate', 'endDate', 'role', 'status', 'priority', 'notes'];
+
     const results = await Promise.all(updates.map(async (update: any) => {
       try {
+        if (!update?.id || !mongoose.Types.ObjectId.isValid(update.id)) {
+          return { id: update?.id, success: false, error: 'Invalid allocation id' };
+        }
+
+        const current = await ResourceAllocation.findById(update.id);
+        if (!current) {
+          return { id: update.id, success: false, error: 'Allocation not found' };
+        }
+
+        const data: any = {};
+        for (const field of BULK_WRITABLE) {
+          if (update.data?.[field] !== undefined) data[field] = update.data[field];
+        }
+
+        if (Object.keys(data).length === 0) {
+          return { id: update.id, success: false, error: 'No updatable fields supplied' };
+        }
+
+        const hours = data.allocatedHours ?? current.allocatedHours;
+        const start = data.startDate ?? current.startDate;
+        const end = data.endDate ?? current.endDate;
+
+        const capacity = await checkAllocationCapacity({
+          userId: current.user,
+          hours,
+          startDate: start,
+          endDate: end,
+          excludeId: update.id
+        });
+
+        if (!capacity.withinCapacity) {
+          return {
+            id: update.id,
+            success: false,
+            error: `Update would exceed maximum allowed hours (${MAX_ALLOCATED_HOURS}h/week); total would be ${capacity.totalHours}`
+          };
+        }
+
+        data.utilizationRate = Math.min(100, (hours / NOMINAL_WEEK_HOURS) * 100);
+
         const allocation = await ResourceAllocation.findByIdAndUpdate(
           update.id,
-          update.data,
+          data,
           { new: true, runValidators: true }
         ).populate(['user', 'project']);
+
         return { id: update.id, success: true, allocation };
       } catch (error: any) {
         return { id: update.id, success: false, error: error.message };
