@@ -30,6 +30,8 @@ const CLIENT_WRITABLE_FIELDS = [
   'dueDate',
   'estimatedHours',
   'actualHours',
+  'scheduledStart',
+  'durationDays',
   'order',
   'column',
   'tags',
