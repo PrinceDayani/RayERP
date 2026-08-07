@@ -3,6 +3,8 @@ import Task from '../../../models/Task';
 import Project from '../../../models/Project';
 import { createTimelineEvent } from '../../../utils/timelineHelper';
 import { logger } from '../../../utils/logger';
+import { emitProjectStats } from '../../../utils/socketEvents';
+import { recalculateProjectProgress } from '../../../utils/projectProgress';
 
 export const getProjectTasks = async (req: Request, res: Response) => {
   try {
@@ -67,6 +69,8 @@ export const createProjectTask = async (req: Request, res: Response) => {
     
     const { io } = await import('../../../server');
     io.emit('task:created', transformedTask);
+    await emitProjectStats();
+    await recalculateProjectProgress(projectId);
     
     res.status(201).json(transformedTask);
   } catch (error) {
@@ -116,6 +120,8 @@ export const updateProjectTask = async (req: Request, res: Response) => {
     
     const { io } = await import('../../../server');
     io.emit('task:updated', transformedTask);
+    await emitProjectStats();
+    await recalculateProjectProgress(projectId);
     
     res.json(transformedTask);
   } catch (error) {
@@ -154,6 +160,8 @@ export const deleteProjectTask = async (req: Request, res: Response) => {
     
     const { io } = await import('../../../server');
     io.emit('task:deleted', { id: taskId });
+    await emitProjectStats();
+    await recalculateProjectProgress(projectId);
     
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
@@ -579,10 +587,10 @@ export const removeProjectTaskDependency = async (req: Request, res: Response) =
 export const updateProjectTaskStatus = async (req: Request, res: Response) => {
   try {
     const { taskId } = req.params;
-    const { status, user } = req.body;
-    
+    const { status } = req.body;
+
     if (!status) return res.status(400).json({ message: 'Status is required' });
-    
+
     const task = await Task.findOne({ _id: taskId, taskType: 'project' });
     if (!task) return res.status(404).json({ message: 'Task not found' });
     
@@ -594,7 +602,8 @@ export const updateProjectTaskStatus = async (req: Request, res: Response) => {
     await task.populate('assignedTo', 'name email');
     await task.populate('assignedBy', 'name email');
     
-    const userId = user || task.assignedBy?.toString();
+    // Timeline actor is always the authenticated user; never client-supplied.
+    const userId = req.user?._id?.toString();
     if (userId) {
       const { createTimelineEvent } = await import('../../../utils/timelineHelper');
       await createTimelineEvent(
@@ -610,7 +619,9 @@ export const updateProjectTaskStatus = async (req: Request, res: Response) => {
     
     const { io } = await import('../../../server');
     io.emit('task:status:updated', task);
-    
+    await emitProjectStats();
+    await recalculateProjectProgress(task.project);
+
     res.json(task);
   } catch (error) {
     res.status(500).json({ message: 'Error updating status', error });

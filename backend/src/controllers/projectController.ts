@@ -5,34 +5,9 @@ import Task from '../models/Task';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
 import { WorkflowProjectIntegration } from '../services/workflowProjectIntegration';
 import { logger } from '../utils/logger';
+import { emitProjectStats } from '../utils/socketEvents';
+import { computeProjectProgress } from '../utils/projectProgress';
 // Socket will be imported dynamically to avoid circular dependency
-
-// Helper function to emit updated project stats
-const emitProjectStats = async () => {
-  try {
-    const totalProjects = await Project.countDocuments();
-    const activeProjects = await Project.countDocuments({ status: 'active' });
-    const completedProjects = await Project.countDocuments({ status: 'completed' });
-    const overdueTasks = await Task.countDocuments({ 
-      dueDate: { $lt: new Date() }, 
-      status: { $ne: 'completed' } 
-    });
-    
-    const stats = {
-      totalProjects,
-      activeProjects,
-      completedProjects,
-      overdueTasks,
-      totalTasks: await Task.countDocuments(),
-      completedTasks: await Task.countDocuments({ status: 'completed' })
-    };
-    
-    const { io } = await import('../server');
-    io.emit('project:stats', stats);
-  } catch (error) {
-    logger.error('Error emitting project stats', { message: error?.message });
-  }
-};
 
 export const getAllProjects = async (req: Request, res: Response) => {
   try {
@@ -505,12 +480,11 @@ export const updateProject = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Project not found after update' });
     }
     
-    // Safely get manager ID for timeline
-    const managerId = req.body.updatedBy || 
-                     (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null);
-    
+    // Timeline actor is always the authenticated user; never client-supplied.
+    const managerId = req.user?._id?.toString() || null;
+
     if (!managerId) {
-      logger.warn('No manager ID found for timeline event');
+      logger.warn('No authenticated user found for timeline event');
     } else {
       // Create timeline event
       try {
@@ -627,12 +601,12 @@ export const updateProject = async (req: Request, res: Response) => {
 
 export const updateProjectStatus = async (req: Request, res: Response) => {
   try {
-    const { status, user } = req.body;
-    
+    const { status } = req.body;
+
     if (!status) {
       return res.status(400).json({ success: false, message: 'Status is required' });
     }
-    
+
     const project = await Project.findById(req.params.id);
 
     if (!project) {
@@ -647,13 +621,13 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     await project.populate('owner', 'name email');
     await project.populate('departments', 'name description');
     
-    // Safely get user ID
-    const userId = user || (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null);
-    
+    // Timeline actor is always the authenticated user; never client-supplied.
+    const userId = req.user?._id?.toString();
+
     if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID is required for timeline event' });
+      return res.status(401).json({ success: false, message: 'Authentication required' });
     }
-    
+
     await createTimelineEvent(
       'project',
       project._id.toString(),
@@ -1057,22 +1031,19 @@ export const calculateProjectProgress = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    const tasks = await Task.find({ project: projectId });
-    
-    if (tasks.length === 0) {
+    const { progress, totalTasks, completedTasks, weighted } = await computeProjectProgress(projectId);
+
+    if (totalTasks === 0) {
       return res.json({ success: true, data: { progress: 0, message: 'No tasks found' } });
     }
-    
-    const completedTasks = tasks.filter(t => t.status === 'completed').length;
-    const progress = Math.round((completedTasks / tasks.length) * 100);
-    
+
     project.progress = progress;
     await project.save();
-    
+
     const { io } = await import('../server');
     io.emit('project:progress:updated', { projectId, progress });
-    
-    res.json({ success: true, data: { progress, totalTasks: tasks.length, completedTasks } });
+
+    res.json({ success: true, data: { progress, totalTasks, completedTasks, weighted } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error calculating progress', error });
   }

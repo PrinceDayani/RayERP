@@ -6,32 +6,8 @@ import Project from '../models/Project';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
 import { logActivity } from '../utils/activityLogger';
 import { logger } from '../utils/logger';
-
-const emitProjectStats = async () => {
-  try {
-    const totalProjects = await Project.countDocuments();
-    const activeProjects = await Project.countDocuments({ status: 'active' });
-    const completedProjects = await Project.countDocuments({ status: 'completed' });
-    const overdueTasks = await Task.countDocuments({ 
-      dueDate: { $lt: new Date() }, 
-      status: { $ne: 'completed' } 
-    });
-    
-    const stats = {
-      totalProjects,
-      activeProjects,
-      completedProjects,
-      overdueTasks,
-      totalTasks: await Task.countDocuments(),
-      completedTasks: await Task.countDocuments({ status: 'completed' })
-    };
-    
-    const { io } = await import('../server');
-    io.emit('project:stats', stats);
-  } catch (error) {
-    logger.error('Error emitting project stats', { message: error?.message });
-  }
-};
+import { emitProjectStats } from '../utils/socketEvents';
+import { recalculateProjectProgress } from '../utils/projectProgress';
 
 export const getAllTasks = async (req: Request, res: Response) => {
   try {
@@ -294,6 +270,7 @@ export const createTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:created', task);
     await emitProjectStats();
+    await recalculateProjectProgress(task.project);
     
     // Send notification if task is assigned to someone else
     if (task.assignmentType === 'assigned' && task.assignedTo?.toString() !== user._id.toString()) {
@@ -373,6 +350,7 @@ export const updateTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:updated', task);
     await emitProjectStats();
+    await recalculateProjectProgress(task.project);
     
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
@@ -417,6 +395,7 @@ export const deleteTask = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:deleted', { id: req.params.id });
     await emitProjectStats();
+    await recalculateProjectProgress(task.project);
     
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
@@ -557,12 +536,12 @@ export const addTimelineEntry = async (req: Request, res: Response) => {
 
 export const updateTaskStatus = async (req: Request, res: Response) => {
   try {
-    const { status, user } = req.body;
-    
+    const { status } = req.body;
+
     if (!status) {
       return res.status(400).json({ message: 'Status is required' });
     }
-    
+
     const task = await Task.findById(req.params.id);
     
     if (!task) {
@@ -580,15 +559,13 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
     await task.populate('assignedTo', 'name email');
     await task.populate('assignedBy', 'name email');
     
-    // Safely get user ID
-    const userId = user || (task.assignedBy ? 
-                           (task.assignedBy._id?.toString() || task.assignedBy.toString()) : 
-                           null);
-    
+    // Timeline actor is always the authenticated user; never client-supplied.
+    const userId = req.user?._id?.toString();
+
     if (!userId) {
-      return res.status(400).json({ message: 'User ID is required for timeline event' });
+      return res.status(401).json({ message: 'Authentication required' });
     }
-    
+
     try {
       await createTimelineEvent(
         'task',
@@ -611,6 +588,7 @@ export const updateTaskStatus = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('task:status:updated', task);
     await emitProjectStats();
+    await recalculateProjectProgress(task.project);
     
     // Emit dashboard stats update
     const { RealTimeEmitter } = await import('../utils/realTimeEmitter');
