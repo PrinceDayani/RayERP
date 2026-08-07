@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { normaliseRoleName, ELEVATED_ROLE_LEVEL } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/tooltip";
 import BackendStatus from "@/components/BackendStatus";
@@ -65,21 +66,38 @@ export default function Layout({ children }: LayoutProps) {
   const { user } = useAuth();
   const { hasPermission, hasAnyPermission } = usePermissions();
 
-  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || '';
-  const isRoot = roleName.toLowerCase() === "root";
-  const isSuperAdmin = roleName.toLowerCase() === "super_admin" || roleName.toLowerCase() === "superadmin";
-  const isAdmin = roleName.toLowerCase() === "admin";
-  const isManager = roleName.toLowerCase() === "manager" || isAdmin || isSuperAdmin || isRoot;
+  // Compare on the normalised name: the stored role is "Super Admin", which
+  // never equalled the "super_admin" this used to look for, so every
+  // admin-only entry stayed hidden from the people who should see it.
+  const roleName = normaliseRoleName(typeof user?.role === 'string' ? user.role : user?.role?.name || '');
+  const roleLevel = typeof user?.role === 'string' ? 0 : user?.role?.level ?? 0;
+  const isRoot = roleName === "root";
+  const isSuperAdmin = roleName === "superadmin";
+  const isAdmin = roleName === "admin";
+  // A role granted everything outranks the name checks above.
+  const isElevated = isRoot || roleLevel >= ELEVATED_ROLE_LEVEL || hasPermission('*');
+  const isManager = roleName === "manager" || isAdmin || isSuperAdmin || isElevated;
 
-  // Module access checks (Root has access to everything)
-  const hasFinanceAccess = isRoot || hasAnyPermission(['finance.view', 'finance.manage']);
-  const hasEmployeeAccess = isRoot || hasAnyPermission(['employees.view', 'employees.manage']);
-  const hasDepartmentAccess = isRoot || hasAnyPermission(['departments.view', 'departments.manage']);
-  const hasProjectAccess = isRoot || hasAnyPermission(['projects.view', 'projects.manage']);
-  const hasTaskAccess = isRoot || hasAnyPermission(['tasks.view', 'tasks.manage']);
-  const hasResourceAccess = isRoot || hasAnyPermission(['resources.view', 'resources.manage']);
-  const hasBudgetAccess = isRoot || hasAnyPermission(['budgets.view', 'budgets.manage']);
-  const hasReportAccess = isRoot || hasAnyPermission(['reports.view', 'reports.manage']);
+  // Module access checks (Root has access to everything).
+  //
+  // These must name permissions the system actually defines. 'finance.view',
+  // 'departments.*' and 'resources.*' are not in the permission catalogue and
+  // never have been, so gating on them alone hid those sections from everyone
+  // but Root — no grant could fix it, because the names are not grantable.
+  // The catalogue expresses finance access per ledger area, so accept those;
+  // departments are HR records and resources are project allocations.
+  const hasFinanceAccess = isElevated || hasAnyPermission([
+    'finance.view', 'finance.manage',
+    'accounts.view', 'journal.view', 'ledger.view', 'bills.view',
+    'invoices.view', 'payments.view', 'expenses.view',
+  ]);
+  const hasEmployeeAccess = isElevated || hasAnyPermission(['employees.view', 'employees.manage']);
+  const hasDepartmentAccess = isElevated || hasAnyPermission(['departments.view', 'departments.manage', 'employees.view']);
+  const hasProjectAccess = isElevated || hasAnyPermission(['projects.view', 'projects.manage', 'projects.view_all']);
+  const hasTaskAccess = isElevated || hasAnyPermission(['tasks.view', 'tasks.manage', 'tasks.view_all']);
+  const hasResourceAccess = isElevated || hasAnyPermission(['resources.view', 'resources.manage', 'projects.view']);
+  const hasBudgetAccess = isElevated || hasAnyPermission(['budgets.view', 'budgets.manage']);
+  const hasReportAccess = isElevated || hasAnyPermission(['reports.view', 'reports.manage']);
 
   const menuSections = useMemo(() => [
     {
@@ -99,7 +117,7 @@ export default function Layout({ children }: LayoutProps) {
     {
       title: "Human Resources",
       items: [
-        { path: "/dashboard/users", name: "User Management", icon: UserCog, description: "System user administration", access: isAdmin || isSuperAdmin || isRoot } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/users", name: "User Management", icon: UserCog, description: "System user administration", access: isAdmin || isSuperAdmin || isElevated } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/employees", name: "Employees", icon: UserCheck, description: "Employee management", access: hasEmployeeAccess } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/departments", name: "Departments", icon: Building, description: "Department management", access: hasDepartmentAccess } as MenuItem & { icon: any; description: string }
       ]
@@ -134,10 +152,10 @@ export default function Layout({ children }: LayoutProps) {
       title: "System Administration",
       items: [
         { path: "/dashboard/settings", name: "Settings", icon: Settings, description: "System configuration" } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/admin", name: "Admin Panel", icon: Shield, description: "Advanced system controls", access: isAdmin || isSuperAdmin || isRoot } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/admin", name: "Admin Panel", icon: Shield, description: "Advanced system controls", access: isAdmin || isSuperAdmin || isElevated } as MenuItem & { icon: any; description: string },
       ]
     }
-  ], [isAdmin, isSuperAdmin, isRoot, isManager, hasFinanceAccess, hasEmployeeAccess, hasDepartmentAccess, hasProjectAccess, hasTaskAccess, hasResourceAccess, hasBudgetAccess, hasReportAccess]);
+  ], [isAdmin, isSuperAdmin, isRoot, isElevated, isManager, hasFinanceAccess, hasEmployeeAccess, hasDepartmentAccess, hasProjectAccess, hasTaskAccess, hasResourceAccess, hasBudgetAccess, hasReportAccess]);
 
   useEffect(() => {
     setIsClient(true);
