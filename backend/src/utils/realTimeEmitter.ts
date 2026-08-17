@@ -15,24 +15,52 @@ export class RealTimeEmitter {
     if (!this.ioInstance) return;
     
     try {
-      const [employees, projects, tasks] = await Promise.all([
-        Employee.find(),
-        Project.find(),
-        Task.find()
+      // Counted in the database rather than loaded into memory: this runs on
+      // every task and project mutation.
+      const [
+        totalEmployees,
+        activeEmployees,
+        totalProjects,
+        activeProjects,
+        completedProjects,
+        totalTasks,
+        completedTasks,
+        inProgressTasks,
+        pendingTasks,
+        budgetTotals
+      ] = await Promise.all([
+        Employee.countDocuments({}),
+        Employee.countDocuments({ status: 'active' }),
+        Project.countDocuments({}),
+        Project.countDocuments({ status: 'active' }),
+        Project.countDocuments({ status: 'completed' }),
+        Task.countDocuments({}),
+        Task.countDocuments({ status: 'completed' }),
+        Task.countDocuments({ status: 'in-progress' }),
+        Task.countDocuments({ status: 'todo' }),
+        Project.aggregate([
+          {
+            $group: {
+              _id: null,
+              revenue: { $sum: { $ifNull: ['$budget', 0] } },
+              expenses: { $sum: { $ifNull: ['$spentBudget', 0] } }
+            }
+          }
+        ])
       ]);
 
       const stats = {
-        totalEmployees: employees.length,
-        activeEmployees: employees.filter(e => e.status === 'active').length,
-        totalProjects: projects.length,
-        activeProjects: projects.filter(p => p.status === 'active').length,
-        completedProjects: projects.filter(p => p.status === 'completed').length,
-        totalTasks: tasks.length,
-        completedTasks: tasks.filter(t => t.status === 'completed').length,
-        inProgressTasks: tasks.filter(t => t.status === 'in-progress').length,
-        pendingTasks: tasks.filter(t => t.status === 'todo').length,
-        revenue: projects.reduce((sum, p) => sum + (p.budget || 0), 0),
-        expenses: projects.reduce((sum, p) => sum + (p.spentBudget || 0), 0),
+        totalEmployees,
+        activeEmployees,
+        totalProjects,
+        activeProjects,
+        completedProjects,
+        totalTasks,
+        completedTasks,
+        inProgressTasks,
+        pendingTasks,
+        revenue: budgetTotals[0]?.revenue || 0,
+        expenses: budgetTotals[0]?.expenses || 0,
         profit: 0,
         timestamp: new Date().toISOString()
       };

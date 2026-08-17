@@ -73,7 +73,7 @@ export default function TaskDetailPage({ taskId }: TaskDetailPageProps) {
 
   const handleStartTimer = async () => {
     try {
-      await tasksAPI.startTimer(taskId, user?._id || "");
+      await tasksAPI.startTimer(taskId);
       toast({ title: "Success", description: "Timer started" });
       fetchTask();
     } catch (error) {
@@ -83,7 +83,7 @@ export default function TaskDetailPage({ taskId }: TaskDetailPageProps) {
 
   const handleStopTimer = async () => {
     try {
-      await tasksAPI.stopTimer(taskId, user?._id || "");
+      await tasksAPI.stopTimer(taskId);
       toast({ title: "Success", description: "Timer stopped" });
       fetchTask();
     } catch (error) {
@@ -95,7 +95,7 @@ export default function TaskDetailPage({ taskId }: TaskDetailPageProps) {
     if (!newComment.trim()) return;
     try {
       setAddingComment(true);
-      await tasksAPI.addComment(taskId, newComment, user?._id || "");
+      await tasksAPI.addComment(taskId, newComment);
       setNewComment("");
       toast({ title: "Success", description: "Comment added" });
       fetchTask();

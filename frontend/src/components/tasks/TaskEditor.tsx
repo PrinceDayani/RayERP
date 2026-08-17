@@ -335,7 +335,6 @@ export default function TaskEditor({ taskId, projectId, onSave, onCancel }: Task
               <CardContent>
                 <MentionComment
                   taskId={taskId}
-                  userId={formData.assignedTo}
                   onCommentAdded={fetchTask}
                 />
                 {/* Existing Comments */}

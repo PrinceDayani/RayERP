@@ -89,7 +89,7 @@ export const voucherValidation = [
 
 // Legacy validators
 export const validateProjectStatus = (req: Request, res: Response, next: NextFunction) => {
-  const validStatuses = ['planning', 'active', 'on-hold', 'completed', 'cancelled'];
+  const validStatuses = ['planning', 'active', 'on-hold', 'completed', 'archived', 'cancelled'];
   if (req.body.status && !validStatuses.includes(req.body.status)) {
     return res.status(400).json({ success: false, message: 'Invalid project status' });
   }

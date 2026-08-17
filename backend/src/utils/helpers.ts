@@ -1,6 +1,53 @@
 import { Response } from 'express';
 import { Document } from 'mongoose';
 
+// User-supplied text reaches Mongo as a regex in search filters; anything that
+// carries regex syntax must be escaped first.
+export const escapeRegex = (value: string): string =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export interface ListParams {
+  page: number;
+  limit: number;
+  skip: number;
+  // True when the caller supplied any paging or sorting parameter. Endpoints
+  // that predate pagination keep returning a bare array unless asked not to,
+  // so existing consumers are unaffected.
+  paginate: boolean;
+  search: string | null;
+  sort: Record<string, 1 | -1>;
+}
+
+export const parseListParams = (
+  query: any,
+  options: {
+    sortMap: Record<string, Record<string, 1 | -1>>;
+    defaultSort: string;
+    defaultLimit?: number;
+    maxLimit?: number;
+  }
+): ListParams => {
+  const { sortMap, defaultSort, defaultLimit = 25, maxLimit = 100 } = options;
+
+  const hasPageParam = query.page !== undefined || query.limit !== undefined;
+  const requestedSort = typeof query.sort === 'string' ? query.sort : undefined;
+
+  const page = Math.max(1, parseInt(query.page, 10) || 1);
+  const parsedLimit = parseInt(query.limit, 10);
+  const limit = Math.min(Math.max(1, parsedLimit || defaultLimit), maxLimit);
+
+  const rawSearch = typeof query.q === 'string' ? query.q.trim() : '';
+
+  return {
+    page,
+    limit,
+    skip: (page - 1) * limit,
+    paginate: hasPageParam,
+    search: rawSearch ? rawSearch.slice(0, 200) : null,
+    sort: (requestedSort && sortMap[requestedSort]) || sortMap[defaultSort]
+  };
+};
+
 interface PaginatedResponse<T> {
   data: T[];
   pagination: {

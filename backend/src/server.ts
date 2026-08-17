@@ -358,6 +358,15 @@ async function initializeRealTimeSystems() {
       logger.warn('⚠️ Activity log cleanup could not be started:', err.message);
     }
 
+    // Initialize milestone status sweep
+    try {
+      const { startMilestoneStatusJob } = await import('./jobs/milestoneStatus');
+      startMilestoneStatusJob();
+      logger.info('✅ Milestone status cron job started (hourly)');
+    } catch (err) {
+      logger.warn('⚠️ Milestone status job could not be started:', err.message);
+    }
+
     logger.info('✅ Real-time systems initialized');
     logger.info('✅ Budget cron jobs started');
     logger.info('✅ Audit log cleanup initialized');

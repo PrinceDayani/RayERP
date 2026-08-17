@@ -14,6 +14,10 @@ export interface ITask extends Document {
   assignedBy: mongoose.Types.ObjectId;
   dueDate: Date;
   estimatedHours: number;
+  // Explicit schedule, used by critical-path analysis. Both are optional;
+  // when absent the schedule is derived from estimatedHours and dependencies.
+  scheduledStart?: Date | null;
+  durationDays?: number | null;
   actualHours: number;
   order: number;
   column: string;
@@ -104,6 +108,8 @@ const taskSchema = new Schema<ITask>({
   assignedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   dueDate: { type: Date },
   estimatedHours: { type: Number, default: 0 },
+  scheduledStart: { type: Date, default: null },
+  durationDays: { type: Number, min: 0, default: null },
   actualHours: { type: Number, default: 0 },
   order: { type: Number, default: 0 },
   column: { type: String, default: 'todo' },
@@ -171,6 +177,7 @@ taskSchema.index({ assignmentType: 1 });
 taskSchema.index({ project: 1, status: 1 });
 taskSchema.index({ project: 1, order: 1 });
 taskSchema.index({ project: 1, column: 1, order: 1 });
+taskSchema.index({ project: 1, scheduledStart: 1 });
 
 taskSchema.pre('validate', function(next) {
   if (this.taskType === 'project' && !this.project) {

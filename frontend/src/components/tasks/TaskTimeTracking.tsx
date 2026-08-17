@@ -48,7 +48,7 @@ export function TaskTimeTracking({
   const handleStartTimer = async () => {
     try {
       setStarting(true);
-      await tasksAPI.startTimer(taskId, user?._id || "", description);
+      await tasksAPI.startTimer(taskId, description);
       toast({ title: "Success", description: "Timer started" });
       setDescription("");
       setShowStartDialog(false);
@@ -63,7 +63,7 @@ export function TaskTimeTracking({
   const handleStopTimer = async () => {
     try {
       setStopping(true);
-      await tasksAPI.stopTimer(taskId, user?._id || "");
+      await tasksAPI.stopTimer(taskId);
       toast({ title: "Success", description: "Timer stopped" });
       onTimeUpdated?.();
     } catch (error) {

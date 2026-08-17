@@ -9,8 +9,6 @@ import {
   deleteProject,
   getProjectStats,
   updateProjectStatus,
-  archiveProject,
-  unarchiveProject,
   addProjectMember,
   removeProjectMember,
   getProjectMembers,
@@ -23,6 +21,8 @@ import {
   deleteProjectInstruction,
   getProjectsByView,
   createProjectFast,
+  restoreProject,
+  getProjectsMinimal,
   getEmployeesMinimal,
   getDepartmentsMinimal
 } from '../controllers/projectController';
@@ -59,6 +59,8 @@ const router = Router();
 router.use(authenticateToken);
 
 // --- Fast/Optimized Routes ---
+// Id/name pairs for dropdowns; avoids fetching full project documents.
+router.get('/minimal', requirePermission('projects.view'), getProjectsMinimal);
 router.get('/employees/minimal', requirePermission('projects.view'), getEmployeesMinimal);
 router.get('/departments/minimal', requirePermission('projects.view'), getDepartmentsMinimal);
 
@@ -86,6 +88,8 @@ router.put('/:id',
   updateProject
 );
 router.delete('/:id', validateObjectId(), requirePermission('projects.delete'), deleteProject);
+// Restores a soft-deleted project.
+router.post('/:id/restore', validateObjectId(), requirePermission('projects.delete'), restoreProject);
 router.patch('/:id/status',
   validateObjectId(),
   checkProjectAccess,
@@ -93,10 +97,6 @@ router.patch('/:id/status',
   validateProjectStatus,
   updateProjectStatus
 );
-// Archive a project without touching its status
-router.patch('/:id/archive', validateObjectId(), checkProjectAccess, requirePermission('projects.archive'), archiveProject);
-// Restore an archived project, leaving its status as it was
-router.patch('/:id/unarchive', validateObjectId(), checkProjectAccess, requirePermission('projects.archive'), unarchiveProject);
 
 // --- Modular Routes ---
 router.use('/:id/tasks', taskRoutes);

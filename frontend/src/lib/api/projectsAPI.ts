@@ -29,7 +29,7 @@ export interface Project {
   projectType?: 'instruction' | 'reporting';
   startDate: string;
   endDate: string;
-  status: 'planning' | 'active' | 'on-hold' | 'completed' | 'cancelled';
+  status: 'planning' | 'active' | 'on-hold' | 'completed' | 'archived' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'critical';
   budget: number;
   spentBudget?: number;
@@ -59,42 +59,57 @@ export interface Project {
   risks?: Risk[];
   dependencies?: string[];
   template?: string;
-  archived?: boolean;
-  archivedAt?: string;
-  archivedBy?: string | { _id: string; name: string };
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface PaginatedProjects {
-  success: boolean;
-  data: Project[];
-  pagination: { total: number; page: number; limit: number; pages: number };
-}
+export type { Task };
 
 export interface ProjectListParams {
   page?: number;
   limit?: number;
-  archived?: 'true' | 'all';
   status?: string;
   priority?: string;
-  search?: string;
-  sort?: 'recent' | 'name' | 'progress' | 'dueDate';
+  projectType?: string;
+  tag?: string;
+  q?: string;
+  sort?: 'recent' | 'created' | 'name' | 'endDate' | 'startDate' | 'progress';
 }
 
-export type { Task };
+export interface PaginatedProjects {
+  data: Project[];
+  pagination: { page: number; limit: number; total: number; pages: number };
+}
 
 export const projectsAPI = {
-  // Projects
-  getAll: async (params = {}) => {
+  // Projects. Without paging params the API returns a bare array, so this
+  // keeps returning one for existing callers.
+  getAll: async (params: ProjectListParams = {}) => {
     const response = await api.get("/projects", { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
-  // Paginated variant: keeps the `pagination` envelope the bare `getAll` discards.
-  getAllPaginated: async (params: ProjectListParams): Promise<PaginatedProjects> => {
-    const response = await api.get("/projects", { params });
-    return response.data as PaginatedProjects;
+  // Server-side filtered and paged listing.
+  getPaged: async (params: ProjectListParams): Promise<PaginatedProjects> => {
+    const response = await api.get("/projects", {
+      params: { page: 1, limit: 25, ...params }
+    });
+    return {
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination ?? { page: 1, limit: 25, total: 0, pages: 0 }
+    };
+  },
+
+  // Id/name pairs for dropdowns.
+  getMinimal: async () => {
+    const response = await api.get("/projects/minimal");
+    return unwrapResponse(response.data);
+  },
+
+  restore: async (id: string) => {
+    const response = await api.post(`/projects/${id}/restore`);
+    return unwrapResponse(response.data);
   },
 
   getById: async (id: string) => {
@@ -122,13 +137,8 @@ export const projectsAPI = {
     return unwrapResponse(response.data);
   },
 
-  archive: async (id: string): Promise<Project> => {
-    const response = await api.patch(`/projects/${id}/archive`);
-    return unwrapResponse(response.data);
-  },
-
-  unarchive: async (id: string): Promise<Project> => {
-    const response = await api.patch(`/projects/${id}/unarchive`);
+  archive: async (id: string) => {
+    const response = await api.patch(`/projects/${id}/status`, { status: 'archived' });
     return unwrapResponse(response.data);
   },
 
@@ -236,14 +246,12 @@ export const projectsAPI = {
 };
 
 export const getAllProjects = projectsAPI.getAll;
-export const getAllProjectsPaginated = projectsAPI.getAllPaginated;
 export const getProjectById = projectsAPI.getById;
 export const createProject = projectsAPI.create;
 export const editProject = projectsAPI.edit;
 export const updateProject = projectsAPI.update;
 export const deleteProject = projectsAPI.delete;
 export const archiveProject = projectsAPI.archive;
-export const unarchiveProject = projectsAPI.unarchive;
 export const manageProjectTeam = projectsAPI.manageTeam;
 export const getProjectTasks = projectsAPI.getTasks;
 export const createProjectTask = projectsAPI.createTask;
@@ -259,5 +267,8 @@ export const updateProjectRisks = projectsAPI.updateRisks;
 export const cloneProject = projectsAPI.cloneProject;
 export const calculateProjectProgress = projectsAPI.calculateProgress;
 export const getProjectTemplates = projectsAPI.getTemplates;
+export const getProjectsPaged = projectsAPI.getPaged;
+export const getProjectsMinimal = projectsAPI.getMinimal;
+export const restoreProject = projectsAPI.restore;
 
 export default projectsAPI;

@@ -289,7 +289,7 @@ export default function TaskManagementPage() {
         return;
       }
 
-      const updatedTask = await tasksAPI.updateStatus(taskId, newStatus, user?._id);
+      const updatedTask = await tasksAPI.updateStatus(taskId, newStatus);
       
       // Emit socket event for real-time updates
       if (socket) {

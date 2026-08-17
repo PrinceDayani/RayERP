@@ -104,122 +104,108 @@ export interface UpdateTaskData {
 
 export const tasksAPI = {
   // Get all tasks
-  getAll: async () => {
-    const response = await api.get('/tasks');
-    return response.data;
+  // Without paging params the API returns a bare array, so existing callers
+  // are unaffected. Pass filters to have the server do the work.
+  getAll: async (params: Record<string, any> = {}) => {
+    const response = await api.get('/tasks', { params });
+    return unwrapResponse(response.data);
+  },
+
+  // Id/title pairs for dropdowns.
+  getMinimal: async (projectId?: string) => {
+    const response = await api.get('/tasks/minimal', {
+      params: projectId ? { project: projectId } : {}
+    });
+    return unwrapResponse(response.data);
   },
 
   // Get tasks by project
   getTasksByProject: async (projectId: string) => {
     const response = await api.get(`/projects/${projectId}/tasks`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Get task by ID
   getById: async (id: string) => {
     const response = await api.get(`/tasks/${id}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Create new task
   create: async (taskData: CreateTaskData) => {
     const response = await api.post('/tasks', taskData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Edit task
   edit: async (id: string, taskData: UpdateTaskData) => {
     const response = await api.put(`/tasks/${id}`, taskData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Update task
   update: async (id: string, taskData: UpdateTaskData) => {
     const response = await api.put(`/tasks/${id}`, taskData);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Delete task
   delete: async (id: string) => {
     const response = await api.delete(`/tasks/${id}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // View all tasks
   viewAll: async () => {
     const response = await api.get('/tasks');
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
-  // Update task status
-  updateStatus: async (id: string, status: string, user?: string) => {
-    try {
-      // Validate status before sending
-      const validStatuses = ['todo', 'in-progress', 'review', 'completed', 'blocked'];
-      if (!validStatuses.includes(status)) {
-        throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
-      }
-      
-      // Get user from localStorage if not provided
-      let userId = user;
-      if (!userId) {
-        try {
-          const token = localStorage.getItem('auth-token');
-          if (token) {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            userId = payload.employeeId || payload.id || payload._id;
-          }
-        } catch (error) {
-          console.warn('Could not extract user from token:', error);
-        }
-      }
-      
-      const payload = { status, user: userId };
-      const response = await api.patch(`/tasks/${id}/status`, payload);
-      return response.data;
-    } catch (error: any) {
-      console.error('Error updating task status:', {
-        id,
-        status,
-        error: error?.response?.data || error?.message
-      });
-      throw error;
+  // Update task status. The actor is taken from the authenticated session
+  // server-side, so no user id is sent.
+  updateStatus: async (id: string, status: string) => {
+    const validStatuses = ['todo', 'in-progress', 'review', 'completed', 'blocked'];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
     }
+
+    const response = await api.patch(`/tasks/${id}/status`, { status });
+    return unwrapResponse(response.data);
   },
 
   // Add comment to task
-  addComment: async (id: string, comment: string, user: string) => {
-    const response = await api.post(`/tasks/${id}/comments`, { comment, user });
-    return response.data;
+  addComment: async (id: string, comment: string) => {
+    const response = await api.post(`/tasks/${id}/comments`, { comment });
+    return unwrapResponse(response.data);
   },
 
   // Get task timeline
   getTimeline: async (id: string) => {
     const response = await api.get(`/tasks/${id}/timeline`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Get task stats
   getStats: async () => {
     const response = await api.get('/tasks/stats');
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Get task templates
   getTaskTemplates: async () => {
     const response = await api.get('/tasks/templates');
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Time tracking
-  startTimer: async (id: string, user: string, description?: string) => {
-    const response = await api.post(`/tasks/${id}/time/start`, { user, description });
-    return response.data;
+  startTimer: async (id: string, description?: string) => {
+    const response = await api.post(`/tasks/${id}/time/start`, { description });
+    return unwrapResponse(response.data);
   },
 
-  stopTimer: async (id: string, user: string) => {
-    const response = await api.post(`/tasks/${id}/time/stop`, { user });
-    return response.data;
+  stopTimer: async (id: string) => {
+    const response = await api.post(`/tasks/${id}/time/stop`, {});
+    return unwrapResponse(response.data);
   },
 
   // Attachments
@@ -227,221 +213,221 @@ export const tasksAPI = {
     const response = await api.post(`/tasks/${id}/attachments`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   deleteAttachment: async (id: string, attachmentId: string) => {
     const response = await api.delete(`/tasks/${id}/attachments/${attachmentId}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Alias for deleteAttachment
   removeAttachment: async (id: string, attachmentId: string) => {
     const response = await api.delete(`/tasks/${id}/attachments/${attachmentId}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Tags
   addTag: async (id: string, name: string, color?: string) => {
     const response = await api.post(`/tasks/${id}/tags`, { name, color });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   removeTag: async (id: string, name: string) => {
     const response = await api.delete(`/tasks/${id}/tags`, { data: { name } });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Subtasks & Checklist
   addSubtask: async (id: string, data: { title: string; description: string; assignedTo: string; assignedBy: string }) => {
     const response = await api.post(`/tasks/${id}/subtasks`, data);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   addChecklistItem: async (id: string, text: string) => {
     const response = await api.post(`/tasks/${id}/checklist`, { text });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   updateChecklistItem: async (id: string, itemId: string, completed: boolean, completedBy?: string) => {
     const response = await api.patch(`/tasks/${id}/checklist`, { itemId, completed, completedBy });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   deleteChecklistItem: async (id: string, itemId: string) => {
     const response = await api.delete(`/tasks/${id}/checklist/${itemId}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getSubtaskProgress: async (id: string) => {
     const response = await api.get(`/tasks/${id}/subtasks/progress`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Recurring
   setRecurring: async (id: string, pattern: string, enabled: boolean) => {
     const response = await api.post(`/tasks/${id}/recurring`, { pattern, enabled });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Dependencies
   addDependency: async (id: string, dependsOn: string, type?: string) => {
     const response = await api.post(`/tasks/${id}/dependencies`, { dependsOn, type });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   removeDependency: async (id: string, dependencyId: string) => {
     const response = await api.delete(`/tasks/${id}/dependencies/${dependencyId}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getDependencyGraph: async (projectId?: string) => {
     const params = projectId ? `?projectId=${projectId}` : '';
     const response = await api.get(`/tasks/dependencies/graph${params}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getCriticalPath: async (projectId: string) => {
     const response = await api.get(`/tasks/dependencies/critical-path?projectId=${projectId}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   checkBlocked: async (id: string) => {
     const response = await api.get(`/tasks/${id}/dependencies/blocked`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Search
   search: async (filters: any, page = 1, limit = 20) => {
     const params = new URLSearchParams({ ...filters, page: page.toString(), limit: limit.toString() });
     const response = await api.get(`/tasks/search?${params}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   saveSearch: async (name: string, filters: any) => {
     const response = await api.post('/tasks/search/saved', { name, filters });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getSavedSearches: async () => {
     const response = await api.get('/tasks/search/saved');
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   deleteSavedSearch: async (id: string) => {
     const response = await api.delete(`/tasks/search/saved/${id}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Recurring (server-side filter)
   getRecurring: async () => {
     const response = await api.get('/tasks?isRecurring=true');
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Clone
   clone: async (id: string) => {
     const response = await api.post(`/tasks/${id}/clone`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Watchers
   addWatcher: async (id: string, userId: string) => {
     const response = await api.post(`/tasks/${id}/watchers`, { userId });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   removeWatcher: async (id: string, userId: string) => {
     const response = await api.delete(`/tasks/${id}/watchers/${userId}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Custom Fields
   addCustomField: async (id: string, field: { fieldName: string; fieldType: string; value: any; options?: string[] }) => {
     const response = await api.post(`/tasks/${id}/custom-fields`, field);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   removeCustomField: async (id: string, fieldName: string) => {
     const response = await api.delete(`/tasks/${id}/custom-fields/${fieldName}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   updateCustomField: async (id: string, fieldName: string, value: any) => {
     const response = await api.patch(`/tasks/${id}/custom-fields/${fieldName}`, { value });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Bulk Operations
   bulkUpdate: async (taskIds: string[], updates: any) => {
     const response = await api.patch('/tasks/bulk', { taskIds, updates });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Templates
   getTemplates: async () => {
     const response = await api.get('/tasks/templates/all');
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   createFromTemplate: async (templateId: string, data?: any) => {
     const response = await api.post(`/tasks/templates/${templateId}/create`, data);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   saveAsTemplate: async (id: string, templateName: string) => {
     const response = await api.post(`/tasks/${id}/templates/save`, { templateName });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   updateTemplate: async (id: string, data: any) => {
     const response = await api.put(`/tasks/templates/${id}`, data);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   deleteTemplate: async (id: string) => {
     const response = await api.delete(`/tasks/templates/${id}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Advanced Search
   advancedSearch: async (filters: any) => {
     const response = await api.get('/tasks/search', { params: filters });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getSearchSuggestions: async (query: string) => {
     const response = await api.get('/tasks/search/suggestions', { params: { query } });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Calendar & Timeline
   getCalendarView: async (startDate: string, endDate: string) => {
     const response = await api.get('/tasks/calendar/view', { params: { startDate, endDate } });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   getTimelineView: async (projectId?: string) => {
     const params = projectId ? { projectId } : {};
     const response = await api.get('/tasks/calendar/timeline', { params });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   exportICalendar: async (taskIds?: string[]) => {
     const params = taskIds ? { taskIds: taskIds.join(',') } : {};
     const response = await api.get('/tasks/calendar/export', { params, responseType: 'blob' });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   syncGoogleCalendar: async (accessToken: string, calendarId: string) => {
     const response = await api.post('/tasks/calendar/sync/google', { accessToken, calendarId });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Subtask operations
   deleteSubtask: async (id: string, subtaskId: string) => {
     const response = await api.delete(`/tasks/${id}/subtasks/${subtaskId}`);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Analytics
@@ -483,53 +469,53 @@ export const tasksAPI = {
   // Gantt Chart
   getGanttData: async (projectId: string) => {
     const response = await api.get('/tasks/gantt', { params: { projectId } });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   updateGanttTask: async (id: string, data: { start_date?: string; end_date?: string; progress?: number }) => {
     const response = await api.patch(`/tasks/gantt/${id}`, data);
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   // Bulk Operations
   bulkDelete: async (taskIds: string[]) => {
     const response = await api.delete('/tasks/bulk/delete', { data: { taskIds } });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   bulkAssign: async (taskIds: string[], assignedTo: string) => {
     const response = await api.patch('/tasks/bulk/assign', { taskIds, assignedTo });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   bulkStatusChange: async (taskIds: string[], status: string) => {
     const response = await api.patch('/tasks/bulk/status', { taskIds, status });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   bulkPriorityChange: async (taskIds: string[], priority: string) => {
     const response = await api.patch('/tasks/bulk/priority', { taskIds, priority });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   bulkAddTags: async (taskIds: string[], tags: Array<{ name: string; color: string }>) => {
     const response = await api.patch('/tasks/bulk/tags', { taskIds, tags });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   bulkSetDueDate: async (taskIds: string[], dueDate: string) => {
     const response = await api.patch('/tasks/bulk/due-date', { taskIds, dueDate });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   bulkClone: async (taskIds: string[]) => {
     const response = await api.post('/tasks/bulk/clone', { taskIds });
-    return response.data;
+    return unwrapResponse(response.data);
   },
 
   bulkArchive: async (taskIds: string[]) => {
     const response = await api.patch('/tasks/bulk/archive', { taskIds });
-    return response.data;
+    return unwrapResponse(response.data);
   }
 };
 

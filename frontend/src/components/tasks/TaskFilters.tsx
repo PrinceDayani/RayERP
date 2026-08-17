@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, Download, Trash2 } from 'lucide-react';
 import { useTaskContext } from '@/contexts/TaskContext';
-import { getAllProjects } from '@/lib/api/projectsAPI';
+import { getProjectsMinimal } from '@/lib/api/projectsAPI';
 import employeesAPI, { Employee } from '@/lib/api/employeesAPI';
 import { exportTasksToCSV } from '@/utils/tasks';
 
@@ -35,7 +35,7 @@ export default function TaskFilters({ onExport }: TaskFiltersProps) {
   const fetchData = async () => {
     try {
       const [projectsData, employeesData] = await Promise.all([
-        getAllProjects(),
+        getProjectsMinimal(),
         employeesAPI.getAll()
       ]);
       setProjects(projectsData || []);

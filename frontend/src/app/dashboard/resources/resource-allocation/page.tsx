@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Users, Clock, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { employeesAPI } from '@/lib/api/employeesAPI';
-import { getAllProjects } from '@/lib/api/projectsAPI';
+import { getProjectsMinimal } from '@/lib/api/projectsAPI';
 
 interface Employee {
   _id: string;
@@ -55,7 +55,7 @@ export default function ResourceAllocationPage() {
     try {
       const [employeesData, projectsData] = await Promise.all([
         employeesAPI.getAll(),
-        getAllProjects()
+        getProjectsMinimal()
       ]);
 
       const employees = Array.isArray(employeesData) ? employeesData : employeesData?.data || [];

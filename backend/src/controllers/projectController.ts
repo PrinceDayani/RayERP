@@ -4,52 +4,84 @@ import Project from '../models/Project';
 import Task from '../models/Task';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
 import { WorkflowProjectIntegration } from '../services/workflowProjectIntegration';
-import { getAccessibleProjectIdsForUser, isPrivilegedRole } from '../middleware/projectAccess.middleware';
+import { getAccessibleProjectIdsForUser } from '../middleware/projectAccess.middleware';
 import { getCachedProjectList, setCachedProjectList, invalidateProjectListCache } from '../utils/projectCache';
 import { logger } from '../utils/logger';
+import { emitProjectStats } from '../utils/socketEvents';
+import { computeProjectProgress } from '../utils/projectProgress';
+import { parseListParams, escapeRegex } from '../utils/helpers';
+import { isValidProjectStatusTransition, allowedProjectStatusTransitions, findProjectDependencyCycle } from '../utils/projectValidation';
 // Socket will be imported dynamically to avoid circular dependency
 
-const PROJECT_STATUSES = ['planning', 'active', 'on-hold', 'completed', 'cancelled'];
-const PROJECT_PRIORITIES = ['low', 'medium', 'high', 'critical'];
-const MAX_PAGE_LIMIT = 50;
-const MAX_SEARCH_LENGTH = 100;
-
-const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-// Whitelisted so a client cannot sort on an unindexed or unintended field
-const PROJECT_SORTS: Record<string, Record<string, 1 | -1>> = {
-  recent: { createdAt: -1 },
+const PROJECT_SORT_MAP: Record<string, Record<string, 1 | -1>> = {
+  recent: { updatedAt: -1 },
+  created: { createdAt: -1 },
   name: { name: 1 },
-  progress: { progress: -1 },
-  dueDate: { endDate: 1 }
+  endDate: { endDate: 1 },
+  startDate: { startDate: 1 },
+  progress: { progress: -1 }
 };
-const DEFAULT_PROJECT_SORT = { updatedAt: -1 } as Record<string, 1 | -1>;
 
-// Helper function to emit updated project stats
-const emitProjectStats = async () => {
-  try {
-    const totalProjects = await Project.countDocuments();
-    const activeProjects = await Project.countDocuments({ status: 'active' });
-    const completedProjects = await Project.countDocuments({ status: 'completed' });
-    const overdueTasks = await Task.countDocuments({ 
-      dueDate: { $lt: new Date() }, 
-      status: { $ne: 'completed' } 
-    });
-    
-    const stats = {
-      totalProjects,
-      activeProjects,
-      completedProjects,
-      overdueTasks,
-      totalTasks: await Task.countDocuments(),
-      completedTasks: await Task.countDocuments({ status: 'completed' })
-    };
-    
-    const { io } = await import('../server');
-    io.emit('project:stats', stats);
-  } catch (error) {
-    logger.error('Error emitting project stats', { message: error?.message });
+const PROJECT_LIST_POPULATE = [
+  { path: 'managers', select: 'name email', strictPopulate: false },
+  { path: 'team', select: 'name email', strictPopulate: false },
+  { path: 'owner', select: 'name email', strictPopulate: false },
+  { path: 'departments', select: 'name description', strictPopulate: false }
+];
+
+// Fields a user may see for a project they are not assigned to but can reach
+// through a department-level projects.view grant.
+const PROJECT_BASIC_FIELDS = [
+  '_id',
+  'name',
+  'status',
+  'priority',
+  'startDate',
+  'endDate',
+  'departments'
+] as const;
+
+const toBasicProject = (project: any) => {
+  const basic: any = { isBasicView: true };
+  for (const field of PROJECT_BASIC_FIELDS) basic[field] = project[field];
+  return basic;
+};
+
+// Translates status/priority/tag/search query params into a Mongo filter.
+// Every value is validated against the schema's own enums rather than passed
+// through, and free text is regex-escaped before it reaches the query.
+const buildProjectFilter = (query: any, search: string | null) => {
+  const filter: any = {};
+
+  const validStatuses = ['planning', 'active', 'on-hold', 'completed', 'archived', 'cancelled'];
+  const validPriorities = ['low', 'medium', 'high', 'critical'];
+
+  const statuses = String(query.status || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => validStatuses.includes(s));
+  if (statuses.length) filter.status = { $in: statuses };
+
+  const priorities = String(query.priority || '')
+    .split(',')
+    .map(p => p.trim())
+    .filter(p => validPriorities.includes(p));
+  if (priorities.length) filter.priority = { $in: priorities };
+
+  if (typeof query.projectType === 'string' && ['instruction', 'reporting'].includes(query.projectType)) {
+    filter.projectType = query.projectType;
   }
+
+  if (typeof query.tag === 'string' && query.tag.trim()) {
+    filter.tags = query.tag.trim();
+  }
+
+  if (search) {
+    const pattern = new RegExp(escapeRegex(search), 'i');
+    filter.$and = [{ $or: [{ name: pattern }, { client: pattern }] }];
+  }
+
+  return filter;
 };
 
 export const getAllProjects = async (req: Request, res: Response) => {
@@ -59,41 +91,30 @@ export const getAllProjects = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    const { archived, status, priority, search, page, limit, sort } = req.query;
+    const { page, limit, skip, paginate, search, sort } = parseListParams(req.query, {
+      sortMap: PROJECT_SORT_MAP,
+      defaultSort: 'recent'
+    });
 
-    if (status !== undefined && !PROJECT_STATUSES.includes(String(status))) {
-      return res.status(400).json({
-        success: false,
-        message: `status must be one of: ${PROJECT_STATUSES.join(', ')}`
-      });
-    }
-    if (priority !== undefined && !PROJECT_PRIORITIES.includes(String(priority))) {
-      return res.status(400).json({
-        success: false,
-        message: `priority must be one of: ${PROJECT_PRIORITIES.join(', ')}`
-      });
-    }
+    const filter: any = buildProjectFilter(req.query, search);
 
-    const sortKey = sort !== undefined && PROJECT_SORTS[String(sort)] ? String(sort) : '';
-    const sortSpec = sortKey ? PROJECT_SORTS[sortKey] : DEFAULT_PROJECT_SORT;
-    const archivedMode = archived === 'true' ? 'archived' : (archived === 'all' ? 'all' : 'active');
-    const searchTerm = search === undefined ? '' : String(search).trim().slice(0, MAX_SEARCH_LENGTH);
-    const isPaginated = page !== undefined || limit !== undefined;
-    const pageNumber = Math.max(1, Number(page) || 1);
-    const pageLimit = Math.min(MAX_PAGE_LIMIT, Math.max(1, Number(limit) || 20));
+    // Owner / manager / team membership plus explicit ProjectPermission grants.
+    // `all` is true only for users who genuinely see every project.
+    const access = await getAccessibleProjectIdsForUser(user);
 
-    // 'all' scope may only be used for users who genuinely see every project —
-    // anything else is keyed per user so one list is never served to another.
-    const privileged = isPrivilegedRole(user);
-    const scope = privileged ? 'all' : `u:${user._id.toString()}`;
+    // SECURITY: the shared 'all' scope may only be used when access resolution
+    // returned every project; everyone else is keyed per user so one user's
+    // list is never served to another.
+    const scope = access.all ? 'all' : `u:${user._id.toString()}`;
     const queryKey = JSON.stringify({
-      archived: archivedMode,
-      status: status === undefined ? '' : String(status),
-      priority: priority === undefined ? '' : String(priority),
-      search: searchTerm,
-      sort: sortKey,
-      page: isPaginated ? pageNumber : 0,
-      limit: isPaginated ? pageLimit : 0
+      status: filter.status?.$in ?? [],
+      priority: filter.priority?.$in ?? [],
+      projectType: filter.projectType ?? '',
+      tag: filter.tags ?? '',
+      search: search ?? '',
+      sort,
+      page: paginate ? page : 0,
+      limit: paginate ? limit : 0
     });
 
     const cached = await getCachedProjectList(scope, queryKey);
@@ -101,111 +122,106 @@ export const getAllProjects = async (req: Request, res: Response) => {
       return res.json(cached);
     }
 
-    const filter: any = {};
-    if (archivedMode === 'archived') {
-      filter.archived = true;
-    } else if (archivedMode === 'active') {
-      // Documents predating the flag have no `archived` field
-      filter.archived = { $ne: true };
-    }
-    if (status !== undefined) filter.status = String(status);
-    if (priority !== undefined) filter.priority = String(priority);
-    if (searchTerm) {
-      const term = escapeRegex(searchTerm);
-      filter.$or = [
-        { name: { $regex: term, $options: 'i' } },
-        { description: { $regex: term, $options: 'i' } }
-      ];
-    }
+    // Ids the user is directly attached to; everything else they can reach is
+    // department-derived and returned in the reduced shape.
+    let assignedIds: Set<string> | null = null;
 
-    // Projects the user only sees through a department permission are masked
-    // down to a basic view, so track their ids separately from the access set
-    const basicViewIds = new Set<string>();
-
-    if (!privileged) {
-      // Owner / manager / team membership plus explicit ProjectPermission grants
-      const access = await getAccessibleProjectIdsForUser(user);
-      const visibleIds = access.ids.slice();
+    if (!access.all) {
+      const accessConditions: any[] = [{ _id: { $in: access.ids } }];
+      assignedIds = new Set(access.ids.map(id => id.toString()));
 
       const Employee = (await import('../models/Employee')).default;
-      const employee = await Employee.findOne({ user: user._id }).lean();
+      const Department = (await import('../models/Department')).default;
+      const employee = await Employee.findOne({ user: user._id }).select('department departments').lean();
 
       if (employee) {
-        const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
+        const departmentNames = employee.departments?.length
+          ? employee.departments
+          : (employee.department ? [employee.department] : []);
+
         if (departmentNames.length > 0) {
-          const Department = (await import('../models/Department')).default;
-          const departments = await Department.find({ name: { $in: departmentNames }, status: 'active' })
-            .select('permissions')
-            .lean();
-          const hasProjectViewPermission = departments.some(dept =>
-            dept.permissions && dept.permissions.includes('projects.view')
+          const departments = await Department.find({
+            name: { $in: departmentNames },
+            status: 'active'
+          }).select('_id permissions').lean();
+
+          const grantsProjectView = departments.some(
+            dept => dept.permissions && dept.permissions.includes('projects.view')
           );
 
-          if (hasProjectViewPermission) {
-            const departmentProjects = await Project.find({
-              departments: { $in: departmentNames },
-              _id: { $nin: access.ids }
-            }).select('_id').lean();
-
-            for (const p of departmentProjects) {
-              basicViewIds.add(p._id.toString());
-              visibleIds.push(p._id);
-            }
+          // Project.departments holds Department ids, while Employee.departments
+          // holds names, so the ids have to be resolved before matching.
+          if (grantsProjectView && departments.length) {
+            accessConditions.push({ departments: { $in: departments.map(d => d._id) } });
           }
         }
       }
 
-      filter._id = { $in: visibleIds };
+      filter.$and = [...(filter.$and || []), { $or: accessConditions }];
     }
 
     const query = Project.find(filter)
-      .populate({ path: 'managers', select: 'name email', strictPopulate: false })
-      .populate({ path: 'team', select: 'name email', strictPopulate: false })
-      .populate({ path: 'owner', select: 'name email', strictPopulate: false })
-      .populate({ path: 'departments', select: 'name description', strictPopulate: false })
-      .sort(sortSpec);
+      .sort(sort)
+      .populate(PROJECT_LIST_POPULATE)
+      .lean();
 
-    const maskBasicView = (project: any) => {
-      if (!basicViewIds.has(project._id.toString())) return project;
-      return {
-        _id: project._id,
-        name: project.name,
-        status: project.status,
-        priority: project.priority,
-        startDate: project.startDate,
-        endDate: project.endDate,
-        departments: project.departments,
-        isBasicView: true // Flag to indicate limited access
-      };
-    };
-
-    if (!isPaginated) {
-      const projects = await query.lean();
-      const payload = projects.map(maskBasicView);
-      await setCachedProjectList(scope, queryKey, payload);
-      return res.json(payload);
-    }
+    if (paginate) query.skip(skip).limit(limit);
 
     const [projects, total] = await Promise.all([
-      query.skip((pageNumber - 1) * pageLimit).limit(pageLimit).lean(),
-      Project.countDocuments(filter)
+      query.exec(),
+      paginate ? Project.countDocuments(filter) : Promise.resolve(0)
     ]);
+
+    const shaped = assignedIds
+      ? projects.map(p => (assignedIds!.has(p._id.toString()) ? p : toBasicProject(p)))
+      : projects;
+
+    if (!paginate) {
+      // Unparameterised calls keep the original bare-array contract.
+      await setCachedProjectList(scope, queryKey, shaped);
+      return res.json(shaped);
+    }
 
     const payload = {
       success: true,
-      data: projects.map(maskBasicView),
-      pagination: {
-        total,
-        page: pageNumber,
-        limit: pageLimit,
-        pages: Math.ceil(total / pageLimit)
-      }
+      data: shaped,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) }
     };
 
     await setCachedProjectList(scope, queryKey, payload);
-    res.json(payload);
+    return res.json(payload);
   } catch (error) {
     logger.error('Error fetching projects', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching projects' });
+  }
+};
+
+// Id/name pairs for pickers and dropdowns, which need every project the user
+// can see but none of the detail. Mirrors the existing /employees/minimal and
+// /departments/minimal endpoints.
+export const getProjectsMinimal = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
+    const seesEverything = roleName === 'Root' || rolePermissions.includes('projects.view_all');
+
+    const filter: any = seesEverything
+      ? {}
+      : { $or: [{ owner: user._id }, { team: user._id }, { managers: user._id }] };
+
+    const projects = await Project.find(filter)
+      .select('name status')
+      .sort({ name: 1 })
+      .lean();
+
+    res.json({ success: true, data: projects });
+  } catch (error) {
+    logger.error('Error fetching minimal projects', { message: error?.message });
     res.status(500).json({ success: false, message: 'Error fetching projects' });
   }
 };
@@ -560,7 +576,16 @@ export const updateProject = async (req: Request, res: Response) => {
     if (req.body.name !== undefined) updateData.name = req.body.name;
     if (req.body.description !== undefined) updateData.description = req.body.description;
     if (req.body.projectType !== undefined) updateData.projectType = req.body.projectType;
-    if (req.body.status !== undefined) updateData.status = req.body.status;
+    if (req.body.status !== undefined) {
+      if (!isValidProjectStatusTransition(oldProject.status, req.body.status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot move a project from "${oldProject.status}" to "${req.body.status}"`,
+          allowed: allowedProjectStatusTransitions(oldProject.status)
+        });
+      }
+      updateData.status = req.body.status;
+    }
     if (req.body.priority !== undefined) updateData.priority = req.body.priority;
     if (req.body.budget !== undefined) updateData.budget = parseFloat(req.body.budget) || 0;
     if (req.body.progress !== undefined) updateData.progress = Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100);
@@ -570,6 +595,25 @@ export const updateProject = async (req: Request, res: Response) => {
     if (req.body.team !== undefined) updateData.team = Array.isArray(req.body.team) ? req.body.team : [];
     if (req.body.departments !== undefined) updateData.departments = Array.isArray(req.body.departments) ? req.body.departments : [];
     if (req.body.tags !== undefined) updateData.tags = Array.isArray(req.body.tags) ? req.body.tags : [];
+
+    if (req.body.dependencies !== undefined) {
+      const dependencies = Array.isArray(req.body.dependencies) ? req.body.dependencies : [];
+
+      if (dependencies.some((d: any) => d?.toString() === req.params.id)) {
+        return res.status(400).json({ success: false, message: 'A project cannot depend on itself' });
+      }
+
+      const cycleAt = await findProjectDependencyCycle(req.params.id, dependencies);
+      if (cycleAt) {
+        return res.status(400).json({
+          success: false,
+          message: 'These dependencies would create a circular dependency',
+          conflictingProject: cycleAt
+        });
+      }
+
+      updateData.dependencies = dependencies;
+    }
     
     // When switching to reporting type, set progressMode to financial
     if (req.body.projectType === 'reporting') {
@@ -619,12 +663,11 @@ export const updateProject = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Project not found after update' });
     }
     
-    // Safely get manager ID for timeline
-    const managerId = req.body.updatedBy || 
-                     (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null);
-    
+    // Timeline actor is always the authenticated user; never client-supplied.
+    const managerId = req.user?._id?.toString() || null;
+
     if (!managerId) {
-      logger.warn('No manager ID found for timeline event');
+      logger.warn('No authenticated user found for timeline event');
     } else {
       // Create timeline event
       try {
@@ -743,12 +786,12 @@ export const updateProject = async (req: Request, res: Response) => {
 
 export const updateProjectStatus = async (req: Request, res: Response) => {
   try {
-    const { status, user } = req.body;
-    
+    const { status } = req.body;
+
     if (!status) {
       return res.status(400).json({ success: false, message: 'Status is required' });
     }
-    
+
     const project = await Project.findById(req.params.id);
 
     if (!project) {
@@ -756,6 +799,15 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     }
 
     const oldStatus = project.status;
+
+    if (!isValidProjectStatusTransition(oldStatus, status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot move a project from "${oldStatus}" to "${status}"`,
+        allowed: allowedProjectStatusTransitions(oldStatus)
+      });
+    }
+
     project.status = status;
     await project.save();
     await project.populate('managers', 'name email');
@@ -763,13 +815,13 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
     await project.populate('owner', 'name email');
     await project.populate('departments', 'name description');
     
-    // Safely get user ID
-    const userId = user || (project.managers && project.managers.length > 0 ? project.managers[0].toString() : null);
-    
+    // Timeline actor is always the authenticated user; never client-supplied.
+    const userId = req.user?._id?.toString();
+
     if (!userId) {
-      return res.status(400).json({ success: false, message: 'User ID is required for timeline event' });
+      return res.status(401).json({ success: false, message: 'Authentication required' });
     }
-    
+
     await createTimelineEvent(
       'project',
       project._id.toString(),
@@ -805,79 +857,6 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * PATCH /api/projects/:id/archive
- */
-export const archiveProject = async (req: Request, res: Response) => {
-  try {
-    const user = req.user;
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
-    const project = await Project.findById(req.params.id);
-    if (!project) {
-      return res.status(404).json({ success: false, message: 'Project not found' });
-    }
-
-    if (project.archived) {
-      return res.status(400).json({ success: false, message: 'Project is already archived' });
-    }
-
-    project.archived = true;
-    project.archivedAt = new Date();
-    project.archivedBy = user._id;
-    await project.save();
-
-    await invalidateProjectListCache();
-
-    const { io } = await import('../server');
-    io.emit('project:updated', project);
-
-    res.json({ success: true, data: project });
-  } catch (error) {
-    logger.error('Error archiving project', { message: error?.message });
-    res.status(500).json({ success: false, message: 'Error archiving project' });
-  }
-};
-
-/**
- * PATCH /api/projects/:id/unarchive
- */
-export const unarchiveProject = async (req: Request, res: Response) => {
-  try {
-    const user = req.user;
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
-    const project = await Project.findById(req.params.id);
-    if (!project) {
-      return res.status(404).json({ success: false, message: 'Project not found' });
-    }
-
-    if (!project.archived) {
-      return res.status(400).json({ success: false, message: 'Project is not archived' });
-    }
-
-    // status is deliberately untouched — archiving is a separate axis
-    project.archived = false;
-    project.archivedAt = undefined;
-    project.archivedBy = undefined;
-    await project.save();
-
-    await invalidateProjectListCache();
-
-    const { io } = await import('../server');
-    io.emit('project:updated', project);
-
-    res.json({ success: true, data: project });
-  } catch (error) {
-    logger.error('Error unarchiving project', { message: error?.message });
-    res.status(500).json({ success: false, message: 'Error unarchiving project' });
-  }
-};
-
 export const deleteProject = async (req: Request, res: Response) => {
   try {
     // Access check: Root, projects.edit_all, or project owner/manager only
@@ -900,17 +879,21 @@ export const deleteProject = async (req: Request, res: Response) => {
       }
     }
 
-    const project = await Project.findByIdAndDelete(req.params.id);
+    // Soft delete. A project is referenced by ~28 collections including
+    // FinancialEntry, ProjectLedger and Voucher; removing the document would
+    // leave accounting records pointing at a dead id. Tasks are retained too.
+    const project = await Project.findOneAndUpdate(
+      { _id: req.params.id },
+      { $set: { deletedAt: new Date(), deletedBy: req.user?._id ?? null } },
+      { new: true }
+    );
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
-    
-    await Task.deleteMany({ project: req.params.id });
-    
-    // Safely get manager ID
-    const managerId = project.managers && project.managers.length > 0 ? project.managers[0].toString() : null;
-    
-    if (managerId) {
+
+    const actorId = req.user?._id?.toString() || null;
+
+    if (actorId) {
       // Create timeline event
       await createTimelineEvent(
         'project',
@@ -918,7 +901,7 @@ export const deleteProject = async (req: Request, res: Response) => {
         'deleted',
         'Project Deleted',
         `Project "${project.name}" was deleted`,
-        managerId
+        actorId
       );
     }
     
@@ -938,7 +921,7 @@ export const deleteProject = async (req: Request, res: Response) => {
       resource: `Project: ${project.name}`,
       resourceType: 'project',
       resourceId: req.params.id,
-      details: `Deleted project "${project.name}" and all associated tasks`,
+      details: `Deleted project "${project.name}" (soft delete; tasks and financial records retained)`,
       metadata: { 
         projectId: project._id, 
         projectName: project.name,
@@ -964,6 +947,46 @@ export const deleteProject = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Error deleting project', { message: error?.message });
     res.status(500).json({ success: false, message: 'Error deleting project', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+// Restores a soft-deleted project. The explicit deletedAt predicate opts this
+// query out of the schema's default exclusion, and makes restoring a project
+// that was never deleted a 404 rather than a silent no-op.
+export const restoreProject = async (req: Request, res: Response) => {
+  try {
+    const project = await Project.findOneAndUpdate(
+      { _id: req.params.id, deletedAt: { $ne: null } },
+      { $set: { deletedAt: null, deletedBy: null } },
+      { new: true }
+    );
+
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found or not deleted' });
+    }
+
+    const actorId = req.user?._id?.toString() || null;
+    if (actorId) {
+      await createTimelineEvent(
+        'project',
+        req.params.id,
+        'updated',
+        'Project Restored',
+        `Project "${project.name}" was restored`,
+        actorId
+      );
+    }
+
+    await invalidateProjectListCache();
+
+    const { io } = await import('../server');
+    io.emit('project:restored', { id: req.params.id });
+    await emitProjectStats();
+
+    res.json({ success: true, data: project });
+  } catch (error) {
+    logger.error('Error restoring project', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error restoring project', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -1182,6 +1205,8 @@ export const cloneProject = async (req: Request, res: Response) => {
     await clonedProject.populate('owner', 'name email');
     await clonedProject.populate('departments', 'name description');
     
+    await invalidateProjectListCache();
+
     const { io } = await import('../server');
     io.emit('project:created', clonedProject);
     await emitProjectStats();
@@ -1230,24 +1255,21 @@ export const calculateProjectProgress = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    const tasks = await Task.find({ project: projectId });
-    
-    if (tasks.length === 0) {
+    const { progress, totalTasks, completedTasks, weighted } = await computeProjectProgress(projectId);
+
+    if (totalTasks === 0) {
       return res.json({ success: true, data: { progress: 0, message: 'No tasks found' } });
     }
-    
-    const completedTasks = tasks.filter(t => t.status === 'completed').length;
-    const progress = Math.round((completedTasks / tasks.length) * 100);
-    
+
     project.progress = progress;
     await project.save();
-    
+
     await invalidateProjectListCache();
 
     const { io } = await import('../server');
     io.emit('project:progress:updated', { projectId, progress });
-    
-    res.json({ success: true, data: { progress, totalTasks: tasks.length, completedTasks } });
+
+    res.json({ success: true, data: { progress, totalTasks, completedTasks, weighted } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error calculating progress', error });
   }
@@ -1729,11 +1751,11 @@ export const getProjectsByView = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
     
-    const query: any = { archived: { $ne: true } };
+    const query: any = {};
 
-    if (!isPrivilegedRole(user)) {
-      // Same access set as the main list: membership plus ProjectPermission grants
-      const access = await getAccessibleProjectIdsForUser(user);
+    // Same access set as the main list: membership plus ProjectPermission grants
+    const access = await getAccessibleProjectIdsForUser(user);
+    if (!access.all) {
       query._id = { $in: access.ids };
     }
 
@@ -1754,10 +1776,7 @@ export const getProjectsByView = async (req: Request, res: Response) => {
     }
     
     const projects = await Project.find(query)
-      .populate({ path: 'managers', select: 'name email', strictPopulate: false })
-      .populate({ path: 'team', select: 'name email', strictPopulate: false })
-      .populate({ path: 'owner', select: 'name email', strictPopulate: false })
-      .populate({ path: 'departments', select: 'name description', strictPopulate: false })
+      .populate(PROJECT_LIST_POPULATE)
       .sort({ updatedAt: -1 })
       .lean();
 

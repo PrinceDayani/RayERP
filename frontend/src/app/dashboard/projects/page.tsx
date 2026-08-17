@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,16 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import {
+import { 
   Plus, Calendar, Users, BarChart3, CheckCircle, TrendingUp, Search, Clock, Coins, Edit,
-  Briefcase, Target, Activity, Zap, GanttChartSquare, Trash2, Archive, ArchiveRestore
+  Briefcase, Target, Activity, Zap, GanttChartSquare, Trash2
 } from "lucide-react";
 import { TieredAccessWrapper } from "@/components/common/TieredAccessWrapper";
-import {
-  getProjectStats, getAllProjects, getAllProjectsPaginated, updateProject, deleteProject,
-  archiveProject, unarchiveProject, type Project, type ProjectListParams
-} from "@/lib/api/projectsAPI";
-import { usePermissions } from "@/hooks/usePermissions";
+import { getProjectStats, getAllProjects, getProjectsPaged, getProjectsMinimal, updateProject, deleteProject, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { useSocket } from "@/hooks/useSocket";
 import tasksAPI, { type Task, type CreateTaskData } from "@/lib/api/tasksAPI";
@@ -34,6 +30,16 @@ import ProjectCurrencySwitcher from "@/components/projects/ProjectCurrencySwitch
 import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
 import { SectionLoader } from '@/components/PageLoader';
 import { Skeleton } from "@/components/ui/skeleton";
+
+const PAGE_SIZE = 25;
+
+// Maps the UI sort labels onto the API sort keys.
+const SORT_PARAM: Record<string, 'recent' | 'name' | 'progress' | 'endDate'> = {
+  recent: 'recent',
+  name: 'name',
+  progress: 'progress',
+  dueDate: 'endDate'
+};
 
 interface ProjectStats {
   totalProjects: number;
@@ -50,37 +56,37 @@ const ProjectManagementDashboard: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
   const { formatCurrency } = useCurrency();
   const { formatAmount } = useGlobalCurrency();
-  const { hasPermission, isRoot } = usePermissions();
   const router = useRouter();
   const [stats, setStats] = useState<ProjectStats>({
     totalProjects: 0, activeProjects: 0, completedProjects: 0,
     overdueTasks: 0, totalTasks: 0, completedTasks: 0,
   });
   const [projects, setProjects] = useState<Project[]>([]);
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [totalProjects, setTotalProjects] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
-  const [archivedFilter, setArchivedFilter] = useState("active");
-  const [page, setPage] = useState(1);
-  const [pagedProjects, setPagedProjects] = useState<Project[]>([]);
-  const [pageCount, setPageCount] = useState(1);
-  const [pagedLoading, setPagedLoading] = useState(false);
-  const [archivingId, setArchivingId] = useState<string | null>(null);
   const socket = useSocket();
 
-  const canArchive = isRoot || hasPermission('projects.archive');
-
+  // Filtering, sorting and paging happen server-side; the search box is
+  // debounced so typing does not fire a request per keystroke.
   useEffect(() => {
-    if (isAuthenticated && user) {
-      const token = localStorage.getItem('auth-token');
-      if (token && token !== 'null' && token !== 'undefined') {
-        fetchData();
-      }
-    }
-  }, [isAuthenticated, user]);
+    if (!isAuthenticated || !user) return;
+    const token = localStorage.getItem('auth-token');
+    if (!token || token === 'null' || token === 'undefined') return;
+
+    const timer = setTimeout(fetchData, searchTerm ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, user, page, searchTerm, statusFilter, priorityFilter, sortBy]);
+
+  // Any filter change returns to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter, priorityFilter, sortBy]);
 
   useEffect(() => {
     if (!socket) return;
@@ -111,7 +117,7 @@ const ProjectManagementDashboard: React.FC = () => {
         setLoading(false);
         return;
       }
-      const [statsData, projectsData, tasksData] = await Promise.all([
+      const [statsData, projectsPage] = await Promise.all([
         getProjectStats().catch((err) => {
           console.error('Stats fetch error:', err.message);
           return {
@@ -119,18 +125,22 @@ const ProjectManagementDashboard: React.FC = () => {
             overdueTasks: 0, totalTasks: 0, completedTasks: 0
           };
         }),
-        getAllProjects().catch((err) => {
+        getProjectsPaged({
+          page,
+          limit: PAGE_SIZE,
+          sort: SORT_PARAM[sortBy] ?? 'recent',
+          ...(searchTerm ? { q: searchTerm } : {}),
+          ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+          ...(priorityFilter !== 'all' ? { priority: priorityFilter } : {})
+        }).catch((err) => {
           console.error('Projects fetch error:', err.message);
-          return [];
-        }),
-        tasksAPI.getAll().catch((err) => {
-          console.error('Tasks fetch error:', err.message);
-          return [];
+          return { data: [], pagination: { page: 1, limit: PAGE_SIZE, total: 0, pages: 0 } };
         })
       ]);
       if (statsData) setStats(statsData);
-      setProjects(projectsData || []);
-      setAllTasks(tasksData || []);
+      setProjects(projectsPage.data || []);
+      setPageCount(projectsPage.pagination.pages || 1);
+      setTotalProjects(projectsPage.pagination.total || 0);
     } catch (error: any) {
       console.error('Data fetch error:', error.message);
       toast({ 
@@ -143,37 +153,6 @@ const ProjectManagementDashboard: React.FC = () => {
     }
   };
 
-  const loadPagedProjects = useCallback(async (): Promise<void> => {
-    try {
-      setPagedLoading(true);
-      const params: ProjectListParams = { page, limit: 12, sort: sortBy as ProjectListParams['sort'] };
-      if (searchTerm) params.search = searchTerm;
-      if (statusFilter !== "all") params.status = statusFilter;
-      if (priorityFilter !== "all") params.priority = priorityFilter;
-      if (archivedFilter !== "active") params.archived = archivedFilter as 'true' | 'all';
-      const response = await getAllProjectsPaginated(params);
-      setPagedProjects(response.data || []);
-      setPageCount(response.pagination?.pages || 1);
-    } catch (error: any) {
-      toast({
-        title: "Failed to load projects",
-        description: error?.response?.data?.message || error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setPagedLoading(false);
-    }
-  }, [page, searchTerm, statusFilter, priorityFilter, archivedFilter, sortBy]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, statusFilter, priorityFilter, archivedFilter, sortBy]);
-
-  useEffect(() => {
-    if (!isAuthenticated || !user) return;
-    loadPagedProjects();
-  }, [isAuthenticated, user, loadPagedProjects]);
-
   const handleQuickStatusUpdate = async (projectId: string, newStatus: Project['status']) => {
     try {
       await updateProject(projectId, { status: newStatus });
@@ -184,6 +163,8 @@ const ProjectManagementDashboard: React.FC = () => {
     }
   };
 
+  // Already filtered, sorted and paged by the API.
+  const filteredProjects = projects;
 
   const handleCloneProject = async (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -209,38 +190,9 @@ const ProjectManagementDashboard: React.FC = () => {
       await deleteProject(projectId);
       setProjects(prev => prev.filter(p => p._id !== projectId));
       toast({ title: "Project deleted successfully" });
-      loadPagedProjects();
       fetchData();
     } catch (error) {
       toast({ title: "Failed to delete project", variant: "destructive" });
-    }
-  };
-
-  const handleArchiveProject = async (project: Project, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const restoring = Boolean(project.archived);
-    const question = restoring
-      ? `Restore "${project.name}" from the archive?`
-      : `Archive "${project.name}"? It will be hidden from the active project list.`;
-    if (!confirm(question)) return;
-    try {
-      setArchivingId(project._id);
-      if (restoring) {
-        await unarchiveProject(project._id);
-      } else {
-        await archiveProject(project._id);
-      }
-      toast({ title: restoring ? "Project restored" : "Project archived" });
-      await loadPagedProjects();
-      fetchData();
-    } catch (error: any) {
-      toast({
-        title: restoring ? "Could not restore project" : "Could not archive project",
-        description: error?.response?.data?.message || error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setArchivingId(null);
     }
   };
 
@@ -504,16 +456,6 @@ const ProjectManagementDashboard: React.FC = () => {
                         <SelectItem value="low">Low</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={archivedFilter} onValueChange={setArchivedFilter}>
-                      <SelectTrigger className="w-full md:w-40 h-11">
-                        <SelectValue placeholder="Archived" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="true">Archived</SelectItem>
-                        <SelectItem value="all">All</SelectItem>
-                      </SelectContent>
-                    </Select>
                     <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger className="w-full md:w-40 h-11">
                         <SelectValue placeholder="Sort By" />
@@ -536,13 +478,7 @@ const ProjectManagementDashboard: React.FC = () => {
 
           {/* Projects Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pagedLoading ? (
-              <Card className="col-span-full border-0 shadow-lg">
-                <CardContent className="p-12">
-                  <SectionLoader />
-                </CardContent>
-              </Card>
-            ) : pagedProjects.length === 0 ? (
+            {filteredProjects.length === 0 ? (
               <Card className="col-span-full border-0 shadow-lg">
                 <CardContent className="p-16 text-center">
                   <div className="w-24 h-24 bg-gradient-to-br from-[#970E2C]/10 to-[#800020]/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
@@ -557,7 +493,7 @@ const ProjectManagementDashboard: React.FC = () => {
                 </CardContent>
               </Card>
             ) : (
-              pagedProjects.map((project) => (
+              filteredProjects.map((project) => (
                 <Card key={project._id} className="group relative border-0 shadow-lg hover:shadow-2xl hover:shadow-[#970E2C]/10 transition-all duration-300 cursor-pointer overflow-hidden bg-gradient-to-br from-card to-card/50 hover:-translate-y-1"
                       onClick={() => router.push(`/dashboard/projects/${project._id}`)}>
                   <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -586,13 +522,6 @@ const ProjectManagementDashboard: React.FC = () => {
                                 onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/${project._id}/edit`); }}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        {canArchive && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#970E2C]/10 hover:text-[#970E2C]"
-                                  disabled={archivingId === project._id}
-                                  onClick={(e) => handleArchiveProject(project, e)}>
-                            {project.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                          </Button>
-                        )}
                         <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-100 hover:text-red-600"
                                 onClick={(e) => handleDeleteProject(project._id, project.name, e)}>
                           <Trash2 className="h-4 w-4" />
@@ -604,9 +533,6 @@ const ProjectManagementDashboard: React.FC = () => {
                       <Badge variant="secondary" className={getStatusColor(project.status)}>
                         {project.status}
                       </Badge>
-                      {project.archived && (
-                        <Badge variant="secondary">Archived</Badge>
-                      )}
                       <Badge variant="outline" className="border-[#970E2C]/30 text-[#970E2C]">{project.priority}</Badge>
                     </div>
 
@@ -658,16 +584,28 @@ const ProjectManagementDashboard: React.FC = () => {
           </div>
 
           {pageCount > 1 && (
-            <div className="flex items-center justify-center gap-4">
-              <Button variant="outline" size="sm" disabled={page <= 1 || pagedLoading}
-                      onClick={() => setPage(prev => prev - 1)}>
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">Page {page} of {pageCount}</span>
-              <Button variant="outline" size="sm" disabled={page >= pageCount || pagedLoading}
-                      onClick={() => setPage(prev => prev + 1)}>
-                Next
-              </Button>
+            <div className="flex items-center justify-between mt-6">
+              <p className="text-sm text-muted-foreground">
+                Page {page} of {pageCount} &middot; {totalProjects} project{totalProjects === 1 ? '' : 's'}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= pageCount || loading}
+                  onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </TabsContent>
@@ -750,11 +688,13 @@ const MyTasksContent: React.FC = () => {
 
   const fetchMyTasks = async () => {
     try {
-      const allTasks = await tasksAPI.getAll();
-      const myTasks = allTasks.filter((task: Task) => 
-        task.assignedTo && (typeof task.assignedTo === 'object' ? task.assignedTo._id === user?._id : task.assignedTo === user?._id)
-      );
-      setTasks(myTasks);
+      if (!user?._id) {
+        setTasks([]);
+        return;
+      }
+      // Filtered by the API rather than by fetching every task and discarding
+      // most of them in the browser.
+      setTasks(await tasksAPI.getAll({ assignedTo: user._id }));
     } catch {
       setTasks([]);
     } finally {
@@ -764,8 +704,8 @@ const MyTasksContent: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
-      const projectsData = await getAllProjects();
-      setProjects(projectsData);
+      // Only id/name are needed for the project picker.
+      setProjects(await getProjectsMinimal());
     } catch {
       // silently handled
     }

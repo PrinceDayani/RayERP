@@ -3,6 +3,9 @@
 import { Request, Response } from 'express';
 import Task from '../models/Task';
 import { logger } from '../utils/logger';
+import { calculateCriticalPath } from '../utils/criticalPath';
+import Project from '../models/Project';
+import mongoose from 'mongoose';
 
 export const addDependency = async (req: Request, res: Response) => {
   try {
@@ -87,19 +90,28 @@ export const getDependencyGraph = async (req: Request, res: Response) => {
 export const getCriticalPath = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.query;
-    
-    if (!projectId) return res.status(400).json({ message: 'Project ID required' });
-    
-    const tasks = await Task.find({ project: projectId, isTemplate: false })
-      .select('title status dependencies estimatedHours dueDate')
-      .populate('dependencies.taskId', 'estimatedHours');
-    
-    const criticalPath = calculateCriticalPath(tasks);
-    
-    res.json({ criticalPath, totalDuration: criticalPath.reduce((sum, t) => sum + t.duration, 0) });
+
+    if (!projectId || !mongoose.Types.ObjectId.isValid(projectId as string)) {
+      return res.status(400).json({ success: false, message: 'A valid project ID is required' });
+    }
+
+    const project = await Project.findById(projectId).select('startDate').lean();
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    const tasks = await Task.find({ project: projectId, isTemplate: { $ne: true } })
+      .select('title status dependencies estimatedHours durationDays scheduledStart dueDate')
+      .lean();
+
+    // The schedule is anchored on the project start so offsets line up with
+    // the plan rather than with whenever the endpoint happened to be called.
+    const result = calculateCriticalPath(tasks as any, project.startDate || new Date());
+
+    return res.json({ success: true, data: result });
   } catch (error) {
     logger.error('Critical path error:', { message: error?.message });
-    res.status(500).json({ message: 'Error calculating critical path', error: error instanceof Error ? error.message : 'Unknown error' });
+    res.status(500).json({ success: false, message: 'Error calculating critical path' });
   }
 };
 
@@ -142,38 +154,3 @@ async function checkCircularDependency(taskId: string, dependsOn: string): Promi
   return false;
 }
 
-function calculateCriticalPath(tasks: any[]): any[] {
-  const taskMap = new Map(tasks.map(t => [t._id.toString(), t]));
-  const visited = new Set<string>();
-  const path: any[] = [];
-  
-  function dfs(taskId: string, currentPath: any[], currentDuration: number) {
-    if (visited.has(taskId)) return;
-    visited.add(taskId);
-    
-    const task = taskMap.get(taskId);
-    if (!task) return;
-    
-    const newPath = [...currentPath, { id: task._id, title: task.title, duration: task.estimatedHours || 0 }];
-    const newDuration = currentDuration + (task.estimatedHours || 0);
-    
-    if (task.dependencies.length === 0) {
-      if (newDuration > path.reduce((sum, t) => sum + t.duration, 0)) {
-        path.length = 0;
-        path.push(...newPath);
-      }
-    } else {
-      task.dependencies.forEach((dep: any) => {
-        dfs(dep.taskId.toString(), newPath, newDuration);
-      });
-    }
-  }
-  
-  tasks.forEach(task => {
-    if (task.dependencies.length === 0) {
-      dfs(task._id.toString(), [], 0);
-    }
-  });
-  
-  return path;
-}

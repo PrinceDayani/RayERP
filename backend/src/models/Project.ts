@@ -48,7 +48,7 @@ export interface IProject extends Document {
   name: string;
   description: string;
   projectType: 'instruction' | 'reporting';
-  status: 'planning' | 'active' | 'on-hold' | 'completed' | 'cancelled';
+  status: 'planning' | 'active' | 'on-hold' | 'completed' | 'archived' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'critical';
   startDate: Date;
   endDate: Date;
@@ -82,9 +82,10 @@ export interface IProject extends Document {
   workflowInstanceId?: mongoose.Types.ObjectId;
   workflowStatus?: 'active' | 'completed' | 'rejected' | 'cancelled' | 'on-hold' | null;
 
-  archived: boolean;
-  archivedAt?: Date;
-  archivedBy?: mongoose.Types.ObjectId;
+  // Soft delete. Distinct from the 'archived' status, which is a workflow
+  // state a user sets deliberately.
+  deletedAt?: Date | null;
+  deletedBy?: mongoose.Types.ObjectId | null;
 
   createdAt: Date;
   updatedAt: Date;
@@ -152,10 +153,10 @@ const projectSchema = new Schema<IProject>({
     enum: ['instruction', 'reporting'],
     default: 'instruction'
   },
-  status: { 
-    type: String, 
-    enum: ['planning', 'active', 'on-hold', 'completed', 'cancelled'], 
-    default: 'planning' 
+  status: {
+    type: String,
+    enum: ['planning', 'active', 'on-hold', 'completed', 'archived', 'cancelled'],
+    default: 'planning'
   },
   priority: { 
     type: String, 
@@ -199,16 +200,45 @@ const projectSchema = new Schema<IProject>({
 
   // Workflow integration
   workflowInstanceId: { type: Schema.Types.ObjectId, ref: 'WorkflowInstance' },
-  workflowStatus: { 
-    type: String, 
+  workflowStatus: {
+    type: String,
     enum: ['active', 'completed', 'rejected', 'cancelled', 'on-hold', null],
     default: null
   },
 
-  archived: { type: Boolean, default: false },
-  archivedAt: Date,
-  archivedBy: { type: Schema.Types.ObjectId, ref: 'User' }
+  deletedAt: { type: Date, default: null },
+  deletedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null }
 }, { timestamps: true });
+
+// Soft-deleted projects are excluded from every query by default. Project is
+// read from dozens of controllers, so this is enforced at the schema rather
+// than at each call site. Pass { includeDeleted: true } as a query option to
+// opt out (restore flows, admin tooling, migrations).
+const softDeleteFilter = function (this: any, next: () => void) {
+  if (this.getOptions?.().includeDeleted) return next();
+  if (this.getFilter()?.deletedAt === undefined) {
+    this.where({ deletedAt: null });
+  }
+  next();
+};
+
+projectSchema.pre(/^find/, softDeleteFilter);
+projectSchema.pre(/^count/, softDeleteFilter);
+projectSchema.pre('distinct', softDeleteFilter);
+projectSchema.pre(/^update/, softDeleteFilter);
+
+// Aggregations bypass query middleware, so the same exclusion is prepended
+// to the pipeline unless it already filters on deletedAt.
+projectSchema.pre('aggregate', function (next) {
+  const pipeline = this.pipeline() as any[];
+  const alreadyFiltered = pipeline.some(
+    stage => stage?.$match && Object.prototype.hasOwnProperty.call(stage.$match, 'deletedAt')
+  );
+  if (!alreadyFiltered) {
+    pipeline.unshift({ $match: { deletedAt: null } });
+  }
+  next();
+});
 
 projectSchema.index({ 'instructions.type': 1 });
 projectSchema.index({ 'instructions.priority': 1 });
@@ -232,6 +262,8 @@ projectSchema.index({ createdAt: -1 });
 projectSchema.index({ updatedAt: -1 });
 projectSchema.index({ workflowInstanceId: 1 });
 projectSchema.index({ workflowStatus: 1 });
-projectSchema.index({ archived: 1, status: 1 });
+// Every default query now carries a deletedAt predicate.
+projectSchema.index({ deletedAt: 1, status: 1 });
+projectSchema.index({ deletedAt: 1, updatedAt: -1 });
 
 export default mongoose.model<IProject>('Project', projectSchema);

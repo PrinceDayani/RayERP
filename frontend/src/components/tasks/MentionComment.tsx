@@ -7,11 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface MentionCommentProps {
   taskId: string;
-  userId: string;
   onCommentAdded?: () => void;
 }
 
-export default function MentionComment({ taskId, userId, onCommentAdded }: MentionCommentProps) {
+export default function MentionComment({ taskId, onCommentAdded }: MentionCommentProps) {
   const [comment, setComment] = useState('');
   const [showMentions, setShowMentions] = useState(false);
   const [sending, setSending] = useState(false);
@@ -22,7 +21,7 @@ export default function MentionComment({ taskId, userId, onCommentAdded }: Menti
     setSending(true);
     try {
       const tasksAPI = (await import('@/lib/api/tasksAPI')).default;
-      await tasksAPI.addComment(taskId, comment, userId);
+      await tasksAPI.addComment(taskId, comment);
       setComment('');
       onCommentAdded?.();
     } catch (error) {

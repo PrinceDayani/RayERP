@@ -20,7 +20,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { employeesAPI } from '@/lib/api/employeesAPI';
-import { getAllProjects } from '@/lib/api/projectsAPI';
+import { getProjectsMinimal } from '@/lib/api/projectsAPI';
 import { resourceApi } from '@/lib/api/resources';
 import EnhancedSkillMatrix from '@/components/resources/EnhancedSkillMatrix';
 import ResourceAllocationCalendar from '@/components/resources/ResourceAllocationCalendar';
@@ -82,7 +82,7 @@ export default function ResourceDashboard() {
       // Fetch employees and projects
       const [employeesData, projectsData] = await Promise.all([
         employeesAPI.getAll(),
-        getAllProjects()
+        getProjectsMinimal()
       ]);
 
       const employees = Array.isArray(employeesData) ? employeesData : employeesData?.data || [];

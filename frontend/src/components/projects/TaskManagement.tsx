@@ -89,8 +89,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
 
   const handleStatusChange = async (taskId: string, newStatus: Task["status"]) => {
     try {
-      const userId = user?._id || '';
-      await tasksAPI.updateStatus(taskId, newStatus, userId);
+      await tasksAPI.updateStatus(taskId, newStatus);
       toast({
         title: "Success",
         description: "Task status updated",

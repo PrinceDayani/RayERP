@@ -1,656 +1,437 @@
+//path: backend/src/modules/projects/tasks/taskController.ts
+//
+// Project-scoped task endpoints (/api/projects/:id/tasks). Task behaviour
+// lives in services/taskService so this tree and /api/tasks cannot drift;
+// these handlers only translate HTTP in and out.
+
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Task from '../../../models/Task';
-import Project from '../../../models/Project';
-import { createTimelineEvent } from '../../../utils/timelineHelper';
 import { logger } from '../../../utils/logger';
+import * as taskService from '../../../services/taskService';
+import { TaskServiceError, findTask, shapeTask } from '../../../services/taskService';
+
+const actorOf = (req: Request) => ({
+  userId: req.user!._id.toString(),
+  userName: req.user?.name
+});
+
+const fail = (res: Response, error: any, fallback: string) => {
+  if (error instanceof TaskServiceError) {
+    return res.status(error.status).json({ success: false, message: error.message });
+  }
+  logger.error(fallback, { message: error?.message });
+  return res.status(500).json({ success: false, message: fallback });
+};
+
+const ok = (res: Response, data: any, status = 200) =>
+  res.status(status).json({ success: true, data });
 
 export const getProjectTasks = async (req: Request, res: Response) => {
   try {
     const tasks = await Task.find({ project: req.params.id, taskType: 'project' })
-      .populate('assignedTo', 'name email')
-      .populate('assignedBy', 'name email')
-      .populate('comments.user', 'name email')
-      .populate('dependencies.taskId', 'title')
-      .populate('subtasks', 'title status')
-      .populate('parentTask', 'title')
-      .populate('watchers', 'name email');
-    
-    const transformedTasks = tasks.map(task => ({
-      ...task.toObject(),
-      projectId: task.project?.toString()
-    }));
-    
-    res.json(transformedTasks);
+      .populate(taskService.TASK_DETAIL_POPULATE)
+      .sort({ order: 1 })
+      .lean();
+
+    return ok(res, tasks.map(shapeTask));
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching project tasks', error });
+    return fail(res, error, 'Error fetching project tasks');
   }
 };
 
 export const createProjectTask = async (req: Request, res: Response) => {
   try {
-    const projectId = req.params.id;
-    const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-    
-    const taskData = { 
-      ...req.body, 
-      project: projectId,
-      taskType: 'project'
-    };
-    const task = new Task(taskData);
-    await task.save();
-    await task.populate('project', 'name');
-    await task.populate('assignedTo', 'name email');
-    await task.populate('assignedBy', 'name email');
-    
-    const assignedById = task.assignedBy ? 
-                        (task.assignedBy._id?.toString() || task.assignedBy.toString()) : 
-                        req.body.assignedBy;
-    
-    if (assignedById) {
-      await createTimelineEvent(
-        'task',
-        task._id.toString(),
-        'created',
-        'Task Created',
-        `Task "${task.title}" was created in project "${project.name}"`,
-        assignedById
-      ).catch((err: any) => logger.error('Background task error', { message: err?.message }));
-    }
-    
-    const transformedTask = {
-      ...task.toObject(),
-      projectId: task.project?.toString()
-    };
-    
-    const { io } = await import('../../../server');
-    io.emit('task:created', transformedTask);
-    
-    res.status(201).json(transformedTask);
+    const task = await taskService.createTask(req.body, actorOf(req), req.params.id);
+    return ok(res, task, 201);
   } catch (error) {
-    logger.error('Error creating project task', { message: error?.message });
-    res.status(400).json({ message: 'Error creating project task', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error creating project task');
   }
 };
 
 export const updateProjectTask = async (req: Request, res: Response) => {
   try {
-    const { id: projectId, taskId } = req.params;
-    
-    const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-    
-    const task = await Task.findOneAndUpdate(
-      { _id: taskId, project: projectId, taskType: 'project' },
+    const task = await taskService.updateTask(
+      req.params.taskId,
       req.body,
-      { new: true, runValidators: true }
-    ).populate('assignedTo', 'name email')
-     .populate('assignedBy', 'name email')
-     .populate('comments.user', 'name email')
-     .populate('watchers', 'name email');
-    
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-    
-    const userId = req.body.updatedBy || task.assignedBy?.toString();
-    if (userId) {
-      await createTimelineEvent(
-        'task',
-        task._id.toString(),
-        'updated',
-        'Task Updated',
-        `Task "${task.title}" was updated`,
-        userId
-      ).catch((err: any) => logger.error('Background task error', { message: err?.message }));
-    }
-    
-    const transformedTask = {
-      ...task.toObject(),
-      projectId: task.project?.toString()
-    };
-    
-    const { io } = await import('../../../server');
-    io.emit('task:updated', transformedTask);
-    
-    res.json(transformedTask);
+      actorOf(req),
+      req.params.id
+    );
+    return ok(res, task);
   } catch (error) {
-    logger.error('Error updating project task', { message: error?.message });
-    res.status(400).json({ message: 'Error updating project task', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error updating project task');
   }
 };
 
 export const deleteProjectTask = async (req: Request, res: Response) => {
   try {
-    const { id: projectId, taskId } = req.params;
-    
-    const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-    
-    const task = await Task.findOne({ _id: taskId, project: projectId, taskType: 'project' });
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-    
-    await Task.findOneAndDelete({ _id: taskId, project: projectId, taskType: 'project' });
-    
-    const userId = req.body.deletedBy || task.assignedBy?.toString();
-    if (userId) {
-      await createTimelineEvent(
-        'task',
-        taskId,
-        'deleted',
-        'Task Deleted',
-        `Task "${task.title}" was deleted`,
-        userId
-      ).catch((err: any) => logger.error('Background task error', { message: err?.message }));
-    }
-    
-    const { io } = await import('../../../server');
-    io.emit('task:deleted', { id: taskId });
-    
-    res.json({ message: 'Task deleted successfully' });
+    await taskService.deleteTask(req.params.taskId, actorOf(req), req.params.id);
+    return ok(res, { message: 'Task deleted successfully' });
   } catch (error) {
-    logger.error('Error deleting project task', { message: error?.message });
-    res.status(500).json({ message: 'Error deleting project task', error: error instanceof Error ? error.message : 'Unknown error' });
+    return fail(res, error, 'Error deleting project task');
   }
 };
 
 export const reorderTasks = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { tasks } = req.body;
-    
-    const project = await Project.findById(id);
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-    
-    const updatePromises = tasks.map((task: any) => 
-      Task.findByIdAndUpdate(task.id, { 
-        order: task.order, 
-        column: task.column,
-        status: task.status 
-      })
-    );
-    
-    await Promise.all(updatePromises);
-    
-    const { io } = await import('../../../server');
-    io.emit('project:tasks:reordered', { projectId: id, tasks });
-    
-    res.json({ success: true, message: 'Tasks reordered successfully' });
+    const result = await taskService.reorderProjectTasks(req.params.id, req.body?.tasks);
+    return ok(res, result);
   } catch (error) {
-    res.status(500).json({ message: 'Error reordering tasks', error });
+    return fail(res, error, 'Error reordering tasks');
   }
 };
 
 export const addProjectTaskComment = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    const { comment, user } = req.body;
-    
-    if (!comment || !user) {
-      return res.status(400).json({ message: 'Comment and user are required' });
-    }
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-    
-    task.comments.push({ user, comment, mentions: [], createdAt: new Date() });
-    await task.save();
-    await task.populate('comments.user', 'name email');
-    
-    const { io } = await import('../../../server');
-    io.emit('task:comment:added', { taskId, comment: task.comments[task.comments.length - 1] });
-    
-    res.json(task);
+    const { comment } = await taskService.addComment(
+      req.params.taskId,
+      req.body?.comment,
+      actorOf(req),
+      req.params.id,
+      Array.isArray(req.body?.mentions) ? req.body.mentions : []
+    );
+    return ok(res, comment, 201);
   } catch (error) {
-    res.status(400).json({ message: 'Error adding comment', error });
+    return fail(res, error, 'Error adding comment');
   }
 };
 
 export const startProjectTaskTimer = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    const { user, description } = req.body;
-    
-    if (!user) return res.status(400).json({ message: 'User ID is required' });
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const activeEntry = task.timeEntries.find(e => e.user.toString() === user && !e.endTime);
-    if (activeEntry) return res.status(400).json({ message: 'Timer already running' });
-    
-    task.timeEntries.push({ user, startTime: new Date(), duration: 0, description });
-    await task.save();
-    
-    const { io } = await import('../../../server');
-    io.emit('task:timer:started', { taskId, userId: user });
-    
-    res.json({ success: true, entry: task.timeEntries[task.timeEntries.length - 1] });
+    const entry = await taskService.startTimer(
+      req.params.taskId,
+      actorOf(req),
+      req.body?.description,
+      req.params.id
+    );
+    return ok(res, entry);
   } catch (error) {
-    res.status(500).json({ message: 'Error starting timer', error });
+    return fail(res, error, 'Error starting timer');
   }
 };
 
 export const stopProjectTaskTimer = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    const { user } = req.body;
-    
-    if (!user) return res.status(400).json({ message: 'User ID is required' });
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const entry = task.timeEntries.find(e => e.user.toString() === user && !e.endTime);
-    if (!entry) return res.status(400).json({ message: 'No active timer found' });
-    
-    entry.endTime = new Date();
-    entry.duration = Math.max(1, Math.round((entry.endTime.getTime() - entry.startTime.getTime()) / 1000 / 60));
-    task.actualHours = Number(task.timeEntries.reduce((sum, e) => sum + (e.duration / 60), 0).toFixed(2));
-    await task.save();
-    
-    const { io } = await import('../../../server');
-    io.emit('task:timer:stopped', { taskId, userId: user, duration: entry.duration });
-    
-    res.json({ success: true, entry, actualHours: task.actualHours });
+    const result = await taskService.stopTimer(req.params.taskId, actorOf(req), req.params.id);
+    return ok(res, result);
   } catch (error) {
-    res.status(500).json({ message: 'Error stopping timer', error });
+    return fail(res, error, 'Error stopping timer');
   }
 };
 
 export const addProjectTaskTag = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    const { name, color } = req.body;
-    
-    if (!name?.trim()) return res.status(400).json({ message: 'Tag name is required' });
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const trimmedName = name.trim();
-    if (task.tags.some(t => t.name.toLowerCase() === trimmedName.toLowerCase())) {
-      return res.status(400).json({ message: 'Tag already exists' });
-    }
-    
-    task.tags.push({ name: trimmedName, color: color || '#3b82f6' });
-    await task.save();
-    
-    res.json({ success: true, tag: task.tags[task.tags.length - 1] });
+    const tag = await taskService.addTag(
+      req.params.taskId,
+      { name: req.body?.name, color: req.body?.color },
+      req.params.id
+    );
+    return ok(res, tag, 201);
   } catch (error) {
-    res.status(500).json({ message: 'Error adding tag', error });
+    return fail(res, error, 'Error adding tag');
   }
 };
 
 export const removeProjectTaskTag = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    const { name } = req.body;
-    
-    if (!name) return res.status(400).json({ message: 'Tag name is required' });
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    task.tags = task.tags.filter(t => t.name !== name);
-    await task.save();
-    
-    res.json({ success: true, message: 'Tag removed successfully' });
+    const tags = await taskService.removeTag(req.params.taskId, req.body?.name, req.params.id);
+    return ok(res, tags);
   } catch (error) {
-    res.status(500).json({ message: 'Error removing tag', error });
+    return fail(res, error, 'Error removing tag');
   }
 };
 
 export const addProjectTaskAttachment = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
     const file = req.file;
-    const { uploadedBy } = req.body;
-    
-    if (!file) return res.status(400).json({ message: 'No file uploaded' });
-    if (!uploadedBy) return res.status(400).json({ message: 'Uploader ID is required' });
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const attachment = {
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const task = await findTask(req.params.taskId, req.params.id);
+
+    // Uploader is the authenticated user, never a client-supplied id.
+    task.attachments.push({
       filename: file.filename,
       originalName: file.originalname,
       mimetype: file.mimetype,
       size: file.size,
       url: `/uploads/${file.filename}`,
-      uploadedBy,
+      uploadedBy: new mongoose.Types.ObjectId(req.user!._id.toString()),
       uploadedAt: new Date()
-    };
-    
-    task.attachments.push(attachment);
-    await task.save();
-    
-    res.json({ success: true, attachment: task.attachments[task.attachments.length - 1] });
-  } catch (error) {
-    res.status(500).json({ message: 'Error adding attachment', error });
-  }
-};
+    } as any);
 
-export const addProjectTaskChecklist = async (req: Request, res: Response) => {
-  try {
-    const { taskId } = req.params;
-    const { text } = req.body;
-    
-    if (!text?.trim()) return res.status(400).json({ message: 'Checklist text is required' });
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    task.checklist.push({ text: text.trim(), completed: false });
     await task.save();
-    
-    res.json({ success: true, item: task.checklist[task.checklist.length - 1] });
+    return ok(res, task.attachments[task.attachments.length - 1], 201);
   } catch (error) {
-    res.status(500).json({ message: 'Error adding checklist item', error });
-  }
-};
-
-export const updateProjectTaskChecklist = async (req: Request, res: Response) => {
-  try {
-    const { taskId, itemId } = req.params;
-    const { completed, completedBy } = req.body;
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const item = task.checklist.find((i: any) => i._id?.toString() === itemId);
-    if (!item) return res.status(404).json({ message: 'Checklist item not found' });
-    
-    item.completed = completed;
-    if (completed && completedBy) {
-      item.completedBy = completedBy;
-      item.completedAt = new Date();
-    }
-    await task.save();
-    
-    res.json({ success: true, item });
-  } catch (error) {
-    res.status(500).json({ message: 'Error updating checklist item', error });
-  }
-};
-
-export const addProjectTaskWatcher = async (req: Request, res: Response) => {
-  try {
-    const { taskId } = req.params;
-    const { userId } = req.body;
-    
-    if (!userId) return res.status(400).json({ message: 'User ID is required' });
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    if (!task.watchers.includes(userId)) {
-      task.watchers.push(userId);
-      await task.save();
-    }
-    
-    res.json({ success: true, watchers: task.watchers });
-  } catch (error) {
-    res.status(500).json({ message: 'Error adding watcher', error });
-  }
-};
-
-export const removeProjectTaskWatcher = async (req: Request, res: Response) => {
-  try {
-    const { taskId } = req.params;
-    const { userId } = req.body;
-    
-    if (!userId) return res.status(400).json({ message: 'User ID is required' });
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    task.watchers = task.watchers.filter(w => w.toString() !== userId);
-    await task.save();
-    
-    res.json({ success: true, watchers: task.watchers });
-  } catch (error) {
-    res.status(500).json({ message: 'Error removing watcher', error });
+    return fail(res, error, 'Error adding attachment');
   }
 };
 
 export const removeProjectTaskAttachment = async (req: Request, res: Response) => {
   try {
-    const { taskId, attachmentId } = req.params;
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const attachmentIndex = task.attachments.findIndex(a => (a as any)._id?.toString() === attachmentId);
-    if (attachmentIndex === -1) return res.status(404).json({ message: 'Attachment not found' });
-    
-    const attachment = task.attachments[attachmentIndex];
-    task.attachments = task.attachments.filter((_, index) => index !== attachmentIndex);
+    const { attachmentId } = req.params;
+    const task = await findTask(req.params.taskId, req.params.id);
+
+    const attachment = task.attachments.find(
+      (a: any) => a._id?.toString() === attachmentId
+    );
+    if (!attachment) {
+      return res.status(404).json({ success: false, message: 'Attachment not found' });
+    }
+
+    task.attachments = task.attachments.filter(
+      (a: any) => a._id?.toString() !== attachmentId
+    ) as any;
     await task.save();
-    
+
     try {
       const fs = await import('fs');
       const path = await import('path');
       const filePath = path.join(__dirname, '../../../uploads', attachment.filename);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     } catch (fileError) {
-      logger.error('Error deleting file', { message: (fileError as any)?.message });
+      logger.error('Error deleting attachment file', { message: (fileError as any)?.message });
     }
-    
-    res.json({ success: true, message: 'Attachment removed successfully' });
+
+    return ok(res, { message: 'Attachment removed successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Error removing attachment', error });
+    return fail(res, error, 'Error removing attachment');
+  }
+};
+
+export const addProjectTaskChecklist = async (req: Request, res: Response) => {
+  try {
+    const text = req.body?.text;
+    if (!text?.trim()) {
+      return res.status(400).json({ success: false, message: 'Checklist text is required' });
+    }
+
+    const task = await findTask(req.params.taskId, req.params.id);
+    task.checklist.push({ text: text.trim(), completed: false } as any);
+    await task.save();
+
+    return ok(res, task.checklist[task.checklist.length - 1], 201);
+  } catch (error) {
+    return fail(res, error, 'Error adding checklist item');
+  }
+};
+
+export const updateProjectTaskChecklist = async (req: Request, res: Response) => {
+  try {
+    const { itemId } = req.params;
+    const task = await findTask(req.params.taskId, req.params.id);
+
+    const item = task.checklist.find((i: any) => i._id?.toString() === itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Checklist item not found' });
+    }
+
+    item.completed = !!req.body?.completed;
+    if (item.completed) {
+      // Completer is the authenticated user, never a client-supplied id.
+      item.completedBy = new mongoose.Types.ObjectId(req.user!._id.toString());
+      item.completedAt = new Date();
+    } else {
+      item.completedBy = undefined;
+      item.completedAt = undefined;
+    }
+
+    await task.save();
+    return ok(res, item);
+  } catch (error) {
+    return fail(res, error, 'Error updating checklist item');
   }
 };
 
 export const deleteProjectTaskChecklist = async (req: Request, res: Response) => {
   try {
-    const { taskId, itemId } = req.params;
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    task.checklist = task.checklist.filter((c: any) => c._id?.toString() !== itemId);
+    const { itemId } = req.params;
+    const task = await findTask(req.params.taskId, req.params.id);
+
+    task.checklist = task.checklist.filter((c: any) => c._id?.toString() !== itemId) as any;
     await task.save();
-    
-    res.json({ success: true, message: 'Checklist item deleted' });
+
+    return ok(res, { message: 'Checklist item deleted' });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting checklist item', error });
+    return fail(res, error, 'Error deleting checklist item');
+  }
+};
+
+export const addProjectTaskWatcher = async (req: Request, res: Response) => {
+  try {
+    const watchers = await taskService.addWatcher(
+      req.params.taskId,
+      req.body?.userId,
+      req.params.id
+    );
+    return ok(res, watchers);
+  } catch (error) {
+    return fail(res, error, 'Error adding watcher');
+  }
+};
+
+export const removeProjectTaskWatcher = async (req: Request, res: Response) => {
+  try {
+    const watchers = await taskService.removeWatcher(
+      req.params.taskId,
+      req.body?.userId,
+      req.params.id
+    );
+    return ok(res, watchers);
+  } catch (error) {
+    return fail(res, error, 'Error removing watcher');
   }
 };
 
 export const addProjectTaskSubtask = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    const { title, description, assignedTo, assignedBy } = req.body;
-    
-    const parentTask = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!parentTask) return res.status(404).json({ message: 'Parent task not found' });
-    
-    const subtask = await Task.create({
-      title,
-      description,
-      taskType: 'project',
-      assignmentType: 'assigned',
-      project: parentTask.project,
-      assignedTo,
-      assignedBy,
-      parentTask: parentTask._id,
-      status: 'todo',
-      priority: parentTask.priority
-    });
-    
-    parentTask.subtasks.push(subtask._id);
-    await parentTask.save();
-    
-    res.json({ success: true, subtask });
+    const parent = await findTask(req.params.taskId, req.params.id);
+
+    const subtask = await taskService.createTask(
+      { ...req.body, priority: req.body?.priority || parent.priority },
+      actorOf(req),
+      parent.project!.toString()
+    );
+
+    await Task.updateOne(
+      { _id: parent._id },
+      { $addToSet: { subtasks: subtask._id } }
+    );
+    await Task.updateOne({ _id: subtask._id }, { $set: { parentTask: parent._id } });
+
+    return ok(res, subtask, 201);
   } catch (error) {
-    res.status(500).json({ message: 'Error adding subtask', error });
+    return fail(res, error, 'Error adding subtask');
   }
 };
 
 export const deleteProjectTaskSubtask = async (req: Request, res: Response) => {
   try {
-    const { taskId, subtaskId } = req.params;
-    
-    const parentTask = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!parentTask) return res.status(404).json({ message: 'Task not found' });
-    
-    await Task.findByIdAndDelete(subtaskId);
-    parentTask.subtasks = parentTask.subtasks.filter(s => s.toString() !== subtaskId);
-    await parentTask.save();
-    
-    res.json({ success: true, message: 'Subtask deleted' });
+    const { subtaskId } = req.params;
+    const parent = await findTask(req.params.taskId, req.params.id);
+
+    if (!parent.subtasks.some(s => s.toString() === subtaskId)) {
+      return res.status(404).json({ success: false, message: 'Subtask not found on this task' });
+    }
+
+    await taskService.deleteTask(subtaskId, actorOf(req));
+    await Task.updateOne({ _id: parent._id }, { $pull: { subtasks: subtaskId } });
+
+    return ok(res, { message: 'Subtask deleted' });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting subtask', error });
+    return fail(res, error, 'Error deleting subtask');
   }
 };
 
 export const getProjectTaskSubtaskProgress = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' }).populate('subtasks', 'status');
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
+    const task = await Task.findOne({
+      _id: req.params.taskId,
+      project: req.params.id,
+      taskType: 'project'
+    }).populate('subtasks', 'status');
+
+    if (!task) {
+      return res.status(404).json({ success: false, message: 'Task not found' });
+    }
+
     const total = task.subtasks.length;
     const completed = task.subtasks.filter((s: any) => s.status === 'completed').length;
-    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-    
-    res.json({ total, completed, progress });
+
+    return ok(res, {
+      total,
+      completed,
+      progress: total > 0 ? Math.round((completed / total) * 100) : 0
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching progress', error });
+    return fail(res, error, 'Error fetching subtask progress');
   }
 };
 
 export const addProjectTaskDependency = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    const { dependsOn, type = 'finish-to-start' } = req.body;
-    
-    if (!dependsOn) return res.status(400).json({ message: 'Dependency task ID required' });
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const dependencyTask = await Task.findById(dependsOn);
-    if (!dependencyTask) return res.status(404).json({ message: 'Dependency task not found' });
-    
+    const { dependsOn, type = 'finish-to-start' } = req.body || {};
+    if (!dependsOn) {
+      return res.status(400).json({ success: false, message: 'Dependency task ID required' });
+    }
+
+    const task = await findTask(req.params.taskId, req.params.id);
+
+    if (dependsOn === req.params.taskId) {
+      return res.status(400).json({ success: false, message: 'A task cannot depend on itself' });
+    }
+
+    // The dependency must live in the same project.
+    const dependency = await Task.findOne({
+      _id: dependsOn,
+      project: req.params.id,
+      taskType: 'project'
+    }).select('_id');
+    if (!dependency) {
+      return res.status(404).json({ success: false, message: 'Dependency task not found in this project' });
+    }
+
     if (!task.dependencies.some(d => d.taskId.toString() === dependsOn)) {
-      task.dependencies.push({ taskId: dependsOn, type });
+      task.dependencies.push({ taskId: dependency._id, type } as any);
       await task.save();
     }
-    
-    res.json({ success: true, dependencies: task.dependencies });
+
+    return ok(res, task.dependencies);
   } catch (error) {
-    res.status(500).json({ message: 'Error adding dependency', error });
+    return fail(res, error, 'Error adding dependency');
   }
 };
 
 export const removeProjectTaskDependency = async (req: Request, res: Response) => {
   try {
-    const { taskId, dependencyId } = req.params;
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    task.dependencies = task.dependencies.filter(d => d.taskId.toString() !== dependencyId);
+    const { dependencyId } = req.params;
+    const task = await findTask(req.params.taskId, req.params.id);
+
+    task.dependencies = task.dependencies.filter(
+      d => d.taskId.toString() !== dependencyId
+    ) as any;
     await task.save();
-    
-    res.json({ success: true, dependencies: task.dependencies });
+
+    return ok(res, task.dependencies);
   } catch (error) {
-    res.status(500).json({ message: 'Error removing dependency', error });
+    return fail(res, error, 'Error removing dependency');
   }
 };
 
 export const updateProjectTaskStatus = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    const { status, user } = req.body;
-    
-    if (!status) return res.status(400).json({ message: 'Status is required' });
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const oldStatus = task.status;
-    task.status = status;
-    await task.save();
-    
-    await task.populate('project', 'name');
-    await task.populate('assignedTo', 'name email');
-    await task.populate('assignedBy', 'name email');
-    
-    const userId = user || task.assignedBy?.toString();
-    if (userId) {
-      const { createTimelineEvent } = await import('../../../utils/timelineHelper');
-      await createTimelineEvent(
-        'task',
-        task._id.toString(),
-        'status_changed',
-        'Status Updated',
-        `Task status changed from "${oldStatus}" to "${status}"`,
-        userId,
-        { field: 'status', oldValue: oldStatus, newValue: status }
-      ).catch((err: any) => logger.error('Background task error', { message: err?.message }));
-    }
-    
-    const { io } = await import('../../../server');
-    io.emit('task:status:updated', task);
-    
-    res.json(task);
+    const { task } = await taskService.updateTaskStatus(
+      req.params.taskId,
+      req.body?.status,
+      actorOf(req),
+      req.params.id
+    );
+    return ok(res, task);
   } catch (error) {
-    res.status(500).json({ message: 'Error updating status', error });
+    return fail(res, error, 'Error updating status');
   }
 };
 
 export const cloneProjectTask = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
-    const { _id, createdAt, updatedAt, ...taskData } = task.toObject();
-    const clonedTask = new Task({ 
-      ...taskData, 
-      title: `${taskData.title} (Copy)`,
-      status: 'todo'
-    });
-    await clonedTask.save();
-    await clonedTask.populate('project assignedTo assignedBy');
-    
-    res.status(201).json(clonedTask);
+    const clone = await taskService.cloneTask(req.params.taskId, actorOf(req), req.params.id);
+    return ok(res, clone, 201);
   } catch (error) {
-    res.status(400).json({ message: 'Error cloning task', error });
+    return fail(res, error, 'Error cloning task');
   }
 };
 
 export const getProjectTaskTimeline = async (req: Request, res: Response) => {
   try {
-    const { taskId } = req.params;
-    
-    const task = await Task.findOne({ _id: taskId, taskType: 'project' });
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-    
+    // Confirms the task belongs to this project before exposing its history.
+    await findTask(req.params.taskId, req.params.id);
+
     const { getEntityTimeline } = await import('../../../utils/timelineHelper');
-    const timeline = await getEntityTimeline('task', taskId);
-    
-    res.json(timeline);
+    const timeline = await getEntityTimeline('task', req.params.taskId);
+
+    return ok(res, timeline);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching timeline', error });
+    return fail(res, error, 'Error fetching task timeline');
   }
 };

@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAllProjects } from '@/lib/api/projectsAPI';
+import { getProjectsMinimal } from '@/lib/api/projectsAPI';
 import employeesAPI, { Employee } from '@/lib/api/employeesAPI';
 import { tasksAPI, Task } from '@/lib/api/tasksAPI';
 import { Plus, X, Tag, CheckSquare, Users, Square, Edit } from 'lucide-react';
@@ -137,7 +137,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
   const fetchData = async () => {
     try {
       const [projectsData, employeesData, tasksData] = await Promise.all([
-        getAllProjects(),
+        getProjectsMinimal(),
         employeesAPI.getAll(),
         tasksAPI.getAll()
       ]);
@@ -342,7 +342,7 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
 
     setLoading(true);
     try {
-      await tasksAPI.addComment(commentDialog.task._id, newComment, user._id);
+      await tasksAPI.addComment(commentDialog.task._id, newComment);
       setNewComment('');
       commentDialog.onOpenChange(false);
     } catch (error) {

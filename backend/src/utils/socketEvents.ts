@@ -41,3 +41,48 @@ export const emitAttendanceUpdated = (attendance: any) => {
 export const emitAnalyticsUpdated = (metrics: any) => {
   io.emit('analytics:updated', metrics);
 };
+
+// Project/task rollup stats. Debounced because task mutations arrive in bursts
+// (bulk updates, reorder, cascade) and each one previously triggered six
+// sequential countDocuments calls.
+const PROJECT_STATS_DEBOUNCE_MS = 1000;
+let projectStatsTimer: NodeJS.Timeout | null = null;
+
+const computeProjectStats = async () => {
+  const Project = (await import('../models/Project')).default;
+  const Task = (await import('../models/Task')).default;
+
+  const [
+    totalProjects,
+    activeProjects,
+    completedProjects,
+    totalTasks,
+    completedTasks,
+    overdueTasks
+  ] = await Promise.all([
+    Project.countDocuments({}),
+    Project.countDocuments({ status: 'active' }),
+    Project.countDocuments({ status: 'completed' }),
+    Task.countDocuments({}),
+    Task.countDocuments({ status: 'completed' }),
+    Task.countDocuments({ dueDate: { $lt: new Date() }, status: { $ne: 'completed' } })
+  ]);
+
+  return { totalProjects, activeProjects, completedProjects, totalTasks, completedTasks, overdueTasks };
+};
+
+export const emitProjectStats = async (): Promise<void> => {
+  if (projectStatsTimer) return;
+
+  projectStatsTimer = setTimeout(async () => {
+    projectStatsTimer = null;
+    try {
+      io.emit('project:stats', await computeProjectStats());
+    } catch (error: any) {
+      const { logger } = await import('./logger');
+      logger.error('Error emitting project stats', { message: error?.message });
+    }
+  }, PROJECT_STATS_DEBOUNCE_MS);
+
+  if (typeof projectStatsTimer.unref === 'function') projectStatsTimer.unref();
+};
