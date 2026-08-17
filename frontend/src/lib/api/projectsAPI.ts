@@ -35,7 +35,7 @@ export interface Project {
   spentBudget?: number;
   currency: string;
   progress: number;
-  progressMode?: 'task-based' | 'financial';
+  progressMode?: 'task-based' | 'financial' | 'phase-based';
   autoCalculateProgress?: boolean;
   financialProgress?: {
     totalContractValue: number;
@@ -55,12 +55,31 @@ export interface Project {
   departments?: string[];
   client?: string;
   tags?: string[];
-  milestones?: Milestone[];
+  /** Milestones live on ProjectPhase — see projectPhasesAPI. */
   risks?: Risk[];
   dependencies?: string[];
   template?: string;
+  archived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string | { _id: string; name: string };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PaginatedProjects {
+  success: boolean;
+  data: Project[];
+  pagination: { total: number; page: number; limit: number; pages: number };
+}
+
+export interface ProjectListParams {
+  page?: number;
+  limit?: number;
+  archived?: 'true' | 'all';
+  status?: string;
+  priority?: string;
+  search?: string;
+  sort?: 'recent' | 'name' | 'progress' | 'dueDate';
 }
 
 export type { Task };
@@ -70,6 +89,12 @@ export const projectsAPI = {
   getAll: async (params = {}) => {
     const response = await api.get("/projects", { params });
     return response.data;
+  },
+
+  // Paginated variant: keeps the `pagination` envelope the bare `getAll` discards.
+  getAllPaginated: async (params: ProjectListParams): Promise<PaginatedProjects> => {
+    const response = await api.get("/projects", { params });
+    return response.data as PaginatedProjects;
   },
 
   getById: async (id: string) => {
@@ -97,8 +122,13 @@ export const projectsAPI = {
     return unwrapResponse(response.data);
   },
 
-  archive: async (id: string) => {
-    const response = await api.patch(`/projects/${id}/status`, { status: 'archived' });
+  archive: async (id: string): Promise<Project> => {
+    const response = await api.patch(`/projects/${id}/archive`);
+    return unwrapResponse(response.data);
+  },
+
+  unarchive: async (id: string): Promise<Project> => {
+    const response = await api.patch(`/projects/${id}/unarchive`);
     return unwrapResponse(response.data);
   },
 
@@ -169,12 +199,6 @@ export const projectsAPI = {
     return response.data;
   },
 
-  // Milestones
-  updateMilestones: async (projectId: string, milestones: Milestone[]) => {
-    const response = await api.put(`/projects/${projectId}/milestones`, { milestones });
-    return unwrapResponse(response.data);
-  },
-
   // Risks
   updateRisks: async (projectId: string, risks: Risk[]) => {
     const response = await api.put(`/projects/${projectId}/risks`, { risks });
@@ -212,12 +236,14 @@ export const projectsAPI = {
 };
 
 export const getAllProjects = projectsAPI.getAll;
+export const getAllProjectsPaginated = projectsAPI.getAllPaginated;
 export const getProjectById = projectsAPI.getById;
 export const createProject = projectsAPI.create;
 export const editProject = projectsAPI.edit;
 export const updateProject = projectsAPI.update;
 export const deleteProject = projectsAPI.delete;
 export const archiveProject = projectsAPI.archive;
+export const unarchiveProject = projectsAPI.unarchive;
 export const manageProjectTeam = projectsAPI.manageTeam;
 export const getProjectTasks = projectsAPI.getTasks;
 export const createProjectTask = projectsAPI.createTask;
@@ -229,7 +255,6 @@ export const getTaskReports = projectsAPI.getTaskReports;
 export const getTeamProductivity = projectsAPI.getTeamProductivity;
 export const getProjectTimelineData = projectsAPI.getTimelineData;
 export const getAllProjectsTimelineData = projectsAPI.getAllTimelineData;
-export const updateProjectMilestones = projectsAPI.updateMilestones;
 export const updateProjectRisks = projectsAPI.updateRisks;
 export const cloneProject = projectsAPI.cloneProject;
 export const calculateProjectProgress = projectsAPI.calculateProgress;

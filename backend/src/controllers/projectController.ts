@@ -4,8 +4,26 @@ import Project from '../models/Project';
 import Task from '../models/Task';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
 import { WorkflowProjectIntegration } from '../services/workflowProjectIntegration';
+import { getAccessibleProjectIdsForUser, isPrivilegedRole } from '../middleware/projectAccess.middleware';
+import { getCachedProjectList, setCachedProjectList, invalidateProjectListCache } from '../utils/projectCache';
 import { logger } from '../utils/logger';
 // Socket will be imported dynamically to avoid circular dependency
+
+const PROJECT_STATUSES = ['planning', 'active', 'on-hold', 'completed', 'cancelled'];
+const PROJECT_PRIORITIES = ['low', 'medium', 'high', 'critical'];
+const MAX_PAGE_LIMIT = 50;
+const MAX_SEARCH_LENGTH = 100;
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Whitelisted so a client cannot sort on an unindexed or unintended field
+const PROJECT_SORTS: Record<string, Record<string, 1 | -1>> = {
+  recent: { createdAt: -1 },
+  name: { name: 1 },
+  progress: { progress: -1 },
+  dueDate: { endDate: 1 }
+};
+const DEFAULT_PROJECT_SORT = { updatedAt: -1 } as Record<string, 1 | -1>;
 
 // Helper function to emit updated project stats
 const emitProjectStats = async () => {
@@ -41,81 +59,154 @@ export const getAllProjects = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    const userRole = user.role as any;
-    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
-    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
+    const { archived, status, priority, search, page, limit, sort } = req.query;
 
-    // Root or users with projects.view_all permission get full access to all projects
-    if (roleName === 'Root' || rolePermissions.includes('projects.view_all')) {
-      const projects = await Project.find({})
-        .populate({ path: 'managers', select: 'name email', strictPopulate: false })
-        .populate({ path: 'team', select: 'name email', strictPopulate: false })
-        .populate({ path: 'owner', select: 'name email', strictPopulate: false })
-
-        .populate({ path: 'departments', select: 'name description', strictPopulate: false });
-
-      return res.json(projects);
+    if (status !== undefined && !PROJECT_STATUSES.includes(String(status))) {
+      return res.status(400).json({
+        success: false,
+        message: `status must be one of: ${PROJECT_STATUSES.join(', ')}`
+      });
+    }
+    if (priority !== undefined && !PROJECT_PRIORITIES.includes(String(priority))) {
+      return res.status(400).json({
+        success: false,
+        message: `priority must be one of: ${PROJECT_PRIORITIES.join(', ')}`
+      });
     }
 
-    // Get user's department permissions
-    const Employee = (await import('../models/Employee')).default;
-    const Department = (await import('../models/Department')).default;
-    const employee = await Employee.findOne({ user: user._id });
-    
-    let hasProjectViewPermission = false;
-    if (employee) {
-      const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
-      if (departmentNames.length > 0) {
-        const departments = await Department.find({ name: { $in: departmentNames }, status: 'active' });
-        hasProjectViewPermission = departments.some(dept => 
-          dept.permissions && dept.permissions.includes('projects.view')
-        );
+    const sortKey = sort !== undefined && PROJECT_SORTS[String(sort)] ? String(sort) : '';
+    const sortSpec = sortKey ? PROJECT_SORTS[sortKey] : DEFAULT_PROJECT_SORT;
+    const archivedMode = archived === 'true' ? 'archived' : (archived === 'all' ? 'all' : 'active');
+    const searchTerm = search === undefined ? '' : String(search).trim().slice(0, MAX_SEARCH_LENGTH);
+    const isPaginated = page !== undefined || limit !== undefined;
+    const pageNumber = Math.max(1, Number(page) || 1);
+    const pageLimit = Math.min(MAX_PAGE_LIMIT, Math.max(1, Number(limit) || 20));
+
+    // 'all' scope may only be used for users who genuinely see every project —
+    // anything else is keyed per user so one list is never served to another.
+    const privileged = isPrivilegedRole(user);
+    const scope = privileged ? 'all' : `u:${user._id.toString()}`;
+    const queryKey = JSON.stringify({
+      archived: archivedMode,
+      status: status === undefined ? '' : String(status),
+      priority: priority === undefined ? '' : String(priority),
+      search: searchTerm,
+      sort: sortKey,
+      page: isPaginated ? pageNumber : 0,
+      limit: isPaginated ? pageLimit : 0
+    });
+
+    const cached = await getCachedProjectList(scope, queryKey);
+    if (cached !== null) {
+      return res.json(cached);
+    }
+
+    const filter: any = {};
+    if (archivedMode === 'archived') {
+      filter.archived = true;
+    } else if (archivedMode === 'active') {
+      // Documents predating the flag have no `archived` field
+      filter.archived = { $ne: true };
+    }
+    if (status !== undefined) filter.status = String(status);
+    if (priority !== undefined) filter.priority = String(priority);
+    if (searchTerm) {
+      const term = escapeRegex(searchTerm);
+      filter.$or = [
+        { name: { $regex: term, $options: 'i' } },
+        { description: { $regex: term, $options: 'i' } }
+      ];
+    }
+
+    // Projects the user only sees through a department permission are masked
+    // down to a basic view, so track their ids separately from the access set
+    const basicViewIds = new Set<string>();
+
+    if (!privileged) {
+      // Owner / manager / team membership plus explicit ProjectPermission grants
+      const access = await getAccessibleProjectIdsForUser(user);
+      const visibleIds = access.ids.slice();
+
+      const Employee = (await import('../models/Employee')).default;
+      const employee = await Employee.findOne({ user: user._id }).lean();
+
+      if (employee) {
+        const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
+        if (departmentNames.length > 0) {
+          const Department = (await import('../models/Department')).default;
+          const departments = await Department.find({ name: { $in: departmentNames }, status: 'active' })
+            .select('permissions')
+            .lean();
+          const hasProjectViewPermission = departments.some(dept =>
+            dept.permissions && dept.permissions.includes('projects.view')
+          );
+
+          if (hasProjectViewPermission) {
+            const departmentProjects = await Project.find({
+              departments: { $in: departmentNames },
+              _id: { $nin: access.ids }
+            }).select('_id').lean();
+
+            for (const p of departmentProjects) {
+              basicViewIds.add(p._id.toString());
+              visibleIds.push(p._id);
+            }
+          }
+        }
       }
+
+      filter._id = { $in: visibleIds };
     }
 
-    // Find projects user is assigned to (full access)
-    const assignedConditions: any[] = [
-      { owner: user._id },
-      { team: user._id },
-      { managers: user._id }
-    ];
-    
-    const assignedProjects = await Project.find({ $or: assignedConditions })
+    const query = Project.find(filter)
       .populate({ path: 'managers', select: 'name email', strictPopulate: false })
       .populate({ path: 'team', select: 'name email', strictPopulate: false })
       .populate({ path: 'owner', select: 'name email', strictPopulate: false })
-      
-      .populate({ path: 'departments', select: 'name description', strictPopulate: false });
+      .populate({ path: 'departments', select: 'name description', strictPopulate: false })
+      .sort(sortSpec);
 
-    // If user has department permission, also show basic info of department projects
-    if (hasProjectViewPermission && employee) {
-      const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
-      const departmentProjects = await Project.find({ 
-        departments: { $in: departmentNames },
-        _id: { $nin: assignedProjects.map(p => p._id) } // Exclude already assigned projects
-      }).select('name status priority startDate endDate departments');
-      
-      // Return assigned projects with full details + department projects with basic info
-      return res.json([
-        ...assignedProjects,
-        ...departmentProjects.map(p => ({
-          _id: p._id,
-          name: p.name,
-          status: p.status,
-          priority: p.priority,
-          startDate: p.startDate,
-          endDate: p.endDate,
-          departments: p.departments,
-          isBasicView: true // Flag to indicate limited access
-        }))
-      ]);
+    const maskBasicView = (project: any) => {
+      if (!basicViewIds.has(project._id.toString())) return project;
+      return {
+        _id: project._id,
+        name: project.name,
+        status: project.status,
+        priority: project.priority,
+        startDate: project.startDate,
+        endDate: project.endDate,
+        departments: project.departments,
+        isBasicView: true // Flag to indicate limited access
+      };
+    };
+
+    if (!isPaginated) {
+      const projects = await query.lean();
+      const payload = projects.map(maskBasicView);
+      await setCachedProjectList(scope, queryKey, payload);
+      return res.json(payload);
     }
-    
-    // Return only assigned projects
-    res.json(assignedProjects);
+
+    const [projects, total] = await Promise.all([
+      query.skip((pageNumber - 1) * pageLimit).limit(pageLimit).lean(),
+      Project.countDocuments(filter)
+    ]);
+
+    const payload = {
+      success: true,
+      data: projects.map(maskBasicView),
+      pagination: {
+        total,
+        page: pageNumber,
+        limit: pageLimit,
+        pages: Math.ceil(total / pageLimit)
+      }
+    };
+
+    await setCachedProjectList(scope, queryKey, payload);
+    res.json(payload);
   } catch (error) {
     logger.error('Error fetching projects', { message: error?.message });
-    res.status(500).json({ message: 'Error fetching projects', error: error instanceof Error ? error.message : 'Unknown error' });
+    res.status(500).json({ success: false, message: 'Error fetching projects' });
   }
 };
 
@@ -251,7 +342,6 @@ export const createProject = async (req: Request, res: Response) => {
       departments: Array.isArray(req.body.departments) ? req.body.departments : [],
       tags: Array.isArray(req.body.tags) ? req.body.tags : [],
       owner: user._id,
-      milestones: Array.isArray(req.body.milestones) ? req.body.milestones : [],
       risks: Array.isArray(req.body.risks) ? req.body.risks : [],
       dependencies: Array.isArray(req.body.dependencies) ? req.body.dependencies : [],
       instructions: Array.isArray(req.body.instructions) ? req.body.instructions : []
@@ -260,6 +350,30 @@ export const createProject = async (req: Request, res: Response) => {
     // Create and save project
     const project = new Project(projectData);
     await project.save();
+
+    await invalidateProjectListCache();
+
+    // Create the initial phases, if the caller supplied any
+    if (Array.isArray(req.body.phases) && req.body.phases.length > 0) {
+      try {
+        const ProjectPhase = (await import('../models/ProjectPhase')).default;
+        await ProjectPhase.insertMany(req.body.phases.map((phase: any, index: number) => ({
+          project: project._id,
+          name: String(phase.name || `Phase ${index + 1}`).trim(),
+          description: phase.description?.trim(),
+          order: Number.isFinite(Number(phase.order)) ? Number(phase.order) : index,
+          startDate: phase.startDate ? new Date(phase.startDate) : undefined,
+          endDate: phase.endDate ? new Date(phase.endDate) : undefined,
+          budget: parseFloat(phase.budget) || 0,
+          milestones: Array.isArray(phase.milestones) ? phase.milestones : [],
+          reviewDepartments: Array.isArray(phase.reviewDepartments) ? phase.reviewDepartments : [],
+          createdBy: user._id
+        })));
+      } catch (phaseError) {
+        logger.error('Error creating project phases', { message: (phaseError as any)?.message });
+        // Phases can be added afterwards; don't fail the project creation
+      }
+    }
 
     // Handle project permissions if provided
     if (req.body.projectPermissions && Object.keys(req.body.projectPermissions).length > 0) {
@@ -543,6 +657,8 @@ export const updateProject = async (req: Request, res: Response) => {
       }
     }
     
+    await invalidateProjectListCache();
+
     // Emit socket events (non-blocking)
     setImmediate(async () => {
       try {
@@ -664,6 +780,8 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
       { field: 'status', oldValue: oldStatus, newValue: status }
     );
     
+    await invalidateProjectListCache();
+
     const { io } = await import('../server');
     io.emit('project:status:updated', project);
     await emitProjectStats();
@@ -684,6 +802,79 @@ export const updateProjectStatus = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Error updating project status', { message: error?.message });
     res.status(400).json({ success: false, message: 'Error updating project status', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+/**
+ * PATCH /api/projects/:id/archive
+ */
+export const archiveProject = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const project = await Project.findById(req.params.id);
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    if (project.archived) {
+      return res.status(400).json({ success: false, message: 'Project is already archived' });
+    }
+
+    project.archived = true;
+    project.archivedAt = new Date();
+    project.archivedBy = user._id;
+    await project.save();
+
+    await invalidateProjectListCache();
+
+    const { io } = await import('../server');
+    io.emit('project:updated', project);
+
+    res.json({ success: true, data: project });
+  } catch (error) {
+    logger.error('Error archiving project', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error archiving project' });
+  }
+};
+
+/**
+ * PATCH /api/projects/:id/unarchive
+ */
+export const unarchiveProject = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const project = await Project.findById(req.params.id);
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    if (!project.archived) {
+      return res.status(400).json({ success: false, message: 'Project is not archived' });
+    }
+
+    // status is deliberately untouched — archiving is a separate axis
+    project.archived = false;
+    project.archivedAt = undefined;
+    project.archivedBy = undefined;
+    await project.save();
+
+    await invalidateProjectListCache();
+
+    const { io } = await import('../server');
+    io.emit('project:updated', project);
+
+    res.json({ success: true, data: project });
+  } catch (error) {
+    logger.error('Error unarchiving project', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error unarchiving project' });
   }
 };
 
@@ -731,6 +922,8 @@ export const deleteProject = async (req: Request, res: Response) => {
       );
     }
     
+    await invalidateProjectListCache();
+
     // Emit socket events
     const { io } = await import('../server');
     io.emit('project:deleted', { id: req.params.id });
@@ -1004,28 +1197,6 @@ export const cloneProject = async (req: Request, res: Response) => {
   }
 };
 
-export const updateProjectMilestones = async (req: Request, res: Response) => {
-  try {
-    const { milestones } = req.body;
-    const project = await Project.findByIdAndUpdate(
-      req.params.id,
-      { milestones },
-      { new: true, runValidators: true }
-    );
-    
-    if (!project) {
-      return res.status(404).json({ success: false, message: 'Project not found' });
-    }
-
-    const { io } = await import('../server');
-    io.emit('project:milestones:updated', { projectId: project._id, milestones: project.milestones });
-    
-    res.json({ success: true, data: project });
-  } catch (error) {
-    res.status(400).json({ success: false, message: 'Error updating milestones', error });
-  }
-};
-
 export const updateProjectRisks = async (req: Request, res: Response) => {
   try {
     const { risks } = req.body;
@@ -1038,6 +1209,8 @@ export const updateProjectRisks = async (req: Request, res: Response) => {
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
+
+    await invalidateProjectListCache();
 
     const { io } = await import('../server');
     io.emit('project:risks:updated', { projectId: project._id, risks: project.risks });
@@ -1069,6 +1242,8 @@ export const calculateProjectProgress = async (req: Request, res: Response) => {
     project.progress = progress;
     await project.save();
     
+    await invalidateProjectListCache();
+
     const { io } = await import('../server');
     io.emit('project:progress:updated', { projectId, progress });
     
@@ -1327,7 +1502,9 @@ export const addProjectMember = async (req: Request, res: Response) => {
     project.team.push(memberId);
     await project.save();
     await project.populate('team', 'name email');
-    
+
+    await invalidateProjectListCache();
+
     res.json({ success: true, message: 'Member added successfully', team: project.team });
   } catch (error) {
     logger.error('Error adding project member', { message: error?.message });
@@ -1348,7 +1525,9 @@ export const removeProjectMember = async (req: Request, res: Response) => {
     project.team = project.team.filter(id => id.toString() !== memberId);
     await project.save();
     await project.populate('team', 'name email');
-    
+
+    await invalidateProjectListCache();
+
     res.json({ success: true, message: 'Member removed successfully', team: project.team });
   } catch (error) {
     logger.error('Error removing project member', { message: error?.message });
@@ -1550,18 +1729,14 @@ export const getProjectsByView = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
     
-    let query: any = {};
-    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
-    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
-    
-    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all') && !rolePermissions.includes('*')) {
-      query = { $or: [
-        { owner: user._id },
-        { team: user._id },
-        { managers: user._id }
-      ] };
+    const query: any = { archived: { $ne: true } };
+
+    if (!isPrivilegedRole(user)) {
+      // Same access set as the main list: membership plus ProjectPermission grants
+      const access = await getAccessibleProjectIdsForUser(user);
+      query._id = { $in: access.ids };
     }
-    
+
     switch (view) {
       case 'active':
         query.status = 'active';
@@ -1579,16 +1754,17 @@ export const getProjectsByView = async (req: Request, res: Response) => {
     }
     
     const projects = await Project.find(query)
-      .populate('managers', 'name email')
-      .populate('team', 'name email')
-      .populate('owner', 'name email')
-      .populate('members', 'name email')
-      .populate('departments', 'name description')
-      .sort({ updatedAt: -1 });
-    
+      .populate({ path: 'managers', select: 'name email', strictPopulate: false })
+      .populate({ path: 'team', select: 'name email', strictPopulate: false })
+      .populate({ path: 'owner', select: 'name email', strictPopulate: false })
+      .populate({ path: 'departments', select: 'name description', strictPopulate: false })
+      .sort({ updatedAt: -1 })
+      .lean();
+
     res.json(projects);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching projects by view', error });
+    logger.error('Error fetching projects by view', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching projects by view' });
   }
 };
 
@@ -1644,7 +1820,6 @@ export const createProjectFast = async (req: Request, res: Response) => {
       departments: Array.isArray(req.body.departments) ? req.body.departments : [],
       tags: Array.isArray(req.body.tags) ? req.body.tags : [],
       owner: user._id,
-      milestones: Array.isArray(req.body.milestones) ? req.body.milestones : [],
       risks: Array.isArray(req.body.risks) ? req.body.risks : [],
       dependencies: Array.isArray(req.body.dependencies) ? req.body.dependencies : [],
       instructions: Array.isArray(req.body.instructions) ? req.body.instructions : []
@@ -1653,6 +1828,8 @@ export const createProjectFast = async (req: Request, res: Response) => {
     // Create and save project
     const project = new Project(projectData);
     await project.save();
+
+    await invalidateProjectListCache();
 
     // Return immediately with essential data
     const response = {

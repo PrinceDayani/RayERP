@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { EntityType } from './WorkflowTemplate';
+import { EntityType, ENTITY_TYPES } from './WorkflowTemplate';
 
 // --- Step Execution Status ---
 export type StepStatus = 
@@ -92,6 +92,7 @@ export interface IWorkflowInstance extends Document {
   
   // Project context (for infra workflows)
   projectId?: mongoose.Types.ObjectId;
+  phaseId?: mongoose.Types.ObjectId;
   departmentId?: mongoose.Types.ObjectId;
   
   // Status
@@ -193,15 +194,16 @@ const workflowInstanceSchema = new Schema<IWorkflowInstance>({
   templateName: { type: String, required: true },
   templateVersion: { type: Number, required: true },
   
-  entityType: { 
-    type: String, 
-    enum: ['project', 'task', 'work-order', 'purchase-order', 'boq', 'invoice', 'payment', 'expense', 'leave', 'journal-entry', 'voucher', 'budget', 'delivery-note', 'bill'],
-    required: true 
+  entityType: {
+    type: String,
+    enum: ENTITY_TYPES,
+    required: true
   },
   entityId: { type: Schema.Types.ObjectId, required: true },
   entityTitle: { type: String, required: true },
-  
+
   projectId: { type: Schema.Types.ObjectId, ref: 'Project' },
+  phaseId: { type: Schema.Types.ObjectId, ref: 'ProjectPhase' },
   departmentId: { type: Schema.Types.ObjectId, ref: 'Department' },
   
   status: { 
@@ -242,6 +244,7 @@ workflowInstanceSchema.index({ templateId: 1, status: 1 });
 workflowInstanceSchema.index({ initiatedBy: 1, status: 1 });
 workflowInstanceSchema.index({ currentAssignees: 1, status: 1 });
 workflowInstanceSchema.index({ projectId: 1, status: 1 });
+workflowInstanceSchema.index({ phaseId: 1, status: 1 });
 workflowInstanceSchema.index({ departmentId: 1, status: 1 });
 workflowInstanceSchema.index({ startedAt: -1 });
 workflowInstanceSchema.index({ dueDate: 1, slaBreached: 1 });

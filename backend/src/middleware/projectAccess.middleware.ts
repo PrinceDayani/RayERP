@@ -9,7 +9,7 @@ type AnyUser = {
   role?: any;
 };
 
-const isPrivilegedRole = (user: AnyUser): boolean => {
+export const isPrivilegedRole = (user: AnyUser): boolean => {
   const role = user.role;
   if (!role || typeof role !== 'object') return false;
   const name = 'name' in role ? role.name : null;
@@ -61,45 +61,80 @@ export const getAccessibleProjectIdsForUser = async (
   return { all: false, ids: Array.from(idSet.values()) };
 };
 
+/**
+ * Resolve whether a user may act on a project. Returns null when access is
+ * allowed, otherwise the HTTP status and message to reply with, so the project
+ * and phase middlewares report failures identically.
+ */
+export const resolveProjectAccess = async (
+  user: AnyUser | undefined,
+  projectId: string
+): Promise<{ status: number; message: string } | null> => {
+  if (!user) {
+    return { status: 401, message: 'Authentication required' };
+  }
+
+  const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
+  const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
+
+  if (roleName === 'Root' || rolePermissions.includes('projects.view_all') || rolePermissions.includes('*')) {
+    return null;
+  }
+
+  const project = await Project.findById(projectId);
+  if (!project) {
+    return { status: 404, message: 'Project not found' };
+  }
+
+  const userId = user._id.toString();
+  const isOwner = project.owner.toString() === userId;
+  const isTeamMember = !!project.team?.some(memberId => memberId.toString() === userId);
+  const isManager = !!project.managers?.some(managerId => managerId.toString() === userId);
+
+  if (isOwner || isTeamMember || isManager) {
+    return null;
+  }
+
+  const projectPermission = await ProjectPermission.findOne({ project: projectId, user: user._id });
+  if (projectPermission) {
+    return null;
+  }
+
+  return { status: 403, message: 'Access denied' };
+};
+
 export const checkProjectAccess = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const projectId = req.params.id;
-    const user = req.user;
-
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
+    const denial = await resolveProjectAccess(req.user, req.params.id);
+    if (denial) {
+      return res.status(denial.status).json({ success: false, message: denial.message });
     }
-
-    const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
-    const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
-
-    if (roleName === 'Root' || rolePermissions.includes('projects.view_all') || rolePermissions.includes('*')) {
-      return next();
-    }
-
-    const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ success: false, message: 'Project not found' });
-    }
-
-    const userId = user._id.toString();
-    const isOwner = project.owner.toString() === userId;
-    const isTeamMember = !!project.team?.some(memberId => memberId.toString() === userId);
-    const isManager = !!project.managers?.some(managerId => managerId.toString() === userId);
-
-    let hasProjectPermission = false;
-    if (!isOwner && !isTeamMember && !isManager) {
-      const projectPermission = await ProjectPermission.findOne({ project: projectId, user: user._id });
-      hasProjectPermission = !!projectPermission;
-    }
-
-    if (!isOwner && !isTeamMember && !isManager && !hasProjectPermission) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-
     next();
   } catch (error: any) {
     logger.error('Project access middleware error', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/**
+ * Access gate for phase-scoped routes (/api/phases/:id). Authorization is
+ * inherited from the phase's parent project.
+ */
+export const checkPhaseAccess = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const ProjectPhase = (await import('../models/ProjectPhase')).default;
+    const phase = await ProjectPhase.findById(req.params.id).select('project');
+    if (!phase) {
+      return res.status(404).json({ success: false, message: 'Phase not found' });
+    }
+
+    const denial = await resolveProjectAccess(req.user, phase.project.toString());
+    if (denial) {
+      return res.status(denial.status).json({ success: false, message: denial.message });
+    }
+    next();
+  } catch (error: any) {
+    logger.error('Phase access middleware error', { message: error?.message });
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

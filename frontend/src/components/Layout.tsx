@@ -29,7 +29,9 @@ import {
   Activity,
   MessageCircle,
   GitBranch,
-  FileText
+  FileText,
+  Gavel,
+  ClipboardCheck
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -98,6 +100,7 @@ export default function Layout({ children }: LayoutProps) {
   const hasResourceAccess = isElevated || hasAnyPermission(['resources.view', 'resources.manage', 'projects.view']);
   const hasBudgetAccess = isElevated || hasAnyPermission(['budgets.view', 'budgets.manage']);
   const hasReportAccess = isElevated || hasAnyPermission(['reports.view', 'reports.manage']);
+  const hasTenderAccess = isElevated || hasAnyPermission(['tenders.view', 'tenders.create', 'tenders.manage']);
 
   const menuSections = useMemo(() => [
     {
@@ -127,6 +130,8 @@ export default function Layout({ children }: LayoutProps) {
       items: [
         { path: "/dashboard/projects", name: "Projects", icon: Briefcase, description: "Project tracking & management", access: hasProjectAccess } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/tasks", name: "Tasks", icon: CheckCircle, description: "Task management", access: hasTaskAccess } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/phase-reviews", name: "Phase Reviews", icon: ClipboardCheck, description: "Project phases awaiting your department's sign-off", access: true } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/tenders", name: "Tenders", icon: Gavel, description: "Tenders we bid on and tenders we issue", access: hasTenderAccess } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/workflows", name: "Workflows", icon: GitBranch, description: "Workflow management & automation", access: hasProjectAccess || isManager } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/resources", name: "Resources", icon: Boxes, description: "Resource planning", access: hasResourceAccess } as MenuItem & { icon: any; description: string }
       ]

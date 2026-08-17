@@ -2,14 +2,6 @@
 
 import mongoose, { Document, Schema } from 'mongoose';
 
-export interface IMilestone {
-  name: string;
-  description?: string;
-  dueDate: Date;
-  status: 'pending' | 'in-progress' | 'completed' | 'delayed';
-  completedDate?: Date;
-}
-
 export interface IRisk {
   title: string;
   description: string;
@@ -67,7 +59,7 @@ export interface IProject extends Document {
   autoCalculateProgress: boolean;
 
   // Reporting-based project fields
-  progressMode: 'task-based' | 'financial';
+  progressMode: 'task-based' | 'financial' | 'phase-based';
   financialProgress: IFinancialProgress;
 
   managers: mongoose.Types.ObjectId[];
@@ -77,7 +69,6 @@ export interface IProject extends Document {
   client?: string;
   tags: string[];
   
-  milestones: IMilestone[];
   risks: IRisk[];
   dependencies: mongoose.Types.ObjectId[];
   template?: string;
@@ -90,22 +81,14 @@ export interface IProject extends Document {
   // Workflow integration
   workflowInstanceId?: mongoose.Types.ObjectId;
   workflowStatus?: 'active' | 'completed' | 'rejected' | 'cancelled' | 'on-hold' | null;
-  
+
+  archived: boolean;
+  archivedAt?: Date;
+  archivedBy?: mongoose.Types.ObjectId;
+
   createdAt: Date;
   updatedAt: Date;
 }
-
-const milestoneSchema = new Schema({
-  name: { type: String, required: true },
-  description: String,
-  dueDate: { type: Date, required: true },
-  status: { 
-    type: String, 
-    enum: ['pending', 'in-progress', 'completed', 'delayed'], 
-    default: 'pending' 
-  },
-  completedDate: Date
-}, { _id: true });
 
 const riskSchema = new Schema({
   title: { type: String, required: true },
@@ -191,7 +174,7 @@ const projectSchema = new Schema<IProject>({
   // Reporting-based project fields
   progressMode: {
     type: String,
-    enum: ['task-based', 'financial'],
+    enum: ['task-based', 'financial', 'phase-based'],
     default: 'task-based'
   },
   financialProgress: { type: financialProgressSchema, default: () => ({}) },
@@ -202,7 +185,6 @@ const projectSchema = new Schema<IProject>({
   client: String,
   tags: [String],
   
-  milestones: [milestoneSchema],
   risks: [riskSchema],
   dependencies: [{ type: Schema.Types.ObjectId, ref: 'Project' }],
   template: String,
@@ -221,7 +203,11 @@ const projectSchema = new Schema<IProject>({
     type: String, 
     enum: ['active', 'completed', 'rejected', 'cancelled', 'on-hold', null],
     default: null
-  }
+  },
+
+  archived: { type: Boolean, default: false },
+  archivedAt: Date,
+  archivedBy: { type: Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
 projectSchema.index({ 'instructions.type': 1 });
@@ -246,5 +232,6 @@ projectSchema.index({ createdAt: -1 });
 projectSchema.index({ updatedAt: -1 });
 projectSchema.index({ workflowInstanceId: 1 });
 projectSchema.index({ workflowStatus: 1 });
+projectSchema.index({ archived: 1, status: 1 });
 
 export default mongoose.model<IProject>('Project', projectSchema);

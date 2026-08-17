@@ -88,6 +88,7 @@ import achievementRoutes from './achievement.routes';
 import workOrderRoutes from './workOrder.routes';
 import workflowRoutes from './workflow.routes';
 import tenderRoutes from './tender.routes';
+import projectPhaseRoutes from './projectPhase.routes';
 import projectReportingRoutes from './projectReporting.routes';
 import reportingRoutes from './reporting.routes';
 import { invalidateCacheOnMutation } from '../middleware/cacheInvalidation.middleware';
@@ -151,6 +152,7 @@ router.use('/achievements', achievementRoutes);
 router.use('/work-orders', workOrderRoutes);
 router.use('/workflows', workflowRoutes);
 router.use('/tenders', tenderRoutes);
+router.use('/phases', projectPhaseRoutes);
 
 // --- Financial & Ledger Routes ---
 router.use('/budgets', budgetRoutes);

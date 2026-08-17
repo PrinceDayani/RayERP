@@ -41,6 +41,7 @@ export class WorkflowEngine {
     entityTitle: string;
     initiatedBy: string;
     projectId?: string;
+    phaseId?: string;
     departmentId?: string;
     metadata?: Record<string, any>;
     priority?: 'low' | 'medium' | 'high' | 'critical';
@@ -75,6 +76,7 @@ export class WorkflowEngine {
         entityId: params.entityId,
         entityTitle: params.entityTitle,
         projectId: params.projectId,
+        phaseId: params.phaseId,
         departmentId: params.departmentId,
         status: 'active',
         currentStepId: firstStep.stepId,
@@ -203,6 +205,17 @@ export class WorkflowEngine {
       await instance.save({ session });
       await session.commitTransaction();
 
+      // Mirror the new step state onto entities that keep a denormalized
+      // summary (project phases). Non-blocking: the instance is authoritative.
+      setImmediate(async () => {
+        try {
+          const integration = await getIntegrationService();
+          await integration.onStepActionProcessed(instance._id.toString());
+        } catch (err) {
+          logger.error('Error syncing entity after workflow step action:', err);
+        }
+      });
+
       logger.info(`Workflow step action: ${params.action} on ${params.stepId} by ${params.userId}`);
       return instance;
     } catch (error) {
@@ -265,6 +278,9 @@ export class WorkflowEngine {
     step.result = 'rejected';
     step.completedAt = new Date();
     step.comments = params.comments;
+    // Carries the caller's intent (e.g. a "request changes" rejection) so
+    // entity integrations can distinguish it from a terminal rejection
+    step.resultData = params.resultData;
 
     if (!step.approvals) step.approvals = [];
     step.approvals.push({

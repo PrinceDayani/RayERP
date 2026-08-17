@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Tender, { ITender, TenderStatus } from '../models/Tender';
+import Tender, { ITender, TenderStatus, TenderDirection, ITenderOutcome } from '../models/Tender';
 import Project from '../models/Project';
 import WorkOrder from '../models/WorkOrder';
 import BOQ from '../models/BOQ';
@@ -12,8 +12,10 @@ const generateTenderNumber = async (): Promise<string> => {
   return `TND-${year}-${String(count + 1).padStart(5, '0')}`;
 };
 
-// --- Valid Status Transitions ---
-const VALID_TRANSITIONS: Record<TenderStatus, TenderStatus[]> = {
+// --- Valid Status Transitions, per direction ---
+// The two lifecycles are disjoint apart from in-progress/completed/cancelled,
+// so a tender can never cross from one side's flow into the other's.
+const ISSUED_TRANSITIONS: Partial<Record<TenderStatus, TenderStatus[]>> = {
   'draft': ['published', 'cancelled'],
   'published': ['bid-submission', 'cancelled'],
   'bid-submission': ['evaluation', 'no-bid', 'cancelled'],
@@ -25,6 +27,83 @@ const VALID_TRANSITIONS: Record<TenderStatus, TenderStatus[]> = {
   'completed': [],
   'cancelled': [],
   'no-bid': ['published']  // Can re-publish
+};
+
+const BIDDING_TRANSITIONS: Partial<Record<TenderStatus, TenderStatus[]>> = {
+  'identified': ['go-no-go', 'dropped', 'cancelled'],
+  'go-no-go': ['preparing', 'dropped', 'cancelled'],
+  'preparing': ['submitted', 'dropped', 'cancelled'],
+  'submitted': ['technical-opening', 'lost', 'cancelled'],
+  'technical-opening': ['financial-opening', 'lost', 'cancelled'],
+  'financial-opening': ['won', 'lost', 'cancelled'],
+  'won': ['in-progress', 'cancelled'],
+  'in-progress': ['completed', 'cancelled'],
+  'lost': [],
+  'dropped': [],
+  'completed': [],
+  'cancelled': []
+};
+
+const transitionsFor = (direction: TenderDirection) =>
+  direction === 'bidding' ? BIDDING_TRANSITIONS : ISSUED_TRANSITIONS;
+
+// Stages at which the tender's own particulars may still be edited. A bidding
+// tender never passes through 'draft', so the two directions differ.
+const EDITABLE_STATUSES: Record<TenderDirection, TenderStatus[]> = {
+  issued: ['draft', 'published'],
+  bidding: ['identified', 'go-no-go', 'preparing']
+};
+
+// Deleting is only for a tender recorded by mistake; anything further along
+// must be cancelled so the audit trail survives.
+const DELETABLE_STATUSES: Record<TenderDirection, TenderStatus[]> = {
+  issued: ['draft'],
+  bidding: ['identified']
+};
+
+const isInvalidId = (id: any) => !id || !mongoose.isValidObjectId(String(id));
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const MAX_PAGE_LIMIT = 50;
+
+const TENDER_SORT_FIELDS = new Set([
+  'createdAt', 'updatedAt', 'submissionDeadline', 'publishDate', 'awardDate',
+  'estimatedValue', 'title', 'tenderNumber', 'status', 'priority'
+]);
+
+/**
+ * Reject an operation that belongs to the other side of the tender.
+ */
+const requireDirection = (
+  tender: ITender,
+  direction: TenderDirection,
+  res: Response
+): boolean => {
+  if (tender.direction !== direction) {
+    res.status(400).json({
+      success: false,
+      message: `This operation applies only to tenders with direction '${direction}'; this tender is '${tender.direction}'.`
+    });
+    return false;
+  }
+  return true;
+};
+
+const recordAudit = (
+  tender: ITender,
+  action: string,
+  userId: mongoose.Types.ObjectId,
+  notes?: string,
+  details?: Record<string, any>
+) => {
+  tender.auditTrail.push({
+    action,
+    performedBy: userId,
+    timestamp: new Date(),
+    details,
+    notes
+  });
 };
 
 // ==========================================
@@ -41,6 +120,7 @@ export const createTender = async (req: Request, res: Response) => {
     }
 
     const { title, type, category } = req.body;
+    const direction: TenderDirection = req.body.direction === 'bidding' ? 'bidding' : 'issued';
 
     // Minimal validation
     if (!title || !title.trim()) {
@@ -52,20 +132,29 @@ export const createTender = async (req: Request, res: Response) => {
     if (!category) {
       return res.status(400).json({ success: false, message: 'Category is required (works, goods, services, consultancy)' });
     }
+    // A tender we chase is meaningless without knowing who published it
+    if (direction === 'bidding' && !req.body.issuingAuthority?.name?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Issuing authority name is required for tenders we are bidding on'
+      });
+    }
 
     const tenderNumber = await generateTenderNumber();
+    const initialStatus: TenderStatus = direction === 'bidding' ? 'identified' : 'draft';
 
     const tender = new Tender({
       ...req.body,
+      direction,
       tenderNumber,
-      status: 'draft',
+      status: initialStatus,
       createdBy: req.user._id,
       auditTrail: [{
         action: 'created',
         performedBy: req.user._id,
         timestamp: new Date(),
-        newStatus: 'draft',
-        notes: 'Tender created'
+        newStatus: initialStatus,
+        notes: direction === 'bidding' ? 'Tender opportunity recorded' : 'Tender created'
       }]
     });
 
@@ -87,7 +176,7 @@ export const createTender = async (req: Request, res: Response) => {
 export const getAllTenders = async (req: Request, res: Response) => {
   try {
     const {
-      status, type, category, department, priority,
+      status, type, category, department, priority, direction, portal, outcome,
       page = '1', limit = '20', search, sortBy = 'createdAt', sortOrder = 'desc'
     } = req.query;
 
@@ -97,21 +186,33 @@ export const getAllTenders = async (req: Request, res: Response) => {
     if (category) filter.category = category;
     if (department) filter.department = department;
     if (priority) filter.priority = priority;
+    if (direction === 'issued' || direction === 'bidding') filter.direction = direction;
+    if (portal) filter.portal = portal;
+    if (outcome) filter['outcome.result'] = outcome;
     if (search) {
+      const term = escapeRegex(String(search));
       filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { tenderNumber: { $regex: search, $options: 'i' } },
-        { referenceNumber: { $regex: search, $options: 'i' } }
+        { title: { $regex: term, $options: 'i' } },
+        { tenderNumber: { $regex: term, $options: 'i' } },
+        { referenceNumber: { $regex: term, $options: 'i' } },
+        { tenderNoticeNumber: { $regex: term, $options: 'i' } },
+        { portalTenderId: { $regex: term, $options: 'i' } },
+        { 'issuingAuthority.name': { $regex: term, $options: 'i' } }
       ];
     }
 
-    const pageNum = parseInt(page as string, 10);
-    const limitNum = parseInt(limit as string, 10);
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(MAX_PAGE_LIMIT, Math.max(1, parseInt(limit as string, 10) || 20));
     const skip = (pageNum - 1) * limitNum;
-    const sort: any = { [sortBy as string]: sortOrder === 'asc' ? 1 : -1 };
+    const sortField = TENDER_SORT_FIELDS.has(String(sortBy)) ? String(sortBy) : 'createdAt';
+    const sort: any = { [sortField]: sortOrder === 'asc' ? 1 : -1 };
 
     const [tenders, total] = await Promise.all([
       Tender.find(filter)
+        // Bid pricing, EMD instrument refs and the audit trail are detail-view
+        // concerns; keep them off the list so a broad tenders.view does not
+        // expose commercially sensitive figures in bulk
+        .select('-ourBid.financial -emd.instrumentRef -competitors -bids -auditTrail -eligibility')
         .populate('department', 'name')
         .populate('createdBy', 'name email')
         .populate('awardedBidder', 'name email company')
@@ -177,16 +278,16 @@ export const updateTender = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Tender not found' });
     }
 
-    // Only allow edits in draft or published status
-    if (!['draft', 'published'].includes(tender.status)) {
+    // Each direction has its own set of still-editable stages
+    if (!EDITABLE_STATUSES[tender.direction].includes(tender.status)) {
       return res.status(400).json({
         success: false,
-        message: `Cannot edit tender in '${tender.status}' status. Only draft or published tenders can be edited.`
+        message: `Cannot edit tender in '${tender.status}' status. Editable stages: ${EDITABLE_STATUSES[tender.direction].join(', ')}.`
       });
     }
 
-    // Prevent changing status through update (use transition endpoint)
-    const { status, tenderNumber, auditTrail, bids, ...updateData } = req.body;
+    // Status, identity and direction move only through their own endpoints
+    const { status, tenderNumber, auditTrail, bids, direction, ...updateData } = req.body;
 
     Object.assign(tender, updateData);
 
@@ -216,10 +317,10 @@ export const deleteTender = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Tender not found' });
     }
 
-    if (tender.status !== 'draft') {
+    if (!DELETABLE_STATUSES[tender.direction].includes(tender.status)) {
       return res.status(400).json({
         success: false,
-        message: 'Only draft tenders can be deleted. Cancel the tender instead.'
+        message: `Only a tender that has not left its opening stage can be deleted (${DELETABLE_STATUSES[tender.direction].join(', ')}). Cancel the tender instead.`
       });
     }
 
@@ -252,8 +353,8 @@ export const transitionTenderStatus = async (req: Request, res: Response) => {
 
     const currentStatus = tender.status;
 
-    // Validate transition
-    const allowedTransitions = VALID_TRANSITIONS[currentStatus];
+    // Validate transition against this tender's own lifecycle
+    const allowedTransitions = transitionsFor(tender.direction)[currentStatus];
     if (!allowedTransitions || !allowedTransitions.includes(newStatus)) {
       return res.status(400).json({
         success: false,
@@ -306,6 +407,10 @@ export const transitionTenderStatus = async (req: Request, res: Response) => {
  * Validate if a transition is allowed based on business rules
  */
 function validateTransition(tender: ITender, newStatus: TenderStatus): string | null {
+  if (tender.direction === 'bidding') {
+    return validateBiddingTransition(tender, newStatus);
+  }
+
   switch (newStatus) {
     case 'published':
       if (!tender.submissionDeadline) return 'Submission deadline is required before publishing';
@@ -338,9 +443,56 @@ function validateTransition(tender: ITender, newStatus: TenderStatus): string | 
 }
 
 /**
+ * Business rules for the bidding lifecycle. Blocking here rather than at
+ * submission time is deliberate: an unmet mandatory criterion or an unpaid EMD
+ * is grounds for the authority to reject the bid outright.
+ */
+function validateBiddingTransition(tender: ITender, newStatus: TenderStatus): string | null {
+  switch (newStatus) {
+    case 'preparing':
+      if (!tender.submissionDeadline) return 'Submission deadline is required before preparing a bid';
+      break;
+
+    case 'submitted': {
+      if (!tender.ourBid?.financial?.finalAmount) {
+        return 'A financial bid amount is required before marking the bid submitted';
+      }
+      const feeOutstanding = tender.tenderFee
+        && !tender.tenderFee.exempted
+        && tender.tenderFee.amount > 0
+        && !tender.tenderFee.paid;
+      if (feeOutstanding) return 'Tender fee is unpaid';
+
+      const emdOutstanding = tender.emd
+        && tender.emd.mode !== 'exempted'
+        && tender.emd.amount > 0
+        && tender.emd.status === 'pending';
+      if (emdOutstanding) return 'EMD has not been submitted';
+
+      const unmet = tender.eligibility.filter(
+        e => e.mandatory && (e.ourStatus === 'not-met' || e.ourStatus === 'unverified')
+      );
+      if (unmet.length) {
+        return `${unmet.length} mandatory eligibility criterion/criteria are unmet or unverified: ${unmet.slice(0, 3).map(e => e.criterion).join('; ')}`;
+      }
+      break;
+    }
+
+    case 'in-progress':
+      if (!tender.loa?.received) return 'Letter of Award must be recorded before work can start';
+      break;
+  }
+  return null;
+}
+
+/**
  * Apply side effects when transitioning status
  */
 async function applyTransitionEffects(tender: ITender, newStatus: TenderStatus, userId: mongoose.Types.ObjectId) {
+  if (tender.direction === 'bidding') {
+    return applyBiddingTransitionEffects(tender, newStatus);
+  }
+
   switch (newStatus) {
     case 'published':
       tender.publishDate = new Date();
@@ -357,6 +509,52 @@ async function applyTransitionEffects(tender: ITender, newStatus: TenderStatus, 
 
     case 'work-order-issued':
       tender.workOrderDate = new Date();
+      break;
+  }
+}
+
+/**
+ * Date and outcome bookkeeping for the bidding lifecycle.
+ */
+function applyBiddingTransitionEffects(tender: ITender, newStatus: TenderStatus) {
+  const now = new Date();
+
+  // Patch the outcome subdocument without dropping fields already recorded
+  const setOutcome = (patch: Partial<ITenderOutcome>) => {
+    tender.set('outcome', {
+      result: tender.outcome?.result || 'awaited',
+      ourRank: tender.outcome?.ourRank,
+      l1Amount: tender.outcome?.l1Amount,
+      l1Bidder: tender.outcome?.l1Bidder,
+      declaredOn: tender.outcome?.declaredOn,
+      reason: tender.outcome?.reason,
+      ...patch
+    });
+  };
+
+  switch (newStatus) {
+    case 'submitted':
+      if (tender.ourBid && !tender.ourBid.submittedAt) tender.ourBid.submittedAt = now;
+      setOutcome({ result: 'awaited' });
+      break;
+
+    case 'technical-opening':
+      tender.technicalOpeningDate = tender.technicalOpeningDate || now;
+      break;
+
+    case 'financial-opening':
+      tender.financialOpeningDate = tender.financialOpeningDate || now;
+      setOutcome({ result: 'technically-qualified' });
+      if (tender.ourBid?.technical) tender.ourBid.technical.qualified = true;
+      break;
+
+    case 'won':
+      setOutcome({ result: 'won', declaredOn: tender.outcome?.declaredOn || now });
+      tender.awardDate = tender.awardDate || now;
+      break;
+
+    case 'lost':
+      setOutcome({ result: 'lost', declaredOn: tender.outcome?.declaredOn || now });
       break;
   }
 }
@@ -378,6 +576,8 @@ export const addBidder = async (req: Request, res: Response) => {
     if (!tender) {
       return res.status(404).json({ success: false, message: 'Tender not found' });
     }
+
+    if (!requireDirection(tender, 'issued', res)) return;
 
     if (!['draft', 'published', 'bid-submission'].includes(tender.status)) {
       return res.status(400).json({
@@ -435,6 +635,8 @@ export const submitBid = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Tender not found' });
     }
 
+    if (!requireDirection(tender, 'issued', res)) return;
+
     if (!['bid-submission', 'published'].includes(tender.status)) {
       return res.status(400).json({
         success: false,
@@ -487,6 +689,8 @@ export const evaluateBid = async (req: Request, res: Response) => {
     if (!tender) {
       return res.status(404).json({ success: false, message: 'Tender not found' });
     }
+
+    if (!requireDirection(tender, 'issued', res)) return;
 
     if (tender.status !== 'evaluation') {
       return res.status(400).json({
@@ -561,6 +765,8 @@ export const updateBidStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Tender not found' });
     }
 
+    if (!requireDirection(tender, 'issued', res)) return;
+
     const bid = tender.bids[parseInt(bidIndex)];
     if (!bid) {
       return res.status(404).json({ success: false, message: 'Bid not found' });
@@ -607,6 +813,8 @@ export const awardTender = async (req: Request, res: Response) => {
     if (!tender) {
       return res.status(404).json({ success: false, message: 'Tender not found' });
     }
+
+    if (!requireDirection(tender, 'issued', res)) return;
 
     if (tender.status !== 'evaluation' && tender.status !== 'negotiation') {
       return res.status(400).json({
@@ -667,6 +875,8 @@ export const generateWorkOrder = async (req: Request, res: Response) => {
     if (!tender) {
       return res.status(404).json({ success: false, message: 'Tender not found' });
     }
+
+    if (!requireDirection(tender, 'issued', res)) return;
 
     if (tender.status !== 'awarded') {
       return res.status(400).json({
@@ -803,16 +1013,23 @@ export const generateWorkOrder = async (req: Request, res: Response) => {
  */
 export const getTenderStats = async (req: Request, res: Response) => {
   try {
-    const { department } = req.query;
+    const { department, direction } = req.query;
     const filter: any = {};
     if (department) filter.department = department;
+    if (direction === 'issued' || direction === 'bidding') filter.direction = direction;
+
+    const weekAhead = new Date(Date.now() + 7 * 24 * 3600000);
 
     const [
       total,
       statusCounts,
+      directionCounts,
       totalEstimatedValue,
       totalAwardedValue,
-      recentTenders
+      recentTenders,
+      biddingOutcomes,
+      emdExposure,
+      closingSoon
     ] = await Promise.all([
       Tender.countDocuments(filter),
       Tender.aggregate([
@@ -821,32 +1038,72 @@ export const getTenderStats = async (req: Request, res: Response) => {
       ]),
       Tender.aggregate([
         { $match: filter },
+        { $group: { _id: '$direction', count: { $sum: 1 } } }
+      ]),
+      Tender.aggregate([
+        { $match: filter },
         { $group: { _id: null, total: { $sum: '$estimatedValue' } } }
       ]),
       Tender.aggregate([
-        { $match: { ...filter, status: { $in: ['awarded', 'work-order-issued', 'in-progress', 'completed'] } } },
+        { $match: { ...filter, status: { $in: ['awarded', 'work-order-issued', 'in-progress', 'completed', 'won'] } } },
         { $group: { _id: null, total: { $sum: '$awardedAmount' } } }
       ]),
       Tender.find(filter)
         .sort({ createdAt: -1 })
         .limit(5)
-        .select('tenderNumber title status estimatedValue awardedAmount createdAt')
+        .select('tenderNumber title direction status estimatedValue awardedAmount createdAt'),
+      // Win/loss only makes sense for tenders we bid on
+      Tender.aggregate([
+        { $match: { ...filter, direction: 'bidding' } },
+        { $group: { _id: '$outcome.result', count: { $sum: 1 } } }
+      ]),
+      // EMD money currently lodged with authorities
+      Tender.aggregate([
+        { $match: { ...filter, direction: 'bidding', 'emd.status': 'submitted' } },
+        { $group: { _id: null, total: { $sum: '$emd.amount' }, count: { $sum: 1 } } }
+      ]),
+      Tender.countDocuments({
+        ...filter,
+        direction: 'bidding',
+        status: { $in: ['identified', 'go-no-go', 'preparing'] },
+        submissionDeadline: { $gte: new Date(), $lte: weekAhead }
+      })
     ]);
 
     const statusMap: Record<string, number> = {};
     statusCounts.forEach((s: any) => { statusMap[s._id] = s.count; });
+
+    const directionMap: Record<string, number> = {};
+    directionCounts.forEach((d: any) => { directionMap[d._id] = d.count; });
+
+    const outcomeMap: Record<string, number> = {};
+    biddingOutcomes.forEach((o: any) => { if (o._id) outcomeMap[o._id] = o.count; });
+
+    const won = outcomeMap.won || 0;
+    const lost = outcomeMap.lost || 0;
+    const decided = won + lost;
 
     res.json({
       success: true,
       data: {
         total,
         byStatus: statusMap,
+        byDirection: directionMap,
         totalEstimatedValue: totalEstimatedValue[0]?.total || 0,
         totalAwardedValue: totalAwardedValue[0]?.total || 0,
         savingsPercentage: totalEstimatedValue[0]?.total
           ? ((totalEstimatedValue[0].total - (totalAwardedValue[0]?.total || 0)) / totalEstimatedValue[0].total * 100).toFixed(2)
           : 0,
-        recentTenders
+        recentTenders,
+        bidding: {
+          byOutcome: outcomeMap,
+          won,
+          lost,
+          winRate: decided ? Number(((won / decided) * 100).toFixed(2)) : 0,
+          emdLodgedAmount: emdExposure[0]?.total || 0,
+          emdLodgedCount: emdExposure[0]?.count || 0,
+          closingWithin7Days: closingSoon
+        }
       }
     });
   } catch (error: any) {
@@ -925,6 +1182,549 @@ export const getBidComparison = async (req: Request, res: Response) => {
         bids: comparison,
         lowestBid: comparison.reduce((min, b) => b.bidAmount < min.bidAmount ? b : min, comparison[0]),
         highestBid: comparison.reduce((max, b) => b.bidAmount > max.bidAmount ? b : max, comparison[0])
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ==========================================
+// BIDDING DIRECTION — tenders we chase
+// ==========================================
+
+/**
+ * Load a tender and assert it belongs to the bidding side.
+ */
+const loadBiddingTender = async (req: Request, res: Response): Promise<ITender | null> => {
+  if (isInvalidId(req.params.id)) {
+    res.status(400).json({ success: false, message: 'Invalid tender id' });
+    return null;
+  }
+  const tender = await Tender.findById(req.params.id);
+  if (!tender) {
+    res.status(404).json({ success: false, message: 'Tender not found' });
+    return null;
+  }
+  if (!requireDirection(tender, 'bidding', res)) return null;
+  return tender;
+};
+
+/**
+ * Replace the eligibility checklist and stamp who verified what.
+ */
+export const updateEligibility = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { eligibility } = req.body;
+    if (!Array.isArray(eligibility)) {
+      return res.status(400).json({ success: false, message: 'eligibility must be an array' });
+    }
+
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    const now = new Date();
+    tender.eligibility = eligibility.map((item: any) => {
+      const assessed = item.ourStatus && item.ourStatus !== 'unverified';
+      return {
+        criterion: String(item.criterion || '').trim(),
+        category: item.category || 'technical',
+        mandatory: item.mandatory !== false,
+        ourStatus: item.ourStatus || 'unverified',
+        evidenceDocuments: Array.isArray(item.evidenceDocuments) ? item.evidenceDocuments : [],
+        remarks: item.remarks,
+        verifiedBy: assessed ? req.user!._id : undefined,
+        verifiedAt: assessed ? now : undefined
+      };
+    }) as any;
+
+    recordAudit(tender, 'eligibility_updated', req.user._id, 'Eligibility checklist updated', {
+      criteria: tender.eligibility.length
+    });
+
+    await tender.save();
+    res.json({ success: true, data: tender.eligibility });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Record payment of the non-refundable participation fee.
+ */
+export const recordTenderFee = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    const { amount, exempted, paid, paidOn, mode, reference, documentUrl } = req.body;
+
+    tender.tenderFee = {
+      amount: Number(amount) || 0,
+      exempted: !!exempted,
+      paid: !!paid,
+      paidOn: paid ? (paidOn ? new Date(paidOn) : new Date()) : undefined,
+      mode,
+      reference,
+      documentUrl
+    } as any;
+
+    recordAudit(tender, 'tender_fee_recorded', req.user._id, 'Tender fee details recorded');
+
+    await tender.save();
+    res.json({ success: true, data: tender.tenderFee });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Record or update the Earnest Money Deposit. EMD is refundable, so its
+ * lifecycle (submitted, returned, forfeited) is tracked explicitly.
+ */
+export const recordEMD = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { amount, mode, exemptionReason, submittedOn, instrumentRef,
+      issuingBank, validTill, status, returnedOn, documentUrl } = req.body;
+
+    const allowedStatuses = ['pending', 'submitted', 'returned', 'forfeited'];
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: `status must be one of: ${allowedStatuses.join(', ')}` });
+    }
+
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    const previousStatus = tender.emd?.status;
+
+    tender.emd = {
+      amount: Number(amount) || 0,
+      mode: mode || 'online',
+      exemptionReason,
+      submittedOn: submittedOn ? new Date(submittedOn) : tender.emd?.submittedOn,
+      instrumentRef,
+      issuingBank,
+      validTill: validTill ? new Date(validTill) : undefined,
+      status: status || previousStatus || 'pending',
+      returnedOn: returnedOn ? new Date(returnedOn) : undefined,
+      documentUrl
+    } as any;
+
+    recordAudit(tender, 'emd_updated', req.user._id, `EMD status: ${previousStatus || 'pending'} to ${tender.emd!.status}`, {
+      previousStatus,
+      newStatus: tender.emd!.status
+    });
+
+    await tender.save();
+    res.json({ success: true, data: tender.emd });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Record an amendment published by the authority. A corrigendum may move the
+ * submission deadline, which is applied to the tender when supplied.
+ */
+export const addCorrigendum = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { number, issuedOn, summary, revisedSubmissionDeadline, documentUrl } = req.body;
+    if (!number || !summary) {
+      return res.status(400).json({ success: false, message: 'number and summary are required' });
+    }
+
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    tender.corrigenda.push({
+      number: String(number).trim(),
+      issuedOn: issuedOn ? new Date(issuedOn) : new Date(),
+      summary: String(summary).trim(),
+      revisedSubmissionDeadline: revisedSubmissionDeadline ? new Date(revisedSubmissionDeadline) : undefined,
+      documentUrl,
+      recordedBy: req.user._id,
+      recordedAt: new Date()
+    } as any);
+
+    if (revisedSubmissionDeadline) {
+      tender.submissionDeadline = new Date(revisedSubmissionDeadline);
+    }
+
+    recordAudit(tender, 'corrigendum_added', req.user._id, `Corrigendum ${number} recorded`);
+
+    await tender.save();
+    res.json({ success: true, data: tender.corrigenda });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Save our technical and financial bid. finalAmount is derived from
+ * baseAmount and the rebate by the model's pre-save hook.
+ */
+export const saveOurBid = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { technical, financial, validityDays, acknowledgementRef } = req.body;
+
+    if (financial?.boq !== undefined && financial.boq !== null && isInvalidId(financial.boq)) {
+      return res.status(400).json({ success: false, message: 'Invalid BOQ id' });
+    }
+    const rebate = financial?.rebatePercentage;
+    if (rebate !== undefined && rebate !== null && (Number(rebate) < 0 || Number(rebate) > 100)) {
+      return res.status(400).json({ success: false, message: 'rebatePercentage must be between 0 and 100' });
+    }
+
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    if (['won', 'lost', 'dropped', 'completed', 'cancelled'].includes(tender.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot change our bid once the tender is '${tender.status}'`
+      });
+    }
+
+    const baseAmount = Number(financial?.baseAmount) || 0;
+
+    tender.ourBid = {
+      technical: {
+        documents: Array.isArray(technical?.documents) ? technical.documents : (tender.ourBid?.technical?.documents || []),
+        notes: technical?.notes ?? tender.ourBid?.technical?.notes,
+        score: technical?.score ?? tender.ourBid?.technical?.score,
+        qualified: technical?.qualified ?? tender.ourBid?.technical?.qualified,
+        resultDeclaredOn: technical?.resultDeclaredOn
+          ? new Date(technical.resultDeclaredOn)
+          : tender.ourBid?.technical?.resultDeclaredOn
+      },
+      financial: {
+        baseAmount,
+        rebatePercentage: rebate !== undefined && rebate !== null ? Number(rebate) : undefined,
+        finalAmount: baseAmount, // recomputed in the pre-save hook
+        boq: financial?.boq || undefined,
+        documents: Array.isArray(financial?.documents) ? financial.documents : (tender.ourBid?.financial?.documents || []),
+        notes: financial?.notes ?? tender.ourBid?.financial?.notes
+      },
+      submittedAt: tender.ourBid?.submittedAt,
+      submittedBy: tender.ourBid?.submittedBy,
+      acknowledgementRef: acknowledgementRef ?? tender.ourBid?.acknowledgementRef,
+      validityDays: validityDays ?? tender.ourBid?.validityDays
+    } as any;
+
+    recordAudit(tender, 'our_bid_saved', req.user._id, 'Our bid updated');
+
+    await tender.save();
+    res.json({ success: true, data: tender.ourBid });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Record what the authority revealed when the bids were opened.
+ */
+export const recordOpeningResults = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { competitors, ourRank, l1Amount, l1Bidder } = req.body;
+    if (competitors !== undefined && !Array.isArray(competitors)) {
+      return res.status(400).json({ success: false, message: 'competitors must be an array' });
+    }
+
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    if (Array.isArray(competitors)) {
+      tender.competitors = competitors.map((c: any) => ({
+        name: String(c.name || '').trim(),
+        bidAmount: c.bidAmount !== undefined ? Number(c.bidAmount) : undefined,
+        rank: c.rank !== undefined ? Number(c.rank) : undefined,
+        technicallyQualified: c.technicallyQualified,
+        remarks: c.remarks
+      })) as any;
+    }
+
+    tender.set('outcome', {
+      result: tender.outcome?.result || 'awaited',
+      ourRank: ourRank !== undefined ? Number(ourRank) : tender.outcome?.ourRank,
+      l1Amount: l1Amount !== undefined ? Number(l1Amount) : tender.outcome?.l1Amount,
+      l1Bidder: l1Bidder ?? tender.outcome?.l1Bidder,
+      declaredOn: tender.outcome?.declaredOn,
+      reason: tender.outcome?.reason
+    });
+
+    recordAudit(tender, 'opening_recorded', req.user._id, 'Bid opening results recorded', {
+      competitors: tender.competitors.length,
+      ourRank: tender.outcome?.ourRank
+    });
+
+    await tender.save();
+    res.json({ success: true, data: { competitors: tender.competitors, outcome: tender.outcome } });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Record the Letter of Award received from the authority.
+ */
+export const recordLetterOfAward = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    const { number, date, awardedAmount, documentUrl, acceptedOn } = req.body;
+
+    tender.loa = {
+      received: true,
+      number,
+      date: date ? new Date(date) : new Date(),
+      awardedAmount: awardedAmount !== undefined ? Number(awardedAmount) : tender.ourBid?.financial?.finalAmount,
+      documentUrl,
+      acceptedOn: acceptedOn ? new Date(acceptedOn) : undefined,
+      acceptedBy: acceptedOn ? req.user._id : undefined
+    } as any;
+
+    tender.awardedAmount = tender.loa!.awardedAmount;
+    tender.awardDate = tender.awardDate || tender.loa!.date;
+
+    recordAudit(tender, 'loa_recorded', req.user._id, `Letter of Award recorded${number ? `: ${number}` : ''}`);
+
+    await tender.save();
+    res.json({ success: true, data: tender.loa });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Record the signed agreement following the LOA.
+ */
+export const recordAgreement = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    if (!tender.loa?.received) {
+      return res.status(400).json({ success: false, message: 'Record the Letter of Award before the agreement' });
+    }
+
+    const { number, signedOn, commencementDate, completionDate, documentUrl } = req.body;
+
+    tender.agreement = {
+      number,
+      signedOn: signedOn ? new Date(signedOn) : new Date(),
+      commencementDate: commencementDate ? new Date(commencementDate) : undefined,
+      completionDate: completionDate ? new Date(completionDate) : undefined,
+      documentUrl
+    } as any;
+
+    recordAudit(tender, 'agreement_recorded', req.user._id, `Agreement recorded${number ? `: ${number}` : ''}`);
+
+    await tender.save();
+    res.json({ success: true, data: tender.agreement });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Record the Performance Bank Guarantee lodged after award.
+ */
+export const recordPerformanceGuarantee = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { amount, percentage, mode, issuingBank, instrumentRef,
+      submittedOn, validTill, status, releasedOn, documentUrl } = req.body;
+
+    const allowedStatuses = ['pending', 'submitted', 'released', 'forfeited'];
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: `status must be one of: ${allowedStatuses.join(', ')}` });
+    }
+
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    // A percentage is quoted against the awarded value when no amount is given
+    const base = tender.loa?.awardedAmount || tender.ourBid?.financial?.finalAmount || 0;
+    const resolvedAmount = amount !== undefined
+      ? Number(amount)
+      : (percentage ? Math.round(base * (Number(percentage) / 100) * 100) / 100 : 0);
+
+    tender.performanceGuarantee = {
+      amount: resolvedAmount,
+      percentage: percentage !== undefined ? Number(percentage) : undefined,
+      mode: mode || 'bank-guarantee',
+      issuingBank,
+      instrumentRef,
+      submittedOn: submittedOn ? new Date(submittedOn) : tender.performanceGuarantee?.submittedOn,
+      validTill: validTill ? new Date(validTill) : undefined,
+      status: status || tender.performanceGuarantee?.status || 'pending',
+      releasedOn: releasedOn ? new Date(releasedOn) : undefined,
+      documentUrl
+    } as any;
+
+    recordAudit(tender, 'pbg_updated', req.user._id, `Performance guarantee status: ${tender.performanceGuarantee!.status}`);
+
+    await tender.save();
+    res.json({ success: true, data: tender.performanceGuarantee });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Turn a won tender into a project. Phases may be supplied so the execution
+ * plan and its departmental reviews exist from day one.
+ */
+export const convertTenderToProject = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    if (tender.status !== 'won' && tender.status !== 'in-progress') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only a won tender can be converted into a project'
+      });
+    }
+    if (tender.project) {
+      return res.status(409).json({
+        success: false,
+        message: 'This tender is already linked to a project'
+      });
+    }
+
+    const contractValue = tender.loa?.awardedAmount || tender.ourBid?.financial?.finalAmount || 0;
+    const startDate = tender.agreement?.commencementDate || tender.loa?.date || new Date();
+    const endDate = tender.agreement?.completionDate
+      || new Date(startDate.getTime() + 365 * 24 * 3600000);
+
+    const phases = Array.isArray(req.body.phases) ? req.body.phases : [];
+
+    const project = await Project.create({
+      name: req.body.name?.trim() || tender.title,
+      description: req.body.description?.trim() || tender.scopeOfWork || tender.description || tender.title,
+      status: 'planning',
+      priority: tender.priority,
+      startDate,
+      endDate,
+      budget: contractValue,
+      currency: tender.currency,
+      owner: req.user._id,
+      managers: Array.isArray(req.body.managers) ? req.body.managers : [],
+      team: Array.isArray(req.body.team) ? req.body.team : [],
+      departments: tender.department ? [tender.department] : [],
+      client: tender.issuingAuthority?.name,
+      progressMode: phases.length ? 'phase-based' : 'task-based',
+      tags: ['tender', ...(tender.tags || [])]
+    });
+
+    if (phases.length) {
+      const ProjectPhase = (await import('../models/ProjectPhase')).default;
+      await ProjectPhase.insertMany(phases.map((phase: any, index: number) => ({
+        project: project._id,
+        name: String(phase.name || `Phase ${index + 1}`).trim(),
+        description: phase.description?.trim(),
+        order: index,
+        startDate: phase.startDate ? new Date(phase.startDate) : undefined,
+        endDate: phase.endDate ? new Date(phase.endDate) : undefined,
+        budget: parseFloat(phase.budget) || 0,
+        milestones: Array.isArray(phase.milestones) ? phase.milestones : [],
+        reviewDepartments: Array.isArray(phase.reviewDepartments) ? phase.reviewDepartments : [],
+        createdBy: req.user!._id
+      })));
+    }
+
+    tender.project = project._id;
+    recordAudit(tender, 'converted_to_project', req.user._id, `Project created from tender: ${project.name}`, {
+      projectId: project._id.toString()
+    });
+    await tender.save();
+
+    res.status(201).json({ success: true, data: { tender, project } });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Compliance snapshot for a bidding tender: what still blocks submission.
+ */
+export const getBidReadiness = async (req: Request, res: Response) => {
+  try {
+    const tender = await loadBiddingTender(req, res);
+    if (!tender) return;
+
+    const blockers: string[] = [];
+
+    if (!tender.submissionDeadline) blockers.push('Submission deadline not recorded');
+    if (!tender.ourBid?.financial?.finalAmount) blockers.push('Financial bid amount not set');
+    if (tender.tenderFee && !tender.tenderFee.exempted && tender.tenderFee.amount > 0 && !tender.tenderFee.paid) {
+      blockers.push('Tender fee unpaid');
+    }
+    if (tender.emd && tender.emd.mode !== 'exempted' && tender.emd.amount > 0 && tender.emd.status === 'pending') {
+      blockers.push('EMD not submitted');
+    }
+
+    const mandatory = tender.eligibility.filter(e => e.mandatory);
+    const unmet = mandatory.filter(e => e.ourStatus === 'not-met' || e.ourStatus === 'unverified');
+    unmet.forEach(e => blockers.push(`Eligibility unmet or unverified: ${e.criterion}`));
+
+    const daysRemaining = tender.submissionDeadline
+      ? Math.ceil((tender.submissionDeadline.getTime() - Date.now()) / (24 * 3600000))
+      : null;
+
+    res.json({
+      success: true,
+      data: {
+        ready: blockers.length === 0,
+        blockers,
+        daysRemaining,
+        overdue: daysRemaining !== null && daysRemaining < 0,
+        eligibility: {
+          total: tender.eligibility.length,
+          mandatory: mandatory.length,
+          met: mandatory.filter(e => e.ourStatus === 'met').length
+        }
       }
     });
   } catch (error: any) {

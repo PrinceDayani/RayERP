@@ -83,7 +83,8 @@ const boqItemSchema = new Schema({
     enum: ['not-started', 'in-progress', 'completed', 'on-hold'], 
     default: 'not-started' 
   },
-  milestone: { type: Schema.Types.ObjectId, ref: 'Project.milestones' },
+  // Points at a milestone subdocument inside ProjectPhase.milestones[]
+  milestone: { type: Schema.Types.ObjectId },
   notes: String,
   attachments: [String]
 }, { _id: true });

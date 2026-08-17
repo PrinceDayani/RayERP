@@ -20,22 +20,29 @@ export type TriggerType =
   | 'date-triggered'   // On a specific date/schedule
   | 'approval-completed'; // When an approval is completed
 
-export type EntityType = 
-  | 'project'
-  | 'task'
-  | 'work-order'
-  | 'purchase-order'
-  | 'boq'
-  | 'invoice'
-  | 'payment'
-  | 'expense'
-  | 'leave'
-  | 'journal-entry'
-  | 'voucher'
-  | 'budget'
-  | 'delivery-note'
-  | 'bill'
-  | 'tender';
+// Single source of truth for the entity enum. The schemas below and
+// WorkflowInstance all read from this, so the persisted enum can never drift
+// from the TypeScript union.
+export const ENTITY_TYPES = [
+  'project',
+  'project-phase',
+  'task',
+  'work-order',
+  'purchase-order',
+  'boq',
+  'invoice',
+  'payment',
+  'expense',
+  'leave',
+  'journal-entry',
+  'voucher',
+  'budget',
+  'delivery-note',
+  'bill',
+  'tender'
+] as const;
+
+export type EntityType = typeof ENTITY_TYPES[number];
 
 // --- Interfaces ---
 export interface ICondition {
@@ -250,9 +257,9 @@ const triggerConfigSchema = new Schema({
     enum: ['manual', 'entity-created', 'entity-updated', 'status-changed', 'amount-threshold', 'date-triggered', 'approval-completed'],
     required: true 
   },
-  entityType: { 
-    type: String, 
-    enum: ['project', 'task', 'work-order', 'purchase-order', 'boq', 'invoice', 'payment', 'expense', 'leave', 'journal-entry', 'voucher', 'budget', 'delivery-note', 'bill']
+  entityType: {
+    type: String,
+    enum: ENTITY_TYPES
   },
   conditions: [conditionSchema],
   statusFrom: String,
@@ -269,10 +276,10 @@ const workflowTemplateSchema = new Schema<IWorkflowTemplate>({
     enum: ['procurement', 'finance', 'project', 'hr', 'operations', 'custom'],
     required: true 
   },
-  entityType: { 
-    type: String, 
-    enum: ['project', 'task', 'work-order', 'purchase-order', 'boq', 'invoice', 'payment', 'expense', 'leave', 'journal-entry', 'voucher', 'budget', 'delivery-note', 'bill'],
-    required: true 
+  entityType: {
+    type: String,
+    enum: ENTITY_TYPES,
+    required: true
   },
   version: { type: Number, default: 1 },
   isActive: { type: Boolean, default: true },

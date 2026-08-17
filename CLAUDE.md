@@ -651,6 +651,8 @@ If 1 = yes → update the existing file. If 2 = scratch → skip. If 3
 ```
 backend/src/models/
   Project.ts                   team[], managers[]                            → User
+  ProjectPhase.ts              owner, createdBy, reviewSummary[].decidedBy   → User
+                               reviewDepartments[]                           → Department
   Task.ts                      assignedTo/By, watchers, comments, ...        → User
   DailyReport.ts               reportedBy, acknowledgedBy, blockers.resolvedBy → User
   FinancialEntry.ts            reportedBy, approvedBy                        → User
@@ -674,6 +676,20 @@ backend/src/models/
 ```
 
 If a future model fits neither pattern cleanly, ask — don't guess.
+
+### Milestones live on phases
+
+`Project.milestones[]` was moved to `ProjectPhase.milestones[]`.
+`MilestoneBilling.milestoneId` and `BOQ.milestone` store those subdocument
+`_id`s, so **never regenerate a milestone `_id`** when moving or copying
+milestones — it silently orphans billing and BOQ links. The phase controller
+blocks removing a milestone that has billing attached; keep that guard.
+
+Phase review state is owned by the workflow engine. `ProjectPhase.reviewSummary`
+is a denormalized projection synced by
+`WorkflowProjectIntegration.syncPhaseFromInstance`; the `WorkflowInstance` is
+authoritative. Never write review decisions straight onto the phase — go
+through `WorkflowEngine.processStepAction` so the assignee check still applies.
 
 ---
 

@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
-import WorkflowTemplate from '../models/WorkflowTemplate';
-import WorkflowInstance from '../models/WorkflowInstance';
+import WorkflowTemplate, { IWorkflowStep } from '../models/WorkflowTemplate';
+import WorkflowInstance, { IWorkflowInstance } from '../models/WorkflowInstance';
 import Project from '../models/Project';
+import ProjectPhase, { IProjectPhase, PhaseReviewStatus } from '../models/ProjectPhase';
+import Department from '../models/Department';
+import User from '../models/User';
 import Task from '../models/Task';
 import { WorkflowEngine } from './workflowEngine';
 import { logger } from '../utils/logger';
@@ -16,6 +19,8 @@ import { logger } from '../utils/logger';
  * 4. Workflow rejection/cancellation → Sync project status
  * 5. Project cancellation → Cancel active workflows
  * 6. Task creation from workflow task-type steps
+ * 7. Project phase → Departmental review workflow, with the phase's
+ *    reviewSummary kept in sync from the instance
  */
 export class WorkflowProjectIntegration {
 
@@ -226,7 +231,13 @@ export class WorkflowProjectIntegration {
   static async onWorkflowCompleted(instanceId: string): Promise<void> {
     try {
       const instance = await WorkflowInstance.findById(instanceId);
-      if (!instance || instance.entityType !== 'project') return;
+      if (!instance) return;
+
+      if (instance.entityType === 'project-phase') {
+        await this.syncPhaseFromInstance(instance);
+        return;
+      }
+      if (instance.entityType !== 'project') return;
 
       const template = await WorkflowTemplate.findById(instance.templateId);
       if (!template) return;
@@ -265,7 +276,13 @@ export class WorkflowProjectIntegration {
   static async onWorkflowRejected(instanceId: string): Promise<void> {
     try {
       const instance = await WorkflowInstance.findById(instanceId);
-      if (!instance || instance.entityType !== 'project') return;
+      if (!instance) return;
+
+      if (instance.entityType === 'project-phase') {
+        await this.syncPhaseFromInstance(instance);
+        return;
+      }
+      if (instance.entityType !== 'project') return;
 
       await Project.findByIdAndUpdate(instance.entityId, {
         $set: {
@@ -287,7 +304,16 @@ export class WorkflowProjectIntegration {
   static async onWorkflowCancelled(instanceId: string): Promise<void> {
     try {
       const instance = await WorkflowInstance.findById(instanceId);
-      if (!instance || instance.entityType !== 'project') return;
+      if (!instance) return;
+
+      if (instance.entityType === 'project-phase') {
+        await ProjectPhase.findByIdAndUpdate(instance.entityId, {
+          $set: { status: 'draft', reviewInstance: null }
+        });
+        logger.info(`Phase ${instance.entityId} returned to draft after review workflow cancellation`);
+        return;
+      }
+      if (instance.entityType !== 'project') return;
 
       await Project.findByIdAndUpdate(instance.entityId, {
         $set: {
@@ -443,6 +469,310 @@ export class WorkflowProjectIntegration {
     } catch (error) {
       logger.error(`Error creating task for workflow step:`, error);
     }
+  }
+
+  // --- Project phase reviews ---------------------------------------------
+
+  /**
+   * Called by the engine after every step action. Entities that keep a
+   * denormalized copy of review state refresh it here.
+   */
+  static async onStepActionProcessed(instanceId: string): Promise<void> {
+    try {
+      const instance = await WorkflowInstance.findById(instanceId);
+      if (!instance || instance.entityType !== 'project-phase') return;
+      await this.syncPhaseFromInstance(instance);
+    } catch (error) {
+      logger.error(`Error syncing phase after workflow step action:`, error);
+    }
+  }
+
+  /**
+   * Send a phase to its review departments. Starts a WorkflowInstance whose
+   * steps are the departmental sign-offs, and seeds the phase's denormalized
+   * review summary.
+   */
+  static async submitPhaseForReview(
+    phaseId: string,
+    userId: string,
+    options: { templateId?: string; priority?: 'low' | 'medium' | 'high' | 'critical' } = {}
+  ): Promise<{ phase: IProjectPhase; workflowInstance: any }> {
+    const phase = await ProjectPhase.findById(phaseId);
+    if (!phase) throw new Error('Phase not found');
+
+    if (!['draft', 'changes-requested', 'rejected'].includes(phase.status)) {
+      throw new Error(`Phase is ${phase.status} and cannot be submitted for review`);
+    }
+    if (!phase.reviewDepartments?.length) {
+      throw new Error('Phase has no review departments configured');
+    }
+
+    // A phase must not have two live review workflows
+    const existing = await WorkflowInstance.findOne({
+      entityType: 'project-phase',
+      entityId: phase._id,
+      status: { $in: ['active', 'on-hold'] }
+    });
+    if (existing) {
+      throw new Error('A review is already in progress for this phase');
+    }
+
+    const project = await Project.findById(phase.project).select('name departments managers');
+    if (!project) throw new Error('Parent project not found');
+
+    const departments = await Department.find({ _id: { $in: phase.reviewDepartments } })
+      .select('name manager.email')
+      .lean();
+
+    // Preserve the caller's configured review order
+    const orderedDepartments = phase.reviewDepartments
+      .map(id => departments.find(d => d._id.toString() === id.toString()))
+      .filter(Boolean) as Array<{ _id: mongoose.Types.ObjectId; name: string; manager?: { email?: string } }>;
+
+    if (!orderedDepartments.length) {
+      throw new Error('None of the configured review departments could be resolved');
+    }
+
+    const template = options.templateId
+      ? await WorkflowTemplate.findOne({ _id: options.templateId, entityType: 'project-phase', isActive: true })
+      : await this.resolvePhaseReviewTemplate(phase, orderedDepartments, userId);
+
+    if (!template) throw new Error('No active phase-review workflow template available');
+
+    phase.reviewRound += 1;
+    phase.reviewTemplate = template._id;
+    phase.reviewSummary = this.buildReviewSummary(template.steps, orderedDepartments, phase.reviewRound);
+
+    const workflowInstance = await WorkflowEngine.startWorkflow({
+      templateId: template._id.toString(),
+      entityType: 'project-phase',
+      entityId: phase._id.toString(),
+      entityTitle: `${project.name} — ${phase.name}`,
+      initiatedBy: userId,
+      projectId: phase.project.toString(),
+      phaseId: phase._id.toString(),
+      departmentId: orderedDepartments[0]._id.toString(),
+      priority: options.priority,
+      metadata: {
+        phaseId: phase._id.toString(),
+        phaseName: phase.name,
+        phaseBudget: phase.budget,
+        phaseReviewRound: phase.reviewRound,
+        projectId: phase.project.toString(),
+        projectName: project.name,
+        projectManagers: project.managers?.map(m => m.toString()),
+        // 'department-head' approver steps read this key
+        projectDepartments: orderedDepartments.map(d => d._id.toString())
+      }
+    });
+
+    phase.status = 'in-review';
+    phase.reviewInstance = workflowInstance._id;
+    phase.submittedForReviewAt = new Date();
+    phase.submittedForReviewBy = new mongoose.Types.ObjectId(userId);
+    phase.reviewCompletedAt = undefined;
+    await phase.save();
+
+    // Reflect whatever the engine resolved on activation (assignees, auto-steps)
+    await this.syncPhaseFromInstance(workflowInstance);
+
+    logger.info(`Phase "${phase.name}" submitted for review (round ${phase.reviewRound}) across ${orderedDepartments.length} department(s)`);
+    return { phase, workflowInstance };
+  }
+
+  /**
+   * Find or build the workflow template backing a phase review.
+   *
+   * Order of preference: the template already pinned on the phase, the default
+   * 'project-phase' template, then a generated one routing sequentially to each
+   * review department. Generated templates are tagged so the template UI can
+   * keep them out of the authored-template list.
+   */
+  private static async resolvePhaseReviewTemplate(
+    phase: IProjectPhase,
+    departments: Array<{ _id: mongoose.Types.ObjectId; name: string; manager?: { email?: string } }>,
+    userId: string
+  ) {
+    if (phase.reviewTemplate) {
+      const pinned = await WorkflowTemplate.findOne({ _id: phase.reviewTemplate, isActive: true });
+      // Only reuse a generated template while it still matches the department set
+      if (pinned && (!pinned.tags?.includes('auto-generated') || this.templateMatchesDepartments(pinned.steps, departments))) {
+        return pinned;
+      }
+    }
+
+    const configuredDefault = await WorkflowTemplate.findOne({
+      entityType: 'project-phase',
+      isDefault: true,
+      isActive: true
+    });
+    if (configuredDefault) return configuredDefault;
+
+    const steps = await this.buildDepartmentApprovalSteps(departments);
+
+    // Regenerate in place when a stale generated template is already pinned
+    if (phase.reviewTemplate) {
+      const stale = await WorkflowTemplate.findById(phase.reviewTemplate);
+      if (stale?.tags?.includes('auto-generated')) {
+        stale.steps = steps;
+        stale.version += 1;
+        stale.updatedBy = new mongoose.Types.ObjectId(userId);
+        await stale.save();
+        return stale;
+      }
+    }
+
+    return WorkflowTemplate.create({
+      name: `Phase Review — ${phase.name}`,
+      description: `Departmental review routing generated for phase "${phase.name}"`,
+      category: 'project',
+      entityType: 'project-phase',
+      isActive: true,
+      isDefault: false,
+      trigger: { type: 'manual', entityType: 'project-phase' },
+      steps,
+      departments: departments.map(d => d._id),
+      createdBy: new mongoose.Types.ObjectId(userId),
+      tags: ['phase-review', 'auto-generated'],
+      priority: 'medium'
+    });
+  }
+
+  /**
+   * One sequential approval step per department. Members of the department
+   * resolve through approverRoles (matched against role and department names);
+   * the department head is added explicitly so a department with no mapped
+   * employees still has an approver.
+   */
+  private static async buildDepartmentApprovalSteps(
+    departments: Array<{ _id: mongoose.Types.ObjectId; name: string; manager?: { email?: string } }>
+  ): Promise<IWorkflowStep[]> {
+    const headEmails = departments.map(d => d.manager?.email).filter(Boolean) as string[];
+    const heads = headEmails.length
+      ? await User.find({ email: { $in: headEmails } }).select('_id email').lean()
+      : [];
+    const headByEmail = new Map(heads.map(h => [h.email?.toLowerCase(), h._id]));
+
+    return departments.map((dept, index) => {
+      const headId = headByEmail.get(dept.manager?.email?.toLowerCase() || '');
+      const isLast = index === departments.length - 1;
+      return {
+        stepId: this.phaseStepId(dept._id),
+        name: `${dept.name} Review`,
+        description: `Review and sign-off by ${dept.name}`,
+        type: 'approval',
+        order: index + 1,
+        approverType: 'role',
+        approverIds: headId ? [headId as mongoose.Types.ObjectId] : [],
+        approverRoles: [dept.name],
+        approvalMode: 'any',
+        nextSteps: isLast ? [] : [this.phaseStepId(departments[index + 1]._id)],
+        isTerminal: isLast
+      } as IWorkflowStep;
+    });
+  }
+
+  private static phaseStepId(departmentId: mongoose.Types.ObjectId | string): string {
+    return `dept-${departmentId.toString()}`;
+  }
+
+  private static templateMatchesDepartments(
+    steps: IWorkflowStep[],
+    departments: Array<{ _id: mongoose.Types.ObjectId }>
+  ): boolean {
+    const stepIds = new Set(steps.map(s => s.stepId));
+    return departments.length === steps.length
+      && departments.every(d => stepIds.has(this.phaseStepId(d._id)));
+  }
+
+  /**
+   * Seed one summary row per review department, linking it to the template
+   * step that gates it. Authored templates that do not follow the generated
+   * stepId convention are matched on approverRoles instead; unmatched
+   * departments still get a row so nothing silently disappears from the UI.
+   */
+  private static buildReviewSummary(
+    steps: IWorkflowStep[],
+    departments: Array<{ _id: mongoose.Types.ObjectId; name: string }>,
+    round: number
+  ) {
+    return departments.map(dept => {
+      const byId = steps.find(s => s.stepId === this.phaseStepId(dept._id));
+      const byRole = steps.find(s =>
+        s.approverRoles?.some(r => r.trim().toLowerCase() === dept.name.toLowerCase())
+      );
+      const step = byId || byRole;
+      return {
+        department: dept._id,
+        departmentName: dept.name,
+        stepId: step?.stepId,
+        status: 'pending' as PhaseReviewStatus,
+        round
+      };
+    });
+  }
+
+  /**
+   * Project the workflow instance's step state onto the phase's denormalized
+   * summary and overall status. The instance stays authoritative.
+   */
+  static async syncPhaseFromInstance(instance: IWorkflowInstance): Promise<void> {
+    const phase = await ProjectPhase.findById(instance.entityId);
+    if (!phase) return;
+
+    // Ignore callbacks from a superseded round
+    if (phase.reviewInstance && phase.reviewInstance.toString() !== instance._id.toString()) return;
+
+    for (const entry of phase.reviewSummary) {
+      if (!entry.stepId) continue;
+      const step = instance.steps.find(s => s.stepId === entry.stepId);
+      if (!step) continue;
+
+      entry.status = this.mapStepStatus(step.status, step.result);
+
+      const decision = step.approvals?.filter(a => a.action !== 'delegated').slice(-1)[0];
+      if (decision) {
+        entry.decidedBy = decision.userId;
+        entry.decidedAt = decision.timestamp;
+        entry.comments = decision.comments;
+      }
+      if (entry.status === 'rejected' && step.resultData?.intent === 'changes-requested') {
+        entry.status = 'changes-requested';
+      }
+    }
+
+    if (instance.status === 'completed') {
+      phase.status = 'approved';
+      phase.reviewCompletedAt = instance.completedAt || new Date();
+    } else if (instance.status === 'rejected') {
+      const rejectedStep = instance.steps.find(s => s.status === 'rejected');
+      phase.status = rejectedStep?.resultData?.intent === 'changes-requested'
+        ? 'changes-requested'
+        : 'rejected';
+      phase.reviewCompletedAt = instance.completedAt || new Date();
+    } else if (instance.status === 'active' || instance.status === 'on-hold') {
+      phase.status = 'in-review';
+    }
+
+    await phase.save();
+  }
+
+  private static mapStepStatus(status: string, result?: string): PhaseReviewStatus {
+    if (status === 'completed') return result === 'rejected' ? 'rejected' : 'approved';
+    if (status === 'rejected') return 'rejected';
+    if (status === 'skipped' || status === 'cancelled') return 'skipped';
+    return 'pending';
+  }
+
+  /**
+   * Active review workflow for a phase, if any.
+   */
+  static async getPhaseWorkflow(phaseId: string): Promise<any> {
+    return WorkflowInstance.findOne({
+      entityType: 'project-phase',
+      entityId: phaseId,
+      status: { $in: ['active', 'on-hold'] }
+    }).populate('currentAssignees', 'name email');
   }
 
   /**

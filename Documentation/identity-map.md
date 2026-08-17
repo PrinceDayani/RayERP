@@ -128,6 +128,16 @@ to be migrated (see §6 "Phase 2 — pending").
   ─ Project.createdBy      → USER         │
   ─ ProjectPermission.createdBy → USER    │
                                           │
+  Project phases                          │
+  ─ ProjectPhase.createdBy      → USER    │
+  ─ ProjectPhase.owner          → USER    │
+  ─ ProjectPhase.submittedForReviewBy     │
+                                → USER    │
+  ─ ProjectPhase.reviewSummary[].decidedBy│
+                                → USER    │
+  ─ ProjectPhase.reviewDepartments[]      │
+                          → DEPARTMENT    │
+                                          │
   Project reporting  ✅ MIGRATED          │
   ─ DailyReport.reportedBy      → USER    │
   ─ DailyReport.acknowledgedBy  → USER    │

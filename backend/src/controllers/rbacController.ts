@@ -492,6 +492,8 @@ export const initializePermissions = async () => {
     { name: 'projects.manage_team', description: 'Manage project team', category: 'Project Management' },
     { name: 'projects.view_all', description: 'View all projects regardless of assignment', category: 'Project Management' },
     { name: 'projects.edit_all', description: 'Edit and delete all projects regardless of assignment', category: 'Project Management' },
+    { name: 'projects.manage_phases', description: 'Create, edit and submit project phases for review', category: 'Project Management' },
+    { name: 'projects.review_phases', description: 'Review project phases assigned to your department', category: 'Project Management' },
     { name: 'tasks.view', description: 'View tasks', category: 'Project Management' },
     { name: 'tasks.create', description: 'Create tasks', category: 'Project Management' },
     { name: 'tasks.edit', description: 'Edit tasks', category: 'Project Management' },
@@ -526,7 +528,9 @@ export const initializePermissions = async () => {
     { name: 'tenders.manage', description: 'Manage tender lifecycle', category: 'Tender Management' },
     { name: 'tenders.manage_bids', description: 'Manage bids and bidders', category: 'Tender Management' },
     { name: 'tenders.evaluate', description: 'Evaluate and score bids', category: 'Tender Management' },
-    { name: 'tenders.award', description: 'Award tenders and generate work orders', category: 'Tender Management' },
+    { name: 'tenders.award', description: 'Award tenders, record LOA and agreements', category: 'Tender Management' },
+    { name: 'tenders.bid', description: 'Prepare and submit our bid on tenders we are chasing', category: 'Tender Management' },
+    { name: 'tenders.finance', description: 'Record tender fee, EMD and performance guarantee', category: 'Tender Management' },
 
     // System Administration
     { name: 'admin.view', description: 'View admin panel', category: 'System Administration' },

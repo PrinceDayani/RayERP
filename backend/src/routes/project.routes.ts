@@ -9,11 +9,12 @@ import {
   deleteProject,
   getProjectStats,
   updateProjectStatus,
+  archiveProject,
+  unarchiveProject,
   addProjectMember,
   removeProjectMember,
   getProjectMembers,
   cloneProject as cloneProjectController,
-  updateProjectMilestones,
   updateProjectRisks,
   calculateProjectProgress,
   getProjectTemplates,
@@ -25,6 +26,11 @@ import {
   getEmployeesMinimal,
   getDepartmentsMinimal
 } from '../controllers/projectController';
+import {
+  listProjectPhases,
+  createProjectPhase,
+  reorderProjectPhases
+} from '../controllers/projectPhaseController';
 import { cloneProject, exportProjectAsTemplate } from '../controllers/projectTemplateController';
 import { getSharedFiles } from '../controllers/projectFileController';
 
@@ -87,6 +93,10 @@ router.patch('/:id/status',
   validateProjectStatus,
   updateProjectStatus
 );
+// Archive a project without touching its status
+router.patch('/:id/archive', validateObjectId(), checkProjectAccess, requirePermission('projects.archive'), archiveProject);
+// Restore an archived project, leaving its status as it was
+router.patch('/:id/unarchive', validateObjectId(), checkProjectAccess, requirePermission('projects.archive'), unarchiveProject);
 
 // --- Modular Routes ---
 router.use('/:id/tasks', taskRoutes);
@@ -139,8 +149,12 @@ router.delete('/:id/instructions/:instructionId',
   deleteProjectInstruction
 );
 
-// --- Milestone & Risk Management Routes ---
-router.put('/:id/milestones', validateObjectId(), checkProjectAccess, updateProjectMilestones);
+// --- Phase Routes (milestones live on phases) ---
+router.get('/:id/phases', validateObjectId(), checkProjectAccess, requirePermission('projects.view'), listProjectPhases);
+router.post('/:id/phases', validateObjectId(), checkProjectAccess, requirePermission('projects.manage_phases'), createProjectPhase);
+router.put('/:id/phases/reorder', validateObjectId(), checkProjectAccess, requirePermission('projects.manage_phases'), reorderProjectPhases);
+
+// --- Risk Management Routes ---
 router.put('/:id/risks', validateObjectId(), checkProjectAccess, updateProjectRisks);
 router.post('/:id/calculate-progress', validateObjectId(), checkProjectAccess, calculateProjectProgress);
 
