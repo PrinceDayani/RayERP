@@ -67,8 +67,10 @@ export default function PhaseReviewsPage() {
     }
   };
 
-  const projectOf = (review: PendingPhaseReview) => {
-    const project = review.phase?.project;
+  // Called from the dialog body, which React evaluates even while `target` is
+  // still null, so this must tolerate an absent review.
+  const projectOf = (review?: PendingPhaseReview | null) => {
+    const project = review?.phase?.project;
     return typeof project === 'object' && project !== null ? project : null;
   };
 
@@ -184,7 +186,7 @@ export default function PhaseReviewsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              {target?.review.phase?.name} — {projectOf(target?.review as PendingPhaseReview)?.name}
+              {target?.review.phase?.name} — {projectOf(target?.review)?.name}
             </p>
             <div>
               <Label>
