@@ -690,7 +690,10 @@ export const changePassword = async (req: Request, res: Response) => {
 // Refresh access token using refresh token
 export const refreshAccessToken = async (req: Request, res: Response) => {
   try {
-    const refreshToken = req.cookies?.refreshToken;
+    // Web sends the refresh token as an httpOnly cookie; native clients hold a
+    // Bearer token and have no cookie jar, so they send it in the body instead.
+    // It is still verified, type-checked, and matched to an active session below.
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
     if (!refreshToken) {
       return res.status(401).json({
