@@ -8,7 +8,7 @@ class UserManagementService {
 
   Future<List<ManagedUser>> getUsers() async {
     final data = await _api.get('/users');
-    return (data as List).map((e) => ManagedUser.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => ManagedUser.fromJson(e)).toList();
   }
 
   Future<ManagedUser> getUserById(String id) async {
@@ -57,7 +57,7 @@ class UserManagementService {
 
   Future<List<AppRole>> getRoles() async {
     final data = await _api.get('/rbac/roles');
-    return (data as List).map((e) => AppRole.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => AppRole.fromJson(e)).toList();
   }
 
   Future<AppRole> createRole({
@@ -72,7 +72,7 @@ class UserManagementService {
       'level': level,
       'permissions': permissions,
     });
-    return AppRole.fromJson(data);
+    return AppRole.fromJson(ApiService.unwrap(data));
   }
 
   Future<AppRole> updateRole(String roleId, {
@@ -89,7 +89,7 @@ class UserManagementService {
     if (permissions != null) body['permissions'] = permissions;
     if (isActive != null) body['isActive'] = isActive;
     final data = await _api.put('/rbac/roles/$roleId', body);
-    return AppRole.fromJson(data);
+    return AppRole.fromJson(ApiService.unwrap(data));
   }
 
   Future<void> deleteRole(String roleId) => _api.delete('/rbac/roles/$roleId');
@@ -101,7 +101,7 @@ class UserManagementService {
 
   Future<List<AppPermission>> getPermissions() async {
     final data = await _api.get('/rbac/permissions');
-    return (data as List).map((e) => AppPermission.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => AppPermission.fromJson(e)).toList();
   }
 
   // ── Sessions ───────────────────────────────────────────────────────────────

@@ -1,21 +1,24 @@
+import '../utils/constants.dart';
+
+/// Task assignees ref User, which carries `name`, not firstName/lastName.
 class TaskAssignee {
   final String id;
-  final String firstName;
-  final String lastName;
+  final String name;
+  final String email;
 
-  TaskAssignee({required this.id, required this.firstName, required this.lastName});
+  TaskAssignee({required this.id, required this.name, this.email = ''});
 
-  String get name => '$firstName $lastName'.trim();
+  String get initials => initialsOf(name);
 
   factory TaskAssignee.fromJson(dynamic json) {
     if (json is Map<String, dynamic>) {
       return TaskAssignee(
         id: json['_id'] ?? '',
-        firstName: json['firstName'] ?? '',
-        lastName: json['lastName'] ?? '',
+        name: json['name'] ?? '',
+        email: json['email'] ?? '',
       );
     }
-    return TaskAssignee(id: json?.toString() ?? '', firstName: '', lastName: '');
+    return TaskAssignee(id: json?.toString() ?? '', name: '');
   }
 }
 
@@ -259,6 +262,9 @@ class Task {
   bool get hasActiveTimer => timeEntries.any((e) => e.isActive);
   bool get isIndividualTask => taskType == 'individual';
   bool get isProjectTask => taskType == 'project';
+
+  /// Display name of the assignee, or '' when unassigned/unpopulated.
+  String get assigneeName => assignedTo?.name ?? '';
   bool get isSelfAssigned => assignmentType == 'self-assigned';
 
   int get totalLoggedMinutes => timeEntries.fold(0, (sum, e) => sum + e.duration);

@@ -1,5 +1,6 @@
 import '../models/employee.dart';
 import 'api_service.dart';
+import '../utils/constants.dart';
 
 // ── Models ────────────────────────────────────────────────────────────────
 
@@ -41,12 +42,11 @@ class ResourceAllocation {
   });
 
   factory ResourceAllocation.fromJson(Map<String, dynamic> j) {
-    final emp = j['employee'];
+    // ResourceAllocation.user refs User; older payloads used `employee`.
+    final emp = j['user'] ?? j['employee'];
     final proj = j['project'];
-    final empId = emp is Map ? (emp['_id'] ?? '') : (emp ?? '');
-    final empName = emp is Map
-        ? '${emp['firstName'] ?? ''} ${emp['lastName'] ?? ''}'.trim()
-        : '';
+    final empId = userIdOf(emp);
+    final empName = userNameOf(emp);
     final projId = proj is Map ? (proj['_id'] ?? '') : (proj ?? '');
     final projName = proj is Map ? (proj['name'] ?? '') : '';
     final projStatus = proj is Map ? (proj['status'] ?? '') : '';
@@ -146,12 +146,10 @@ class ResourceConflict {
   });
 
   factory ResourceConflict.fromJson(Map<String, dynamic> j) {
-    final emp = j['employee'];
+    final emp = j['user'] ?? j['employee'];
     return ResourceConflict(
       employeeId: j['_id'] ?? '',
-      employeeName: emp is Map ? (emp['firstName'] != null
-          ? '${emp['firstName']} ${emp['lastName']}'.trim()
-          : (emp['name'] ?? '')) : '',
+      employeeName: userNameOf(emp),
       conflicts: (j['conflicts'] as List? ?? []).map((e) => Map<String, dynamic>.from(e)).toList(),
       totalConflicts: (j['totalConflicts'] ?? 0).toInt(),
       totalOverallocation: (j['totalOverallocation'] ?? 0).toDouble(),
@@ -313,7 +311,7 @@ class ResourceService extends ApiService {
         ? '?${params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}'
         : '';
     final data = await get('/resources/allocations$query');
-    return (data as List).map((e) => ResourceAllocation.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => ResourceAllocation.fromJson(e)).toList();
   }
 
   Future<ResourceAllocation> createAllocation(Map<String, dynamic> body) async {
@@ -324,7 +322,7 @@ class ResourceService extends ApiService {
 
   Future<ResourceAllocation> updateAllocation(String id, Map<String, dynamic> body) async {
     final data = await put('/resources/allocations/$id', body);
-    return ResourceAllocation.fromJson(data);
+    return ResourceAllocation.fromJson(ApiService.unwrap(data));
   }
 
   Future<void> deleteAllocation(String id) async {
@@ -341,7 +339,7 @@ class ResourceService extends ApiService {
     var url = '/resources/capacity-planning?startDate=${Uri.encodeComponent(startDate)}&endDate=${Uri.encodeComponent(endDate)}';
     if (department != null) url += '&department=${Uri.encodeComponent(department)}';
     final data = await get(url);
-    return (data as List).map((e) => EmployeeCapacity.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => EmployeeCapacity.fromJson(e)).toList();
   }
 
   // ── Conflicts ────────────────────────────────────────────────────────────
@@ -350,7 +348,7 @@ class ResourceService extends ApiService {
     var url = '/resources/allocation-conflicts';
     if (employeeId != null) url += '?employeeId=${Uri.encodeComponent(employeeId)}';
     final data = await get(url);
-    return (data as List).map((e) => ResourceConflict.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => ResourceConflict.fromJson(e)).toList();
   }
 
   // ── Employee Summary ─────────────────────────────────────────────────────
@@ -359,14 +357,14 @@ class ResourceService extends ApiService {
     var url = '/resources/employee-summary';
     if (departmentId != null) url += '?departmentId=${Uri.encodeComponent(departmentId)}';
     final data = await get(url);
-    return (data as List).map((e) => EmployeeSummary.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => EmployeeSummary.fromJson(e)).toList();
   }
 
   // ── Skill Matrix ─────────────────────────────────────────────────────────
 
   Future<List<Employee>> getAllEmployees() async {
     final data = await get('/employees');
-    return (data as List).map((e) => Employee.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => Employee.fromJson(e)).toList();
   }
 
   Future<void> updateSkill(String employeeId, String skill, String? level, {int? yearsOfExperience}) async {
@@ -386,21 +384,21 @@ class ResourceService extends ApiService {
     if (position != null) params.add('position=${Uri.encodeComponent(position)}');
     if (params.isNotEmpty) url += '?${params.join('&')}';
     final data = await get(url);
-    return (data as List).map((e) => SkillGapResult.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => SkillGapResult.fromJson(e)).toList();
   }
 
   // ── Project Skill Match ──────────────────────────────────────────────────
 
   Future<List<ProjectSkillMatch>> getProjectSkillMatch(String projectId) async {
     final data = await get('/resources/project-skill-match/$projectId');
-    return (data as List).map((e) => ProjectSkillMatch.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => ProjectSkillMatch.fromJson(e)).toList();
   }
 
   // ── Skill Distribution ───────────────────────────────────────────────────
 
   Future<List<SkillDistribution>> getSkillDistribution() async {
     final data = await get('/resources/skill-distribution');
-    return (data as List).map((e) => SkillDistribution.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => SkillDistribution.fromJson(e)).toList();
   }
 
   Future<Map<String, dynamic>> getSkillStrength() async {

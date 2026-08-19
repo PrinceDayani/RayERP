@@ -4,30 +4,30 @@ import 'api_service.dart';
 class AttendanceService extends ApiService {
   Future<List<Attendance>> getAll() async {
     final data = await get('/attendance');
-    return (data as List).map((e) => Attendance.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => Attendance.fromJson(e)).toList();
   }
 
   Future<List<Attendance>> getByDateRange(DateTime start, DateTime end) async {
     final s = start.toIso8601String().split('T')[0];
     final e = end.toIso8601String().split('T')[0];
     final data = await get('/attendance?startDate=$s&endDate=$e');
-    return (data as List).map((e) => Attendance.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => Attendance.fromJson(e)).toList();
   }
 
   Future<List<Attendance>> getByEmployee(String employeeId) async {
     final data = await get('/attendance?employee=$employeeId');
-    return (data as List).map((e) => Attendance.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => Attendance.fromJson(e)).toList();
   }
 
   Future<Attendance> getById(String id) async {
     final data = await get('/attendance/$id');
-    return Attendance.fromJson(data);
+    return Attendance.fromJson(ApiService.unwrap(data));
   }
 
   Future<List<Attendance>> getToday() async {
     final today = DateTime.now().toIso8601String().split('T')[0];
     final data = await get('/attendance?date=$today');
-    return (data as List).map((e) => Attendance.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => Attendance.fromJson(e)).toList();
   }
 
   Future<Map<String, dynamic>> getStats({required int month, required int year, String? employeeId}) async {

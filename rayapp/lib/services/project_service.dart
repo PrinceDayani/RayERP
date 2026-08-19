@@ -1,30 +1,54 @@
 import '../models/project.dart';
 import 'api_service.dart';
 
+/// A user who can be put on a project team, made a manager, or assigned a task.
+/// These fields ref User, so they must never be sourced from the HR employee list.
+class AssignableUser {
+  final String id;
+  final String name;
+  final String email;
+
+  const AssignableUser({required this.id, required this.name, this.email = ''});
+
+  factory AssignableUser.fromJson(Map<String, dynamic> j) => AssignableUser(
+        id: j['_id'] ?? '',
+        name: j['name'] ?? '',
+        email: j['email'] ?? '',
+      );
+}
+
 class ProjectService extends ApiService {
   Future<List<Project>> getAll() async {
     final data = await get('/projects');
-    return (data as List).map((e) => Project.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => Project.fromJson(e)).toList();
   }
 
   Future<Project> getById(String id) async {
     final data = await get('/projects/$id');
-    return Project.fromJson(data);
+    return Project.fromJson(ApiService.unwrap(data));
+  }
+
+  /// Users selectable for team, managers, and task assignees.
+  Future<List<AssignableUser>> getAssignableUsers() async {
+    final data = await get('/projects/users/minimal');
+    return ApiService.unwrapList(data)
+        .map((e) => AssignableUser.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
   }
 
   Future<ProjectStats> getStats() async {
-    final data = await get('/projects/stats');
+    final data = ApiService.unwrap(await get('/projects/stats'));
     return ProjectStats.fromJson(data is Map<String, dynamic> ? data : {});
   }
 
   Future<Project> create(Map<String, dynamic> body) async {
     final data = await post('/projects', body);
-    return Project.fromJson(data);
+    return Project.fromJson(ApiService.unwrap(data));
   }
 
   Future<Project> update(String id, Map<String, dynamic> body) async {
     final data = await put('/projects/$id', body);
-    return Project.fromJson(data);
+    return Project.fromJson(ApiService.unwrap(data));
   }
 
   Future<void> deleteProject(String id) => delete('/projects/$id');

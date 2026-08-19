@@ -107,6 +107,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
     }
   }
 
+  Future<void> _removeTag(String name) async {
+    try {
+      await _svc.removeTag(widget.taskId, name);
+      await _load();
+      _ok('Tag removed');
+    } catch (e) {
+      _err(e.toString());
+    }
+  }
+
   Future<void> _clone() async {
     try {
       await _svc.clone(widget.taskId);
@@ -380,17 +390,25 @@ class _TaskDetailScreenState extends State<TaskDetailScreen>
                 runSpacing: 4,
                 children: t.tags
                     .map((tag) => Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.only(
+                              left: 8, right: 4, top: 3, bottom: 3),
                           decoration: BoxDecoration(
                             color: _hexColor(tag.color).withOpacity(0.12),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                                 color: _hexColor(tag.color).withOpacity(0.3)),
                           ),
-                          child: Text(tag.name,
-                              style: TextStyle(
-                                  fontSize: 11, color: _hexColor(tag.color))),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text(tag.name,
+                                style: TextStyle(
+                                    fontSize: 11, color: _hexColor(tag.color))),
+                            const SizedBox(width: 2),
+                            GestureDetector(
+                              onTap: () => _removeTag(tag.name),
+                              child: Icon(Icons.close,
+                                  size: 12, color: _hexColor(tag.color)),
+                            ),
+                          ]),
                         ))
                     .toList(),
               ),

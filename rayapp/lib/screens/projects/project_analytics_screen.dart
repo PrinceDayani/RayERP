@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/project.dart';
 import '../../services/project_budget_service.dart';
+import '../../utils/constants.dart';
 
 class ProjectAnalyticsScreen extends StatefulWidget {
   final Project project;
@@ -395,7 +396,8 @@ class _ResourcesTab extends StatelessWidget {
         const SizedBox(height: 10),
         ...utilData.map((u) {
           final user = u['user'];
-          final name = user is Map ? '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim() : 'Unknown';
+          final resolved = userNameOf(user);
+          final name = resolved.isNotEmpty ? resolved : 'Unknown';
           final total = (u['totalTasks'] ?? 0).toInt();
           final done = (u['completedTasks'] ?? 0).toInt();
           final inProg = (u['inProgressTasks'] ?? 0).toInt();

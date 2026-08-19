@@ -26,6 +26,10 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(AppConstants.tokenKey, data['token']);
       await prefs.setString(AppConstants.userKey, jsonEncode(data['user']));
+      final refresh = data['refreshToken'];
+      if (refresh is String && refresh.isNotEmpty) {
+        await prefs.setString(AppConstants.refreshTokenKey, refresh);
+      }
     }
     return data;
   }
@@ -33,6 +37,7 @@ class AuthService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.tokenKey);
+    await prefs.remove(AppConstants.refreshTokenKey);
     await prefs.remove(AppConstants.userKey);
   }
 

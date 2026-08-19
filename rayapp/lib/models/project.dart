@@ -1,21 +1,24 @@
+import '../utils/constants.dart';
+
+/// Project team/managers ref User, which carries `name`, not firstName/lastName.
 class ProjectMember {
   final String id;
-  final String firstName;
-  final String lastName;
+  final String name;
+  final String email;
 
-  ProjectMember({required this.id, required this.firstName, required this.lastName});
+  ProjectMember({required this.id, required this.name, this.email = ''});
 
-  String get name => '$firstName $lastName'.trim();
+  String get initials => initialsOf(name);
 
   factory ProjectMember.fromJson(dynamic json) {
     if (json is Map<String, dynamic>) {
       return ProjectMember(
         id: json['_id'] ?? '',
-        firstName: json['firstName'] ?? '',
-        lastName: json['lastName'] ?? '',
+        name: json['name'] ?? '',
+        email: json['email'] ?? '',
       );
     }
-    return ProjectMember(id: json.toString(), firstName: '', lastName: '');
+    return ProjectMember(id: json.toString(), name: '');
   }
 }
 

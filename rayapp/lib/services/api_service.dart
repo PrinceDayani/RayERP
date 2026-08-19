@@ -40,6 +40,76 @@ class ApiService {
     }
   }
 
+  // ── Response envelope ───────────────────────────────────────────────────────
+  /// The API returns `{success, data, ...}` on newer endpoints and bare
+  /// arrays/objects on older ones. Unwraps the former, passes through the latter.
+  static dynamic unwrap(dynamic body) {
+    if (body is Map && body.containsKey('success') && body.containsKey('data')) {
+      return body['data'];
+    }
+    return body;
+  }
+
+  /// Unwraps to a list, tolerating both envelope and bare-array payloads.
+  static List<dynamic> unwrapList(dynamic body) {
+    final d = unwrap(body);
+    return d is List ? d : const [];
+  }
+
+  // ── Token refresh ───────────────────────────────────────────────────────────
+  // Access tokens are short-lived (15m). A 401 means the access token expired,
+  // not that the session is over, so refresh once and replay the request.
+  static Future<bool>? _refreshInFlight;
+
+  /// Exchanges the stored refresh token for a new access token.
+  /// Single-flight: concurrent 401s share one refresh call.
+  static Future<bool> _refreshAccessToken() {
+    final existing = _refreshInFlight;
+    if (existing != null) return existing;
+
+    final attempt = () async {
+      final prefs = await SharedPreferences.getInstance();
+      final refresh = prefs.getString(AppConstants.refreshTokenKey) ?? '';
+      if (refresh.isEmpty) return false;
+      try {
+        final res = await http.post(
+          Uri.parse('${ApiConfig.baseUrl}/auth/refresh'),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-fingerprint': await DeviceFingerprint.generate(),
+          },
+          body: jsonEncode({'refreshToken': refresh}),
+        ).timeout(ApiConfig.timeout);
+        if (res.statusCode == 200) {
+          final token = jsonDecode(res.body)['token'];
+          if (token is String && token.isNotEmpty) {
+            await prefs.setString(AppConstants.tokenKey, token);
+            return true;
+          }
+        }
+      } catch (_) {
+        // Network failure: treat as un-refreshed; caller surfaces the 401.
+      }
+      // Refresh token is spent or rejected — the session really is over.
+      await prefs.remove(AppConstants.refreshTokenKey);
+      return false;
+    }();
+
+    _refreshInFlight = attempt;
+    attempt.whenComplete(() => _refreshInFlight = null);
+    return attempt;
+  }
+
+  /// Sends a request; on 401 refreshes the access token once and replays it.
+  /// The builder is re-invoked so the retry picks up the new token.
+  static Future<http.Response> _authed(
+      Future<http.Response> Function() send) async {
+    final res = await send();
+    if (res.statusCode != 401) return res;
+    if (!await _refreshAccessToken()) return res;
+    return send();
+  }
+
   // ── Auth headers ────────────────────────────────────────────────────────────
   Future<Map<String, String>> headers() async {
     final prefs = await SharedPreferences.getInstance();
@@ -71,9 +141,9 @@ class ApiService {
   }
 
   Future<dynamic> _fetch(String path) async {
-    final res = await http
+    final res = await _authed(() async => http
         .get(Uri.parse('${ApiConfig.baseUrl}$path'), headers: await headers())
-        .timeout(ApiConfig.timeout);
+        .timeout(ApiConfig.timeout));
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body) ?? (path.contains('?') || path.split('/').length > 3 ? {} : []);
       _mem[path] = (data: data, at: DateTime.now());
@@ -90,10 +160,10 @@ class ApiService {
 
   // ── Mutations ───────────────────────────────────────────────────────────────
   Future<dynamic> post(String path, Map<String, dynamic> body) async {
-    final res = await http
+    final res = await _authed(() async => http
         .post(Uri.parse('${ApiConfig.baseUrl}$path'),
             headers: await headers(), body: jsonEncode(body))
-        .timeout(ApiConfig.timeout);
+        .timeout(ApiConfig.timeout));
     if (res.statusCode == 401) throw UnauthorizedException();
     final data = jsonDecode(res.body);
     if (res.statusCode == 200 || res.statusCode == 201) {
@@ -104,10 +174,10 @@ class ApiService {
   }
 
   Future<dynamic> put(String path, Map<String, dynamic> body) async {
-    final res = await http
+    final res = await _authed(() async => http
         .put(Uri.parse('${ApiConfig.baseUrl}$path'),
             headers: await headers(), body: jsonEncode(body))
-        .timeout(ApiConfig.timeout);
+        .timeout(ApiConfig.timeout));
     if (res.statusCode == 401) throw UnauthorizedException();
     final data = jsonDecode(res.body);
     if (res.statusCode == 200) {
@@ -118,20 +188,22 @@ class ApiService {
   }
 
   Future<void> delete(String path) async {
-    final res = await http
+    final res = await _authed(() async => http
         .delete(Uri.parse('${ApiConfig.baseUrl}$path'), headers: await headers())
-        .timeout(ApiConfig.timeout);
+        .timeout(ApiConfig.timeout));
     if (res.statusCode == 401) throw UnauthorizedException();
     if (res.statusCode != 200) throw Exception('Error ${res.statusCode}');
     await _invalidate(path);
   }
 
   Future<dynamic> http_patch(String path, Map<String, dynamic> body) async {
-    final req = http.Request('PATCH', Uri.parse('${ApiConfig.baseUrl}$path'));
-    req.headers.addAll(await headers());
-    req.body = jsonEncode(body);
-    final streamed = await req.send().timeout(ApiConfig.timeout);
-    final res = await http.Response.fromStream(streamed);
+    final res = await _authed(() async {
+      final req = http.Request('PATCH', Uri.parse('${ApiConfig.baseUrl}$path'));
+      req.headers.addAll(await headers());
+      req.body = jsonEncode(body);
+      return http.Response.fromStream(
+          await req.send().timeout(ApiConfig.timeout));
+    });
     if (res.statusCode == 401) throw UnauthorizedException();
     final data = jsonDecode(res.body);
     if (res.statusCode == 200 || res.statusCode == 201) {
@@ -142,26 +214,31 @@ class ApiService {
   }
 
   Future<void> delete_with_body(String path, Map<String, dynamic> body) async {
-    final req = http.Request('DELETE', Uri.parse('${ApiConfig.baseUrl}$path'));
-    req.headers.addAll(await headers());
-    req.body = jsonEncode(body);
-    final streamed = await req.send().timeout(ApiConfig.timeout);
-    final res = await http.Response.fromStream(streamed);
+    final res = await _authed(() async {
+      final req = http.Request('DELETE', Uri.parse('${ApiConfig.baseUrl}$path'));
+      req.headers.addAll(await headers());
+      req.body = jsonEncode(body);
+      return http.Response.fromStream(
+          await req.send().timeout(ApiConfig.timeout));
+    });
     if (res.statusCode == 401) throw UnauthorizedException();
     if (res.statusCode != 200) throw Exception('Error ${res.statusCode}');
     await _invalidate(path);
   }
 
   Future<dynamic> multipartPost(String path, String filePath, String fieldName) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AppConstants.tokenKey) ?? '';
-    final fingerprint = await DeviceFingerprint.generate();
-    final req = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}$path'));
-    req.headers['Authorization'] = 'Bearer $token';
-    req.headers['x-fingerprint'] = fingerprint;
-    req.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
-    final streamed = await req.send().timeout(ApiConfig.timeout);
-    final res = await http.Response.fromStream(streamed);
+    // Rebuilt per attempt: a multipart file stream can only be sent once.
+    final res = await _authed(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(AppConstants.tokenKey) ?? '';
+      final req =
+          http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}$path'));
+      req.headers['Authorization'] = 'Bearer $token';
+      req.headers['x-fingerprint'] = await DeviceFingerprint.generate();
+      req.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
+      return http.Response.fromStream(
+          await req.send().timeout(ApiConfig.timeout));
+    });
     if (res.statusCode == 401) throw UnauthorizedException();
     final data = jsonDecode(res.body);
     if (res.statusCode == 200 || res.statusCode == 201) {

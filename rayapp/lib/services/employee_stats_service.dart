@@ -18,7 +18,7 @@ class EmployeeStatsService extends ApiService {
 
   Future<List<Project>> getEmployeeProjects(String employeeId) async {
     final data = await get('/projects');
-    final all = (data as List).map((e) => Project.fromJson(e)).toList();
+    final all = ApiService.unwrapList(data).map((e) => Project.fromJson(e)).toList();
     return all.where((p) => _inTeam(p, employeeId)).toList();
   }
 
@@ -30,7 +30,7 @@ class EmployeeStatsService extends ApiService {
 
   Future<List<ProjectWithTeam>> getEmployeeProjectsRaw(String employeeId) async {
     final data = await get('/projects');
-    return (data as List)
+    return ApiService.unwrapList(data)
         .map((e) => ProjectWithTeam.fromJson(e))
         .where((p) => p.teamIds.contains(employeeId))
         .toList();
@@ -66,7 +66,7 @@ class EmployeeStatsService extends ApiService {
 
   Future<List<DeptSummary>> getDeptSummary() async {
     final data = await get('/employee-reports/department-summary');
-    return (data as List).map((e) => DeptSummary.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => DeptSummary.fromJson(e)).toList();
   }
 
   Future<List<AttendanceSummaryItem>> getAttendanceSummary({int? month, int? year}) async {
@@ -74,7 +74,7 @@ class EmployeeStatsService extends ApiService {
     final m = month ?? now.month;
     final y = year ?? now.year;
     final data = await get('/employee-reports/attendance-summary?month=$m&year=$y');
-    return (data as List).map((e) => AttendanceSummaryItem.fromJson(e)).toList();
+    return ApiService.unwrapList(data).map((e) => AttendanceSummaryItem.fromJson(e)).toList();
   }
 }
 

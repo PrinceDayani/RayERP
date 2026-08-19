@@ -29,17 +29,17 @@ class TaskService extends ApiService {
 
   Future<Task> getById(String id) async {
     final data = await get('/tasks/$id');
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   Future<Task> create(Map<String, dynamic> body) async {
     final data = await post('/tasks', body);
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   Future<Task> update(String id, Map<String, dynamic> body) async {
     final data = await put('/tasks/$id', body);
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   Future<void> deleteTask(String id) => delete('/tasks/$id');
@@ -48,7 +48,7 @@ class TaskService extends ApiService {
     final body = <String, dynamic>{'status': status};
     if (userId != null) body['user'] = userId;
     final data = await http_patch('/tasks/$id/status', body);
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   // ── My Tasks ───────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ class TaskService extends ApiService {
 
   Future<Task> addComment(String id, String comment, String userId) async {
     final data = await post('/tasks/$id/comments', {'comment': comment, 'user': userId});
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   // ── Checklist ──────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ class TaskService extends ApiService {
 
   Future<Task> createFromTemplate(String templateId, Map<String, dynamic> body) async {
     final data = await post('/tasks/templates/$templateId/create', body);
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   // ── Search ─────────────────────────────────────────────────────────────────
@@ -232,12 +232,12 @@ class TaskService extends ApiService {
 
   Future<Task> clone(String id) async {
     final data = await post('/tasks/$id/clone', {});
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   Future<Task> uploadAttachment(String id, String filePath) async {
     final data = await multipartPost('/tasks/$id/attachments', filePath, 'file');
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   Future<void> removeAttachment(String id, String attachmentId) =>
@@ -247,7 +247,7 @@ class TaskService extends ApiService {
 
   Future<Task> addProjectTaskComment(String projectId, String taskId, String comment, String userId) async {
     final data = await post('/projects/$projectId/tasks/$taskId/comments', {'comment': comment, 'user': userId});
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   Future<Map<String, dynamic>> startProjectTaskTimer(String projectId, String taskId, String userId, {String? description}) async {
@@ -307,12 +307,12 @@ class TaskService extends ApiService {
     final body = <String, dynamic>{'status': status};
     if (userId != null) body['user'] = userId;
     final data = await http_patch('/projects/$projectId/tasks/$taskId/status', body);
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   Future<Task> cloneProjectTask(String projectId, String taskId) async {
     final data = await post('/projects/$projectId/tasks/$taskId/clone', {});
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   Future<List<dynamic>> getProjectTaskTimeline(String projectId, String taskId) async {
@@ -322,7 +322,7 @@ class TaskService extends ApiService {
 
   Future<Task> uploadProjectTaskAttachment(String projectId, String taskId, String filePath) async {
     final data = await multipartPost('/projects/$projectId/tasks/$taskId/attachments', filePath, 'file');
-    return Task.fromJson(data);
+    return Task.fromJson(ApiService.unwrap(data));
   }
 
   Future<void> removeProjectTaskAttachment(String projectId, String taskId, String attachmentId) =>

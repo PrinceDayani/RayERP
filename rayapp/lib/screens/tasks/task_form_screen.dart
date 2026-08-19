@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/task.dart';
-import '../../models/employee.dart';
 import '../../services/task_service.dart';
-import '../../services/employee_service.dart';
 import '../../services/project_service.dart';
 import '../../models/project.dart';
 
@@ -24,7 +22,6 @@ class TaskFormScreen extends StatefulWidget {
 class _TaskFormScreenState extends State<TaskFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _svc = TaskService();
-  final _empSvc = EmployeeService();
   final _projSvc = ProjectService();
 
   final _titleCtrl = TextEditingController();
@@ -42,7 +39,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   String? _assignedById;
   String? _parentTaskId;
 
-  List<Employee> _employees = [];
+  List<AssignableUser> _users = [];
   List<Project> _projects = [];
   List<Task> _allTasks = [];
   bool _loading = true;
@@ -86,11 +83,11 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   Future<void> _loadData() async {
     try {
       final results = await Future.wait([
-        _empSvc.getAll(),
+        _projSvc.getAssignableUsers(),
         if (_projectId == null) _projSvc.getAll() else Future.value(<Project>[]),
         _svc.getAll(),
       ]);
-      _employees = results[0] as List<Employee>;
+      _users = results[0] as List<AssignableUser>;
       if (_projectId == null) _projects = results[1] as List<Project>;
       _allTasks = results[2] as List<Task>;
     } catch (_) {}
@@ -246,10 +243,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                         initialValue: _assignedToId,
                         decoration:
                             const InputDecoration(labelText: 'Assign To *'),
-                        items: _employees
-                            .map((e) => DropdownMenuItem(
-                                value: e.id,
-                                child: Text(e.fullName,
+                        items: _users
+                            .map((u) => DropdownMenuItem(
+                                value: u.id,
+                                child: Text(u.name,
                                     style: const TextStyle(fontSize: 13))))
                             .toList(),
                         onChanged: (v) => setState(() => _assignedToId = v),
@@ -261,10 +258,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                         initialValue: _assignedById,
                         decoration:
                             const InputDecoration(labelText: 'Assigned By *'),
-                        items: _employees
-                            .map((e) => DropdownMenuItem(
-                                value: e.id,
-                                child: Text(e.fullName,
+                        items: _users
+                            .map((u) => DropdownMenuItem(
+                                value: u.id,
+                                child: Text(u.name,
                                     style: const TextStyle(fontSize: 13))))
                             .toList(),
                         onChanged: (v) => setState(() => _assignedById = v),

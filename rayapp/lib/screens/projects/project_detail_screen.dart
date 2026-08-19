@@ -7,6 +7,8 @@ import '../../services/project_service.dart';
 import '../../services/project_budget_service.dart';
 import '../../services/task_service.dart';
 import 'project_form_screen.dart';
+import 'project_risks_screen.dart';
+import 'project_settings_screen.dart';
 import '../tasks/task_list_screen.dart';
 import '../tasks/task_kanban_screen.dart';
 
@@ -93,13 +95,35 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
           ),
           if (_project != null)
             IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: 'Settings',
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit',
               onPressed: () async {
                 final updated = await Navigator.push<bool>(context,
                     MaterialPageRoute(builder: (_) => ProjectFormScreen(project: _project)));
                 if (updated == true) _load();
               },
+            ),
+          if (_project != null)
+            PopupMenuButton<String>(
+              tooltip: 'More',
+              onSelected: (value) async {
+                final project = _project!;
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => value == 'risks'
+                        ? ProjectRisksScreen(project: project)
+                        : ProjectSettingsScreen(project: project),
+                  ),
+                );
+                // These screens edit risks/status in place without signalling,
+                // so refresh unconditionally on return.
+                _load();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'risks', child: Text('Risks')),
+                PopupMenuItem(value: 'settings', child: Text('Project settings')),
+              ],
             ),
         ],
       ),
@@ -500,8 +524,7 @@ class _MRow extends StatelessWidget {
   const _MRow({required this.member, required this.role, required this.color});
   @override
   Widget build(BuildContext context) {
-    final initials = member.firstName.isNotEmpty
-        ? '${member.firstName[0]}${member.lastName.isNotEmpty ? member.lastName[0] : ''}'.toUpperCase() : '?';
+    final initials = member.initials.isNotEmpty ? member.initials : '?';
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(children: [
@@ -597,6 +620,44 @@ class _BudgetTabState extends State<_BudgetTab> {
     'approved' => AppTheme.green, 'pending' => AppTheme.amber, 'rejected' => AppTheme.red, _ => AppTheme.textSecondary,
   };
 
+  Future<void> _submitAction(String budgetId, String action) async {
+    try {
+      await ProjectBudgetService().budgetAction(budgetId, action);
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.red));
+      }
+    }
+  }
+
+  /// Budget approval workflow: only the transitions valid for the current
+  /// status are offered.
+  List<Widget> _workflowActions(ProjectBudget b) => switch (b.status) {
+        'draft' => [_action('Submit', AppTheme.blue, b.id, 'submit')],
+        'pending' => [
+            _action('Approve', AppTheme.green, b.id, 'approve'),
+            _action('Reject', AppTheme.red, b.id, 'reject'),
+          ],
+        'approved' => [_action('Revoke', AppTheme.amber, b.id, 'unapprove')],
+        'rejected' => [_action('Reset', AppTheme.blue, b.id, 'unreject')],
+        _ => <Widget>[],
+      };
+
+  Widget _action(String label, Color color, String budgetId, String action) =>
+      OutlinedButton(
+        onPressed: () => _submitAction(budgetId, action),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: color,
+          side: BorderSide(color: color),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: const Size(0, 32),
+          visualDensity: VisualDensity.compact,
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 12)),
+      );
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
@@ -610,14 +671,24 @@ class _BudgetTabState extends State<_BudgetTab> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (b?.status != null)
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: _bsc(b!.status).withOpacity(0.1), borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _bsc(b.status).withOpacity(0.3))),
-            child: Text('Budget: ${b.status.toUpperCase()}',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _bsc(b.status)))),
+        if (b != null) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: _bsc(b.status).withOpacity(0.1), borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _bsc(b.status).withOpacity(0.3))),
+                child: Text('Budget: ${b.status.toUpperCase()}',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _bsc(b.status))),
+              ),
+              ..._workflowActions(b),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         LayoutBuilder(builder: (_, c) {
           final w = (c.maxWidth - 20) / 3;
           return Row(children: [

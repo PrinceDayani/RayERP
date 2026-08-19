@@ -287,8 +287,7 @@ class ActivityEntry {
 
   factory ActivityEntry.fromJson(Map<String, dynamic> json) {
     final user = json['user'] ?? json['performedBy'];
-    String name = '';
-    if (user is Map) name = '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim();
+    final name = userNameOf(user);
     return ActivityEntry(
       action: json['action'] ?? json['type'] ?? '',
       description: json['description'] ?? json['details'] ?? '',
@@ -346,8 +345,7 @@ class ProjectFile {
 
   factory ProjectFile.fromJson(Map<String, dynamic> json) {
     final uploader = json['uploadedBy'] ?? json['createdBy'];
-    String name = '';
-    if (uploader is Map) name = '${uploader['firstName'] ?? ''} ${uploader['lastName'] ?? ''}'.trim();
+    final name = userNameOf(uploader);
     return ProjectFile(
       id: json['_id'] ?? '',
       name: json['name'] ?? json['originalName'] ?? '',
@@ -537,8 +535,7 @@ class BudgetApproval {
   BudgetApproval({required this.action, required this.userName, required this.comment, required this.createdAt});
   factory BudgetApproval.fromJson(Map<String, dynamic> j) {
     final user = j['approvedBy'] ?? j['user'];
-    String name = '';
-    if (user is Map) name = '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim();
+    final name = userNameOf(user);
     return BudgetApproval(
       action: j['action'] ?? j['status'] ?? '',
       userName: name.isNotEmpty ? name : (j['userName'] ?? ''),
@@ -623,8 +620,7 @@ class ProjectPermission {
   ProjectPermission({required this.userId, required this.userName, required this.role, required this.permissions});
   factory ProjectPermission.fromJson(Map<String, dynamic> j) {
     final user = j['user'] ?? j['employee'];
-    String name = '';
-    if (user is Map) name = '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}'.trim();
+    final name = userNameOf(user);
     return ProjectPermission(
       userId: (user is Map ? user['_id'] : j['userId']) ?? '',
       userName: name.isNotEmpty ? name : (j['userName'] ?? ''),

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/project.dart';
-import '../../models/employee.dart';
 import '../../services/project_service.dart';
-import '../../services/employee_service.dart';
 import '../../services/department_service.dart';
 
 class ProjectFormScreen extends StatefulWidget {
@@ -29,7 +27,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
   DateTime _endDate = DateTime.now().add(const Duration(days: 30));
   bool _saving = false;
 
-  List<Employee> _allEmployees = [];
+  List<AssignableUser> _allUsers = [];
   List<String> _allDepts = [];
   List<String> _selectedManagers = [];
   List<String> _selectedTeam = [];
@@ -62,12 +60,12 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
 
   Future<void> _loadPickers() async {
     final results = await Future.wait([
-      EmployeeService().getAll().catchError((_) => <Employee>[]),
+      ProjectService().getAssignableUsers().catchError((_) => <AssignableUser>[]),
       DepartmentService().getNames().catchError((_) => <String>[]),
     ]);
     if (mounted) {
       setState(() {
-      _allEmployees = results[0] as List<Employee>;
+      _allUsers = results[0] as List<AssignableUser>;
       _allDepts = results[1] as List<String>;
     });
     }
@@ -205,7 +203,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   label: 'Managers',
                   icon: Icons.manage_accounts_outlined,
                   selectedIds: _selectedManagers,
-                  employees: _allEmployees,
+                  users: _allUsers,
                   onChanged: (ids) => setState(() => _selectedManagers = ids),
                 )),
                 const SizedBox(width: 12),
@@ -213,7 +211,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   label: 'Team Members',
                   icon: Icons.group_outlined,
                   selectedIds: _selectedTeam,
-                  employees: _allEmployees,
+                  users: _allUsers,
                   onChanged: (ids) => setState(() => _selectedTeam = ids),
                 )),
               ])
@@ -222,7 +220,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                 label: 'Managers',
                 icon: Icons.manage_accounts_outlined,
                 selectedIds: _selectedManagers,
-                employees: _allEmployees,
+                users: _allUsers,
                 onChanged: (ids) => setState(() => _selectedManagers = ids),
               ),
               const SizedBox(height: 12),
@@ -230,7 +228,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                 label: 'Team Members',
                 icon: Icons.group_outlined,
                 selectedIds: _selectedTeam,
-                employees: _allEmployees,
+                users: _allUsers,
                 onChanged: (ids) => setState(() => _selectedTeam = ids),
               ),
             ],
@@ -299,25 +297,25 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
   }
 }
 
-// ── Multi-select employee picker ─────────────────────────────────────────────
+// ── Multi-select user picker ─────────────────────────────────────────────────
 
 class _MultiPicker extends StatelessWidget {
   final String label;
   final IconData icon;
   final List<String> selectedIds;
-  final List<Employee> employees;
+  final List<AssignableUser> users;
   final ValueChanged<List<String>> onChanged;
   const _MultiPicker({required this.label, required this.icon, required this.selectedIds,
-      required this.employees, required this.onChanged});
+      required this.users, required this.onChanged});
 
   void _open(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => _EmployeePickerSheet(
+      builder: (_) => _UserPickerSheet(
         title: label,
-        employees: employees,
+        users: users,
         selected: List.from(selectedIds),
         onDone: onChanged,
       ),
@@ -327,8 +325,8 @@ class _MultiPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final names = selectedIds.map((id) {
-      final e = employees.where((e) => e.id == id).firstOrNull;
-      return e != null ? '${e.firstName} ${e.lastName}'.trim() : id;
+      final u = users.where((u) => u.id == id).firstOrNull;
+      return u != null ? u.name : id;
     }).toList();
     return GestureDetector(
       onTap: () => _open(context),
@@ -359,19 +357,19 @@ class _MultiPicker extends StatelessWidget {
   }
 }
 
-class _EmployeePickerSheet extends StatefulWidget {
+class _UserPickerSheet extends StatefulWidget {
   final String title;
-  final List<Employee> employees;
+  final List<AssignableUser> users;
   final List<String> selected;
   final ValueChanged<List<String>> onDone;
-  const _EmployeePickerSheet({required this.title, required this.employees,
+  const _UserPickerSheet({required this.title, required this.users,
       required this.selected, required this.onDone});
 
   @override
-  State<_EmployeePickerSheet> createState() => _EmployeePickerSheetState();
+  State<_UserPickerSheet> createState() => _UserPickerSheetState();
 }
 
-class _EmployeePickerSheetState extends State<_EmployeePickerSheet> {
+class _UserPickerSheetState extends State<_UserPickerSheet> {
   late List<String> _sel;
   String _q = '';
 
@@ -383,9 +381,11 @@ class _EmployeePickerSheetState extends State<_EmployeePickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.employees.where((e) {
-      final name = '${e.firstName} ${e.lastName}'.toLowerCase();
-      return _q.isEmpty || name.contains(_q.toLowerCase());
+    final filtered = widget.users.where((u) {
+      final q = _q.toLowerCase();
+      return q.isEmpty ||
+          u.name.toLowerCase().contains(q) ||
+          u.email.toLowerCase().contains(q);
     }).toList();
 
     return DraggableScrollableSheet(
@@ -425,18 +425,18 @@ class _EmployeePickerSheetState extends State<_EmployeePickerSheet> {
               controller: ctrl,
               itemCount: filtered.length,
               itemBuilder: (_, i) {
-                final e = filtered[i];
-                final selected = _sel.contains(e.id);
+                final u = filtered[i];
+                final selected = _sel.contains(u.id);
                 return CheckboxListTile(
                   value: selected,
                   activeColor: AppTheme.primary,
-                  title: Text('${e.firstName} ${e.lastName}', style: const TextStyle(fontSize: 13)),
-                  subtitle: Text(e.position, style: const TextStyle(fontSize: 11)),
+                  title: Text(u.name, style: const TextStyle(fontSize: 13)),
+                  subtitle: Text(u.email, style: const TextStyle(fontSize: 11)),
                   onChanged: (_) => setState(() {
                     if (selected) {
-                      _sel.remove(e.id);
+                      _sel.remove(u.id);
                     } else {
-                      _sel.add(e.id);
+                      _sel.add(u.id);
                     }
                   }),
                 );
