@@ -66,6 +66,16 @@ export interface Project {
 
 export type { Task };
 
+/**
+ * Assignable person for operational refs (project team/managers, task
+ * assignee/watchers, project permissions). These are Users, never Employees.
+ */
+export interface MinimalUser {
+  _id: string;
+  name: string;
+  email: string;
+}
+
 export interface ProjectListParams {
   page?: number;
   limit?: number;
@@ -73,6 +83,8 @@ export interface ProjectListParams {
   priority?: string;
   projectType?: string;
   tag?: string;
+  /** Past end date and not completed/cancelled/archived. */
+  overdue?: boolean;
   q?: string;
   sort?: 'recent' | 'created' | 'name' | 'endDate' | 'startDate' | 'progress';
 }
@@ -107,6 +119,12 @@ export const projectsAPI = {
     return unwrapResponse(response.data);
   },
 
+  // Asks the project's owner and managers for an assignment. Grants nothing.
+  requestAccess: async (id: string, payload: { reason: string; urgency: string }) => {
+    const response = await api.post(`/projects/${id}/access-request`, payload);
+    return response.data as { success: boolean; message: string };
+  },
+
   restore: async (id: string) => {
     const response = await api.post(`/projects/${id}/restore`);
     return unwrapResponse(response.data);
@@ -137,10 +155,13 @@ export const projectsAPI = {
     return unwrapResponse(response.data);
   },
 
-  archive: async (id: string) => {
-    const response = await api.patch(`/projects/${id}/status`, { status: 'archived' });
+  // The status endpoint enforces the legal transition map server-side.
+  setStatus: async (id: string, status: Project['status']) => {
+    const response = await api.patch(`/projects/${id}/status`, { status });
     return unwrapResponse(response.data);
   },
+
+  archive: async (id: string) => projectsAPI.setStatus(id, 'archived'),
 
   manageTeam: async (id: string, action: 'add' | 'remove', memberId: string) => {
     if (action === 'add') {
@@ -234,9 +255,11 @@ export const projectsAPI = {
   },
 
   // Optimized data loading
-  getEmployeesMinimal: async () => {
-    const response = await api.get("/projects/employees/minimal");
-    return unwrapResponse(response.data);
+  // Assignable users for team/manager pickers. These project fields ref User,
+  // so this must not be sourced from the Employee (HR) rail.
+  getUsersMinimal: async (): Promise<MinimalUser[]> => {
+    const response = await api.get("/projects/users/minimal");
+    return unwrapResponse(response.data) ?? [];
   },
 
   getDepartmentsMinimal: async () => {
@@ -252,6 +275,7 @@ export const editProject = projectsAPI.edit;
 export const updateProject = projectsAPI.update;
 export const deleteProject = projectsAPI.delete;
 export const archiveProject = projectsAPI.archive;
+export const setProjectStatus = projectsAPI.setStatus;
 export const manageProjectTeam = projectsAPI.manageTeam;
 export const getProjectTasks = projectsAPI.getTasks;
 export const createProjectTask = projectsAPI.createTask;
@@ -270,5 +294,6 @@ export const getProjectTemplates = projectsAPI.getTemplates;
 export const getProjectsPaged = projectsAPI.getPaged;
 export const getProjectsMinimal = projectsAPI.getMinimal;
 export const restoreProject = projectsAPI.restore;
+export const requestProjectAccess = projectsAPI.requestAccess;
 
 export default projectsAPI;

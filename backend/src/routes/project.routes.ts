@@ -23,8 +23,9 @@ import {
   createProjectFast,
   restoreProject,
   getProjectsMinimal,
-  getEmployeesMinimal,
-  getDepartmentsMinimal
+  getUsersMinimal,
+  getDepartmentsMinimal,
+  requestProjectAccess
 } from '../controllers/projectController';
 import {
   listProjectPhases,
@@ -52,6 +53,7 @@ import {
   validatePriority,
   validateDateRange
 } from '../middleware/validation.middleware';
+import { strictLimiter } from '../middleware/rateLimiter.middleware';
 
 const router = Router();
 
@@ -61,7 +63,8 @@ router.use(authenticateToken);
 // --- Fast/Optimized Routes ---
 // Id/name pairs for dropdowns; avoids fetching full project documents.
 router.get('/minimal', requirePermission('projects.view'), getProjectsMinimal);
-router.get('/employees/minimal', requirePermission('projects.view'), getEmployeesMinimal);
+// Assignable users for team/manager/assignee pickers (these refs are User).
+router.get('/users/minimal', requirePermission('projects.view'), getUsersMinimal);
 router.get('/departments/minimal', requirePermission('projects.view'), getDepartmentsMinimal);
 
 // --- Core Project Routes ---
@@ -90,6 +93,14 @@ router.put('/:id',
 router.delete('/:id', validateObjectId(), requirePermission('projects.delete'), deleteProject);
 // Restores a soft-deleted project.
 router.post('/:id/restore', validateObjectId(), requirePermission('projects.delete'), restoreProject);
+// Asks the project's owner and managers for an assignment. Grants nothing itself.
+router.post('/:id/access-request',
+  validateObjectId(),
+  strictLimiter,
+  requirePermission('projects.view'),
+  validateRequiredFields(['reason']),
+  requestProjectAccess
+);
 router.patch('/:id/status',
   validateObjectId(),
   checkProjectAccess,

@@ -4,7 +4,8 @@ import Project from '../models/Project';
 import Task from '../models/Task';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
 import { WorkflowProjectIntegration } from '../services/workflowProjectIntegration';
-import { getAccessibleProjectIdsForUser } from '../middleware/projectAccess.middleware';
+import { getAccessibleProjectIdsForUser, resolveProjectAccess } from '../middleware/projectAccess.middleware';
+import NotificationEmitter from '../utils/notificationEmitter';
 import { getCachedProjectList, setCachedProjectList, invalidateProjectListCache } from '../utils/projectCache';
 import { logger } from '../utils/logger';
 import { emitProjectStats } from '../utils/socketEvents';
@@ -76,6 +77,14 @@ const buildProjectFilter = (query: any, search: string | null) => {
     filter.tags = query.tag.trim();
   }
 
+  // Past their end date and not already closed out. Combines with an explicit
+  // status filter rather than replacing it.
+  if (query.overdue === 'true') {
+    filter.endDate = { $lt: new Date() };
+    const closed = ['completed', 'cancelled', 'archived'];
+    filter.status = filter.status ? { ...filter.status, $nin: closed } : { $nin: closed };
+  }
+
   if (search) {
     const pattern = new RegExp(escapeRegex(search), 'i');
     filter.$and = [{ $or: [{ name: pattern }, { client: pattern }] }];
@@ -111,6 +120,7 @@ export const getAllProjects = async (req: Request, res: Response) => {
       priority: filter.priority?.$in ?? [],
       projectType: filter.projectType ?? '',
       tag: filter.tags ?? '',
+      overdue: req.query.overdue === 'true',
       search: search ?? '',
       sort,
       page: paginate ? page : 0,
@@ -1787,6 +1797,86 @@ export const getProjectsByView = async (req: Request, res: Response) => {
   }
 };
 
+// Shared by the project and task access-request endpoints. Validates the
+// submitted reason/urgency, which arrive straight from a user-facing form.
+export const parseAccessRequestBody = (
+  body: any
+): { reason: string; urgency: 'low' | 'medium' | 'high' | 'urgent' } | { error: string } => {
+  const reason = typeof body?.reason === 'string' ? body.reason.trim() : '';
+  if (!reason) return { error: 'A reason for the request is required' };
+  if (reason.length > 1000) return { error: 'Reason must be 1000 characters or fewer' };
+
+  // The form offers "critical"; notifications call that priority "urgent".
+  const urgencyMap: Record<string, 'low' | 'medium' | 'high' | 'urgent'> = {
+    low: 'low',
+    medium: 'medium',
+    high: 'high',
+    critical: 'urgent'
+  };
+  const urgency = urgencyMap[String(body?.urgency ?? 'medium')];
+  if (!urgency) return { error: 'Urgency must be one of: low, medium, high, critical' };
+
+  return { reason, urgency };
+};
+
+// Lets a user who can only see a project through a department grant ask its
+// owner and managers to assign them. It grants nothing on its own.
+export const requestProjectAccess = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const parsed = parseAccessRequestBody(req.body);
+    if ('error' in parsed) {
+      return res.status(400).json({ success: false, message: parsed.error });
+    }
+
+    const project = await Project.findById(req.params.id).select('name owner managers').lean();
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    // Nothing to request if they can already reach it in full.
+    const denial = await resolveProjectAccess(user, req.params.id);
+    if (!denial) {
+      return res.status(400).json({ success: false, message: 'You already have access to this project' });
+    }
+
+    const notified = await NotificationEmitter.projectAccessRequested({
+      project: project as any,
+      requesterId: user._id.toString(),
+      requesterName: user.name || user.email,
+      itemType: 'project',
+      itemName: project.name,
+      reason: parsed.reason,
+      urgency: parsed.urgency
+    });
+
+    if (!notified) {
+      return res.status(409).json({
+        success: false,
+        message: 'This project has no owner or manager who can grant access'
+      });
+    }
+
+    logger.info('Project access requested', {
+      projectId: req.params.id,
+      requestedBy: user._id.toString(),
+      notified
+    });
+
+    return res.json({
+      success: true,
+      message: `Request sent to ${notified} ${notified === 1 ? 'person' : 'people'} who can grant access`
+    });
+  } catch (error) {
+    logger.error('Error requesting project access', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error sending access request' });
+  }
+};
+
 export const getProjectTemplates = async (req: Request, res: Response) => {
   try {
     const templates = [
@@ -1967,20 +2057,22 @@ export const createProjectFast = async (req: Request, res: Response) => {
 };
 
 // Fast data loading endpoints
-export const getEmployeesMinimal = async (req: Request, res: Response) => {
+// Assignable people for project team/manager and task assignee pickers. These
+// fields ref User, so this must serve User ids - serving Employee ids here
+// writes HR ids into operational refs and silently breaks project access.
+export const getUsersMinimal = async (req: Request, res: Response) => {
   try {
-    const Employee = (await import('../models/Employee')).default;
-    
-    // Only fetch essential fields
-    const employees = await Employee.find(
-      { status: 'active' }, 
-      'firstName lastName _id'
-    ).lean().limit(100);
+    const User = (await import('../models/User')).default;
 
-    res.json({ success: true, data: employees });
+    const users = await User.find(
+      { status: 'active' },
+      'name email _id'
+    ).sort({ name: 1 }).lean().limit(200);
+
+    res.json({ success: true, data: users });
   } catch (error) {
-    logger.error('Error fetching employees', { message: error?.message });
-    res.status(500).json({ success: false, message: 'Error fetching employees' });
+    logger.error('Error fetching minimal users', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching users' });
   }
 };
 

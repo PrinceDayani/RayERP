@@ -18,16 +18,16 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { CalendarIcon, ArrowLeft, Save, X, Users, Building2, GitBranch, ClipboardList, BarChart3 } from "lucide-react";
 import { createProject, projectsAPI, type Project } from "@/lib/api/projectsAPI";
-import { getAllEmployees } from "@/lib/api/index";
 import { toast } from "@/components/ui/use-toast";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { CurrencySelector } from "@/components/ui/currency-selector";
 import { workflowsAPI, WorkflowTemplate } from "@/lib/api/workflowsAPI";
 
-interface Employee {
+// Project team/managers ref User, so pickers select users, not HR employees.
+interface AssignableUser {
   _id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
+  email: string;
 }
 
 interface Department {
@@ -40,7 +40,7 @@ const CreateProjectPage = () => {
   const { isAuthenticated } = useAuth();
   const { currencies, baseCurrency, formatCurrency, getCurrencySymbol } = useCurrency();
   const router = useRouter();
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<AssignableUser[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
   const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplate[]>([]);
@@ -74,7 +74,7 @@ const CreateProjectPage = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchEmployees();
+      fetchUsers();
       fetchDepartments();
       fetchWorkflowTemplates();
     }
@@ -89,20 +89,13 @@ const CreateProjectPage = () => {
     }
   };
 
-  const fetchEmployees = async () => {
+  const fetchUsers = async () => {
     try {
-      // Use optimized endpoint first, fallback to regular if needed
-      try {
-        const data = await projectsAPI.getEmployeesMinimal();
-        setEmployees(Array.isArray(data) ? data : []);
-      } catch {
-        const response = await getAllEmployees();
-        const data = response?.data || response;
-        setEmployees(Array.isArray(data) ? data : []);
-      }
+      const data = await projectsAPI.getUsersMinimal();
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error fetching employees:", error);
-      setEmployees([]);
+      console.error("Error fetching assignable users:", error);
+      setUsers([]);
     }
   };
 
@@ -187,21 +180,21 @@ const CreateProjectPage = () => {
     }
   };
 
-  const handleManagerToggle = (employeeId: string) => {
+  const handleManagerToggle = (userId: string) => {
     setProjectForm(prev => ({
       ...prev,
-      managers: prev.managers.includes(employeeId)
-        ? prev.managers.filter(id => id !== employeeId)
-        : [...prev.managers, employeeId]
+      managers: prev.managers.includes(userId)
+        ? prev.managers.filter(id => id !== userId)
+        : [...prev.managers, userId]
     }));
   };
 
-  const handleTeamMemberToggle = (employeeId: string) => {
+  const handleTeamMemberToggle = (userId: string) => {
     setProjectForm(prev => ({
       ...prev,
-      team: prev.team.includes(employeeId)
-        ? prev.team.filter(id => id !== employeeId)
-        : [...prev.team, employeeId]
+      team: prev.team.includes(userId)
+        ? prev.team.filter(id => id !== userId)
+        : [...prev.team, userId]
     }));
   };
 
@@ -214,11 +207,11 @@ const CreateProjectPage = () => {
     }));
   };
 
-  const filteredManagers = employees.filter(emp => 
-    `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(managerSearch.toLowerCase())
+  const filteredManagers = users.filter(u =>
+    u.name.toLowerCase().includes(managerSearch.toLowerCase())
   );
-  const filteredTeamMembers = employees.filter(emp => 
-    `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(teamSearch.toLowerCase())
+  const filteredTeamMembers = users.filter(u =>
+    u.name.toLowerCase().includes(teamSearch.toLowerCase())
   );
   const filteredDepartments = departments.filter(dept => 
     dept.name.toLowerCase().includes(deptSearch.toLowerCase())
@@ -444,10 +437,10 @@ const CreateProjectPage = () => {
                     <Input placeholder="Search..." value={managerSearch} onChange={(e) => setManagerSearch(e.target.value)} className="h-8" />
                   </div>
                   <div className="max-h-60 overflow-auto p-1">
-                    {filteredManagers.map((employee) => (
-                      <div key={employee._id} className="flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent" onClick={() => handleManagerToggle(employee._id)}>
-                        <Checkbox checked={projectForm.managers.includes(employee._id)} />
-                        <span className="text-sm">{employee.firstName} {employee.lastName}</span>
+                    {filteredManagers.map((user) => (
+                      <div key={user._id} className="flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent" onClick={() => handleManagerToggle(user._id)}>
+                        <Checkbox checked={projectForm.managers.includes(user._id)} />
+                        <span className="text-sm">{user.name}</span>
                       </div>
                     ))}
                   </div>
@@ -456,8 +449,8 @@ const CreateProjectPage = () => {
               {projectForm.managers.length > 0 && (
                 <div className="flex gap-1 flex-wrap">
                   {projectForm.managers.map(id => {
-                    const emp = employees.find(e => e._id === id);
-                    return emp ? <Badge key={id} variant="secondary" className="text-xs">{emp.firstName} {emp.lastName}<X className="ml-1 h-3 w-3 cursor-pointer" onClick={() => handleManagerToggle(id)} /></Badge> : null;
+                    const user = users.find(u => u._id === id);
+                    return user ? <Badge key={id} variant="secondary" className="text-xs">{user.name}<X className="ml-1 h-3 w-3 cursor-pointer" onClick={() => handleManagerToggle(id)} /></Badge> : null;
                   })}
                 </div>
               )}
@@ -485,10 +478,10 @@ const CreateProjectPage = () => {
                     <Input placeholder="Search..." value={teamSearch} onChange={(e) => setTeamSearch(e.target.value)} className="h-8" />
                   </div>
                   <div className="max-h-60 overflow-auto p-1">
-                    {filteredTeamMembers.map((employee) => (
-                      <div key={employee._id} className="flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent" onClick={() => handleTeamMemberToggle(employee._id)}>
-                        <Checkbox checked={projectForm.team.includes(employee._id)} />
-                        <span className="text-sm">{employee.firstName} {employee.lastName}</span>
+                    {filteredTeamMembers.map((user) => (
+                      <div key={user._id} className="flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent" onClick={() => handleTeamMemberToggle(user._id)}>
+                        <Checkbox checked={projectForm.team.includes(user._id)} />
+                        <span className="text-sm">{user.name}</span>
                       </div>
                     ))}
                   </div>
@@ -497,8 +490,8 @@ const CreateProjectPage = () => {
               {projectForm.team.length > 0 && (
                 <div className="flex gap-1 flex-wrap">
                   {projectForm.team.map(id => {
-                    const emp = employees.find(e => e._id === id);
-                    return emp ? <Badge key={id} variant="secondary" className="text-xs">{emp.firstName} {emp.lastName}<X className="ml-1 h-3 w-3 cursor-pointer" onClick={() => handleTeamMemberToggle(id)} /></Badge> : null;
+                    const user = users.find(u => u._id === id);
+                    return user ? <Badge key={id} variant="secondary" className="text-xs">{user.name}<X className="ml-1 h-3 w-3 cursor-pointer" onClick={() => handleTeamMemberToggle(id)} /></Badge> : null;
                   })}
                 </div>
               )}
