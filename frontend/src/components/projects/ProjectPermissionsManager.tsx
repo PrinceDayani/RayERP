@@ -18,6 +18,10 @@ interface ProjectPermission {
   createdAt: string;
 }
 
+// Stable reference: a fresh [] default would change identity on every render,
+// re-firing the loadUsers effect below in a loop.
+const NO_USERS: MinimalUser[] = [];
+
 interface ProjectPermissionsManagerProps {
   projectId?: string;
   users?: MinimalUser[];
@@ -123,7 +127,7 @@ const BULK_PERMISSION_TEMPLATES = [
 
 const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
   projectId,
-  users: propUsers = [],
+  users: propUsers = NO_USERS,
   selectedTeam = [],
   onPermissionsChange,
   initialPermissions = {}

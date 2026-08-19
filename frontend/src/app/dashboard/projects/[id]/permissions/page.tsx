@@ -12,7 +12,7 @@ export default function ProjectPermissionsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Project Permissions</h1>
       </div>
-      <ProjectPermissionsManager projectId={projectId} employees={[]} selectedTeam={[]} />
+      <ProjectPermissionsManager projectId={projectId} selectedTeam={[]} />
     </div>
   );
 }

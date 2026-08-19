@@ -600,7 +600,6 @@ const ProjectDetailPage = () => {
         {section === 'permissions' && (
           <ProjectPermissionsManager
             projectId={projectId}
-            employees={[]}
             selectedTeam={(project.team as any[])?.map((member: any) =>
               typeof member === 'object' ? member._id : member
             ) || []}
