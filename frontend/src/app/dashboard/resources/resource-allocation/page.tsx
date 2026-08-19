@@ -1,224 +1,196 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/PageLoader';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Users, Clock, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-import { employeesAPI } from '@/lib/api/employeesAPI';
+import { Calendar, Users, Clock, AlertCircle, CheckCircle, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { resourceApi } from '@/lib/api/resources';
 import { getProjectsMinimal } from '@/lib/api/projectsAPI';
+import type { CapacityPlan } from '@/types/resource';
 
-interface Employee {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  department: string;
-  position: string;
-  status: string;
+const WEEKLY_CAPACITY_HOURS = 40;
+
+interface MonthColumn {
+  key: string;
+  label: string;
+  start: Date;
+  end: Date;
 }
 
-interface Project {
-  _id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  status: string;
-}
+const monthColumns = (timeRange: string): MonthColumn[] => {
+  const now = new Date();
+  const count = timeRange === '6months' ? 6 : timeRange === '1year' ? 12 : 3;
 
-interface ResourceAllocation {
-  _id: string;
-  employee: Employee;
-  project: Project;
-  startDate: string;
-  endDate: string;
-  allocation: number;
-  role: string;
-}
+  return Array.from({ length: count }, (_, i) => {
+    const start = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    return {
+      key: `${start.getFullYear()}-${start.getMonth()}`,
+      label: start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      start,
+      end
+    };
+  });
+};
+
+const initialsOf = (name?: string): string =>
+  (name || '').split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase();
 
 export default function ResourceAllocationPage() {
   const router = useRouter();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [allocations, setAllocations] = useState<ResourceAllocation[]>([]);
+  const [plans, setPlans] = useState<CapacityPlan[]>([]);
+  const [activeProjectCount, setActiveProjectCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [timeRange, setTimeRange] = useState('3months');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const months = useMemo(() => monthColumns(timeRange), [timeRange]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
-      const [employeesData, projectsData] = await Promise.all([
-        employeesAPI.getAll(),
-        getProjectsMinimal()
+      // One capacity call covering the whole visible range. It returns every
+      // active employee with their real allocations, bridging Employee -> User
+      // server-side, so the months grid can be derived without inventing any of it.
+      const [capacityResponse, projects] = await Promise.all([
+        resourceApi.getCapacityPlanning({
+          startDate: months[0].start.toISOString(),
+          endDate: months[months.length - 1].end.toISOString()
+        }),
+        getProjectsMinimal().catch(() => [])
       ]);
 
-      const employees = Array.isArray(employeesData) ? employeesData : employeesData?.data || [];
-      const projects = projectsData || [];
-
-      // Create allocations from project team assignments
-      const projectAllocations = [];
-      projects.forEach(project => {
-        if (project.team && project.team.length > 0) {
-          project.team.forEach(teamMember => {
-            let employeeId, employee;
-            if (typeof teamMember === 'string') {
-              employeeId = teamMember;
-              employee = employees.find(emp => emp._id === employeeId);
-            } else if (teamMember._id) {
-              employeeId = teamMember._id;
-              employee = teamMember;
-            } else {
-              return;
-            }
-
-            if (employee || employeeId) {
-              projectAllocations.push({
-                _id: `${project._id}-${employeeId}`,
-                employee: employee || { _id: employeeId, firstName: 'Unknown', lastName: 'Employee' },
-                project: project,
-                startDate: project.startDate || new Date().toISOString(),
-                endDate: project.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                allocation: 50,
-                role: 'Team Member'
-              });
-            }
-          });
-        }
-      });
-
-      setEmployees(employees);
-      setProjects(projects);
-      setAllocations(projectAllocations);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+      setPlans(Array.isArray(capacityResponse.data) ? capacityResponse.data : []);
+      setActiveProjectCount(
+        (Array.isArray(projects) ? projects : []).filter((p: any) => p.status === 'active').length
+      );
+      setError(null);
+    } catch (err: any) {
+      // Staffing decisions get made from this grid, so a failed load must show
+      // as a failure rather than as an empty or invented schedule.
+      console.error('Error fetching resource allocation data:', err);
+      setPlans([]);
+      setError(err?.response?.data?.message || err?.message || 'Could not load resource allocation data.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [months]);
 
-  const getTimeRangeMonths = () => {
-    const now = new Date();
-    const months = [];
-    const monthCount = timeRange === '6months' ? 6 : timeRange === '1year' ? 12 : 3;
-    
-    for (let i = 0; i < monthCount; i++) {
-      const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
-      months.push({
-        key: `${date.getFullYear()}-${date.getMonth()}`,
-        label: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-        date
-      });
-    }
-    return months;
-  };
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const getEmployeeAllocations = (employeeId: string) => {
-    return allocations.filter(alloc => {
-      const empId = typeof alloc.employee === 'object' ? alloc.employee._id : alloc.employee;
-      return empId === employeeId;
-    });
-  };
-
-  const isEmployeeBusy = (employeeId: string, month: Date) => {
-    const empAllocations = getEmployeeAllocations(employeeId);
-    return empAllocations.some(alloc => {
-      const start = new Date(alloc.startDate);
-      const end = new Date(alloc.endDate);
-      const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
-      const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-      return start <= monthEnd && end >= monthStart;
-    });
-  };
-
-  const getEmployeeWorkload = (employeeId: string, month: Date) => {
-    const empAllocations = getEmployeeAllocations(employeeId);
-    let totalAllocation = 0;
-    
-    empAllocations.forEach(alloc => {
-      const start = new Date(alloc.startDate);
-      const end = new Date(alloc.endDate);
-      const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
-      const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-      if (start <= monthEnd && end >= monthStart) {
-        totalAllocation += alloc.allocation || 50; // Default 50% if not specified
-      }
-    });
-    
-    return Math.min(totalAllocation, 100);
-  };
-
-  const getWorkloadColor = (workload: number) => {
-    if (workload === 0) return 'bg-gray-200 text-gray-700';
-    if (workload <= 50) return 'bg-green-200 text-green-800';
-    if (workload <= 80) return 'bg-yellow-200 text-yellow-800';
-    return 'bg-red-200 text-red-800';
-  };
-
-  const filteredEmployees = employees.filter(emp => 
-    selectedDepartment === 'all' || emp.department === selectedDepartment
+  const departments = useMemo(
+    () => [...new Set(plans.map(p => p.employee.department).filter((d): d is string => !!d && d.trim() !== ''))],
+    [plans]
   );
 
-  const departments = [...new Set(employees.map(emp => emp.department))];
-  const months = getTimeRangeMonths();
+  const visiblePlans = useMemo(
+    () => plans.filter(p => selectedDepartment === 'all' || p.employee.department === selectedDepartment),
+    [plans, selectedDepartment]
+  );
+
+  // Hours booked against a person in a given month, from their real allocations.
+  const monthAllocations = (plan: CapacityPlan, month: MonthColumn) =>
+    plan.allocations.filter(alloc => {
+      const start = new Date(alloc.startDate);
+      const end = new Date(alloc.endDate);
+      return start <= month.end && end >= month.start;
+    });
+
+  const monthWorkload = (plan: CapacityPlan, month: MonthColumn): number => {
+    const hours = monthAllocations(plan, month).reduce((sum, alloc) => sum + (alloc.hours || 0), 0);
+    const capacity = plan.capacity || WEEKLY_CAPACITY_HOURS;
+    return capacity > 0 ? Math.round((hours / capacity) * 100) : 0;
+  };
+
+  const currentMonth = months[0];
+  const isFreeNow = (plan: CapacityPlan) => monthWorkload(plan, currentMonth) === 0;
+
+  const getWorkloadColor = (workload: number) => {
+    if (workload === 0) return 'bg-muted text-muted-foreground';
+    if (workload <= 50) return 'bg-green-200 text-green-900 dark:bg-green-900/40 dark:text-green-200';
+    if (workload <= 80) return 'bg-yellow-200 text-yellow-900 dark:bg-yellow-900/40 dark:text-yellow-200';
+    if (workload <= 100) return 'bg-orange-200 text-orange-900 dark:bg-orange-900/40 dark:text-orange-200';
+    return 'bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-200';
+  };
 
   if (loading) {
     return <PageLoader text="Loading resource allocation..." />;
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/employees')}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              Resource Allocation
-            </h1>
-            <p className="text-muted-foreground mt-1">Track employee workload and availability</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All Departments" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Departments</SelectItem>
-              {departments.filter(dept => dept && dept.trim() !== '').map(dept => (
-                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="3months">3 Months</SelectItem>
-              <SelectItem value="6months">6 Months</SelectItem>
-              <SelectItem value="1year">1 Year</SelectItem>
-            </SelectContent>
-          </Select>
+  const header = (
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/employees')}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Resource Allocation
+          </h1>
+          <p className="text-muted-foreground mt-1">Track employee workload and availability</p>
         </div>
       </div>
+      <div className="flex items-center gap-3">
+        <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="All Departments" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Departments</SelectItem>
+            {departments.map(dept => (
+              <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={timeRange} onValueChange={setTimeRange}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="3months">3 Months</SelectItem>
+            <SelectItem value="6months">6 Months</SelectItem>
+            <SelectItem value="1year">1 Year</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
 
-      {/* Stats Cards */}
+  if (error) {
+    return (
+      <div className="space-y-6">
+        {header}
+        <Card className="border-red-200 dark:border-red-900">
+          <CardContent className="p-12 text-center space-y-3">
+            <AlertTriangle className="h-8 w-8 mx-auto text-red-500" />
+            <p className="font-medium">Resource data unavailable</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
+            <Button variant="outline" onClick={fetchData}>Try again</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const freeNowCount = visiblePlans.filter(isFreeNow).length;
+  const overallocatedCount = visiblePlans.filter(p => monthWorkload(p, currentMonth) > 100).length;
+
+  return (
+    <div className="space-y-6">
+      {header}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="card-modern border-l-4 border-l-blue-500">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Employees</p>
-                <p className="text-2xl font-bold">{filteredEmployees.length}</p>
+                <p className="text-sm font-medium text-muted-foreground">Employees</p>
+                <p className="text-2xl font-bold tabular-nums">{visiblePlans.length}</p>
               </div>
               <Users className="h-6 w-6 text-blue-600" />
             </div>
@@ -228,10 +200,8 @@ export default function ResourceAllocationPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Available Now</p>
-                <p className="text-2xl font-bold">
-                  {filteredEmployees.filter(emp => !isEmployeeBusy(emp._id, new Date())).length}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Free this month</p>
+                <p className="text-2xl font-bold tabular-nums">{freeNowCount}</p>
               </div>
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
@@ -242,9 +212,7 @@ export default function ResourceAllocationPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Overallocated</p>
-                <p className="text-2xl font-bold">
-                  {filteredEmployees.filter(emp => getEmployeeWorkload(emp._id, new Date()) > 100).length}
-                </p>
+                <p className="text-2xl font-bold tabular-nums">{overallocatedCount}</p>
               </div>
               <AlertCircle className="h-6 w-6 text-orange-600" />
             </div>
@@ -255,7 +223,7 @@ export default function ResourceAllocationPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Active Projects</p>
-                <p className="text-2xl font-bold">{projects.filter(p => p.status === 'active').length}</p>
+                <p className="text-2xl font-bold tabular-nums">{activeProjectCount}</p>
               </div>
               <Calendar className="h-6 w-6 text-purple-600" />
             </div>
@@ -263,7 +231,6 @@ export default function ResourceAllocationPage() {
         </Card>
       </div>
 
-      {/* Resource Allocation Chart */}
       <Card className="card-modern">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -272,96 +239,110 @@ export default function ResourceAllocationPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <div className="min-w-[800px]">
-              {/* Header */}
-              <div className="grid grid-cols-[200px_1fr] gap-4 mb-4">
-                <div className="font-semibold text-sm">Employee</div>
-                <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${months.length}, 1fr)` }}>
-                  {months.map(month => (
-                    <div key={month.key} className="text-center text-xs font-medium text-muted-foreground">
-                      {month.label}
+          {visiblePlans.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+              <p className="font-medium">No employees to show</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {selectedDepartment === 'all'
+                  ? 'No active employee records were returned for this period.'
+                  : `No active employees in ${selectedDepartment}.`}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <div className="min-w-[800px]">
+                  <div className="grid grid-cols-[200px_1fr] gap-4 mb-4">
+                    <div className="font-semibold text-sm">Employee</div>
+                    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${months.length}, 1fr)` }}>
+                      {months.map(month => (
+                        <div key={month.key} className="text-center text-xs font-medium text-muted-foreground">
+                          {month.label}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    {visiblePlans.map(plan => (
+                      <div
+                        key={plan.employee._id}
+                        className="grid grid-cols-[200px_1fr] gap-4 items-center py-3 border-b border-border/50"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                            <span className="text-primary font-semibold text-xs">
+                              {initialsOf(plan.employee.name)}
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{plan.employee.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {plan.employee.position || plan.employee.department || '—'}
+                            </p>
+                          </div>
+                        </div>
+                        <div
+                          className="grid gap-2"
+                          style={{ gridTemplateColumns: `repeat(${months.length}, 1fr)` }}
+                        >
+                          {months.map(month => {
+                            const workload = monthWorkload(plan, month);
+                            const allocations = monthAllocations(plan, month);
+                            const projectNames = allocations
+                              .map(a => (typeof a.project === 'object' ? a.project?.name : undefined))
+                              .filter(Boolean)
+                              .join(', ');
+
+                            return (
+                              <div
+                                key={month.key}
+                                className={`h-12 rounded-md flex items-center justify-center text-xs font-medium ${getWorkloadColor(workload)}`}
+                                title={
+                                  workload > 0
+                                    ? `${month.label}: ${workload}%${projectNames ? ` — ${projectNames}` : ''}`
+                                    : `${month.label}: free`
+                                }
+                              >
+                                {workload > 0 ? `${workload}%` : 'Free'}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Employee Rows */}
-              <div className="space-y-3">
-                {filteredEmployees.map(employee => (
-                  <div key={employee._id} className="grid grid-cols-[200px_1fr] gap-4 items-center py-3 border-b border-border/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
-                        <span className="text-primary font-semibold text-xs">
-                          {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{employee.firstName} {employee.lastName}</p>
-                        <p className="text-xs text-muted-foreground">{employee.position}</p>
-                      </div>
-                    </div>
-                    <div className="relative h-12 bg-gray-100 rounded-lg overflow-hidden">
-                      {months.map(month => {
-                        const workload = getEmployeeWorkload(employee._id, month.date);
-                        const empAllocations = getEmployeeAllocations(employee._id).filter(alloc => {
-                          const start = new Date(alloc.startDate);
-                          const end = new Date(alloc.endDate);
-                          const monthStart = new Date(month.date.getFullYear(), month.date.getMonth(), 1);
-                          const monthEnd = new Date(month.date.getFullYear(), month.date.getMonth() + 1, 0);
-                          return start <= monthEnd && end >= monthStart;
-                        });
-                        const widthPercent = 100 / months.length;
-                        const leftPercent = (months.indexOf(month) * widthPercent);
-
-                        return (
-                          <div 
-                            key={month.key} 
-                            className={`absolute h-full flex items-center justify-center text-xs font-medium ${getWorkloadColor(workload)}`}
-                            style={{ 
-                              left: `${leftPercent}%`, 
-                              width: `${widthPercent}%`,
-                              borderRight: months.indexOf(month) < months.length - 1 ? '1px solid rgba(0,0,0,0.1)' : 'none'
-                            }}
-                            title={`${month.label}: ${workload > 0 ? `${workload}%` : 'Free'}${empAllocations.length > 0 ? ` - ${empAllocations.map(a => {
-                              const projectName = typeof a.project === 'object' ? a.project.name : 'Unknown Project';
-                              return projectName;
-                            }).join(', ')}` : ''}`}
-                          >
-                            {workload > 0 ? `${workload}%` : 'Free'}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-6 flex flex-wrap items-center gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-muted rounded" />
+                  <span>Free (0%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-200 dark:bg-green-900/40 rounded" />
+                  <span>Light (1–50%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-200 dark:bg-yellow-900/40 rounded" />
+                  <span>Moderate (51–80%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-orange-200 dark:bg-orange-900/40 rounded" />
+                  <span>Heavy (81–100%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-red-200 dark:bg-red-900/40 rounded" />
+                  <span>Over (&gt;100%)</span>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* Legend */}
-          <div className="mt-6 flex items-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-gray-200 rounded"></div>
-              <span>Free (0%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-200 rounded"></div>
-              <span>Light (1-50%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-yellow-200 rounded"></div>
-              <span>Moderate (51-80%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-200 rounded"></div>
-              <span>Heavy (81-100%)</span>
-            </div>
-          </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
-      {/* Available Employees */}
       <Card className="card-modern">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -370,23 +351,38 @@ export default function ResourceAllocationPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredEmployees
-              .filter(emp => !isEmployeeBusy(emp._id, new Date()))
-              .map(employee => (
-                <Card key={employee._id} className="hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => router.push(`/dashboard/employees/${employee._id}`)}>
+          {freeNowCount === 0 ? (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">Everyone has work booked this month</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {visiblePlans.filter(isFreeNow).map(plan => (
+                <Card
+                  key={plan.employee._id}
+                  role="button"
+                  tabIndex={0}
+                  className="hover:shadow-md transition-shadow cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  onClick={() => router.push(`/dashboard/employees/${plan.employee._id}`)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.push(`/dashboard/employees/${plan.employee._id}`);
+                    }
+                  }}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center">
-                        <span className="text-primary font-semibold">
-                          {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
-                        </span>
+                      <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                        <span className="text-primary font-semibold">{initialsOf(plan.employee.name)}</span>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{employee.firstName} {employee.lastName}</h3>
-                        <p className="text-sm text-muted-foreground">{employee.position}</p>
-                        <Badge variant="secondary" className="mt-1 bg-green-100 text-green-800">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate">{plan.employee.name}</h3>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {plan.employee.position || plan.employee.department || '—'}
+                        </p>
+                        <Badge variant="secondary" className="mt-1 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">
                           Available
                         </Badge>
                       </div>
@@ -394,11 +390,6 @@ export default function ResourceAllocationPage() {
                   </CardContent>
                 </Card>
               ))}
-          </div>
-          {filteredEmployees.filter(emp => !isEmployeeBusy(emp._id, new Date())).length === 0 && (
-            <div className="text-center py-8">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">All employees are currently assigned to projects</p>
             </div>
           )}
         </CardContent>

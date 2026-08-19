@@ -11,13 +11,12 @@ import { toast } from '@/hooks/use-toast';
 
 interface AllocationData {
   _id: string;
-  employee: { 
-    _id: string; 
-    firstName: string; 
-    lastName: string; 
-    position: string;
+  // ResourceAllocation.user refs User; the API populates name/email.
+  user: {
+    _id: string;
+    name: string;
+    email?: string;
     dailyCapacity?: number;
-    workingDays?: number[];
   };
   project: { _id: string; name: string };
   allocatedHours: number;
@@ -46,9 +45,9 @@ export default function ResourceAllocationCalendar() {
       // Map API response to component's AllocationData type
       const mappedData: AllocationData[] = data.map((alloc: any) => ({
         _id: alloc._id,
-        employee: alloc.employee,
+        user: alloc.user,
         project: alloc.project,
-        allocatedHours: alloc.allocationPercentage || 0,
+        allocatedHours: alloc.allocatedHours || 0,
         startDate: alloc.startDate,
         endDate: alloc.endDate || '',
         role: alloc.role,
@@ -68,14 +67,14 @@ export default function ResourceAllocationCalendar() {
     }
   };
 
-  const handleDragDrop = async (allocation: AllocationData, newDate: Date, newEmployeeId: string) => {
+  const handleDragDrop = async (allocation: AllocationData, newDate: Date, newUserId: string) => {
     try {
       const updatedData: Partial<any> = {
-        employee: newEmployeeId,
+        user: newUserId,
         startDate: newDate.toISOString(),
         project: typeof allocation.project === 'string' ? allocation.project : allocation.project._id,
         role: allocation.role,
-        allocationPercentage: allocation.allocatedHours,
+        allocatedHours: allocation.allocatedHours,
         status: 'active'
       };
       
@@ -102,7 +101,7 @@ export default function ResourceAllocationCalendar() {
     // Open edit modal (implement as needed)
     toast({
       title: "Edit Allocation",
-      description: `Editing ${allocation.project.name} for ${allocation.employee.firstName}`
+      description: `Editing ${allocation.project.name} for ${allocation.user?.name}`
     });
   };
 
@@ -116,16 +115,16 @@ export default function ResourceAllocationCalendar() {
     }
   };
 
-  const getUtilizationPercentage = (employeeId: string, date: Date) => {
+  const getUtilizationPercentage = (userId: string, date: Date) => {
     const dayAllocations = allocations.filter(alloc => 
-      alloc.employee._id === employeeId &&
+      alloc.user?._id === userId &&
       new Date(alloc.startDate) <= date &&
       new Date(alloc.endDate) >= date
     );
     
-    // Get employee capacity from allocation data or use default
-    const employeeAllocation = allocations.find(alloc => alloc.employee._id === employeeId);
-    const employeeCapacity = employeeAllocation?.employee?.dailyCapacity || 8;
+    // Per-person daily capacity, falling back to a standard 8-hour day
+    const userAllocation = allocations.find(alloc => alloc.user?._id === userId);
+    const userCapacity = userAllocation?.user?.dailyCapacity || 8;
     
     const totalHours = dayAllocations.reduce((sum, alloc) => {
       const weeklyHours = alloc.allocatedHours || 0;
@@ -133,7 +132,7 @@ export default function ResourceAllocationCalendar() {
       return sum + dailyHours;
     }, 0);
     
-    return Math.min(Math.round((totalHours / employeeCapacity) * 100), 200);
+    return Math.min(Math.round((totalHours / userCapacity) * 100), 200);
   };
 
   const getStatusFromUtilization = (percentage: number) => {
@@ -148,11 +147,11 @@ export default function ResourceAllocationCalendar() {
     const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
     const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
     
-    const employees = [...new Set(allocations.map(a => a.employee._id))].map(id => 
-      allocations.find(a => a.employee._id === id)?.employee
+    const people = [...new Set(allocations.map(a => a.user?._id))].map(id => 
+      allocations.find(a => a.user?._id === id)?.user
     ).filter(Boolean);
 
-    if (employees.length === 0) {
+    if (people.length === 0) {
       return (
         <div className="text-center py-8">
           <Users className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
@@ -163,7 +162,7 @@ export default function ResourceAllocationCalendar() {
 
     return (
       <div className="grid grid-cols-8 gap-1 text-sm">
-        <div className="p-2 font-medium">Employee</div>
+        <div className="p-2 font-medium">Team member</div>
         {days.map(day => (
           <div key={day.toISOString()} className="p-2 font-medium text-center border-b">
             <div>{format(day, 'EEE')}</div>
@@ -171,30 +170,30 @@ export default function ResourceAllocationCalendar() {
           </div>
         ))}
         
-        {employees.map(employee => (
-          <div key={employee?._id} className="contents">
+        {people.map(person => (
+          <div key={person?._id} className="contents">
             <div className="p-2 border-r bg-muted/50">
-              <div className="font-medium">{employee?.firstName} {employee?.lastName}</div>
-              <div className="text-xs text-muted-foreground">{employee?.position}</div>
+              <div className="font-medium">{person?.name}</div>
+              <div className="text-xs text-muted-foreground">{person?.email}</div>
             </div>
             {days.map(day => {
-              const utilization = getUtilizationPercentage(employee?._id || '', day);
+              const utilization = getUtilizationPercentage(person?._id || '', day);
               const status = getStatusFromUtilization(utilization);
               const dayAllocations = allocations.filter(alloc => 
-                alloc.employee._id === employee?._id &&
+                alloc.user?._id === person?._id &&
                 new Date(alloc.startDate) <= day &&
                 new Date(alloc.endDate) >= day
               );
 
               return (
                 <div
-                  key={`${employee?._id}-${day.toISOString()}`}
+                  key={`${person?._id}-${day.toISOString()}`}
                   className={`p-1 min-h-[80px] border ${getStatusColor(status)} relative`}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
-                    if (draggedItem && employee?._id) {
-                      handleDragDrop(draggedItem, day, employee._id);
+                    if (draggedItem && person?._id) {
+                      handleDragDrop(draggedItem, day, person._id);
                     }
                     setDraggedItem(null);
                   }}
@@ -249,7 +248,7 @@ export default function ResourceAllocationCalendar() {
             );
             
             const totalUtilization = dayAllocations.reduce((sum, alloc) => {
-              const empUtil = getUtilizationPercentage(alloc.employee._id, day);
+              const empUtil = getUtilizationPercentage(alloc.user?._id, day);
               return Math.max(sum, empUtil);
             }, 0);
             

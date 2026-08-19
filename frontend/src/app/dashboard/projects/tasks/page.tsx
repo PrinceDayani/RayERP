@@ -16,7 +16,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAllProjects } from '@/lib/api/projectsAPI';
 import tasksAPI, { type Task, type CreateTaskData, type UpdateTaskData } from '@/lib/api/tasksAPI';
-import employeesAPI, { type Employee } from '@/lib/api/employeesAPI';
+import { projectsAPI, type MinimalUser } from '@/lib/api/projectsAPI';
 import { useSocket } from '@/hooks/useSocket';
 
 interface Project {
@@ -29,8 +29,8 @@ interface Project {
   endDate: string;
   budget: number;
   progress: number;
-  manager: { _id: string; firstName: string; lastName: string };
-  team: { _id: string; firstName: string; lastName: string }[];
+  manager: { _id: string; name: string };
+  team: { _id: string; name: string }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -42,7 +42,7 @@ export default function TaskManagementPage() {
   const socket = useSocket();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<MinimalUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -108,21 +108,21 @@ export default function TaskManagementPage() {
 
   const fetchData = async () => {
     try {
-      const [tasksData, projectsData, employeesData] = await Promise.all([
+      const [tasksData, projectsData, usersData] = await Promise.all([
         tasksAPI.getAll(),
         getAllProjects(),
-        employeesAPI.getAll()
+        projectsAPI.getUsersMinimal()
       ]);
       
       setTasks(tasksData);
       setProjects(projectsData);
-      setEmployees(employeesData || []);
+      setUsers(Array.isArray(usersData) ? usersData : []);
     } catch (error) {
       console.error('Error fetching data:', error);
       // Set empty arrays as fallback
       setTasks([]);
       setProjects([]);
-      setEmployees([]);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -395,12 +395,12 @@ export default function TaskManagementPage() {
           <Label>Assigned To *</Label>
           <Select value={newTask.assignedTo} onValueChange={(value) => setNewTask(prev => ({ ...prev, assignedTo: value }))}>
             <SelectTrigger>
-              <SelectValue placeholder="Select employee" />
+              <SelectValue placeholder="Select user" />
             </SelectTrigger>
             <SelectContent>
-              {employees.map((employee) => (
-                <SelectItem key={employee._id} value={employee._id}>
-                  {employee.firstName} {employee.lastName}
+              {users.map((user) => (
+                <SelectItem key={user._id} value={user._id}>
+                  {user.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -528,18 +528,18 @@ export default function TaskManagementPage() {
                 <Label htmlFor="assignedTo">Assign To *</Label>
                 <Select onValueChange={(value) => setNewTask(prev => ({ ...prev, assignedTo: value }))} value={newTask.assignedTo}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select employee" />
+                    <SelectValue placeholder="Select user" />
                   </SelectTrigger>
                   <SelectContent>
-                    {employees.length > 0 ? (
-                      employees.map((employee) => (
-                        <SelectItem key={employee._id} value={employee._id}>
-                          {`${employee.firstName} ${employee.lastName}`}
+                    {users.length > 0 ? (
+                      users.map((user) => (
+                        <SelectItem key={user._id} value={user._id}>
+                          {user.name}
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="no-employees" disabled>
-                        No employees available
+                      <SelectItem value="no-users" disabled>
+                        No users available
                       </SelectItem>
                     )}
                   </SelectContent>

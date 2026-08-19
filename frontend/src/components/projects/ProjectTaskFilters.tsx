@@ -17,10 +17,10 @@ interface ProjectTaskFiltersProps {
     overdue: boolean;
   };
   onFilterChange: (filters: any) => void;
-  employees: Array<{ _id: string; firstName: string; lastName: string }>;
+  users: Array<{ _id: string; name: string }>;
 }
 
-export default function ProjectTaskFilters({ filters, onFilterChange, employees = [] }: ProjectTaskFiltersProps) {
+export default function ProjectTaskFilters({ filters, onFilterChange, users = [] }: ProjectTaskFiltersProps) {
   const handleReset = () => {
     onFilterChange({
       search: '',
@@ -103,9 +103,9 @@ export default function ProjectTaskFilters({ filters, onFilterChange, employees 
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Assignees</SelectItem>
-            {Array.isArray(employees) && employees.map((emp) => (
-              <SelectItem key={emp._id} value={emp._id}>
-                {emp.firstName} {emp.lastName}
+            {Array.isArray(users) && users.map((user) => (
+              <SelectItem key={user._id} value={user._id}>
+                {user.name}
               </SelectItem>
             ))}
           </SelectContent>

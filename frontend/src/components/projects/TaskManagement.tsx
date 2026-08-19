@@ -10,8 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon, Plus, Edit, Trash2, Clock, User, CheckCircle, PlayCircle, PauseCircle, ListTodo, Eye, Download, Calendar as CalendarViewIcon, GripVertical } from "lucide-react";
 import { tasksAPI, Task } from "@/lib/api/tasksAPI";
-import { projectsAPI } from "@/lib/api/projectsAPI";
-import employeesAPI from "@/lib/api/employeesAPI";
+import { projectsAPI, type MinimalUser } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import TaskDialogs from "@/components/tasks/TaskDialogs";
@@ -33,7 +32,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
   const { user } = useAuth();
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [users, setUsers] = useState<MinimalUser[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -54,17 +53,17 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
 
   useEffect(() => {
     fetchTasks();
-    fetchEmployees();
+    fetchUsers();
   }, [projectId]);
 
-  const fetchEmployees = async () => {
+  // Task.assignedTo refs User, so assignee options come from the User rail.
+  const fetchUsers = async () => {
     try {
-      const data = await employeesAPI.getAll();
-      const employeeList = Array.isArray(data) ? data : (data?.data || []);
-      setEmployees(employeeList);
+      const data = await projectsAPI.getUsersMinimal();
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error fetching employees:", error);
-      setEmployees([]);
+      console.error("Error fetching assignable users:", error);
+      setUsers([]);
     }
   };
 
@@ -591,7 +590,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
       <ProjectTaskFilters
         filters={filters}
         onFilterChange={setFilters}
-        employees={employees}
+        users={users}
       />
 
       {viewMode === "kanban" ? (
@@ -643,7 +642,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ projectId, showProjectT
         onBulkStatusUpdate={handleBulkStatusUpdate}
         onBulkDelete={handleBulkDelete}
         onBulkAssign={handleBulkAssign}
-        employees={employees}
+        users={users}
       />
 
       <TaskDialogs

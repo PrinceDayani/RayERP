@@ -28,7 +28,8 @@ import {
   removeTag,
   addCustomField,
   removeCustomField,
-  updateCustomField
+  updateCustomField,
+  requestTaskAccess
 } from '../controllers/taskController';
 import {
   addSubtask,
@@ -88,6 +89,7 @@ import {
   validateTaskStatus,
   validatePriority
 } from '../middleware/validation.middleware';
+import { strictLimiter } from '../middleware/rateLimiter.middleware';
 
 const router = Router();
 
@@ -144,6 +146,13 @@ router.patch('/:id/status',
 );
 
 router.post('/:id/clone', validateObjectId(), cloneTask);
+// Asks the parent project's owner and managers for an assignment. Grants nothing itself.
+router.post('/:id/access-request',
+  validateObjectId(),
+  strictLimiter,
+  validateRequiredFields(['reason']),
+  requestTaskAccess
+);
 router.patch('/bulk', validateRequiredFields(['taskIds', 'updates']), bulkUpdateTasks);
 router.post('/:id/watchers', validateObjectId(), validateRequiredFields(['userId']), addWatcher);
 router.delete('/:id/watchers', validateObjectId(), validateRequiredFields(['userId']), removeWatcher);

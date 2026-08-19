@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CapacityPlan } from '@/types/resource';
 import { resourceApi } from '@/lib/api/resources';
-import { employeesAPI } from '@/lib/api/employeesAPI';
 import { Users, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export default function CapacityPlanningView() {
@@ -16,6 +15,7 @@ export default function CapacityPlanningView() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('current');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCapacityData();
@@ -32,42 +32,18 @@ export default function CapacityPlanningView() {
         : new Date(now.getFullYear(), now.getMonth(), 1);
       const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
 
-      try {
-        const response = await resourceApi.getCapacityPlanning({
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString()
-        });
-        setData(response.data || []);
-      } catch (error) {
-        // Fallback to mock data if API not available
-        const employeesData = await employeesAPI.getAll();
-        const employees = Array.isArray(employeesData) ? employeesData : employeesData?.data || [];
-        
-        const mockCapacityData: CapacityPlan[] = employees.slice(0, 8).map(emp => {
-          const capacity = 40; // 40 hours per week
-          const allocated = Math.floor(Math.random() * 45); // Random allocation
-          const available = Math.max(0, capacity - allocated);
-          const utilizationRate = (allocated / capacity) * 100;
-          
-          return {
-            employee: {
-              _id: emp._id,
-              name: `${emp.firstName} ${emp.lastName}`,
-              position: emp.position || 'Developer',
-              skills: ['JavaScript', 'React', 'Node.js'].slice(0, Math.floor(Math.random() * 3) + 1)
-            },
-            capacity,
-            allocated,
-            available,
-            utilizationRate,
-            allocations: [] // Mock empty allocations
-          };
-        });
-        
-        setData(mockCapacityData);
-      }
-    } catch (error) {
-      console.error('Error fetching capacity data:', error);
+      const response = await resourceApi.getCapacityPlanning({
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      });
+      setData(response.data || []);
+      setError(null);
+    } catch (err: any) {
+      // Capacity figures drive staffing decisions, so a failed load must read
+      // as a failure rather than being back-filled with invented numbers.
+      console.error('Error fetching capacity data:', err);
+      setData([]);
+      setError(err?.response?.data?.message || err?.message || 'Could not load capacity data.');
     } finally {
       setLoading(false);
     }
@@ -103,6 +79,19 @@ export default function CapacityPlanningView() {
           <p className="text-muted-foreground">Loading capacity planning...</p>
         </div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-red-200 dark:border-red-900">
+        <CardContent className="p-10 text-center space-y-3">
+          <AlertTriangle className="h-8 w-8 mx-auto text-red-500" />
+          <p className="font-medium">Capacity data unavailable</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <Button variant="outline" onClick={fetchCapacityData}>Try again</Button>
+        </CardContent>
+      </Card>
     );
   }
 

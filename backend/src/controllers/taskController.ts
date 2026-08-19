@@ -9,6 +9,9 @@ import mongoose from 'mongoose';
 import { parseListParams, escapeRegex } from '../utils/helpers';
 import * as taskService from '../services/taskService';
 import { TaskServiceError } from '../services/taskService';
+import { resolveProjectAccess } from '../middleware/projectAccess.middleware';
+import NotificationEmitter from '../utils/notificationEmitter';
+import { parseAccessRequestBody } from './projectController';
 
 const actorOf = (req: Request) => ({
   userId: req.user!._id.toString(),
@@ -755,5 +758,69 @@ export const updateCustomField = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Error updating custom field', { message: error?.message });
     res.status(500).json({ message: 'Error updating custom field', error: error instanceof Error ? error.message : 'Unknown error' });
+  }
+};
+
+// A task inherits its access from its project, so the request goes to that
+// project's owner and managers. It grants nothing on its own.
+export const requestTaskAccess = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const parsed = parseAccessRequestBody(req.body);
+    if ('error' in parsed) {
+      return res.status(400).json({ success: false, message: parsed.error });
+    }
+
+    const task = await Task.findById(req.params.id).select('title project').lean();
+    if (!task?.project) {
+      return res.status(404).json({ success: false, message: 'Task not found' });
+    }
+
+    const projectId = task.project.toString();
+    const project = await Project.findById(projectId).select('name owner managers').lean();
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Task not found' });
+    }
+
+    const denial = await resolveProjectAccess(user, projectId);
+    if (!denial) {
+      return res.status(400).json({ success: false, message: 'You already have access to this task' });
+    }
+
+    const notified = await NotificationEmitter.projectAccessRequested({
+      project: project as any,
+      requesterId: user._id.toString(),
+      requesterName: user.name || user.email,
+      itemType: 'task',
+      itemName: task.title,
+      reason: parsed.reason,
+      urgency: parsed.urgency
+    });
+
+    if (!notified) {
+      return res.status(409).json({
+        success: false,
+        message: "This task's project has no owner or manager who can grant access"
+      });
+    }
+
+    logger.info('Task access requested', {
+      taskId: req.params.id,
+      projectId,
+      requestedBy: user._id.toString(),
+      notified
+    });
+
+    return res.json({
+      success: true,
+      message: `Request sent to ${notified} ${notified === 1 ? 'person' : 'people'} who can grant access`
+    });
+  } catch (error) {
+    logger.error('Error requesting task access', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error sending access request' });
   }
 };

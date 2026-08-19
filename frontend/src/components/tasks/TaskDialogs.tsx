@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { getProjectsMinimal } from '@/lib/api/projectsAPI';
-import employeesAPI, { Employee } from '@/lib/api/employeesAPI';
+import { projectsAPI, type MinimalUser } from '@/lib/api/projectsAPI';
 import { tasksAPI, Task } from '@/lib/api/tasksAPI';
 import { Plus, X, Tag, CheckSquare, Users, Square, Edit } from 'lucide-react';
 
@@ -47,7 +47,7 @@ interface TaskDialogsProps {
 export default function TaskDialogs({ createDialog, editDialog, commentDialog, viewDialog }: TaskDialogsProps) {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<MinimalUser[]>([]);
   const [loading, setLoading] = useState(false);
   
   // Form states
@@ -136,18 +136,17 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
 
   const fetchData = async () => {
     try {
-      const [projectsData, employeesData, tasksData] = await Promise.all([
+      const [projectsData, usersData, tasksData] = await Promise.all([
         getProjectsMinimal(),
-        employeesAPI.getAll(),
+        projectsAPI.getUsersMinimal(),
         tasksAPI.getAll()
       ]);
       setProjects(projectsData || []);
-      const employeeList = Array.isArray(employeesData) ? employeesData : (employeesData?.data || []);
-      setEmployees(employeeList);
+      setUsers(Array.isArray(usersData) ? usersData : []);
       setAllTasks(tasksData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
-      setEmployees([]);
+      setUsers([]);
     }
   };
 
@@ -177,11 +176,11 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
     setRecurrencePattern('');
   };
 
-  const toggleAssignee = (employeeId: string) => {
+  const toggleAssignee = (userId: string) => {
     setSelectedAssignees(prev => 
-      prev.includes(employeeId) 
-        ? prev.filter(id => id !== employeeId)
-        : [...prev, employeeId]
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
     );
   };
   
@@ -431,29 +430,29 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
                   <div className="col-span-2">
                     <Label>Assign To (Select Multiple) *</Label>
                     <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
-                      {employees.length > 0 ? (
-                        employees.map((employee) => (
-                          <div key={employee._id} className="flex items-center gap-2">
+                      {users.length > 0 ? (
+                        users.map((user) => (
+                          <div key={user._id} className="flex items-center gap-2">
                             <Checkbox
-                              checked={selectedAssignees.includes(employee._id)}
-                              onCheckedChange={() => toggleAssignee(employee._id)}
+                              checked={selectedAssignees.includes(user._id)}
+                              onCheckedChange={() => toggleAssignee(user._id)}
                             />
-                            <label className="text-sm cursor-pointer" onClick={() => toggleAssignee(employee._id)}>
-                              {`${employee.firstName} ${employee.lastName}`}
+                            <label className="text-sm cursor-pointer" onClick={() => toggleAssignee(user._id)}>
+                              {user.name}
                             </label>
                           </div>
                         ))
                       ) : (
-                        <p className="text-sm text-gray-500">No employees available</p>
+                        <p className="text-sm text-gray-500">No users available</p>
                       )}
                     </div>
                     {selectedAssignees.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {selectedAssignees.map(id => {
-                          const emp = employees.find(e => e._id === id);
-                          return emp ? (
+                          const user = users.find(u => u._id === id);
+                          return user ? (
                             <Badge key={id} variant="secondary" className="text-xs">
-                              {`${emp.firstName} ${emp.lastName}`}
+                              {user.name}
                             </Badge>
                           ) : null;
                         })}
@@ -626,13 +625,13 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
                     Watchers
                   </Label>
                   <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {employees.map((employee) => (
-                      <div key={employee._id} className="flex items-center gap-2 p-2 border rounded">
+                    {users.map((user) => (
+                      <div key={user._id} className="flex items-center gap-2 p-2 border rounded">
                         <Checkbox
-                          checked={watchers.includes(employee._id)}
-                          onCheckedChange={() => toggleWatcher(employee._id)}
+                          checked={watchers.includes(user._id)}
+                          onCheckedChange={() => toggleWatcher(user._id)}
                         />
-                        <span>{`${employee.firstName} ${employee.lastName}`}</span>
+                        <span>{user.name}</span>
                       </div>
                     ))}
                   </div>
@@ -891,13 +890,13 @@ export default function TaskDialogs({ createDialog, editDialog, commentDialog, v
                     Watchers
                   </Label>
                   <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {employees.map((employee) => (
-                      <div key={employee._id} className="flex items-center gap-2 p-2 border rounded">
+                    {users.map((user) => (
+                      <div key={user._id} className="flex items-center gap-2 p-2 border rounded">
                         <Checkbox
-                          checked={watchers.includes(employee._id)}
-                          onCheckedChange={() => toggleWatcher(employee._id)}
+                          checked={watchers.includes(user._id)}
+                          onCheckedChange={() => toggleWatcher(user._id)}
                         />
-                        <span>{`${employee.firstName} ${employee.lastName}`}</span>
+                        <span>{user.name}</span>
                       </div>
                     ))}
                   </div>

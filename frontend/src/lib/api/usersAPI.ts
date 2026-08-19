@@ -1,10 +1,5 @@
 import api from './api';
 
-const apiRequest = async (url: string, options?: any) => {
-  const response = await api(url, options);
-  return response.data;
-};
-
 export interface User {
   _id: string;
   id: string;
@@ -34,171 +29,94 @@ export interface UpdateUserData {
   status?: string;
 }
 
+/** Mirrors the backend UserStatusRequest document. */
 export interface StatusChangeRequest {
   _id: string;
-  name: string;
-  status: string;
-  statusChangeRequest: {
-    requestedStatus: string;
-    reason?: string;
-    requestedBy: {
-      name: string;
-    };
-    requestedAt: string;
-  };
+  user: Pick<User, '_id' | 'name' | 'email'>;
+  requestedBy: Pick<User, '_id' | 'name' | 'email'>;
+  currentStatus: string;
+  requestedStatus: string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  createdAt: string;
+}
+
+export interface StatusChangeResult {
+  success: boolean;
+  message?: string;
+  /** True when the move needed approval and a request was recorded instead. */
+  requiresApproval?: boolean;
+  request?: { _id: string; status: string; requestedStatus: string };
 }
 
 const usersAPI = {
+  // Returns a bare array.
   getAll: async (): Promise<User[]> => {
-    try {
-      return await apiRequest('/api/users');
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      throw error;
-    }
+    const response = await api.get('/users');
+    return response.data?.data ?? response.data ?? [];
   },
 
   getById: async (userId: string): Promise<User> => {
-    try {
-      const response = await apiRequest(`/api/users/${userId}`);
-      return response.user || response;
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      throw error;
-    }
+    const response = await api.get(`/users/${userId}`);
+    return response.data?.user ?? response.data;
   },
 
-  create: async (userData: CreateUserData): Promise<User> => {
-    try {
-      const response = await apiRequest('/api/users', {
-        method: 'POST',
-        body: JSON.stringify(userData)
-      });
-      return response.user || response;
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
-    }
+  createUser: async (userData: CreateUserData): Promise<User> => {
+    const response = await api.post('/users', userData);
+    return response.data?.user ?? response.data;
   },
 
-  update: async (userId: string, userData: UpdateUserData): Promise<User> => {
-    try {
-      const response = await apiRequest(`/api/users/${userId}`, {
-        method: 'PUT',
-        body: JSON.stringify(userData)
-      });
-      return response.user || response;
-    } catch (error) {
-      console.error('Error updating user:', error);
-      throw error;
-    }
+  updateUser: async (userId: string, userData: UpdateUserData): Promise<User> => {
+    const response = await api.put(`/users/${userId}`, userData);
+    return response.data?.user ?? response.data;
   },
 
-  delete: async (userId: string): Promise<void> => {
-    try {
-      await apiRequest(`/api/users/${userId}`, {
-        method: 'DELETE'
-      });
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      throw error;
-    }
+  deleteUser: async (userId: string): Promise<void> => {
+    await api.delete(`/users/${userId}`);
   },
 
-  assignRole: async (userId: string, roleId: string): Promise<User> => {
-    try {
-      const response = await apiRequest(`/api/users/${userId}/role`, {
-        method: 'PUT',
-        body: JSON.stringify({ roleId })
-      });
-      return response.user || response;
-    } catch (error) {
-      console.error('Error assigning role:', error);
-      throw error;
-    }
+  updateRole: async (userId: string, roleId: string): Promise<User> => {
+    const response = await api.put(`/users/${userId}/role`, { roleId });
+    return response.data?.user ?? response.data;
   },
 
-  bulkAssignRoles: async (userIds: string[], roleId: string): Promise<{ success: boolean; updated: number }> => {
-    try {
-      return await apiRequest('/api/users/bulk/role', {
-        method: 'PUT',
-        body: JSON.stringify({ userIds, roleId })
-      });
-    } catch (error) {
-      console.error('Error bulk assigning roles:', error);
-      throw error;
-    }
+  bulkUpdateRoles: async (userIds: string[], roleId: string): Promise<number> => {
+    const response = await api.put('/users/bulk/role', { userIds, roleId });
+    return response.data?.updated ?? 0;
   },
 
   resetPassword: async (userId: string, newPassword: string): Promise<void> => {
-    try {
-      await apiRequest(`/api/users/${userId}/reset-password`, {
-        method: 'PUT',
-        body: JSON.stringify({ newPassword })
-      });
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      throw error;
-    }
+    await api.put(`/users/${userId}/reset-password`, { newPassword });
   },
 
-  activate: async (userId: string): Promise<User> => {
-    try {
-      const response = await apiRequest(`/api/users/${userId}/activate`, {
-        method: 'PUT'
-      });
-      return response.user || response;
-    } catch (error) {
-      console.error('Error activating user:', error);
-      throw error;
-    }
+  // Activating or disabling a user may need approval; the server decides and
+  // says so via `requiresApproval` rather than applying the change.
+  setStatus: async (userId: string, status: string, reason?: string): Promise<StatusChangeResult> => {
+    const response = await api.put(`/users/${userId}/status`, { status, reason });
+    return response.data;
   },
 
-  deactivate: async (userId: string): Promise<User> => {
-    try {
-      const response = await apiRequest(`/api/users/${userId}/deactivate`, {
-        method: 'PUT'
-      });
-      return response.user || response;
-    } catch (error) {
-      console.error('Error deactivating user:', error);
-      throw error;
-    }
-  },
+  activate: async (userId: string, reason?: string): Promise<StatusChangeResult> =>
+    usersAPI.setStatus(userId, 'active', reason),
 
-  requestStatusChange: async (userId: string, status: string, reason: string): Promise<StatusChangeRequest> => {
-    try {
-      const response = await apiRequest(`/api/users/${userId}/status-change-request`, {
-        method: 'POST',
-        body: JSON.stringify({ status, reason })
-      });
-      return response.request || response;
-    } catch (error) {
-      console.error('Error requesting status change:', error);
-      throw error;
-    }
-  },
+  deactivate: async (userId: string, reason?: string): Promise<StatusChangeResult> =>
+    usersAPI.setStatus(userId, 'inactive', reason),
+
+  requestStatusChange: async (userId: string, status: string, reason: string): Promise<StatusChangeResult> =>
+    usersAPI.setStatus(userId, status, reason),
 
   getPendingStatusRequests: async (): Promise<StatusChangeRequest[]> => {
-    try {
-      const response = await apiRequest('/api/users/status-change-requests');
-      return response.requests || response || [];
-    } catch (error) {
-      console.error('Error fetching pending status requests:', error);
-      throw error;
-    }
+    const response = await api.get('/users/status-requests/pending');
+    return response.data?.requests ?? [];
   },
 
-  approveStatusChange: async (requestId: string, approve: boolean): Promise<void> => {
-    try {
-      await apiRequest(`/api/users/status-change-requests/${requestId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ approve })
-      });
-    } catch (error) {
-      console.error('Error approving status change:', error);
-      throw error;
-    }
+  approveStatusRequest: async (requestId: string): Promise<void> => {
+    await api.put(`/users/status-requests/${requestId}/approve`);
+  },
+
+  rejectStatusRequest: async (requestId: string, reason?: string): Promise<void> => {
+    await api.put(`/users/status-requests/${requestId}/reject`, { reason });
   }
 };
 

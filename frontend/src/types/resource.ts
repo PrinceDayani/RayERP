@@ -1,12 +1,10 @@
 export interface ResourceAllocation {
   _id: string;
-  employee: {
+  /** ResourceAllocation.user refs User; the API populates name/email. */
+  user: {
     _id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
-    position: string;
-    skills: string[];
   };
   project: {
     _id: string;
@@ -40,18 +38,30 @@ export interface ResourceAllocation {
   updatedAt: string;
 }
 
+/** Capacity planning is HR-anchored: the server bridges Employee -> User. */
 export interface CapacityPlan {
   employee: {
     _id: string;
     name: string;
     position: string;
+    department?: string;
     skills: string[];
   };
   capacity: number;
   allocated: number;
   available: number;
   utilizationRate: number;
-  allocations: ResourceAllocation[];
+  status?: 'available' | 'partial' | 'full' | 'over';
+  overAllocation?: number;
+  /** Reduced shape returned by /resources/capacity-planning. */
+  allocations: Array<{
+    _id: string;
+    project: { _id: string; name: string; status?: string } | string;
+    hours: number;
+    role: string;
+    startDate: string;
+    endDate: string;
+  }>;
 }
 
 export type SkillLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';

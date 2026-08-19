@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus, Send, Clock } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { projectsAPI } from "@/lib/api/projectsAPI";
+import tasksAPI from "@/lib/api/tasksAPI";
 
 interface AccessRequestDialogProps {
   open: boolean;
@@ -40,21 +42,23 @@ export function AccessRequestDialog({
 
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const payload = { reason: reason.trim(), urgency };
+      const result = itemType === 'task'
+        ? await tasksAPI.requestAccess(itemId, payload)
+        : await projectsAPI.requestAccess(itemId, payload);
+
       toast({
         title: "Access request sent",
-        description: `Your request for ${itemType} "${itemName}" has been sent to the project manager.`,
+        description: result?.message || `Your request for ${itemType} "${itemName}" was sent.`
       });
-      
+
       onOpenChange(false);
       setReason("");
       setUrgency("medium");
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Failed to send request",
-        description: "Please try again later.",
+        description: error?.response?.data?.message || error?.message || "Please try again later.",
         variant: "destructive"
       });
     } finally {
@@ -108,7 +112,7 @@ export function AccessRequestDialog({
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
-            <span>Requests are typically reviewed within 24 hours</span>
+            <span>The project's owner and managers are notified straight away</span>
           </div>
 
           <div className="flex gap-2 pt-2">

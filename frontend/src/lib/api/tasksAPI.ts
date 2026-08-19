@@ -90,7 +90,7 @@ export interface CreateTaskData {
 export interface UpdateTaskData {
   title?: string;
   description?: string;
-  status?: 'todo' | 'in-progress' | 'review' | 'completed';
+  status?: Task['status'];
   assignedTo?: string;
   assignedBy?: string;
   project?: string;
@@ -102,6 +102,11 @@ export interface UpdateTaskData {
 
 
 
+export interface PaginatedTasks {
+  data: Task[];
+  pagination: { page: number; limit: number; total: number; pages: number };
+}
+
 export const tasksAPI = {
   // Get all tasks
   // Without paging params the API returns a bare array, so existing callers
@@ -109,6 +114,23 @@ export const tasksAPI = {
   getAll: async (params: Record<string, any> = {}) => {
     const response = await api.get('/tasks', { params });
     return unwrapResponse(response.data);
+  },
+
+  // Server-side filtered and paged listing, mirroring projectsAPI.getPaged.
+  getPaged: async (params: Record<string, any> = {}): Promise<PaginatedTasks> => {
+    const response = await api.get('/tasks', {
+      params: { page: 1, limit: 25, ...params }
+    });
+    return {
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination ?? { page: 1, limit: 25, total: 0, pages: 0 }
+    };
+  },
+
+  // Asks the parent project's owner and managers for an assignment. Grants nothing.
+  requestAccess: async (id: string, payload: { reason: string; urgency: string }) => {
+    const response = await api.post(`/tasks/${id}/access-request`, payload);
+    return response.data as { success: boolean; message: string };
   },
 
   // Id/title pairs for dropdowns.

@@ -4,4 +4,3 @@ export { default as ProjectForm } from './ProjectForm';
 export { default as TaskKanban } from './TaskKanban';
 export { default as ProjectInstructions } from './ProjectInstructions';
 export { default as EnhancedFileSharing } from './EnhancedFileSharing';
-export { default as ProjectViews } from './ProjectViews';

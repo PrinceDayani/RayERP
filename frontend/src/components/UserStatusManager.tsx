@@ -45,12 +45,17 @@ export default function UserStatusManager({ user, onStatusChange }: UserStatusMa
     setError(null);
 
     try {
-      await usersAPI.requestStatusChange(user._id, selectedStatus, reason);
-      setSuccess('Status change request submitted successfully');
+      // Only some moves need approval; the server reports which happened.
+      const result = await usersAPI.requestStatusChange(user._id, selectedStatus, reason);
+      setSuccess(
+        result.requiresApproval
+          ? 'Status change request submitted for approval'
+          : 'Status updated'
+      );
       setIsOpen(false);
       setSelectedStatus('');
       setReason('');
-      onStatusChange?.(user._id, 'pending_approval');
+      onStatusChange?.(user._id, result.requiresApproval ? 'pending_approval' : selectedStatus);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to submit status change request');
     } finally {
@@ -161,9 +166,13 @@ export function StatusApprovalManager({ onRefresh }: StatusApprovalManagerProps)
     }
   };
 
-  const handleApproval = async (userId: string, approve: boolean) => {
+  const handleApproval = async (requestId: string, approve: boolean) => {
     try {
-      await usersAPI.approveStatusChange(userId, approve);
+      if (approve) {
+        await usersAPI.approveStatusRequest(requestId);
+      } else {
+        await usersAPI.rejectStatusRequest(requestId);
+      }
       await fetchPendingRequests();
       onRefresh?.();
     } catch (err: any) {
@@ -202,21 +211,21 @@ export function StatusApprovalManager({ onRefresh }: StatusApprovalManagerProps)
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <User className="h-4 w-4" />
-              {request.name}
+              {request.user?.name || request.user?.email}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-4 text-sm">
-              <span>Current: <Badge className={STATUS_COLORS[request.status as keyof typeof STATUS_COLORS]}>{STATUS_LABELS[request.status as keyof typeof STATUS_LABELS]}</Badge></span>
+              <span>Current: <Badge className={STATUS_COLORS[request.currentStatus as keyof typeof STATUS_COLORS]}>{STATUS_LABELS[request.currentStatus as keyof typeof STATUS_LABELS]}</Badge></span>
               <span>→</span>
-              <span>Requested: <Badge className={STATUS_COLORS[request.statusChangeRequest.requestedStatus as keyof typeof STATUS_COLORS]}>{STATUS_LABELS[request.statusChangeRequest.requestedStatus as keyof typeof STATUS_LABELS]}</Badge></span>
+              <span>Requested: <Badge className={STATUS_COLORS[request.requestedStatus as keyof typeof STATUS_COLORS]}>{STATUS_LABELS[request.requestedStatus as keyof typeof STATUS_LABELS]}</Badge></span>
             </div>
             
             <div className="text-sm text-muted-foreground">
-              <div>Requested by: {request.statusChangeRequest.requestedBy.name}</div>
-              <div>Date: {new Date(request.statusChangeRequest.requestedAt).toLocaleDateString()}</div>
-              {request.statusChangeRequest.reason && (
-                <div>Reason: {request.statusChangeRequest.reason}</div>
+              <div>Requested by: {request.requestedBy?.name || request.requestedBy?.email}</div>
+              <div>Date: {new Date(request.createdAt).toLocaleDateString()}</div>
+              {request.reason && (
+                <div>Reason: {request.reason}</div>
               )}
             </div>
 

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Filter, Download, Trash2 } from 'lucide-react';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { getProjectsMinimal } from '@/lib/api/projectsAPI';
-import employeesAPI, { Employee } from '@/lib/api/employeesAPI';
+import { projectsAPI, type MinimalUser } from '@/lib/api/projectsAPI';
 import { exportTasksToCSV } from '@/utils/tasks';
 
 interface Project {
@@ -26,7 +26,7 @@ export default function TaskFilters({ onExport }: TaskFiltersProps) {
   const { state, actions, computed } = useTaskContext();
   const [showFilters, setShowFilters] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<MinimalUser[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -34,12 +34,12 @@ export default function TaskFilters({ onExport }: TaskFiltersProps) {
 
   const fetchData = async () => {
     try {
-      const [projectsData, employeesData] = await Promise.all([
+      const [projectsData, usersData] = await Promise.all([
         getProjectsMinimal(),
-        employeesAPI.getAll()
+        projectsAPI.getUsersMinimal()
       ]);
       setProjects(projectsData || []);
-      setEmployees(employeesData || []);
+      setUsers(Array.isArray(usersData) ? usersData : []);
     } catch (error) {
       console.error('Error fetching filter data:', error);
     }
@@ -210,9 +210,9 @@ export default function TaskFilters({ onExport }: TaskFiltersProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Assignees</SelectItem>
-                    {employees.map(emp => (
-                      <SelectItem key={emp._id} value={emp._id}>
-                        {`${emp.firstName} ${emp.lastName}`}
+                    {users.map(user => (
+                      <SelectItem key={user._id} value={user._id}>
+                        {user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

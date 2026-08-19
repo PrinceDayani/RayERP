@@ -9,27 +9,21 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Settings, User, Shield, Search, CheckCircle, Circle, Minus, FileText, Users, DollarSign, BarChart3, FolderOpen, Clipboard } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
-
-interface Employee {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
+import { projectsAPI, type MinimalUser } from '@/lib/api/projectsAPI';
 
 interface ProjectPermission {
   _id: string;
-  employee: Employee;
+  user: MinimalUser;
   permissions: string[];
   createdAt: string;
 }
 
 interface ProjectPermissionsManagerProps {
   projectId?: string;
-  employees?: Employee[];
+  users?: MinimalUser[];
   selectedTeam?: string[];
-  onPermissionsChange?: (permissions: { [employeeId: string]: string[] }) => void;
-  initialPermissions?: { [employeeId: string]: string[] };
+  onPermissionsChange?: (permissions: { [userId: string]: string[] }) => void;
+  initialPermissions?: { [userId: string]: string[] };
 }
 
 const PERMISSION_CATEGORIES = {
@@ -129,24 +123,24 @@ const BULK_PERMISSION_TEMPLATES = [
 
 const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
   projectId,
-  employees: propEmployees = [],
+  users: propUsers = [],
   selectedTeam = [],
   onPermissionsChange,
   initialPermissions = {}
 }) => {
-  const [permissions, setPermissions] = useState<{ [employeeId: string]: string[] }>(initialPermissions);
-  const [employees, setEmployees] = useState<Employee[]>(propEmployees);
+  const [permissions, setPermissions] = useState<{ [userId: string]: string[] }>(initialPermissions);
+  const [users, setUsers] = useState<MinimalUser[]>(propUsers);
   const [bulkTemplate, setBulkTemplate] = useState<string>('');
   const [showBulkOptions, setShowBulkOptions] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (propEmployees.length === 0) {
-      loadEmployees();
+    if (propUsers.length === 0) {
+      loadUsers();
     } else {
-      setEmployees(propEmployees);
+      setUsers(propUsers);
     }
-  }, [propEmployees]);
+  }, [propUsers]);
 
   useEffect(() => {
     if (projectId) {
@@ -158,19 +152,12 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
     onPermissionsChange?.(permissions);
   }, [permissions, onPermissionsChange]);
 
-  const loadEmployees = async () => {
+  const loadUsers = async () => {
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/employees`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setEmployees(Array.isArray(data) ? data : data.data || []);
-      }
+      const list = await projectsAPI.getUsersMinimal();
+      setUsers(Array.isArray(list) ? list : []);
     } catch (error) {
-      console.error('Error loading employees:', error);
+      console.error('Error loading assignable users:', error);
     }
   };
 
@@ -188,7 +175,7 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
         const permissionsMap: { [key: string]: string[] } = {};
         
         data.data.forEach((perm: ProjectPermission) => {
-          permissionsMap[perm.employee._id] = perm.permissions;
+          permissionsMap[perm.user._id] = perm.permissions;
         });
         
         setPermissions(permissionsMap);
@@ -198,13 +185,13 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
     }
   };
 
-  const applyTemplate = (templateName: string, employeeId: string) => {
+  const applyTemplate = (templateName: string, userId: string) => {
     const template = BULK_PERMISSION_TEMPLATES.find(t => t.name === templateName);
     if (!template) return;
 
     setPermissions(prev => ({
       ...prev,
-      [employeeId]: [...template.permissions]
+      [userId]: [...template.permissions]
     }));
     
     toast({
@@ -213,42 +200,42 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
     });
   };
 
-  const toggleCategoryPermissions = (category: string, employeeId: string) => {
+  const toggleCategoryPermissions = (category: string, userId: string) => {
     const categoryPerms = PERMISSION_CATEGORIES[category as keyof typeof PERMISSION_CATEGORIES].permissions.map(p => p.value);
-    const currentPerms = permissions[employeeId] || [];
+    const currentPerms = permissions[userId] || [];
     const hasAllCategoryPerms = categoryPerms.every(perm => currentPerms.includes(perm));
     
     setPermissions(prev => ({
       ...prev,
-      [employeeId]: hasAllCategoryPerms 
+      [userId]: hasAllCategoryPerms 
         ? currentPerms.filter(p => !categoryPerms.includes(p))
         : [...new Set([...currentPerms, ...categoryPerms])]
     }));
   };
 
-  const togglePermission = (permission: string, employeeId: string) => {
+  const togglePermission = (permission: string, userId: string) => {
     setPermissions(prev => {
-      const currentPerms = prev[employeeId] || [];
+      const currentPerms = prev[userId] || [];
       return {
         ...prev,
-        [employeeId]: currentPerms.includes(permission)
+        [userId]: currentPerms.includes(permission)
           ? currentPerms.filter(p => p !== permission)
           : [...currentPerms, permission]
       };
     });
   };
 
-  const removeAllPermissions = (employeeId: string) => {
+  const removeAllPermissions = (userId: string) => {
     setPermissions(prev => {
       const newPerms = { ...prev };
-      delete newPerms[employeeId];
+      delete newPerms[userId];
       return newPerms;
     });
   };
 
-  const getEmployeeName = (employeeId: string) => {
-    const employee = employees.find(emp => emp._id === employeeId);
-    return employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee';
+  const getUserName = (userId: string) => {
+    const user = users.find(u => u._id === userId);
+    return user?.name || 'Unknown user';
   };
 
   const getPermissionLabel = (permissionValue: string) => {
@@ -259,7 +246,7 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
     return permissionValue;
   };
 
-  const teamMembers = employees.filter(emp => selectedTeam.includes(emp._id));
+  const teamMembers = users.filter(u => selectedTeam.includes(u._id));
 
   return (
     <Card>
@@ -306,8 +293,8 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
                     const template = BULK_PERMISSION_TEMPLATES.find(t => t.name === bulkTemplate);
                     if (!template) return;
                     const newPermissions = { ...permissions };
-                    teamMembers.forEach(employee => {
-                      newPermissions[employee._id] = [...template.permissions];
+                    teamMembers.forEach(user => {
+                      newPermissions[user._id] = [...template.permissions];
                     });
                     setPermissions(newPermissions);
                     setBulkTemplate('');
@@ -332,33 +319,33 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
           </div>
         ) : (
           <div className="space-y-3">
-            {teamMembers.map(employee => {
-              const employeePerms = permissions[employee._id] || [];
+            {teamMembers.map(user => {
+              const userPerms = permissions[user._id] || [];
               return (
-                <div key={employee._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-3">
+                <div key={user._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-3">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                       <User className="h-4 w-4 text-gray-600" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{employee.firstName} {employee.lastName}</p>
+                      <p className="font-medium truncate">{user.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {employeePerms.length} permission{employeePerms.length !== 1 ? 's' : ''} assigned
+                        {userPerms.length} permission{userPerms.length !== 1 ? 's' : ''} assigned
                       </p>
                     </div>
                   </div>
                   
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-                    {employeePerms.length > 0 && (
+                    {userPerms.length > 0 && (
                       <div className="flex flex-wrap gap-1 max-w-full sm:max-w-48">
-                        {employeePerms.slice(0, 2).map(perm => (
+                        {userPerms.slice(0, 2).map(perm => (
                           <Badge key={perm} variant="secondary" className="text-xs">
                             {getPermissionLabel(perm)}
                           </Badge>
                         ))}
-                        {employeePerms.length > 2 && (
+                        {userPerms.length > 2 && (
                           <Badge variant="outline" className="text-xs">
-                            +{employeePerms.length - 2} more
+                            +{userPerms.length - 2} more
                           </Badge>
                         )}
                       </div>
@@ -383,8 +370,8 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
                               <User className="h-5 w-5 text-white" />
                             </div>
                             <div className="text-left">
-                              <div className="font-semibold">{employee.firstName} {employee.lastName}</div>
-                              <div className="text-sm text-muted-foreground break-all">{employee.email}</div>
+                              <div className="font-semibold">{user.name}</div>
+                              <div className="text-sm text-muted-foreground break-all">{user.email}</div>
                             </div>
                           </SheetTitle>
                         </SheetHeader>
@@ -395,15 +382,15 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
                             <Label className="text-sm font-medium mb-3 block">Quick Templates</Label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               {BULK_PERMISSION_TEMPLATES.map(template => {
-                                const employeePerms = permissions[employee._id] || [];
-                                const isActive = template.permissions.every(p => employeePerms.includes(p)) && 
-                                               employeePerms.length === template.permissions.length;
+                                const userPerms = permissions[user._id] || [];
+                                const isActive = template.permissions.every(p => userPerms.includes(p)) && 
+                                               userPerms.length === template.permissions.length;
                                 return (
                                   <Button
                                     key={template.name}
                                     variant={isActive ? "default" : "outline"}
                                     size="sm"
-                                    onClick={() => applyTemplate(template.name, employee._id)}
+                                    onClick={() => applyTemplate(template.name, user._id)}
                                     className="justify-start h-auto p-3 text-left"
                                   >
                                     <div>
@@ -439,10 +426,10 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
                                 )
                               )
                               .map(([categoryKey, category]) => {
-                                const employeePerms = permissions[employee._id] || [];
+                                const userPerms = permissions[user._id] || [];
                                 const categoryPerms = category.permissions.map(p => p.value);
-                                const hasAllCategoryPerms = categoryPerms.every(perm => employeePerms.includes(perm));
-                                const hasSomeCategoryPerms = categoryPerms.some(perm => employeePerms.includes(perm));
+                                const hasAllCategoryPerms = categoryPerms.every(perm => userPerms.includes(perm));
+                                const hasSomeCategoryPerms = categoryPerms.some(perm => userPerms.includes(perm));
                                 const CategoryIcon = category.icon;
                                 
                                 return (
@@ -463,11 +450,11 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
                                             ref={(el) => {
                                               if (el) el.indeterminate = hasSomeCategoryPerms && !hasAllCategoryPerms;
                                             }}
-                                            onChange={() => toggleCategoryPermissions(categoryKey, employee._id)}
+                                            onChange={() => toggleCategoryPermissions(categoryKey, user._id)}
                                             className="w-4 h-4 rounded border-2 flex-shrink-0"
                                           />
                                           <Label className="font-semibold text-sm sm:text-base cursor-pointer truncate" 
-                                                 onClick={() => toggleCategoryPermissions(categoryKey, employee._id)}>
+                                                 onClick={() => toggleCategoryPermissions(categoryKey, user._id)}>
                                             {category.label}
                                           </Label>
                                         </div>
@@ -476,7 +463,7 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
                                         variant={hasAllCategoryPerms ? "default" : hasSomeCategoryPerms ? "secondary" : "outline"}
                                         className="font-medium text-xs flex-shrink-0"
                                       >
-                                        {employeePerms.filter(p => categoryPerms.includes(p)).length}/{categoryPerms.length}
+                                        {userPerms.filter(p => categoryPerms.includes(p)).length}/{categoryPerms.length}
                                       </Badge>
                                     </div>
                                     
@@ -489,19 +476,19 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
                                         )
                                         .map(permission => {
                                           const PermissionIcon = permission.icon;
-                                          const isChecked = employeePerms.includes(permission.value);
+                                          const isChecked = userPerms.includes(permission.value);
                                           return (
                                             <div key={permission.value} 
                                                  className={`flex items-start gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border transition-all cursor-pointer ${
                                                    isChecked ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200 hover:border-gray-300'
                                                  }`}
-                                                 onClick={() => togglePermission(permission.value, employee._id)}
+                                                 onClick={() => togglePermission(permission.value, user._id)}
                                             >
                                               <input
                                                 type="checkbox"
-                                                id={`${employee._id}-${permission.value}`}
+                                                id={`${user._id}-${permission.value}`}
                                                 checked={isChecked}
-                                                onChange={() => togglePermission(permission.value, employee._id)}
+                                                onChange={() => togglePermission(permission.value, user._id)}
                                                 className="w-4 h-4 rounded mt-0.5 flex-shrink-0"
                                               />
                                               <PermissionIcon className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
@@ -509,7 +496,7 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
                                               }`} />
                                               <div className="flex-1 min-w-0">
                                                 <Label 
-                                                  htmlFor={`${employee._id}-${permission.value}`} 
+                                                  htmlFor={`${user._id}-${permission.value}`} 
                                                   className="font-medium cursor-pointer block text-sm"
                                                 >
                                                   {permission.label}
@@ -538,7 +525,7 @@ const ProjectPermissionsManager: React.FC<ProjectPermissionsManagerProps> = ({
                             </Button>
                             <Button 
                               variant="outline" 
-                              onClick={() => removeAllPermissions(employee._id)}
+                              onClick={() => removeAllPermissions(user._id)}
                               className="order-1 sm:order-2"
                             >
                               Clear All

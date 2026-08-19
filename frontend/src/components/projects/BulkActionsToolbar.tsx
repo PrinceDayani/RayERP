@@ -12,7 +12,7 @@ interface BulkActionsToolbarProps {
   onBulkStatusUpdate: (status: string) => void;
   onBulkDelete: () => void;
   onBulkAssign: (userId: string) => void;
-  employees: Array<{ _id: string; firstName: string; lastName: string }>;
+  users: Array<{ _id: string; name: string }>;
 }
 
 export default function BulkActionsToolbar({
@@ -21,7 +21,7 @@ export default function BulkActionsToolbar({
   onBulkStatusUpdate,
   onBulkDelete,
   onBulkAssign,
-  employees
+  users
 }: BulkActionsToolbarProps) {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedAssignee, setSelectedAssignee] = useState("");
@@ -78,9 +78,9 @@ export default function BulkActionsToolbar({
               <SelectValue placeholder="Assign To" />
             </SelectTrigger>
             <SelectContent>
-              {employees.map((emp) => (
-                <SelectItem key={emp._id} value={emp._id}>
-                  {emp.firstName} {emp.lastName}
+              {users.map((user) => (
+                <SelectItem key={user._id} value={user._id}>
+                  {user.name}
                 </SelectItem>
               ))}
             </SelectContent>

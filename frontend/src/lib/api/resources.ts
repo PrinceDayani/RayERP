@@ -5,8 +5,19 @@ export const resourceApi = {
   allocateResource: (data: Partial<ResourceAllocation>) =>
     api.post<ResourceAllocation>('/resources/allocations', data),
 
-  getResourceAllocations: (params?: { projectId?: string; employeeId?: string; status?: string }) =>
-    api.get<ResourceAllocation[]>('/resources/allocations', { params }),
+  // The endpoint also filters by department/search (resolved server-side through
+  // the Employee bridge) and by utilization band.
+  getResourceAllocations: (params?: {
+    projectId?: string;
+    employeeId?: string;
+    status?: string;
+    department?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    minUtilization?: number;
+    maxUtilization?: number;
+  }) => api.get<ResourceAllocation[]>('/resources/allocations', { params }),
 
   updateResourceAllocation: (id: string, data: Partial<ResourceAllocation>) =>
     api.put<ResourceAllocation>(`/resources/allocations/${id}`, data),

@@ -9,6 +9,9 @@ import { Users, Shield } from "lucide-react";
 interface TieredAccessWrapperProps {
   children: ReactNode;
   title: string;
+  description?: string;
+  /** Page-level controls rendered beside the heading. */
+  actions?: ReactNode;
   showLegend?: boolean;
   hasBasicViewItems?: boolean;
   fullAccessCount?: number;
@@ -19,6 +22,8 @@ interface TieredAccessWrapperProps {
 export function TieredAccessWrapper({ 
   children, 
   title, 
+  description,
+  actions,
   showLegend = true,
   hasBasicViewItems = false,
   fullAccessCount = 0,
@@ -32,18 +37,22 @@ export function TieredAccessWrapper({
           <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             {title}
           </h1>
+          {description && <p className="text-muted-foreground mt-1">{description}</p>}
           {(fullAccessCount > 0 || basicViewCount > 0) && (
             <p className="text-sm text-muted-foreground mt-1">
               {fullAccessCount} full access • {basicViewCount} department view
             </p>
           )}
         </div>
-        {showLegend && (
-          <AccessLevelLegend 
-            fullAccessCount={fullAccessCount}
-            basicViewCount={basicViewCount}
-          />
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {showLegend && (
+            <AccessLevelLegend 
+              fullAccessCount={fullAccessCount}
+              basicViewCount={basicViewCount}
+            />
+          )}
+          {actions}
+        </div>
       </div>
       
       {hasBasicViewItems && (

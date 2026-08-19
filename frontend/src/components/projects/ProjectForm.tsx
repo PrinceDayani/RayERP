@@ -11,8 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, X, ClipboardList, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { type Project, projectsAPI } from "@/lib/api/projectsAPI";
-import employeesAPI, { type Employee } from "@/lib/api/employeesAPI";
+import { type Project, type MinimalUser, projectsAPI } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { CURRENCY_CONFIG } from '@/config/currency.config';
 import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
@@ -33,8 +32,8 @@ interface ProjectFormProps {
   submitText?: string;
 }
 
-// Cache for employees and departments
-let employeesCache: Employee[] | null = null;
+// Cache for assignable users and departments
+let usersCache: MinimalUser[] | null = null;
 let departmentsCache: Department[] | null = null;
 let cacheTimestamp = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -48,7 +47,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   submitText = "Save Project",
 }) => {
   const { formatAmount } = useGlobalCurrency();
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<MinimalUser[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [formData, setFormData] = useState({
@@ -89,12 +88,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     (project as any)?.instructions || []
   );
   const [newInstruction, setNewInstruction] = useState({ title: '', content: '', type: 'general', priority: 'medium' });
-  const [projectPermissions, setProjectPermissions] = useState<{ [employeeId: string]: string[] }>({});
+  const [projectPermissions, setProjectPermissions] = useState<{ [userId: string]: string[] }>({});
 
-  // Memoized filtered employees for manager selection
+  // Managers are picked from the same assignable-user list.
   const managerOptions = useMemo(() => 
-    employees.filter(emp => emp.firstName && emp.lastName),
-    [employees]
+    users.filter(user => user.name),
+    [users]
   );
 
   useEffect(() => {
@@ -114,8 +113,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     const now = Date.now();
     
     // Check if cache is still valid
-    if (employeesCache && departmentsCache && (now - cacheTimestamp) < CACHE_DURATION) {
-      setEmployees(employeesCache);
+    if (usersCache && departmentsCache && (now - cacheTimestamp) < CACHE_DURATION) {
+      setUsers(usersCache);
       setDepartments(departmentsCache);
       return;
     }
@@ -123,14 +122,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     setLoadingData(true);
     try {
       // Load both in parallel
-      const [employeesResponse, departmentsResponse] = await Promise.allSettled([
-        fetchEmployees(),
+      const [usersResponse, departmentsResponse] = await Promise.allSettled([
+        fetchUsers(),
         fetchDepartments()
       ]);
 
-      if (employeesResponse.status === 'fulfilled') {
-        employeesCache = employeesResponse.value;
-        setEmployees(employeesResponse.value);
+      if (usersResponse.status === 'fulfilled') {
+        usersCache = usersResponse.value;
+        setUsers(usersResponse.value);
       }
 
       if (departmentsResponse.status === 'fulfilled') {
@@ -146,13 +145,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     }
   };
 
-  const fetchEmployees = async (): Promise<Employee[]> => {
+  // Project.team and Project.managers ref User, so the picker must be sourced
+  // from the User rail - Employee ids here break project access checks.
+  const fetchUsers = async (): Promise<MinimalUser[]> => {
     try {
-      const response = await employeesAPI.getAll();
-      const employeeList = response.data || response || [];
-      return Array.isArray(employeeList) ? employeeList : [];
+      const list = await projectsAPI.getUsersMinimal();
+      return Array.isArray(list) ? list : [];
     } catch (error) {
-      console.error('Error fetching employees:', error);
+      console.error('Error fetching assignable users:', error);
       return [];
     }
   };
@@ -248,11 +248,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleTeamToggle = (employeeId: string) => {
+  const handleTeamToggle = (userId: string) => {
     setSelectedTeam(prev => 
-      prev.includes(employeeId)
-        ? prev.filter(id => id !== employeeId)
-        : [...prev, employeeId]
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
     );
   };
 
@@ -497,32 +497,32 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         <Label>Project Managers</Label>
         <div className="border rounded-md p-3 max-h-40 overflow-y-auto">
           {loadingData ? (
-            <p className="text-sm text-muted-foreground">Loading employees...</p>
+            <p className="text-sm text-muted-foreground">Loading users...</p>
           ) : managerOptions.length > 0 ? (
             <div className="space-y-2">
-              {managerOptions.map((employee) => (
-                <div key={employee._id} className="flex items-center space-x-2">
+              {managerOptions.map((user) => (
+                <div key={user._id} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
-                    id={`manager-${employee._id}`}
-                    checked={selectedManagers.includes(employee._id)}
+                    id={`manager-${user._id}`}
+                    checked={selectedManagers.includes(user._id)}
                     onChange={() => {
                       setSelectedManagers(prev => 
-                        prev.includes(employee._id)
-                          ? prev.filter(id => id !== employee._id)
-                          : [...prev, employee._id]
+                        prev.includes(user._id)
+                          ? prev.filter(id => id !== user._id)
+                          : [...prev, user._id]
                       );
                     }}
                     className="rounded"
                   />
-                  <Label htmlFor={`manager-${employee._id}`} className="text-sm font-normal cursor-pointer">
-                    {employee.firstName} {employee.lastName}
+                  <Label htmlFor={`manager-${user._id}`} className="text-sm font-normal cursor-pointer">
+                    {user.name}
                   </Label>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No employees available</p>
+            <p className="text-sm text-muted-foreground">No users available</p>
           )}
         </div>
         {selectedManagers.length > 0 && (
@@ -536,26 +536,26 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         <Label>Team Members</Label>
         <div className="border rounded-md p-3 max-h-40 overflow-y-auto">
           {loadingData ? (
-            <p className="text-sm text-muted-foreground">Loading employees...</p>
-          ) : employees.length > 0 ? (
+            <p className="text-sm text-muted-foreground">Loading users...</p>
+          ) : users.length > 0 ? (
             <div className="space-y-2">
-              {employees.map((employee) => (
-                <div key={employee._id} className="flex items-center space-x-2">
+              {users.map((user) => (
+                <div key={user._id} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
-                    id={`team-${employee._id}`}
-                    checked={selectedTeam.includes(employee._id)}
-                    onChange={() => handleTeamToggle(employee._id)}
+                    id={`team-${user._id}`}
+                    checked={selectedTeam.includes(user._id)}
+                    onChange={() => handleTeamToggle(user._id)}
                     className="rounded"
                   />
-                  <Label htmlFor={`team-${employee._id}`} className="text-sm font-normal cursor-pointer">
-                    {employee.firstName} {employee.lastName}
+                  <Label htmlFor={`team-${user._id}`} className="text-sm font-normal cursor-pointer">
+                    {user.name}
                   </Label>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No employees available</p>
+            <p className="text-sm text-muted-foreground">No users available</p>
           )}
         </div>
         {selectedTeam.length > 0 && (
@@ -705,7 +705,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       {selectedTeam.length > 0 && (
         <ProjectPermissionsManager
           projectId={projectId}
-          employees={employees}
+          users={users}
           selectedTeam={selectedTeam}
           onPermissionsChange={setProjectPermissions}
           initialPermissions={projectPermissions}

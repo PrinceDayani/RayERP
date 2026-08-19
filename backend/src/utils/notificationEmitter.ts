@@ -110,6 +110,58 @@ export class NotificationEmitter {
     }
   }
 
+  // Someone with department-level visibility asking to be assigned. The people
+  // who can actually grant it are the project's owner and managers, so only
+  // they are notified, and the action link goes straight to the grant screen.
+  static async projectAccessRequested(options: {
+    project: { _id: any; name: string; owner: any; managers?: any[] };
+    requesterId: string;
+    requesterName: string;
+    itemType: 'project' | 'task';
+    itemName: string;
+    reason: string;
+    urgency: 'low' | 'medium' | 'high' | 'urgent';
+  }): Promise<number> {
+    const { project, requesterId, requesterName, itemType, itemName, reason, urgency } = options;
+
+    const idOf = (value: any): string | null =>
+      value && typeof value === 'object' ? value._id?.toString() ?? null : value?.toString() ?? null;
+
+    const recipients = new Set<string>();
+    const ownerId = idOf(project.owner);
+    if (ownerId) recipients.add(ownerId);
+    (project.managers || []).forEach(manager => {
+      const managerId = idOf(manager);
+      if (managerId) recipients.add(managerId);
+    });
+    recipients.delete(requesterId);
+
+    const projectId = idOf(project._id);
+
+    await Promise.all(
+      [...recipients].map(userId =>
+        this.sendToUser(userId, {
+          type: 'project',
+          title: 'Access Requested',
+          message: `${requesterName} requested access to the ${itemType} "${itemName}"`,
+          priority: urgency,
+          actionUrl: `/dashboard/projects/${projectId}/permissions`,
+          metadata: {
+            projectId,
+            projectName: project.name,
+            itemType,
+            itemName,
+            requestedBy: requesterId,
+            requestedByName: requesterName,
+            reason
+          }
+        })
+      )
+    );
+
+    return recipients.size;
+  }
+
   // Task notifications
   static taskAssigned(task: any, userId: string) {
     const notification: NotificationData = {
