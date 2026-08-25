@@ -965,14 +965,15 @@ export const deleteUser = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    const userRole = (user.role as any);
-    if (userRole.name?.toLowerCase() === 'root') {
+    // A dangling or absent role ref must not crash the handler.
+    const userRole = (user.role as any) || null;
+    if (userRole?.name?.toLowerCase() === 'root') {
       return res.status(403).json({ success: false, message: 'Cannot delete Root user' });
     }
-    
-    if (req.user) {
+
+    if (req.user && userRole) {
       const currentUserRole = (req.user.role as any);
-      if (userRole.level >= currentUserRole.level) {
+      if ((userRole.level ?? 0) >= (currentUserRole?.level ?? 0)) {
         return res.status(403).json({ success: false, message: 'Cannot delete user with equal or higher role level' });
       }
     }
@@ -994,7 +995,7 @@ export const deleteUser = async (req: Request, res: Response) => {
       metadata: {
         deletedUserId: user._id,
         deletedUserEmail: user.email,
-        deletedUserRole: userRole.name,
+        deletedUserRole: userRole?.name,
         deletedBy: req.user?.name || 'System Admin'
       },
       category: 'user',

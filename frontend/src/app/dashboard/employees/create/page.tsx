@@ -96,9 +96,17 @@ export default function CreateEmployeePage() {
     try {
       const submitData: Record<string, any> = {
         ...formData,
-        salary: parseFloat(formData.salary),
         skills: formData.skills.split(',').map(skill => skill.trim()).filter(Boolean)
       };
+
+      // parseFloat('') is NaN, which serialises to null; omit the key entirely
+      // so a blank salary neither stores null nor trips employees.edit_salary.
+      const salary = parseFloat(formData.salary);
+      if (Number.isFinite(salary)) {
+        submitData.salary = salary;
+      } else {
+        delete submitData.salary;
+      }
 
       // Blank optional fields are omitted rather than stored as empty strings,
       // so an unset date never reaches Mongoose as ''.

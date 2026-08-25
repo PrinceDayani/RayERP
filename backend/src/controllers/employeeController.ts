@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import Employee from '../models/Employee';
 import Task from '../models/Task';
 import User from '../models/User';
-import { Role } from '../models/Role';
 import Department from '../models/Department';
 import { logger } from '../utils/logger';
 // Socket will be imported dynamically to avoid circular dependency
@@ -240,9 +239,12 @@ export const createEmployee = async (req: Request, res: Response) => {
       employeeData.departments.push(employeeData.department);
     }
     
-    const normalRole = await Role.findOne({ name: 'Normal' });
+    // Self-healing: the baseline role is created on demand so employee creation
+    // does not depend on SEED_ON_STARTUP having run against this database.
+    const { ensureNormalRole } = await import('../utils/seedDefaultRoles');
+    const normalRole = await ensureNormalRole();
     if (!normalRole) {
-      return res.status(400).json({ success: false, message: 'Normal role not found. Please ensure roles are seeded.' });
+      return res.status(500).json({ success: false, message: 'Could not resolve the baseline role for the new user' });
     }
     
     // Automatically create user for employee
@@ -256,7 +258,17 @@ export const createEmployee = async (req: Request, res: Response) => {
         status: 'active'
       });
     } catch (userError: any) {
-      return res.status(400).json({ success: false, message: 'Failed to create user' });
+      if (userError.code === 11000) {
+        return res.status(400).json({
+          success: false,
+          message: 'A user account already exists for this email address'
+        });
+      }
+      logger.error('Failed to create user for new employee', { message: userError?.message });
+      return res.status(400).json({
+        success: false,
+        message: userError?.message || 'Failed to create user'
+      });
     }
     
     employeeData.user = user._id;
@@ -331,10 +343,12 @@ export const updateEmployee = async (req: Request, res: Response) => {
       }
     }
 
-    if (updateData.user === null || updateData.user === undefined || updateData.user === '') {
+    // Only reject an explicit attempt to clear the link. A partial update that
+    // simply omits `user` must pass through untouched.
+    if ('user' in updateData && !updateData.user) {
       return res.status(400).json({ success: false, message: 'Employee must have an associated user' });
     }
-    
+
     if (updateData.user) {
       const userExists = await User.findById(updateData.user);
       if (!userExists) {

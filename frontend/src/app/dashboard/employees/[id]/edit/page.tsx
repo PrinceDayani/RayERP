@@ -166,9 +166,18 @@ export default function EditEmployeePage() {
     try {
       const submitData: Record<string, any> = {
         ...formData,
-        salary: parseFloat(formData.salary),
         skills: formData.skills.split(',').map(skill => skill.trim()).filter(Boolean)
       };
+
+      // Salary only travels when it holds a real figure. parseFloat('') is NaN,
+      // which serialises to null and would wipe the stored value, and the mere
+      // presence of the key trips the employees.edit_salary gate server-side.
+      const salary = parseFloat(formData.salary);
+      if (Number.isFinite(salary)) {
+        submitData.salary = salary;
+      } else {
+        delete submitData.salary;
+      }
 
       // Blank optional fields are omitted rather than stored as empty strings,
       // so an unset date never reaches Mongoose as ''.
@@ -182,6 +191,11 @@ export default function EditEmployeePage() {
       if (!canEditBank) {
         delete submitData.bankDetails;
         delete submitData.statutory;
+      } else {
+        for (const group of ['bankDetails', 'statutory']) {
+          const values = Object.values(submitData[group] as Record<string, string>).filter(Boolean);
+          if (!values.length) delete submitData[group];
+        }
       }
 
       await employeesAPI.updateEmployee(employeeId, submitData);

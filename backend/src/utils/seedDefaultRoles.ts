@@ -40,3 +40,26 @@ export const ensurePendingRole = async () => {
   });
   return await Role.findOne({ name: PENDING_ROLE_NAME });
 };
+
+export const NORMAL_ROLE_NAME = 'Normal';
+
+/**
+ * Baseline role assigned to the User account created alongside a new Employee.
+ * Level 1 with no permissions, so it grants nothing until an administrator
+ * assigns a real role. Self-healing so employee creation does not depend on
+ * SEED_ON_STARTUP having run against this database.
+ */
+export const ensureNormalRole = async () => {
+  const existing = await Role.findOne({ name: NORMAL_ROLE_NAME });
+  if (existing) return existing;
+
+  await Role.create({
+    name: NORMAL_ROLE_NAME,
+    description: 'Standard employee with basic access - no permissions until a role is assigned',
+    permissions: [],
+    isDefault: false,
+    isActive: true,
+    level: 1
+  });
+  return await Role.findOne({ name: NORMAL_ROLE_NAME });
+};

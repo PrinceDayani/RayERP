@@ -35,14 +35,14 @@ export const createUser = async (req: Request, res: Response) => {
         }
       }
     } else {
-      role = await Role.findOne({ name: 'Employee' });
+      return res.status(400).json({ success: false, message: 'A valid role must be specified' });
     }
     
     const user = await User.create({
       name,
       email,
       password,
-      role: role?._id,
+      role: role._id,
       status: 'active'
     });
     
@@ -56,7 +56,7 @@ export const createUser = async (req: Request, res: Response) => {
       resourceType: 'user',
       resourceId: user._id.toString(),
       details: `Created user ${name} (${email})`,
-      metadata: { email, roleName: role?.name },
+      metadata: { email, roleName: role.name },
       category: 'user',
       severity: 'medium',
       visibility: 'management',
@@ -82,14 +82,16 @@ export const updateUser = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    const userRole = (user.role as any);
-    if (userRole.name?.toLowerCase() === 'root') {
+    // A dangling or absent role ref must not crash the handler - it is exactly
+    // the broken record an administrator needs to be able to repair.
+    const userRole = (user.role as any) || null;
+    if (userRole?.name?.toLowerCase() === 'root') {
       return res.status(403).json({ success: false, message: 'Cannot modify Root user' });
     }
-    
-    if (req.user) {
+
+    if (req.user && userRole) {
       const currentUserRole = (req.user.role as any);
-      if (userRole.level >= currentUserRole.level) {
+      if ((userRole.level ?? 0) >= (currentUserRole?.level ?? 0)) {
         return res.status(403).json({ success: false, message: 'Cannot modify user with equal or higher role level' });
       }
     }
