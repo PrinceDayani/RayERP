@@ -218,7 +218,9 @@ export const getTaskById = async (req: Request, res: Response) => {
         .populate('project', 'name')
         .populate('assignedTo', 'name email')
         .populate('assignedBy', 'name email')
-        .populate('comments.user', 'name email');
+        .populate('comments.user', 'name email')
+      .populate('subtasks', 'title status completed description')
+      .populate('watchers', 'name email');
       
       if (!task) {
         return res.status(404).json({ message: 'Task not found' });
@@ -230,7 +232,9 @@ export const getTaskById = async (req: Request, res: Response) => {
       .populate('project', 'name')
       .populate('assignedTo', 'name email')
       .populate('assignedBy', 'name email')
-      .populate('comments.user', 'name email');
+      .populate('comments.user', 'name email')
+      .populate('subtasks', 'title status completed description')
+      .populate('watchers', 'name email');
     
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });

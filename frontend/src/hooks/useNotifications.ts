@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSocket } from './useSocket';
-import { useRealTimeSetting } from '@/lib/realTimeSettings';
+import { useNotificationPreferences } from './useNotificationPreferences';
 import toast from 'react-hot-toast';
 
 export interface Notification {
@@ -23,9 +23,7 @@ export const useNotifications = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   
   // Settings
-  const [soundEnabled] = useRealTimeSetting('soundEnabled', true);
-  const [pushNotifications] = useRealTimeSetting('pushNotifications', true);
-  const [emailNotifications] = useRealTimeSetting('emailNotifications', true);
+  const { soundEnabled, pushNotifications, emailNotifications } = useNotificationPreferences();
 
   // Load notifications from server on mount
   useEffect(() => {

@@ -2,6 +2,13 @@ import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+export interface ITwoFactor {
+  enabled: boolean;
+  secret?: string;
+  recoveryCodes?: string[];
+  enrolledAt?: Date;
+}
+
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   userId?: mongoose.Types.ObjectId;
@@ -12,12 +19,30 @@ export interface IUser extends Document {
   permissions?: string[];
   status?: string;
   lastLogin?: Date;
+  failedLoginAttempts?: number;
+  lockedUntil?: Date;
+  passwordChangedAt?: Date;
+  passwordHistory?: string[];
+  twoFactor?: ITwoFactor;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
   generateAuthToken(): string;
   generateRefreshToken(): string;
 }
+
+// TOTP enrolment. The shared secret and the recovery codes never leave the
+// server on a normal read, so both are select:false and must be asked for
+// explicitly by the 2FA controller.
+const twoFactorSchema = new Schema<ITwoFactor>(
+  {
+    enabled: { type: Boolean, default: false },
+    secret: { type: String, select: false },
+    recoveryCodes: { type: [String], default: undefined, select: false },
+    enrolledAt: { type: Date },
+  },
+  { _id: false }
+);
 
 const userSchema = new Schema<IUser>(
   {
@@ -55,6 +80,30 @@ const userSchema = new Schema<IUser>(
     },
     lastLogin: {
       type: Date,
+    },
+    // Brute-force counters, evaluated against SecurityPolicy on login.
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    lockedUntil: {
+      type: Date,
+      select: false,
+    },
+    passwordChangedAt: {
+      type: Date,
+    },
+    // bcrypt hashes of superseded passwords, newest first, trimmed to the
+    // policy's passwordHistoryCount on every change.
+    passwordHistory: {
+      type: [String],
+      default: [],
+      select: false,
+    },
+    twoFactor: {
+      type: twoFactorSchema,
+      default: () => ({ enabled: false }),
     },
   },
   { timestamps: true }

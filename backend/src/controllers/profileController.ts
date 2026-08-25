@@ -256,8 +256,11 @@ export const updateProfileEnhanced = async (req: Request, res: Response) => {
       Employee.findOne({ user: userId })
     ]);
 
-    if (!user || !employee) {
-      logger.error('User or employee not found', { userId });
+    // A User without an Employee is a valid identity (root is one), so only the
+    // User record is required here. HR-side fields are applied when the
+    // Employee exists and skipped otherwise.
+    if (!user) {
+      logger.error('User not found', { userId });
       return res.status(404).json({ message: 'Profile not found' });
     }
 
@@ -290,8 +293,15 @@ export const updateProfileEnhanced = async (req: Request, res: Response) => {
     }
 
     // Apply updates
-    Object.assign(employee, updates);
-    await employee.save();
+    if (employee) {
+      Object.assign(employee, updates);
+      await employee.save();
+    } else if (Object.keys(updates).length > 0) {
+      logger.info('Skipped HR profile fields for a user with no Employee record', {
+        userId,
+        skippedFields: Object.keys(updates)
+      });
+    }
 
     const duration = Date.now() - startTime;
     logger.info('Profile updated successfully', {
@@ -307,14 +317,16 @@ export const updateProfileEnhanced = async (req: Request, res: Response) => {
         name: user.name,
         email: user.email
       },
-      employee: {
-        phone: employee.phone,
-        address: employee.address,
-        bio: (employee as any).bio,
-        socialLinks: (employee as any).socialLinks,
-        skills: employee.skillsEnhanced || employee.skills,
-        timezone: (employee as any).timezone
-      }
+      employee: employee
+        ? {
+            phone: employee.phone,
+            address: employee.address,
+            bio: (employee as any).bio,
+            socialLinks: (employee as any).socialLinks,
+            skills: employee.skillsEnhanced || employee.skills,
+            timezone: (employee as any).timezone
+          }
+        : null
     });
   } catch (error: any) {
     const duration = Date.now() - startTime;

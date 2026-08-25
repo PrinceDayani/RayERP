@@ -9,17 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, LogIn, ArrowLeft, CheckCircle, AlertCircle, Mail, Lock, Zap, Shield, BarChart3 } from "lucide-react";
+import { Eye, EyeOff, LogIn, ArrowLeft, CheckCircle, AlertCircle, Mail, Lock, Zap, Shield, BarChart3, KeyRound, ShieldCheck } from "lucide-react";
 
 const Login = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, error, isAuthenticated } = useAuth();
+  const { login, verifyTwoFactor, cancelTwoFactor, awaitingTwoFactor, error, isAuthenticated } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
 
   // Check for registration success
   useEffect(() => {
@@ -40,15 +42,43 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result.success) {
         router.push('/dashboard');
       }
+      // When result.requiresTwoFactor is set the context flips awaitingTwoFactor
+      // and the verification step renders in place of the password form.
     } catch (err) {
       console.error("Login form error:", err);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVerifyTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const verified = await verifyTwoFactor(
+        useRecoveryCode ? { recoveryCode: twoFactorCode } : { code: twoFactorCode }
+      );
+      if (verified) {
+        router.push('/dashboard');
+      } else {
+        setTwoFactorCode("");
+      }
+    } catch (err) {
+      console.error("Two-factor form error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelTwoFactor = () => {
+    cancelTwoFactor();
+    setTwoFactorCode("");
+    setUseRecoveryCode(false);
+    setPassword("");
   };
 
   const features = [
@@ -150,10 +180,14 @@ const Login = () => {
                 <Image src="/RAYlogo.webp" alt="RayERP Logo" width={72} height={72} className="object-contain" priority />
               </div>
               <h2 className="text-2xl font-bold tracking-tight" style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.1s both' }}>
-                Welcome Back
+                {awaitingTwoFactor ? "Two-Step Verification" : "Welcome Back"}
               </h2>
               <p className="text-muted-foreground mt-2 text-sm" style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.15s both' }}>
-                Sign in to your RayERP account
+                {awaitingTwoFactor
+                  ? useRecoveryCode
+                    ? "Enter one of your saved recovery codes"
+                    : "Enter the 6-digit code from your authenticator app"
+                  : "Sign in to your RayERP account"}
               </p>
             </div>
 
@@ -166,6 +200,7 @@ const Login = () => {
             )}
 
             {/* Login Form */}
+            {!awaitingTwoFactor && (
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2" style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.2s both' }}>
                 <Label htmlFor="email" className="flex items-center gap-2 text-sm font-medium">
@@ -241,8 +276,81 @@ const Login = () => {
                 </Button>
               </div>
             </form>
+            )}
+
+            {/* Two-Factor Verification */}
+            {awaitingTwoFactor && (
+              <form onSubmit={handleVerifyTwoFactor} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="twoFactorCode" className="flex items-center gap-2 text-sm font-medium">
+                    {useRecoveryCode ? (
+                      <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+                    ) : (
+                      <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                    {useRecoveryCode ? "Recovery Code" : "Verification Code"}
+                  </Label>
+                  <Input
+                    id="twoFactorCode"
+                    inputMode={useRecoveryCode ? "text" : "numeric"}
+                    autoComplete="one-time-code"
+                    placeholder={useRecoveryCode ? "XXXXX-XXXXX" : "000000"}
+                    value={twoFactorCode}
+                    onChange={(e) => setTwoFactorCode(e.target.value.trim())}
+                    maxLength={useRecoveryCode ? 11 : 6}
+                    required
+                    autoFocus
+                    disabled={isLoading}
+                    className="h-12 rounded-xl bg-muted/30 border-border/50 text-center text-lg tracking-[0.4em] transition-all duration-300 focus:bg-background focus:shadow-md focus:shadow-primary/10 dark:bg-white/5 dark:border-white/10 dark:text-white dark:focus:bg-white/10"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isLoading || twoFactorCode.length < (useRecoveryCode ? 10 : 6)}
+                  className="w-full h-12 rounded-xl text-base font-semibold bg-gradient-to-r from-primary to-primary/85 hover:from-primary/90 hover:to-primary/75 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="flex gap-1.5 pt-1">
+                        <span className="auth-loading-dot"></span>
+                        <span className="auth-loading-dot"></span>
+                        <span className="auth-loading-dot"></span>
+                      </div>
+                      <span className="ml-1">Verifying...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" />
+                      Verify
+                    </div>
+                  )}
+                </Button>
+
+                <div className="flex items-center justify-between text-sm">
+                  <button
+                    type="button"
+                    onClick={() => { setUseRecoveryCode(!useRecoveryCode); setTwoFactorCode(""); }}
+                    disabled={isLoading}
+                    className="text-primary hover:underline"
+                  >
+                    {useRecoveryCode ? "Use authenticator app" : "Use a recovery code"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelTwoFactor}
+                    disabled={isLoading}
+                    className="text-muted-foreground hover:underline"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
 
             {/* Divider */}
+            {!awaitingTwoFactor && (
+            <>
             <div className="relative my-7" style={{ animation: 'auth-fade-in-up 0.5s ease-out 0.35s both' }}>
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border/50 dark:border-white/10" />
@@ -263,6 +371,8 @@ const Login = () => {
                 Create Account
               </Button>
             </div>
+            </>
+            )}
           </div>
 
           {/* Footer */}

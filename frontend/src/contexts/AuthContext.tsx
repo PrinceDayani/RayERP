@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import { hasPermission as checkPermission, type User as PermissionUser } from '@/lib/permissions';
@@ -33,10 +33,19 @@ export interface User {
   updatedAt: string;
 }
 
+export interface LoginResult {
+  success: boolean;
+  /** Password accepted, but the account needs a second factor before a session is issued. */
+  requiresTwoFactor?: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  verifyTwoFactor: (input: { code?: string; recoveryCode?: string }) => Promise<boolean>;
+  cancelTwoFactor: () => void;
+  awaitingTwoFactor: boolean;
   logout: () => void;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   error: string | null;
@@ -64,6 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  // Interim two-factor token. Kept in a ref so it never reaches storage and is
+  // discarded when the tab closes.
+  const mfaTokenRef = useRef<string | null>(null);
+  const [awaitingTwoFactor, setAwaitingTwoFactor] = useState(false);
   const [backendAvailable, setBackendAvailable] = useState(true);
   const [roles, setRoles] = useState<Role[]>([]);
 
@@ -184,10 +197,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  /** Establishes the session from a successful login or 2FA verification response. */
+  const establishSession = async (data: any): Promise<boolean> => {
+    setUser(data.user);
+    setToken(data.token);
+    setIsAuthenticated(true);
+    localStorage.setItem('auth-token', data.token);
+
+    // Fetch roles after successful login
+    await fetchRoles(data.token);
+
+    // Log login activity
+    try {
+      const { logActivity } = await import('@/lib/activityLogger');
+      await logActivity({
+        action: 'login',
+        resource: 'auth',
+        details: `User ${data.user.email} logged in successfully`,
+        status: 'success'
+      });
+    } catch (error) {
+      console.error('Failed to log login activity:', error);
+    }
+
+    return true;
+  };
+
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     setError(null);
     setIsLoading(true);
-    
+
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
@@ -200,39 +239,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await response.json();
 
+      // The password was correct but the account has a second factor. Hold the
+      // short-lived token in memory only - it must not outlive the tab.
+      if (response.ok && data.requiresTwoFactor) {
+        mfaTokenRef.current = data.mfaToken;
+        setAwaitingTwoFactor(true);
+        return { success: false, requiresTwoFactor: true };
+      }
+
       if (response.ok && data.success) {
-        setUser(data.user);
-        setToken(data.token);
-        setIsAuthenticated(true);
-        localStorage.setItem('auth-token', data.token);
-        
-        // Fetch roles after successful login
-        await fetchRoles(data.token);
-        
-        // Log login activity
-        try {
-          const { logActivity } = await import('@/lib/activityLogger');
-          await logActivity({
-            action: 'login',
-            resource: 'auth',
-            details: `User ${data.user.email} logged in successfully`,
-            status: 'success'
-          });
-        } catch (error) {
-          console.error('Failed to log login activity:', error);
-        }
-        
-        return true;
-      } else {
-        setError(data.message || 'Login failed');
+        await establishSession(data);
+        return { success: true };
+      }
+
+      setError(data.message || 'Login failed');
+      return { success: false };
+    } catch (err: any) {
+      setError(err.message || 'Network error occurred');
+      return { success: false };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /** Second login step: exchanges the interim token plus a code for a session. */
+  const verifyTwoFactor = async ({ code, recoveryCode }: { code?: string; recoveryCode?: string }): Promise<boolean> => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      if (!mfaTokenRef.current) {
+        setError('Your verification window expired. Please sign in again.');
+        setAwaitingTwoFactor(false);
         return false;
       }
+
+      const response = await fetch(`${API_URL}/api/auth/2fa/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ mfaToken: mfaTokenRef.current, code, recoveryCode })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        mfaTokenRef.current = null;
+        setAwaitingTwoFactor(false);
+        await establishSession(data);
+        return true;
+      }
+
+      // A dead or expired interim token means starting over from the password.
+      if (data.code === 'MFA_TOKEN_INVALID') {
+        mfaTokenRef.current = null;
+        setAwaitingTwoFactor(false);
+      }
+
+      setError(data.message || 'Verification failed');
+      return false;
     } catch (err: any) {
       setError(err.message || 'Network error occurred');
       return false;
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const cancelTwoFactor = () => {
+    mfaTokenRef.current = null;
+    setAwaitingTwoFactor(false);
+    setError(null);
   };
 
   const fetchRoles = async (authToken?: string) => {
@@ -317,6 +394,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(null);
       setIsAuthenticated(false);
       localStorage.removeItem('auth-token');
+
+      // CSRF tokens are bound to the user server-side, so a cached one must not
+      // survive into the next sign-in. Any half-finished 2FA challenge goes too.
+      mfaTokenRef.current = null;
+      setAwaitingTwoFactor(false);
+
+      const { resetCsrfToken } = await import('@/lib/api/csrf');
+      resetCsrfToken();
     }
   };
 
@@ -397,7 +482,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{ 
       user, 
       token, 
-      login, 
+      login,
+      verifyTwoFactor,
+      cancelTwoFactor,
+      awaitingTwoFactor, 
       logout, 
       register, 
       error, 

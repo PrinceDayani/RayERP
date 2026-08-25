@@ -8,13 +8,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { tasksAPI } from "@/lib/api/tasksAPI";
+import api from "@/lib/api/api";
 import { toast } from "@/components/ui/use-toast";
 import { Plus, X, Users } from "lucide-react";
 
+// watchers[] references User, which carries `name`.
+// See Documentation/identity-map.md.
 interface Watcher {
   _id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
+  email?: string;
 }
 
 interface TaskWatchersProps {
@@ -25,30 +28,32 @@ interface TaskWatchersProps {
 
 export function TaskWatchers({ taskId, watchers, onWatchersUpdated }: TaskWatchersProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [users, setUsers] = useState<Watcher[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
 
   useEffect(() => {
-    fetchEmployees();
+    fetchUsers();
   }, []);
 
-  const fetchEmployees = async () => {
+  // Watchers are Users, not Employees. This previously fetched employees over a
+  // relative URL that resolved to the Next.js server rather than the API, so the
+  // list was always empty - and had it succeeded it would have written Employee
+  // ids into a User reference.
+  const fetchUsers = async () => {
     try {
-      const response = await fetch("/api/employees");
-      const data = await response.json();
-      // Handle both array and object responses
-      const employeeList = Array.isArray(data) ? data : (data.data || data.employees || []);
-      setEmployees(employeeList);
-    } catch (error) {
-      console.error("Failed to fetch employees:", error);
-      setEmployees([]);
+      const { data } = await api.get('/users');
+      const list = Array.isArray(data) ? data : data?.users ?? data?.data ?? [];
+      setUsers(list);
+    } catch {
+      // Listing users requires the users.view permission.
+      setUsers([]);
     }
   };
 
-  const availableEmployees = Array.isArray(employees) 
-    ? employees.filter((emp) => !watchers?.some((w) => w._id === emp._id))
-    : [];
+  const availableUsers = users.filter(
+    (candidate) => !watchers?.some((w) => w._id === candidate._id)
+  );
 
   const handleAddWatcher = async () => {
     if (!selectedUserId) return;
@@ -100,12 +105,16 @@ export function TaskWatchers({ taskId, watchers, onWatchersUpdated }: TaskWatche
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="text-xs">
-                        {watcher.firstName?.[0]}
-                        {watcher.lastName?.[0]}
+                        {(watcher.name || '')
+                          .split(' ')
+                          .slice(0, 2)
+                          .map((part) => part[0])
+                          .join('')
+                          .toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium">
-                      {watcher.firstName} {watcher.lastName}
+                      {watcher.name}
                     </span>
                   </div>
                   <Button
@@ -135,12 +144,12 @@ export function TaskWatchers({ taskId, watchers, onWatchersUpdated }: TaskWatche
               <Label htmlFor="user">Select User *</Label>
               <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select employee" />
+                  <SelectValue placeholder="Select user" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableEmployees.map((emp) => (
-                    <SelectItem key={emp._id} value={emp._id}>
-                      {emp.firstName} {emp.lastName}
+                  {availableUsers.map((candidate) => (
+                    <SelectItem key={candidate._id} value={candidate._id}>
+                      {candidate.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

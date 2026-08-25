@@ -3,22 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { fetchWithRetry } from '@/lib/utils';
+import securityAPI from '@/lib/api/securityAPI';
+import { isSessionExpiredError } from '@/lib/api/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, Lock, ArrowLeft, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
-
-const fetchCsrfToken = async (): Promise<string> => {
-  const token = localStorage.getItem('token');
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/csrf/token`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  const data = await response.json();
-  return data.csrfToken;
-};
 
 const validatePassword = (password: string): { valid: boolean; message: string; strength: number } => {
   const trimmed = password.trim();
@@ -35,10 +27,6 @@ const validatePassword = (password: string): { valid: boolean; message: string; 
   return { valid: true, message: 'Strong password', strength };
 };
 
-const sanitizeInput = (input: string): string => {
-  return input.trim().replace(/[<>"']/g, '');
-};
-
 export default function ChangePasswordPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -50,23 +38,18 @@ export default function ChangePasswordPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
-  const [csrfToken, setCsrfToken] = useState('');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  useEffect(() => {
-    fetchCsrfToken().then(setCsrfToken).catch(() => {});
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    const currentPassword = sanitizeInput(formData.currentPassword);
-    const newPassword = sanitizeInput(formData.newPassword);
-    const confirmPassword = sanitizeInput(formData.confirmPassword);
+    // Passwords are sent exactly as typed: any trimming or character stripping
+    // here would change the secret the user chose.
+    const { currentPassword, newPassword, confirmPassword } = formData;
 
     if (!currentPassword || !newPassword || !confirmPassword) {
       setError('All fields are required');
@@ -89,52 +72,27 @@ export default function ChangePasswordPage() {
       return;
     }
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setError('Authentication required. Please login again.');
-      setTimeout(() => router.push('/login'), 1500);
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const response = await fetchWithRetry(
-        () => fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/change-password`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'X-CSRF-Token': csrfToken
-          },
-          body: JSON.stringify({
-            currentPassword,
-            newPassword
-          })
-        }),
-        { maxAttempts: 3, delayMs: 1000 }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Session expired. Please login again.');
-          setTimeout(() => router.push('/login'), 1500);
-          return;
-        }
-        throw new Error(sanitizeInput(data.message || 'Failed to change password'));
-      }
+      await securityAPI.changePassword(currentPassword, newPassword);
 
       setSuccess('Password changed successfully');
       setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setPasswordStrength(0);
-      
+
       setTimeout(() => {
         router.push('/dashboard/settings');
       }, 2000);
     } catch (err: any) {
-      setError(sanitizeInput(err.message || 'Failed to change password'));
+      if (isSessionExpiredError(err)) {
+        setError('Session expired. Please login again.');
+        setTimeout(() => router.push('/login'), 1500);
+        return;
+      }
+
+      // The server enforces the organisation password policy, so prefer its message.
+      setError(err?.response?.data?.message || 'Failed to change password');
     } finally {
       setLoading(false);
     }

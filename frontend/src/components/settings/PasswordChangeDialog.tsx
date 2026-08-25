@@ -6,9 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import api from "@/lib/api/api";
 import { Lock } from "lucide-react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export function PasswordChangeDialog() {
   const [open, setOpen] = useState(false);
@@ -27,36 +26,29 @@ export function PasswordChangeDialog() {
       return;
     }
 
-    if (formData.newPassword.length < 6) {
-      toast({ title: "Error", description: "Password must be at least 6 characters", variant: "destructive" });
-      return;
-    }
-
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/users/change-password`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
+      // Length and strength are the server's call: it holds the organisation
+      // password policy, so duplicating a rule here would only go stale.
+      // skipAuthRedirect keeps a wrong current password from signing the user out.
+      await api.put(
+        "/users/change-password",
+        {
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword
-        })
-      });
+        },
+        { skipAuthRedirect: true }
+      );
 
-      if (response.ok) {
-        toast({ title: "Success", description: "Password changed successfully" });
-        setOpen(false);
-        setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      } else {
-        const data = await response.json();
-        toast({ title: "Error", description: data.message || "Failed to change password", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Error changing password", variant: "destructive" });
+      toast({ title: "Success", description: "Password changed successfully" });
+      setOpen(false);
+      setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to change password",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }

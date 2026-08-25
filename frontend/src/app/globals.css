@@ -351,3 +351,44 @@
   background-size: 400% 400%;
   animation: auth-gradient 12s ease infinite;
 }
+/* ─── Appearance preferences ───
+   Driven by PreferencesContext, which stamps data-font-size and .compact-mode
+   onto the document element from the user's saved preferences. */
+
+html[data-font-size="small"] {
+  font-size: 14px;
+}
+
+html[data-font-size="medium"] {
+  font-size: 16px;
+}
+
+html[data-font-size="large"] {
+  font-size: 18px;
+}
+
+/* Tightens the standard page and card rhythm without touching component code. */
+html.compact-mode {
+  --compact-scale: 0.75;
+}
+
+html.compact-mode .container {
+  padding-top: calc(1rem * var(--compact-scale));
+  padding-bottom: calc(1rem * var(--compact-scale));
+}
+
+html.compact-mode [class*="p-6"] {
+  padding: calc(1.5rem * var(--compact-scale));
+}
+
+html.compact-mode [class*="p-8"] {
+  padding: calc(2rem * var(--compact-scale));
+}
+
+html.compact-mode [class*="gap-6"] {
+  gap: calc(1.5rem * var(--compact-scale));
+}
+
+html.compact-mode [class*="space-y-8"] > * + * {
+  margin-top: calc(2rem * var(--compact-scale));
+}

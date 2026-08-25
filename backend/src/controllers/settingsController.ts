@@ -1,59 +1,76 @@
 import { Request, Response } from 'express';
-import { Settings, UserSetting } from '../models/Settings';
+import { Settings } from '../models/Settings';
 import ChartOfAccount from '../models/ChartOfAccount';
 import { PartyLedger } from '../models/PartyLedger';
 import mongoose from 'mongoose';
+import { logger } from '../utils/logger';
 
-export const getSettings = async (req: Request, res: Response) => {
+// Per-user preferences moved to /api/settings/me (see userPreferenceController).
+// These handlers now serve only the organisation-wide singleton, which is why
+// they can stay behind the settings.view / settings.edit permissions.
+
+// accountingMode is deliberately absent: it is changed through the dedicated
+// switch-mode / convert-* endpoints so the ledger side effects always run.
+const EDITABLE_SETTING_FIELDS = [
+  'companyName',
+  'fiscalYearStart',
+  'currency',
+  'currencyConfig',
+  'projectSettings'
+] as const;
+
+export const getSettings = async (_req: Request, res: Response) => {
   try {
-    const { scope, key, format } = req.query;
-    const userId = (req as any).user?.id;
-
-    if (scope === 'user' && userId) {
-      if (key) {
-        const setting = await UserSetting.findOne({ userId, key });
-        if (format === 'keyValue') {
-          return res.json({ [key as string]: setting?.value || null });
-        }
-        return res.status(setting ? 200 : 404).json(setting || { message: 'Setting not found' });
-      }
-      const userSettings = await UserSetting.find({ userId });
-      const settingsObj = userSettings.reduce((acc, s) => ({ ...acc, [s.key]: s.value }), {});
-      return res.json(settingsObj);
-    }
-
     let settings = await Settings.findOne();
     if (!settings) {
       settings = await Settings.create({ accountingMode: 'western' });
     }
     res.json(settings);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    logger.error(`Get settings error: ${error.message}`);
+    res.status(500).json({ message: 'Error retrieving settings' });
   }
 };
 
 export const updateSettings = async (req: Request, res: Response) => {
   try {
-    const { key, value, scope } = req.body;
-    const userId = (req as any).user?.id;
+    // Copy only known fields off the body; passing req.body straight into the
+    // update would let a caller set anything the schema happens to accept.
+    const updates: Record<string, unknown> = {};
+    for (const field of EDITABLE_SETTING_FIELDS) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
 
-    if (scope === 'user' && userId && key) {
-      const setting = await UserSetting.findOneAndUpdate(
-        { userId, key },
-        { userId, key, value, scope },
-        { upsert: true, new: true }
-      );
-      return res.json(setting);
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No editable settings fields supplied' });
+    }
+
+    if (updates.currency !== undefined && !/^[A-Z]{3}$/.test(String(updates.currency).toUpperCase())) {
+      return res.status(400).json({ message: 'currency must be a three-letter ISO 4217 code' });
+    }
+
+    if (updates.fiscalYearStart !== undefined && !/^\d{2}-\d{2}$/.test(String(updates.fiscalYearStart))) {
+      return res.status(400).json({ message: 'fiscalYearStart must be in DD-MM format' });
     }
 
     let settings = await Settings.findOne();
     if (!settings) {
-      settings = await Settings.create(req.body);
+      settings = await Settings.create(updates);
     } else {
-      settings = await Settings.findOneAndUpdate({}, req.body, { new: true });
+      Object.assign(settings, updates);
+      await settings.save();
     }
+
+    logger.info('Organisation settings updated', {
+      userId: (req as any).user?._id?.toString(),
+      fields: Object.keys(updates)
+    });
+
     res.json(settings);
   } catch (error: any) {
+    logger.error(`Update settings error: ${error.message}`);
     res.status(500).json({ message: error.message });
   }
 };

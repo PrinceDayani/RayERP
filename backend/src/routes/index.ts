@@ -27,6 +27,7 @@ import fileShareRoutes from './fileShare.routes';
 import chatRoutes from './chat.routes';
 import broadcastRoutes from './broadcast.routes';
 import csrfRoutes from './csrf.routes';
+import securityPolicyRoutes from './securityPolicy.routes';
 import profileRoutes from './profile.routes';
 // --- Merged Financial & Ledger Routes ---
 import budgetRoutes from './budgetRoutes';
@@ -115,6 +116,7 @@ router.use("/reports", reportRoutes);
 router.use('/contacts', contactRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/security-policy', securityPolicyRoutes);
 router.use('/accounting-settings', accountingSettingsRoutes);
 router.use('/admin', adminRoutes);
 router.use('/leaves', leaveRoutes);

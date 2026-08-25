@@ -32,7 +32,7 @@ const sessionAPI = {
     // Get all active sessions for current user
     getActiveSessions: async (): Promise<SessionInfo[]> => {
         try {
-            const response = await api('/api/sessions');
+            const response = await api('/sessions');
             return response.data.sessions || [];
         } catch (error) {
             console.error('Error fetching active sessions:', error);
@@ -43,7 +43,7 @@ const sessionAPI = {
     // Revoke a specific session
     revokeSession: async (sessionId: string): Promise<void> => {
         try {
-            await api(`/api/sessions/${sessionId}`, {
+            await api(`/sessions/${sessionId}`, {
                 method: 'DELETE'
             });
         } catch (error) {
@@ -55,7 +55,7 @@ const sessionAPI = {
     // Revoke all other sessions (keep current)
     revokeAllOtherSessions: async (): Promise<number> => {
         try {
-            const response = await api('/api/sessions', {
+            const response = await api('/sessions', {
                 method: 'DELETE'
             });
             return response.data.revokedCount || 0;
@@ -68,7 +68,7 @@ const sessionAPI = {
     // Get session statistics (admin only)
     getStatistics: async (): Promise<SessionStatistics> => {
         try {
-            const response = await api('/api/sessions/statistics');
+            const response = await api('/sessions/statistics');
             return response.data.statistics;
         } catch (error) {
             console.error('Error fetching session statistics:', error);

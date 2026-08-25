@@ -1,6 +1,17 @@
 // path: frontend/src/lib/api.ts
 import axios from "axios";
 
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    /**
+     * Set on requests where a 401 means "the credential in this request body
+     * was wrong", not "your session expired". Suppresses the automatic logout
+     * and redirect in handleFinalError.
+     */
+    skipAuthRedirect?: boolean;
+  }
+}
+
 // Use environment variable for API URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -79,6 +90,23 @@ api.interceptors.response.use(
   }
 );
 
+// Codes the auth middleware uses when the session itself is no longer usable,
+// as opposed to a 401 that merely rejects a credential in the request body.
+const SESSION_ERROR_CODES = [
+  'SESSION_INVALID',
+  'SESSION_IDLE_TIMEOUT',
+  'INVALID_TOKEN_TYPE',
+  'DEVICE_MISMATCH'
+];
+
+/**
+ * True when a rejected request means the user must sign in again. Callers that
+ * set skipAuthRedirect use this to decide whether to send the user to login or
+ * just show the server's message.
+ */
+export const isSessionExpiredError = (error: any): boolean =>
+  error?.response?.status === 401 && SESSION_ERROR_CODES.includes(error?.response?.data?.code);
+
 function handleFinalError(error: any) {
   // Enhanced error logging for network issues
   if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
@@ -113,11 +141,20 @@ function handleFinalError(error: any) {
     });
   }
   
-  if (error.response?.status === 401 && typeof window !== 'undefined') {
+  // A 401 normally means the session is gone, so we clear it and bounce to
+  // login. Some endpoints also answer 401 to mean "that credential you just
+  // typed was wrong" (a mis-typed current password, a bad 2FA code) while the
+  // session itself is perfectly valid. Those callers opt out via
+  // skipAuthRedirect so a typo cannot sign the user out.
+  if (
+    error.response?.status === 401 &&
+    !error.config?.skipAuthRedirect &&
+    typeof window !== 'undefined'
+  ) {
     localStorage.removeItem("auth-token");
     window.location.href = "/login";
   }
-  
+
   return Promise.reject(error);
 }
 

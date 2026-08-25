@@ -81,7 +81,24 @@ function validateEnvironment() {
     console.error('Please check your .env file and fix the issues above.');
     process.exit(1);
   }
-  
+
+  // Optional, but the format must be right when supplied: an unusable key would
+  // otherwise only surface when a user tries to enrol in two-factor auth.
+  const twoFactorKey = process.env.TWO_FACTOR_ENCRYPTION_KEY;
+  if (!twoFactorKey) {
+    console.warn('⚠️  TWO_FACTOR_ENCRYPTION_KEY is not set - two-factor authentication will be unavailable.');
+  } else {
+    const decoded = /^[0-9a-fA-F]{64}$/.test(twoFactorKey)
+      ? Buffer.from(twoFactorKey, 'hex')
+      : Buffer.from(twoFactorKey, 'base64');
+
+    if (decoded.length !== 32) {
+      console.error('❌ TWO_FACTOR_ENCRYPTION_KEY must decode to exactly 32 bytes (hex or base64).');
+      console.error('   Generate one with: openssl rand -hex 32');
+      process.exit(1);
+    }
+  }
+
   console.log('✅ All environment variables are properly configured!');
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🚀 Port: ${process.env.PORT}`);

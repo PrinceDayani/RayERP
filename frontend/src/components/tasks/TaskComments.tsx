@@ -7,16 +7,19 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { MentionInput } from "@/components/ui/MentionInput";
 import { tasksAPI } from "@/lib/api/tasksAPI";
+import api from "@/lib/api/api";
 import { toast } from "@/components/ui/use-toast";
 import { Plus, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
+// comments[].user references User, which carries `name` - not the Employee
+// firstName/lastName this previously declared. See Documentation/identity-map.md.
 interface Comment {
   _id?: string;
   user: {
     _id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
+    email?: string;
   };
   comment: string;
   mentions?: string[];
@@ -40,13 +43,17 @@ export function TaskComments({ taskId, comments, onCommentAdded }: TaskCommentsP
     fetchUsers();
   }, []);
 
+  // Mentions resolve to Users, and the relative URL used here previously hit
+  // the Next.js server rather than the API, so the list was always empty.
   const fetchUsers = async () => {
     try {
-      const response = await fetch("/api/employees");
-      const data = await response.json();
-      setUsers(data);
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
+      const { data } = await api.get('/users');
+      const list = Array.isArray(data) ? data : data?.users ?? data?.data ?? [];
+      setUsers(list);
+    } catch {
+      // Listing users needs the users.view permission; without it mentions are
+      // simply unavailable, which must not break commenting.
+      setUsers([]);
     }
   };
 
@@ -67,8 +74,26 @@ export function TaskComments({ taskId, comments, onCommentAdded }: TaskCommentsP
     }
   };
 
-  const renderComment = (text: string) => {
-    return text.replace(/@\[([^\]]+)\]\([^)]+\)/g, '<span class="text-primary font-medium">@$1</span>');
+  const escapeHtml = (value: string) =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  // The result is injected with dangerouslySetInnerHTML, so the comment body is
+  // escaped first and only the mention markup is added back afterwards -
+  // otherwise a comment containing HTML would execute. A comment stored without
+  // text must not throw here either: this renders inside the default-open tab,
+  // so one malformed record would take down the whole page.
+  const renderComment = (text: unknown) => {
+    if (typeof text !== 'string' || text.length === 0) return '';
+
+    return escapeHtml(text).replace(
+      /@\[([^\]]+)\]\([^)]+\)/g,
+      '<span class="text-primary font-medium">@$1</span>'
+    );
   };
 
   return (

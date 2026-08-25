@@ -1,139 +1,165 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Mail, Phone, Users, Crown, Shield, UserCheck, User } from 'lucide-react';
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Crown, Mail, Phone, Shield, User as UserIcon, UserCheck, Users } from 'lucide-react';
 import api from '@/lib/api/api';
-import toast from 'react-hot-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface RoleUser {
+interface DirectoryUser {
   _id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
   phone?: string;
-  role: string;
-  department?: string;
-  avatarUrl?: string;
+  role?: { _id: string; name: string; level: number } | string;
+  department?: { name?: string } | string;
 }
 
-const ROLE_HIERARCHY = {
-  'root': { level: 0, icon: Crown, color: 'bg-purple-600' },
-  'super_admin': { level: 1, icon: Shield, color: 'bg-red-600' },
-  'admin': { level: 2, icon: UserCheck, color: 'bg-blue-600' },
-  'manager': { level: 3, icon: Users, color: 'bg-green-600' },
-  'employee': { level: 4, icon: User, color: 'bg-gray-600' }
+/**
+ * Roles are Role documents with a numeric `level` (Root is 100) - higher means
+ * more senior. Presentation is derived from that level rather than from a
+ * hardcoded list of role names, which drifts as soon as a role is renamed.
+ */
+const bandFor = (level: number) => {
+  if (level >= 100) return { label: 'Root', icon: Crown, color: 'bg-purple-600' };
+  if (level >= 90) return { label: 'Executive', icon: Shield, color: 'bg-red-600' };
+  if (level >= 80) return { label: 'Administrator', icon: UserCheck, color: 'bg-blue-600' };
+  if (level >= 50) return { label: 'Manager', icon: Users, color: 'bg-green-600' };
+  return { label: 'Team Member', icon: UserIcon, color: 'bg-slate-600' };
 };
 
+const roleOf = (user?: DirectoryUser | null) =>
+  typeof user?.role === 'object' && user?.role ? user.role : null;
+
+const levelOf = (user?: DirectoryUser | null) => roleOf(user)?.level ?? 0;
+
+const roleNameOf = (user?: DirectoryUser | null) =>
+  roleOf(user)?.name ?? (typeof user?.role === 'string' ? user.role : 'Unassigned');
+
+const departmentOf = (user?: DirectoryUser | null) =>
+  typeof user?.department === 'object' ? user?.department?.name : user?.department;
+
+const initialsOf = (name: string) =>
+  (name || '')
+    .split(' ')
+    .slice(0, 2)
+    .map(part => part[0])
+    .join('')
+    .toUpperCase();
+
 export default function HierarchySettings() {
-  const [currentUser, setCurrentUser] = useState<RoleUser | null>(null);
-  const [superiorUsers, setSuperiorUsers] = useState<RoleUser[]>([]);
+  const { hasPermission } = useAuth();
+  const canViewDirectory = hasPermission('users.view');
+
+  const [currentUser, setCurrentUser] = useState<DirectoryUser | null>(null);
+  const [superiors, setSuperiors] = useState<DirectoryUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchHierarchyData();
-  }, []);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-  const fetchHierarchyData = async () => {
     try {
-      setLoading(true);
-      
-      // Get current user info
-      const userResponse = await api.get('/users/me');
-      const user = userResponse.data;
-      setCurrentUser(user);
+      const meResponse = await api.get('/auth/me');
+      const me: DirectoryUser = meResponse.data?.user ?? meResponse.data;
+      setCurrentUser(me);
 
-      // Get users with higher roles
-      const currentRoleLevel = ROLE_HIERARCHY[user.role as keyof typeof ROLE_HIERARCHY]?.level ?? 999;
-      
+      // Listing every user needs users.view; without it we still show the
+      // user their own position rather than failing the whole tab.
+      if (!canViewDirectory) {
+        setSuperiors([]);
+        return;
+      }
+
       const usersResponse = await api.get('/users');
-      const allUsers = usersResponse.data;
-      
-      const superiors = allUsers.filter((u: RoleUser) => {
-        const userRoleLevel = ROLE_HIERARCHY[u.role as keyof typeof ROLE_HIERARCHY]?.level ?? 999;
-        return userRoleLevel < currentRoleLevel && u._id !== user._id;
-      }).sort((a: RoleUser, b: RoleUser) => {
-        const aLevel = ROLE_HIERARCHY[a.role as keyof typeof ROLE_HIERARCHY]?.level ?? 999;
-        const bLevel = ROLE_HIERARCHY[b.role as keyof typeof ROLE_HIERARCHY]?.level ?? 999;
-        return aLevel - bLevel;
-      });
+      const payload = usersResponse.data;
+      const all: DirectoryUser[] = Array.isArray(payload)
+        ? payload
+        : payload?.users ?? payload?.data ?? [];
 
-      setSuperiorUsers(superiors);
-    } catch (error) {
-      console.error('Failed to fetch hierarchy data:', error);
-      toast.error('Failed to load hierarchy information');
+      const myLevel = levelOf(me);
+
+      setSuperiors(
+        all
+          .filter(user => user._id !== me?._id && levelOf(user) > myLevel)
+          .sort((a, b) => levelOf(b) - levelOf(a))
+      );
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        setSuperiors([]);
+      } else {
+        setError(err?.response?.data?.message || 'Could not load the organisation hierarchy.');
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [canViewDirectory]);
 
-  const getRoleInfo = (role: string) => {
-    return ROLE_HIERARCHY[role as keyof typeof ROLE_HIERARCHY] || ROLE_HIERARCHY.employee;
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const handleContactUser = (user: RoleUser, method: 'email' | 'phone') => {
-    if (method === 'email' && user.email) {
-      window.open(`mailto:${user.email}`, '_blank');
-      toast.success(`Opening email to ${user.firstName} ${user.lastName}`);
-    } else if (method === 'phone' && user.phone) {
-      window.open(`tel:${user.phone}`, '_blank');
-      toast.success(`Calling ${user.firstName} ${user.lastName}`);
-    } else {
-      toast.error(`${method === 'email' ? 'Email' : 'Phone'} not available`);
-    }
-  };
+  const myBand = useMemo(() => bandFor(levelOf(currentUser)), [currentUser]);
 
   if (loading) {
     return (
       <div className="animate-pulse space-y-4">
-        <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded-xl"></div>
+        <div className="h-32 rounded-xl bg-slate-200 dark:bg-slate-700" />
         <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-20 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+          {[...Array(3)].map((_, index) => (
+            <div key={index} className="h-20 rounded-lg bg-slate-200 dark:bg-slate-700" />
           ))}
         </div>
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription className="flex items-center justify-between gap-4">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={load}>
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Current User Info */}
       {currentUser && (
-        <Card className="border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
+        <Card className="border-2 border-[#970E2C]/20 bg-[#970E2C]/5 dark:bg-[#970E2C]/10">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               Your Position
             </CardTitle>
-            <CardDescription>Your current role in the organization hierarchy</CardDescription>
+            <CardDescription>Where you sit in the organisation</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={currentUser.avatarUrl} />
-                <AvatarFallback className="text-lg">
-                  {currentUser.firstName?.[0]}{currentUser.lastName?.[0]}
+                <AvatarFallback className="bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] text-lg text-white">
+                  {initialsOf(currentUser.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <h3 className="text-xl font-semibold">
-                  {currentUser.firstName} {currentUser.lastName}
-                </h3>
-                <div className="flex items-center gap-2 mt-1">
-                  {React.createElement(getRoleInfo(currentUser.role).icon, {
-                    className: "h-4 w-4 text-white"
-                  })}
-                  <Badge className={`${getRoleInfo(currentUser.role).color} text-white`}>
-                    {currentUser.role.replace('_', ' ').toUpperCase()}
-                  </Badge>
+                <h3 className="text-xl font-semibold">{currentUser.name}</h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <Badge className={`${myBand.color} text-white`}>{roleNameOf(currentUser)}</Badge>
+                  <span className="text-xs text-muted-foreground">Level {levelOf(currentUser)}</span>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">{currentUser.email}</p>
-                {currentUser.department && (
-                  <p className="text-sm text-muted-foreground">Department: {currentUser.department}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{currentUser.email}</p>
+                {departmentOf(currentUser) && (
+                  <p className="text-sm text-muted-foreground">Department: {departmentOf(currentUser)}</p>
                 )}
               </div>
             </div>
@@ -141,80 +167,67 @@ export default function HierarchySettings() {
         </Card>
       )}
 
-      {/* Superior Users */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Crown className="h-5 w-5" />
-            Organization Hierarchy
+            People Above You
           </CardTitle>
-          <CardDescription>
-            Contact information for users with higher roles in your organization
-          </CardDescription>
+          <CardDescription>Contact details for more senior roles in your organisation</CardDescription>
         </CardHeader>
         <CardContent>
-          {superiorUsers.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Crown className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>You are at the top of the hierarchy!</p>
-              <p className="text-sm">No superior roles to display.</p>
+          {!canViewDirectory ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Your role does not include permission to browse the user directory, so this list is hidden.
+              </AlertDescription>
+            </Alert>
+          ) : superiors.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              <Crown className="mx-auto mb-4 h-12 w-12 opacity-50" />
+              <p>You are at the top of the hierarchy.</p>
+              <p className="text-sm">There are no more senior roles to display.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {superiorUsers.map((user) => {
-                const roleInfo = getRoleInfo(user.role);
+            <div className="space-y-3">
+              {superiors.map(user => {
+                const band = bandFor(levelOf(user));
                 return (
                   <div
                     key={user._id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={user.avatarUrl} />
-                        <AvatarFallback>
-                          {user.firstName?.[0]}{user.lastName?.[0]}
-                        </AvatarFallback>
+                        <AvatarFallback>{initialsOf(user.name)}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <h4 className="font-semibold">
-                          {user.firstName} {user.lastName}
-                        </h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          {React.createElement(roleInfo.icon, {
-                            className: "h-3 w-3 text-white"
-                          })}
-                          <Badge className={`${roleInfo.color} text-white text-xs`}>
-                            {user.role.replace('_', ' ').toUpperCase()}
-                          </Badge>
+                        <h4 className="font-semibold">{user.name}</h4>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <Badge className={`${band.color} text-xs text-white`}>{roleNameOf(user)}</Badge>
+                          <span className="text-xs text-muted-foreground">Level {levelOf(user)}</span>
                         </div>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
-                        {user.department && (
-                          <p className="text-xs text-muted-foreground">
-                            {user.department}
-                          </p>
+                        {departmentOf(user) && (
+                          <p className="text-xs text-muted-foreground">{departmentOf(user)}</p>
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleContactUser(user, 'email')}
-                        className="gap-1"
-                      >
-                        <Mail className="h-3 w-3" />
-                        Email
+                      <Button variant="outline" size="sm" asChild className="gap-1">
+                        <a href={`mailto:${user.email}`}>
+                          <Mail className="h-3 w-3" />
+                          Email
+                        </a>
                       </Button>
                       {user.phone && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleContactUser(user, 'phone')}
-                          className="gap-1"
-                        >
-                          <Phone className="h-3 w-3" />
-                          Call
+                        <Button variant="outline" size="sm" asChild className="gap-1">
+                          <a href={`tel:${user.phone}`}>
+                            <Phone className="h-3 w-3" />
+                            Call
+                          </a>
                         </Button>
                       )}
                     </div>
@@ -223,30 +236,6 @@ export default function HierarchySettings() {
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Hierarchy Legend */}
-      <Card className="bg-slate-50 dark:bg-slate-900">
-        <CardHeader>
-          <CardTitle className="text-sm">Role Hierarchy</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            {Object.entries(ROLE_HIERARCHY).map(([role, info]) => (
-              <div key={role} className="flex items-center gap-2 text-xs">
-                {React.createElement(info.icon, {
-                  className: "h-3 w-3 text-white"
-                })}
-                <Badge className={`${info.color} text-white text-xs`}>
-                  {role.replace('_', ' ').toUpperCase()}
-                </Badge>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            You can only see and contact users with roles higher than yours in the hierarchy.
-          </p>
         </CardContent>
       </Card>
     </div>

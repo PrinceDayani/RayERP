@@ -1,235 +1,184 @@
-// Real-time appearance settings
 "use client";
 
 import React from 'react';
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useRealTimeSetting } from '@/lib/realTimeSettings';
-import { CheckCircle, Palette, Monitor, Sun, Moon } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { usePreferences } from '@/contexts/PreferencesContext';
+import type { FontSize, Theme } from '@/lib/api/preferencesAPI';
+import { AlertCircle, CheckCircle, Loader2, Monitor, Moon, Palette, Sun } from 'lucide-react';
+
+const THEME_OPTIONS: Array<{ value: Theme; label: string; icon: typeof Sun; accent: string }> = [
+  { value: 'light', label: 'Light', icon: Sun, accent: 'from-yellow-400 to-orange-500' },
+  { value: 'dark', label: 'Dark', icon: Moon, accent: 'from-indigo-500 to-purple-600' },
+  { value: 'system', label: 'System', icon: Monitor, accent: 'from-slate-500 to-slate-700' }
+];
+
+const FONT_SIZE_OPTIONS: Array<{ value: FontSize; label: string; hint: string; className: string }> = [
+  { value: 'small', label: 'Small', hint: 'Fits more on screen', className: 'text-sm' },
+  { value: 'medium', label: 'Medium', hint: 'Default', className: 'text-base' },
+  { value: 'large', label: 'Large', hint: 'Easier to read', className: 'text-lg' }
+];
 
 export default function AppearanceSettings() {
-  const [theme, setTheme, themeLoading] = useRealTimeSetting('theme', 'system');
-  const [compactMode, setCompactMode, compactLoading] = useRealTimeSetting('compactMode', false);
-  const [fontSize, setFontSize, fontSizeLoading] = useRealTimeSetting('fontSize', 'medium');
-  const [sidebarCollapsed, setSidebarCollapsed, sidebarLoading] = useRealTimeSetting('sidebarCollapsed', false);
-  
-  const [saveIndicator, setSaveIndicator] = React.useState(false);
-  
-  const isLoading = themeLoading || compactLoading || fontSizeLoading || sidebarLoading;
-  
-  const showSaveIndicator = () => {
-    setSaveIndicator(true);
-    setTimeout(() => setSaveIndicator(false), 2000);
-  };
+  const { preferences, loading, saveState, saveError, update, flush } = usePreferences();
 
-  const handleThemeChange = (value: string) => {
-    setTheme(value);
-    showSaveIndicator();
-    // Apply theme immediately
-    document.documentElement.setAttribute('data-theme', value);
-  };
-
-  const handleCompactModeChange = (checked: boolean) => {
-    setCompactMode(checked);
-    showSaveIndicator();
-    // Apply compact mode immediately
-    document.body.classList.toggle('compact-mode', checked);
-  };
-
-  const handleFontSizeChange = (value: string) => {
-    setFontSize(value);
-    showSaveIndicator();
-    // Apply font size immediately
-    document.documentElement.setAttribute('data-font-size', value);
-  };
-
-  const handleSidebarChange = (checked: boolean) => {
-    setSidebarCollapsed(checked);
-    showSaveIndicator();
-  };
-
-  if (isLoading) {
-    return <div className="animate-pulse space-y-8">
-      <div className="space-y-4">
-        <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded-2xl"></div>
-          <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded-2xl"></div>
-          <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded-2xl"></div>
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-8">
+        <div className="space-y-4">
+          <div className="h-6 w-1/3 rounded bg-slate-200 dark:bg-slate-700" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="h-32 rounded-2xl bg-slate-200 dark:bg-slate-700" />
+            <div className="h-32 rounded-2xl bg-slate-200 dark:bg-slate-700" />
+            <div className="h-32 rounded-2xl bg-slate-200 dark:bg-slate-700" />
+          </div>
         </div>
       </div>
-    </div>;
+    );
   }
 
   return (
     <div className="space-y-8">
-      {/* Auto-save indicator */}
-      {saveIndicator && (
-        <div className="fixed top-20 right-6 z-50 flex items-center gap-2 text-green-600 text-sm bg-green-50 dark:bg-green-950 px-4 py-2 rounded-full border border-green-200 dark:border-green-800 shadow-lg animate-in slide-in-from-top-2 duration-300">
-          <CheckCircle className="h-4 w-4" />
-          <span className="font-medium">Saved</span>
-        </div>
+      {saveError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+            <span>{saveError} Your changes are not stored yet.</span>
+            <Button variant="outline" size="sm" onClick={() => flush()} disabled={saveState === 'saving'}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       )}
 
-      {/* Theme Selection */}
+      {/* Theme */}
       <div className="space-y-4">
         <div>
           <Label className="flex items-center gap-2 text-base font-semibold">
             <Palette className="h-5 w-5" />
-            Theme Preference
+            Theme
           </Label>
-          <p className="text-sm text-muted-foreground mt-1">Choose your preferred color scheme</p>
+          <p className="mt-1 text-sm text-muted-foreground">Choose your preferred colour scheme</p>
         </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <button
-            onClick={() => handleThemeChange('light')}
-            className={`relative p-6 rounded-2xl border-2 transition-all hover:scale-105 ${
-              theme === 'light' 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 shadow-lg' 
-                : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
-            }`}
-          >
-            <div className="flex flex-col items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl shadow-lg">
-                <Sun className="h-6 w-6 text-white" />
-              </div>
-              <span className="font-medium">Light</span>
-              {theme === 'light' && (
-                <CheckCircle className="absolute top-3 right-3 h-5 w-5 text-blue-600" />
-              )}
-            </div>
-          </button>
-          
-          <button
-            onClick={() => handleThemeChange('dark')}
-            className={`relative p-6 rounded-2xl border-2 transition-all hover:scale-105 ${
-              theme === 'dark' 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 shadow-lg' 
-                : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
-            }`}
-          >
-            <div className="flex flex-col items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg">
-                <Moon className="h-6 w-6 text-white" />
-              </div>
-              <span className="font-medium">Dark</span>
-              {theme === 'dark' && (
-                <CheckCircle className="absolute top-3 right-3 h-5 w-5 text-blue-600" />
-              )}
-            </div>
-          </button>
-          
-          <button
-            onClick={() => handleThemeChange('system')}
-            className={`relative p-6 rounded-2xl border-2 transition-all hover:scale-105 ${
-              theme === 'system' 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 shadow-lg' 
-                : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
-            }`}
-          >
-            <div className="flex flex-col items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-slate-500 to-slate-700 rounded-xl shadow-lg">
-                <Monitor className="h-6 w-6 text-white" />
-              </div>
-              <span className="font-medium">System</span>
-              {theme === 'system' && (
-                <CheckCircle className="absolute top-3 right-3 h-5 w-5 text-blue-600" />
-              )}
-            </div>
-          </button>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {THEME_OPTIONS.map(({ value, label, icon: Icon, accent }) => {
+            const selected = preferences.theme === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => update({ theme: value })}
+                className={`relative rounded-2xl border-2 p-6 transition-all hover:scale-[1.02] ${
+                  selected
+                    ? 'border-[#970E2C] bg-[#970E2C]/5 shadow-lg dark:bg-[#970E2C]/15'
+                    : 'border-slate-200 hover:border-[#970E2C]/40 dark:border-slate-700'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-3">
+                  <div className={`rounded-xl bg-gradient-to-br p-3 shadow-lg ${accent}`}>
+                    <Icon className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="font-medium">{label}</span>
+                </div>
+                {selected && <CheckCircle className="absolute right-3 top-3 h-5 w-5 text-[#970E2C]" />}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Font Size */}
+      {/* Font size */}
       <div className="space-y-4">
         <div>
           <Label className="text-base font-semibold">Font Size</Label>
-          <p className="text-sm text-muted-foreground mt-1">Adjust text size for better readability</p>
+          <p className="mt-1 text-sm text-muted-foreground">Applies across the whole application</p>
         </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <button
-            onClick={() => handleFontSizeChange('small')}
-            className={`p-6 rounded-2xl border-2 transition-all hover:scale-105 ${
-              fontSize === 'small' 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 shadow-lg' 
-                : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
-            }`}
-          >
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-sm font-medium">Small</span>
-              <span className="text-xs text-muted-foreground">Compact view</span>
-            </div>
-          </button>
-          
-          <button
-            onClick={() => handleFontSizeChange('medium')}
-            className={`p-6 rounded-2xl border-2 transition-all hover:scale-105 ${
-              fontSize === 'medium' 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 shadow-lg' 
-                : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
-            }`}
-          >
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-base font-medium">Medium</span>
-              <span className="text-xs text-muted-foreground">Default</span>
-            </div>
-          </button>
-          
-          <button
-            onClick={() => handleFontSizeChange('large')}
-            className={`p-6 rounded-2xl border-2 transition-all hover:scale-105 ${
-              fontSize === 'large' 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 shadow-lg' 
-                : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'
-            }`}
-          >
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-lg font-medium">Large</span>
-              <span className="text-xs text-muted-foreground">Easy reading</span>
-            </div>
-          </button>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {FONT_SIZE_OPTIONS.map(({ value, label, hint, className }) => {
+            const selected = preferences.fontSize === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => update({ fontSize: value })}
+                className={`relative rounded-2xl border-2 p-6 transition-all hover:scale-[1.02] ${
+                  selected
+                    ? 'border-[#970E2C] bg-[#970E2C]/5 shadow-lg dark:bg-[#970E2C]/15'
+                    : 'border-slate-200 hover:border-[#970E2C]/40 dark:border-slate-700'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <span className={`font-medium ${className}`}>{label}</span>
+                  <span className="text-xs text-muted-foreground">{hint}</span>
+                </div>
+                {selected && <CheckCircle className="absolute right-3 top-3 h-5 w-5 text-[#970E2C]" />}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Layout Options */}
+      {/* Layout */}
       <div className="space-y-4">
         <div>
-          <Label className="text-base font-semibold">Layout Options</Label>
-          <p className="text-sm text-muted-foreground mt-1">Customize your workspace layout</p>
+          <Label className="text-base font-semibold">Layout</Label>
+          <p className="mt-1 text-sm text-muted-foreground">Customise your workspace density</p>
         </div>
-        
+
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition-all">
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-[#970E2C]/40 dark:border-slate-700 dark:bg-slate-800">
             <div className="space-y-1">
-              <Label className="text-sm font-medium cursor-pointer">Compact Mode</Label>
-              <p className="text-xs text-muted-foreground">Reduce spacing and padding for more content</p>
+              <Label htmlFor="compactMode" className="cursor-pointer text-sm font-medium">
+                Compact Mode
+              </Label>
+              <p className="text-xs text-muted-foreground">Reduce spacing and padding to fit more content</p>
             </div>
             <Switch
-              checked={compactMode}
-              onCheckedChange={handleCompactModeChange}
-              className="data-[state=checked]:bg-blue-600"
+              id="compactMode"
+              checked={preferences.compactMode}
+              onCheckedChange={checked => update({ compactMode: checked })}
             />
           </div>
 
-          <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition-all">
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-[#970E2C]/40 dark:border-slate-700 dark:bg-slate-800">
             <div className="space-y-1">
-              <Label className="text-sm font-medium cursor-pointer">Collapsed Sidebar</Label>
-              <p className="text-xs text-muted-foreground">Start with sidebar minimized by default</p>
+              <Label htmlFor="sidebarCollapsed" className="cursor-pointer text-sm font-medium">
+                Collapsed Sidebar
+              </Label>
+              <p className="text-xs text-muted-foreground">Start with the sidebar minimised</p>
             </div>
             <Switch
-              checked={sidebarCollapsed}
-              onCheckedChange={handleSidebarChange}
-              className="data-[state=checked]:bg-blue-600"
+              id="sidebarCollapsed"
+              checked={preferences.sidebarCollapsed}
+              onCheckedChange={checked => update({ sidebarCollapsed: checked })}
             />
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl border border-blue-100 dark:border-blue-900">
-        <CheckCircle className="h-4 w-4 text-blue-600" />
-        <span>Changes are applied instantly and saved automatically</span>
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-muted-foreground dark:border-slate-700 dark:bg-slate-800/50">
+        {saveState === 'saving' ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Saving…</span>
+          </>
+        ) : saveState === 'error' ? (
+          <>
+            <AlertCircle className="h-4 w-4 text-destructive" />
+            <span>Your last change could not be saved</span>
+          </>
+        ) : (
+          <>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <span>Changes apply instantly and save to your account automatically</span>
+          </>
+        )}
       </div>
     </div>
   );

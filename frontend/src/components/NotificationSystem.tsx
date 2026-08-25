@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useSocket } from '@/hooks/useSocket';
 import { useNotifications } from '@/hooks/useNotifications';
-import { useRealTimeSetting } from '@/lib/realTimeSettings';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import toast from 'react-hot-toast';
 
 interface NotificationProps {
@@ -33,7 +33,7 @@ const NotificationSystem: React.FC<NotificationProps> = ({ isAuthenticated }) =>
   const [isConnected, setIsConnected] = useState(false);
 
   // Real-time settings
-  const [pushNotifications] = useRealTimeSetting('pushNotifications', true);
+  const { pushNotifications } = useNotificationPreferences();
 
   // Socket connection status
   useEffect(() => {

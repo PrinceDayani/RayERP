@@ -1,11 +1,18 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { register, login, getCurrentUser, logout, checkInitialSetup, initialSetup, publicSignup, checkAuth, changePassword, refreshAccessToken, getMySessions, revokeMySession, getUserSessions, revokeUserSession, revokeAllUserSessions, getAllActiveSessions } from '../controllers/authController';
+import { register, login, verifyTwoFactorLogin, getCurrentUser, logout, checkInitialSetup, initialSetup, publicSignup, checkAuth, changePassword, refreshAccessToken, getMySessions, revokeMySession, getUserSessions, revokeUserSession, revokeAllUserSessions, getAllActiveSessions } from '../controllers/authController';
 import { listPendingUsers, approveUser, rejectUser } from '../controllers/userApprovalController';
 import { protect, requireAdminOrRoot } from '../middleware/auth.middleware';
 import { authorizeMinLevel } from '../middleware/role.middleware';
 import { updateUserRole, getAllUsers } from '../controllers/userController';
 import { validateCsrfToken } from '../middleware/csrf.middleware';
+import {
+  getTwoFactorStatus,
+  setupTwoFactor,
+  enableTwoFactor,
+  disableTwoFactor,
+  regenerateRecoveryCodes
+} from '../controllers/twoFactorController';
 
 const router = express.Router();
 
@@ -44,6 +51,8 @@ const generalLimiter = rateLimit({
 });
 
 router.post('/login', authLimiter, login);
+// Second login step for accounts with two-factor enabled.
+router.post('/2fa/verify', authLimiter, verifyTwoFactorLogin);
 router.post('/logout', generalLimiter, logout);
 router.post('/refresh', generalLimiter, refreshAccessToken);
 
@@ -80,5 +89,12 @@ router.post('/initial-setup', authLimiter, initialSetup);
 router.get('/initial-setup', generalLimiter, checkInitialSetup);
 
 router.put('/change-password', protect, generalLimiter, validateCsrfToken, changePassword);
+
+// Two-factor enrolment management for the signed-in user.
+router.get('/2fa/status', protect, generalLimiter, getTwoFactorStatus);
+router.post('/2fa/setup', protect, authLimiter, validateCsrfToken, setupTwoFactor);
+router.post('/2fa/enable', protect, authLimiter, validateCsrfToken, enableTwoFactor);
+router.post('/2fa/disable', protect, authLimiter, validateCsrfToken, disableTwoFactor);
+router.post('/2fa/recovery-codes', protect, authLimiter, validateCsrfToken, regenerateRecoveryCodes);
 
 export default router;

@@ -9,8 +9,23 @@ import Notification from '../models/Notification';
 import { logger } from '../utils/logger';
 import { seedDefaultRoles, ensureRootRole, ensurePendingRole } from '../utils/seedDefaultRoles';
 import { generateDeviceFingerprint, compareFingerprints, isSuspiciousChange } from '../utils/deviceFingerprint';
+import {
+  getPolicy,
+  isLocked,
+  registerFailedLogin,
+  clearLoginFailures,
+  validatePasswordAgainstPolicy,
+  isPasswordReused,
+  recordPasswordInHistory,
+  verifyTotp,
+  consumeRecoveryCode,
+  decryptSecret
+} from '../services/accountSecurity.service';
 
 const MIN_PASSWORD_LENGTH = 8;
+
+// Window in which the second factor must be presented after a correct password.
+const MFA_TOKEN_EXPIRES_IN = '5m';
 
 // Create a user on behalf of an authenticated Admin/Root
 export const register = async (req: Request, res: Response) => {
@@ -304,70 +319,12 @@ export const checkInitialSetup = async (req: Request, res: Response) => {
 };
 
 // Login user
-export const login = async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-
-    logger.info(`Login attempt for email: ${email}`);
-
-    // Check if email and password are provided
-    if (!email || !password) {
-      logger.warn('Login attempt without email or password');
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email and password'
-      });
-    }
-
-    // Find user by email and include password in the result
-    const user = await User.findOne({ email }).select('+password').populate('role');
-
-    // Check if user exists
-    if (!user) {
-      logger.warn(`Login attempt for non-existent user: ${email}`);
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Check if password is correct
-    const isPasswordCorrect = await user.comparePassword(password);
-    if (!isPasswordCorrect) {
-      logger.warn(`Invalid password for user: ${email}`);
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Check user status
-    const userStatus = user.status || 'active';
-    if (userStatus === 'disabled') {
-      logger.warn(`Login attempt for disabled user: ${email}`);
-      return res.status(403).json({
-        success: false,
-        message: 'Your account has been disabled. Please contact administrator.',
-        code: 'ACCOUNT_DISABLED'
-      });
-    }
-    if (userStatus === 'inactive') {
-      logger.warn(`Login attempt for inactive user: ${email}`);
-      return res.status(403).json({
-        success: false,
-        message: 'Your account is inactive. Please contact administrator.',
-        code: 'ACCOUNT_INACTIVE'
-      });
-    }
-    if (userStatus === 'pending_approval') {
-      logger.warn(`Login attempt for pending approval user: ${email}`);
-      return res.status(403).json({
-        success: false,
-        message: 'Your account is pending approval. Please wait for administrator approval.',
-        code: 'ACCOUNT_PENDING_APPROVAL'
-      });
-    }
-
+/**
+ * Creates the session record, sets the auth cookies and returns the login
+ * response. Shared by password login and two-factor verification so both
+ * paths issue a session in exactly the same way.
+ */
+const issueSession = async (req: Request, res: Response, user: any) => {
     // Update last login
     user.lastLogin = new Date();
     await user.save();
@@ -464,7 +421,7 @@ export const login = async (req: Request, res: Response) => {
       updatedAt: user.updatedAt
     };
 
-    logger.info(`User logged in successfully: ${email}`);
+    logger.info(`User logged in successfully: ${user.email}`);
 
     // Log login activity with device fingerprint
     const { logActivity } = await import('../utils/activityLogger');
@@ -507,11 +464,235 @@ export const login = async (req: Request, res: Response) => {
       token,
       refreshToken,
     });
+};
+
+export const login = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    logger.info(`Login attempt for email: ${email}`);
+
+    // Check if email and password are provided
+    if (!email || !password) {
+      logger.warn('Login attempt without email or password');
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email and password'
+      });
+    }
+
+    // Find user by email and include password in the result
+    const user = await User.findOne({ email })
+      .select('+password +failedLoginAttempts +lockedUntil')
+      .populate('role');
+
+    // Check if user exists
+    if (!user) {
+      logger.warn(`Login attempt for non-existent user: ${email}`);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    const policy = await getPolicy();
+
+    // Evaluated before the password so a locked account cannot be used as an
+    // oracle for whether a guessed password was correct.
+    if (isLocked(user)) {
+      logger.warn(`Login attempt on locked account: ${email}`);
+      return res.status(423).json({
+        success: false,
+        message: 'Account temporarily locked after too many failed attempts. Try again later.',
+        code: 'ACCOUNT_LOCKED',
+        lockedUntil: user.lockedUntil
+      });
+    }
+
+    // Check if password is correct
+    const isPasswordCorrect = await user.comparePassword(password);
+    if (!isPasswordCorrect) {
+      const lockedUntil = await registerFailedLogin(user, policy);
+      logger.warn(`Invalid password for user: ${email}`);
+
+      if (lockedUntil) {
+        return res.status(423).json({
+          success: false,
+          message: 'Account temporarily locked after too many failed attempts. Try again later.',
+          code: 'ACCOUNT_LOCKED',
+          lockedUntil
+        });
+      }
+
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Check user status
+    const userStatus = user.status || 'active';
+    if (userStatus === 'disabled') {
+      logger.warn(`Login attempt for disabled user: ${email}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been disabled. Please contact administrator.',
+        code: 'ACCOUNT_DISABLED'
+      });
+    }
+    if (userStatus === 'inactive') {
+      logger.warn(`Login attempt for inactive user: ${email}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is inactive. Please contact administrator.',
+        code: 'ACCOUNT_INACTIVE'
+      });
+    }
+    if (userStatus === 'pending_approval') {
+      logger.warn(`Login attempt for pending approval user: ${email}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending approval. Please wait for administrator approval.',
+        code: 'ACCOUNT_PENDING_APPROVAL'
+      });
+    }
+
+    await clearLoginFailures(user);
+
+    // Credentials are proven but the session is withheld until the second
+    // factor is presented. The interim token is purpose-scoped and short-lived,
+    // and `protect` rejects it because it is not an access token.
+    if (user.twoFactor?.enabled) {
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        logger.error('JWT_SECRET is not defined in environment variables');
+        return res.status(500).json({ success: false, message: 'Server configuration error' });
+      }
+
+      const mfaToken = jwt.sign({ id: user._id.toString(), type: 'mfa' }, jwtSecret, {
+        expiresIn: MFA_TOKEN_EXPIRES_IN
+      } as jwt.SignOptions);
+
+      logger.info(`Password accepted for ${email}; awaiting two-factor verification`);
+
+      // success stays false because no session was issued and there is no
+      // token in this response. A client that has not been taught about the
+      // second step then reports the message instead of storing an undefined
+      // token. See CLAUDE.md 14.19 for the mobile contract.
+      return res.status(200).json({
+        success: false,
+        requiresTwoFactor: true,
+        code: 'TWO_FACTOR_REQUIRED',
+        message: 'Enter the code from your authenticator app',
+        mfaToken
+      });
+    }
+
+    return issueSession(req, res, user);
   } catch (error: any) {
     logger.error(`Login error for ${req.body?.email}: ${error.message}`, error);
     return res.status(500).json({
       success: false,
       message: 'An error occurred during login. Please try again.',
+    });
+  }
+};
+
+/**
+ * Second step of login for accounts with two-factor enabled. Exchanges the
+ * short-lived MFA token plus a TOTP code (or a single-use recovery code) for a
+ * real session.
+ */
+export const verifyTwoFactorLogin = async (req: Request, res: Response) => {
+  try {
+    const { mfaToken, code, recoveryCode } = req.body;
+
+    if (!mfaToken || (!code && !recoveryCode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Provide the two-factor token and an authenticator or recovery code'
+      });
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      logger.error('JWT_SECRET is not defined in environment variables');
+      return res.status(500).json({ success: false, message: 'Server configuration error' });
+    }
+
+    let payload: { id: string; type: string };
+    try {
+      payload = jwt.verify(mfaToken, jwtSecret) as { id: string; type: string };
+    } catch {
+      return res.status(401).json({
+        success: false,
+        message: 'Two-factor session expired. Please sign in again.',
+        code: 'MFA_TOKEN_INVALID'
+      });
+    }
+
+    if (payload.type !== 'mfa') {
+      return res.status(401).json({ success: false, message: 'Invalid token type', code: 'INVALID_TOKEN_TYPE' });
+    }
+
+    const user = await User.findById(payload.id)
+      .select('+twoFactor.secret +twoFactor.recoveryCodes +failedLoginAttempts +lockedUntil')
+      .populate('role');
+
+    if (!user || !user.twoFactor?.enabled || !user.twoFactor.secret) {
+      return res.status(401).json({ success: false, message: 'Two-factor authentication is not active for this account' });
+    }
+
+    const policy = await getPolicy();
+
+    if (isLocked(user)) {
+      return res.status(423).json({
+        success: false,
+        message: 'Account temporarily locked after too many failed attempts. Try again later.',
+        code: 'ACCOUNT_LOCKED',
+        lockedUntil: user.lockedUntil
+      });
+    }
+
+    let verified = false;
+
+    if (recoveryCode) {
+      const remaining = consumeRecoveryCode(recoveryCode, user.twoFactor.recoveryCodes || []);
+      if (remaining) {
+        user.twoFactor.recoveryCodes = remaining;
+        user.markModified('twoFactor');
+        await user.save();
+        verified = true;
+        logger.warn(`Recovery code used for ${user.email}; ${remaining.length} remaining`);
+      }
+    } else {
+      verified = await verifyTotp(code, decryptSecret(user.twoFactor.secret));
+    }
+
+    if (!verified) {
+      // Second-factor guesses count toward the same lockout budget as passwords.
+      const lockedUntil = await registerFailedLogin(user, policy);
+      logger.warn(`Failed two-factor verification for ${user.email}`);
+
+      if (lockedUntil) {
+        return res.status(423).json({
+          success: false,
+          message: 'Account temporarily locked after too many failed attempts. Try again later.',
+          code: 'ACCOUNT_LOCKED',
+          lockedUntil
+        });
+      }
+
+      return res.status(401).json({ success: false, message: 'Invalid verification code' });
+    }
+
+    await clearLoginFailures(user);
+    return issueSession(req, res, user);
+  } catch (error: any) {
+    logger.error(`Two-factor verification error: ${error.message}`);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during verification. Please try again.'
     });
   }
 };
@@ -646,14 +827,16 @@ export const changePassword = async (req: Request, res: Response) => {
       });
     }
 
-    if (newPassword.length < 6) {
+    const policy = await getPolicy();
+    const strength = validatePasswordAgainstPolicy(newPassword, policy);
+    if (!strength.valid) {
       return res.status(400).json({
         success: false,
-        message: 'New password must be at least 6 characters'
+        message: strength.message
       });
     }
 
-    const user = await User.findById(userId).select('+password');
+    const user = await User.findById(userId).select('+password +passwordHistory');
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -669,7 +852,16 @@ export const changePassword = async (req: Request, res: Response) => {
       });
     }
 
+    if (await isPasswordReused(user, newPassword, policy)) {
+      return res.status(400).json({
+        success: false,
+        message: `Choose a password you have not used in your last ${policy.passwordHistoryCount} passwords`
+      });
+    }
+
+    recordPasswordInHistory(user, policy);
     user.password = newPassword;
+    user.passwordChangedAt = new Date();
     await user.save();
 
     logger.info(`Password changed for user: ${user.email}`);

@@ -6,7 +6,6 @@ import contactsAPIModule from './contactsAPI';
 import analyticsAPIModule from './analyticsAPI';
 import trendsAPIModule from './trendsAPI';
 import reportsAPIModule from './reportsAPI';
-import settingsAPIModule from './settingsAPI';
 import projectsAPIModule from './projectsAPI';
 import budgetAPIModule from './budgetAPI';
 import activityAPIModule from './activityAPI';
@@ -27,7 +26,6 @@ export const analyticsAPI = analyticsAPIModule;
 export const analyticsApi = analyticsAPIModule;
 export const trendsAPI = trendsAPIModule;
 export const reportsAPI = reportsAPIModule;
-export const settingsAPI = settingsAPIModule;
 export const projectsAPI = projectsAPIModule;
 export const budgetAPI = budgetAPIModule;
 export const activityAPI = activityAPIModule;
@@ -46,5 +44,3 @@ export { getContacts, getContact, createContact, updateContact, deleteContact, s
 // Re-export functions from employeesAPI
 export { getAllEmployees } from './employeesAPI';
 
-// Re-export functions from settingsAPI
-export { getSettings } from './settingsAPI';

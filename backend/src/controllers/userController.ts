@@ -3,6 +3,12 @@ import User from '../models/User';
 import { Role } from '../models/Role';
 import { logger } from '../utils/logger';
 import { emitToUser } from '../utils/socket.utils';
+import {
+  getPolicy,
+  validatePasswordAgainstPolicy,
+  isPasswordReused,
+  recordPasswordInHistory
+} from '../services/accountSecurity.service';
 
 // Get all users (admin access)
 export const getAllUsers = async (req: Request, res: Response) => {
@@ -71,13 +77,17 @@ export const resetUserPassword = async (req: Request, res: Response) => {
     
     logger.info(`Reset password request for user ${userId}`);
     
-    if (!newPassword || newPassword.length < 6) {
+    // Administrator-set passwords honour the same organisation policy as
+    // self-service changes, so the policy cannot be sidestepped by a reset.
+    const resetPolicy = await getPolicy();
+    const resetStrength = validatePasswordAgainstPolicy(newPassword, resetPolicy);
+    if (!resetStrength.valid) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 6 characters'
+        message: resetStrength.message
       });
     }
-    
+
     const user = await User.findById(userId);
     if (!user) {
       logger.error(`User not found: ${userId}`);
@@ -133,13 +143,15 @@ export const changeUserPassword = async (req: Request, res: Response) => {
     const { newPassword } = req.body;
     const userId = req.params.id;
     
-    if (!newPassword || newPassword.length < 6) {
+    const adminPolicy = await getPolicy();
+    const adminStrength = validatePasswordAgainstPolicy(newPassword, adminPolicy);
+    if (!adminStrength.valid) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 6 characters'
+        message: adminStrength.message
       });
     }
-    
+
     const targetUser = await User.findById(userId).populate('role');
     if (!targetUser) {
       return res.status(404).json({
@@ -593,23 +605,37 @@ export const changePassword = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Current and new password required' });
     }
     
-    if (newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    // This is the second self-service change-password route (the other is
+    // PUT /api/auth/change-password). Both must enforce the same policy,
+    // otherwise the weaker one becomes a way around it.
+    const policy = await getPolicy();
+    const strength = validatePasswordAgainstPolicy(newPassword, policy);
+    if (!strength.valid) {
+      return res.status(400).json({ success: false, message: strength.message });
     }
-    
-    const user = await User.findById(userId).select('+password');
+
+    const user = await User.findById(userId).select('+password +passwordHistory');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    
+
     const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Current password is incorrect' });
     }
-    
+
+    if (await isPasswordReused(user, newPassword, policy)) {
+      return res.status(400).json({
+        success: false,
+        message: `Choose a password you have not used in your last ${policy.passwordHistoryCount} passwords`
+      });
+    }
+
+    recordPasswordInHistory(user, policy);
     user.password = newPassword;
+    user.passwordChangedAt = new Date();
     await user.save();
-    
+
     // Log password change activity
     const { logActivity } = await import('../utils/activityLogger');
     await logActivity({

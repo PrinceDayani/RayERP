@@ -141,6 +141,26 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
       }
     }
 
+    // Enforce the configured idle timeout before refreshing lastActive, so the
+    // check measures the gap since the previous request rather than zero.
+    const { SecurityPolicy } = await import('../models/SecurityPolicy');
+    const policy = await SecurityPolicy.getPolicy();
+
+    if (policy.sessionTimeoutMinutes > 0 && session.lastActive) {
+      const idleMs = Date.now() - new Date(session.lastActive).getTime();
+
+      if (idleMs > policy.sessionTimeoutMinutes * 60000) {
+        await UserSession.deleteOne({ _id: session._id });
+        logger.info(`Session ${session.sessionId} expired after ${Math.round(idleMs / 60000)} minutes idle`);
+
+        return res.status(401).json({
+          success: false,
+          message: 'Session expired due to inactivity. Please login again.',
+          code: 'SESSION_IDLE_TIMEOUT'
+        });
+      }
+    }
+
     // Update last active time (asynchronously, don't wait)
     UserSession.updateOne(
       { _id: session._id },

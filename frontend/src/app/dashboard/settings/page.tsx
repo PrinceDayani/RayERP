@@ -1,154 +1,203 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import ProfileSettings from '@/components/settings/ProfileSettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 import AppearanceSettings from '@/components/settings/AppearanceSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
-import { useSocket } from '@/hooks/useSocket';
-import { Settings, User, Bell, Palette, Shield, Wifi, WifiOff, Search, Command, Sparkles, Globe, IndianRupee, Users, Coins } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
 import HierarchySettings from '@/components/settings/HierarchySettings';
 import CurrencySettings from '@/components/settings/CurrencySettings';
 import ActiveSessions from '@/components/user/ActiveSessions';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { fetchWithRetry } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import api from '@/lib/api/api';
+import { withCsrf } from '@/lib/api/csrf';
+import toast, { Toaster } from 'react-hot-toast';
+import {
+  Bell,
+  Coins,
+  Command,
+  Globe,
+  IndianRupee,
+  Loader2,
+  Monitor,
+  Palette,
+  Search,
+  Settings as SettingsIcon,
+  Shield,
+  User,
+  Users
+} from 'lucide-react';
+
+type AccountingMode = 'western' | 'indian';
+
+interface TabDefinition {
+  value: string;
+  label: string;
+  icon: typeof User;
+  description: string;
+  /** Words the ⌘K search matches against. */
+  keywords: string[];
+  render: () => React.ReactNode;
+  /** Rendered bare, without the surrounding titled card. */
+  bare?: boolean;
+}
+
+const TABS: TabDefinition[] = [
+  {
+    value: 'profile',
+    label: 'Profile',
+    icon: User,
+    description: 'Your name, contact details and photo',
+    keywords: ['name', 'email', 'phone', 'bio', 'avatar', 'photo', 'timezone', 'personal'],
+    render: () => <ProfileSettings />
+  },
+  {
+    value: 'sessions',
+    label: 'Sessions',
+    icon: Monitor,
+    description: 'Devices currently signed in to your account',
+    keywords: ['devices', 'sign out', 'logout', 'revoke', 'browser', 'active'],
+    render: () => <ActiveSessions />,
+    bare: true
+  },
+  {
+    value: 'notifications',
+    label: 'Notifications',
+    icon: Bell,
+    description: 'Choose what you are told about and how',
+    keywords: ['email', 'push', 'sound', 'alerts', 'reports', 'reminders', 'digest'],
+    render: () => <NotificationSettings />,
+    bare: true
+  },
+  {
+    value: 'appearance',
+    label: 'Appearance',
+    icon: Palette,
+    description: 'Theme, text size and layout density',
+    keywords: ['theme', 'dark', 'light', 'font', 'size', 'compact', 'sidebar', 'display'],
+    render: () => <AppearanceSettings />
+  },
+  {
+    value: 'security',
+    label: 'Security',
+    icon: Shield,
+    description: 'Password, two-factor authentication and policy',
+    keywords: ['password', '2fa', 'two-factor', 'totp', 'authenticator', 'lockout', 'recovery', 'policy'],
+    render: () => <SecuritySettings />
+  },
+  {
+    value: 'hierarchy',
+    label: 'Hierarchy',
+    icon: Users,
+    description: 'Where you sit in the organisation',
+    keywords: ['org', 'organisation', 'manager', 'role', 'reporting', 'contact'],
+    render: () => <HierarchySettings />
+  },
+  {
+    value: 'currency',
+    label: 'Currency',
+    icon: Coins,
+    description: 'How amounts are displayed to you',
+    keywords: ['money', 'inr', 'usd', 'format', 'lakhs', 'crores', 'million', 'number'],
+    render: () => <CurrencySettings />
+  }
+];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("profile");
-  const [isConnected, setIsConnected] = useState(false);
-  const [lastSync, setLastSync] = useState<Date | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const { hasPermission } = useAuth();
+  const canManageOrgSettings = hasPermission('settings.edit');
+
+  const [activeTab, setActiveTab] = useState('profile');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
-  const [accountingMode, setAccountingMode] = useState<"western" | "indian">("western");
+
+  const [accountingMode, setAccountingMode] = useState<AccountingMode | null>(null);
   const [switchingMode, setSwitchingMode] = useState(false);
-  const [csrfToken, setCsrfToken] = useState("");
-  const socket = useSocket();
+  const [confirmModeSwitch, setConfirmModeSwitch] = useState(false);
+
+  // Only administrators can read organisation settings, so a 403 here is an
+  // expected outcome for ordinary users rather than an error worth surfacing.
+  const loadAccountingMode = useCallback(async () => {
+    if (!canManageOrgSettings) return;
+    try {
+      const { data } = await api.get('/settings');
+      setAccountingMode(data?.accountingMode === 'indian' ? 'indian' : 'western');
+    } catch {
+      setAccountingMode(null);
+    }
+  }, [canManageOrgSettings]);
 
   useEffect(() => {
-    fetchAccountingMode();
-    fetchCsrfToken();
-  }, []);
+    loadAccountingMode();
+  }, [loadAccountingMode]);
 
-  const fetchCsrfToken = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetchWithRetry(
-        () => fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/csrf/token`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        { maxAttempts: 3, delayMs: 1000 }
-      );
-      const data = await response.json();
-      setCsrfToken(data.csrfToken);
-    } catch (error) {
-      // Silent fail
-    }
-  };
+  const targetMode: AccountingMode = accountingMode === 'indian' ? 'western' : 'indian';
 
-  const fetchAccountingMode = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetchWithRetry(
-        () => fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/settings`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        { maxAttempts: 3, delayMs: 1000 }
-      );
-      const data = await response.json();
-      setAccountingMode(data.accountingMode || "western");
-    } catch (error) {
-      // Silent fail - use default mode
-    }
-  };
-
-  const toggleAccountingMode = async () => {
+  const switchAccountingMode = async () => {
     setSwitchingMode(true);
-    const newMode = accountingMode === "western" ? "indian" : "western";
+    setConfirmModeSwitch(false);
+
     try {
-      const token = localStorage.getItem("token");
-      const endpoint = newMode === "indian"
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/settings/convert-to-indian`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/settings/convert-to-western`;
+      const endpoint =
+        targetMode === 'indian' ? '/settings/convert-to-indian' : '/settings/convert-to-western';
 
-      await fetchWithRetry(
-        () => fetch(endpoint, {
-          method: "POST",
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'X-CSRF-Token': csrfToken
-          }
-        }),
-        { maxAttempts: 3, delayMs: 1000 }
-      );
+      // Not retried: converting creates party ledgers, so a repeated call on a
+      // slow response is not something to do automatically.
+      const { data } = await withCsrf(headers => api.post(endpoint, {}, { headers }));
 
-      setAccountingMode(newMode);
-      toast.success(`Switched to ${newMode === "indian" ? "Indian" : "Western"} accounting mode`);
-    } catch (error) {
-      toast.error("Failed to switch accounting mode");
+      setAccountingMode(targetMode);
+      toast.success(data?.message || `Switched to ${targetMode} accounting mode`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Could not switch accounting mode');
     } finally {
       setSwitchingMode(false);
     }
   };
 
-  // Monitor socket connection
+  const matches = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+    return TABS.filter(
+      tab =>
+        tab.label.toLowerCase().includes(query) ||
+        tab.description.toLowerCase().includes(query) ||
+        tab.keywords.some(keyword => keyword.includes(query))
+    );
+  }, [searchQuery]);
+
   useEffect(() => {
-    if (!socket) return;
-
-    const handleConnect = () => {
-      setIsConnected(true);
-      setLastSync(new Date());
-      toast.success('Real-time sync enabled', { icon: '🔄' });
-    };
-
-    const handleDisconnect = () => {
-      setIsConnected(false);
-      toast.error('Real-time sync disconnected');
-    };
-
-    const handleSettingsSync = (data: any) => {
-      setLastSync(new Date());
-      toast.success('Settings synced', { icon: '✨', duration: 2000 });
-    };
-
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-    socket.on('settings:synced', handleSettingsSync);
-
-    if (socket.connected) {
-      setIsConnected(true);
-      setLastSync(new Date());
-    }
-
-    return () => {
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
-      socket.off('settings:synced', handleSettingsSync);
-    };
-  }, [socket]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd/Ctrl + K for search
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setShowSearch(prev => !prev);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setShowSearch(open => !open);
+        return;
       }
-      // Cmd/Ctrl + 1-7 for tab navigation
-      if ((e.metaKey || e.ctrlKey) && ['1', '2', '3', '4', '5', '6', '7'].includes(e.key)) {
-        e.preventDefault();
-        const tabs = ['profile', 'sessions', 'notifications', 'appearance', 'security', 'hierarchy', 'currency'];
-        setActiveTab(tabs[parseInt(e.key) - 1]);
-      }
-      // Escape to close search
-      if (e.key === 'Escape' && showSearch) {
+
+      if (event.key === 'Escape' && showSearch) {
         setShowSearch(false);
         setSearchQuery('');
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && /^[1-7]$/.test(event.key)) {
+        event.preventDefault();
+        setActiveTab(TABS[Number(event.key) - 1].value);
       }
     };
 
@@ -156,354 +205,206 @@ export default function SettingsPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showSearch]);
 
-  const handleTabChange = (value: string) => {
+  const openTab = (value: string) => {
     setActiveTab(value);
-
-    // Emit tab change for analytics
-    if (socket) {
-      socket.emit('settings:tab_changed', { tab: value, timestamp: new Date() });
-    }
-  };
-
-  const syncSettings = () => {
-    if (socket) {
-      socket.emit('settings:force_sync', { timestamp: new Date() });
-      toast.loading('Syncing settings...', { duration: 2000 });
-    } else {
-      toast.error('Cannot sync - not connected to server');
-    }
+    setShowSearch(false);
+    setSearchQuery('');
   };
 
   return (
     <ErrorBoundary>
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <Toaster position="top-right" toastOptions={{
-        className: 'backdrop-blur-sm',
-        style: { background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)' }
-      }} />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <Toaster position="top-right" />
 
-      <div className="container mx-auto py-8 px-4 space-y-8 max-w-7xl">
-        {/* Header with Glassmorphism */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#970E2C]/10 via-[#CD2E4F]/10 to-[#E04D68]/10 rounded-3xl blur-3xl"></div>
-          <Card className="relative border-0 shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
-            <CardContent className="p-8">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-2xl shadow-lg">
-                      <Settings className="h-7 w-7 text-white" />
-                    </div>
-                    <div>
-                      <h1 className="text-4xl font-bold bg-gradient-to-r from-[#970E2C] to-[#CD2E4F] bg-clip-text text-transparent">
-                        Settings
-                      </h1>
-                      <p className="text-muted-foreground text-sm mt-1">
-                        Customize your experience with real-time sync
-                      </p>
-                    </div>
+        <div className="container mx-auto max-w-7xl space-y-8 px-4 py-8">
+          {/* Header */}
+          <Card className="border-0 bg-white/80 shadow-xl backdrop-blur-xl dark:bg-slate-900/80">
+            <CardContent className="p-6 sm:p-8">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-2xl bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] p-3 shadow-lg">
+                    <SettingsIcon className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="bg-gradient-to-r from-[#970E2C] to-[#CD2E4F] bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+                      Settings
+                    </h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Manage your account, preferences and security
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* Search Toggle */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowSearch(!showSearch)}
-                    className="gap-2 hover:bg-[#970E2C]/10 dark:hover:bg-[#970E2C]/20 transition-all"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setShowSearch(!showSearch)} className="gap-2">
                     <Search className="h-4 w-4" />
                     <span className="hidden sm:inline">Search</span>
-                    <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100">
+                    <kbd className="hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium sm:inline-flex">
                       <Command className="h-3 w-3" />K
                     </kbd>
                   </Button>
 
-                  {/* Connection Status */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border border-green-200 dark:border-green-800">
-                    {isConnected ? (
-                      <>
-                        <div className="relative">
-                          <Wifi className="h-4 w-4 text-green-600" />
-                          <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                          </span>
-                        </div>
-                        <span className="text-xs font-medium text-green-700 dark:text-green-400">Live</span>
-                      </>
-                    ) : (
-                      <>
-                        <WifiOff className="h-4 w-4 text-red-600" />
-                        <span className="text-xs font-medium text-red-700 dark:text-red-400">Offline</span>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Accounting Mode Toggle */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={toggleAccountingMode}
-                    disabled={switchingMode}
-                    className="gap-2 hover:bg-[#970E2C]/10 dark:hover:bg-[#970E2C]/20 transition-all"
-                  >
-                    {accountingMode === "indian" ? (
-                      <><IndianRupee className="h-4 w-4" /> Indian</>
-                    ) : (
-                      <><Globe className="h-4 w-4" /> Western</>
-                    )}
-                  </Button>
-
-                  {/* Sync Button */}
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={syncSettings}
-                    disabled={!isConnected}
-                    className="gap-2 bg-gradient-to-r from-[#970E2C] to-[#CD2E4F] hover:from-[#CD2E4F] hover:to-[#E04D68] shadow-lg hover:shadow-xl transition-all"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    Sync
-                  </Button>
+                  {/* Switching mode rewrites ledger data, so it is offered only to
+                      administrators and always behind a confirmation. */}
+                  {canManageOrgSettings && accountingMode && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConfirmModeSwitch(true)}
+                      disabled={switchingMode}
+                      className="gap-2"
+                    >
+                      {switchingMode ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : accountingMode === 'indian' ? (
+                        <IndianRupee className="h-4 w-4" />
+                      ) : (
+                        <Globe className="h-4 w-4" />
+                      )}
+                      {accountingMode === 'indian' ? 'Indian' : 'Western'} accounting
+                    </Button>
+                  )}
                 </div>
               </div>
 
-              {/* Search Bar */}
               {showSearch && (
-                <div className="mt-6 animate-in slide-in-from-top-2 duration-300">
+                <div className="mt-6 space-y-3">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Search settings... (Press ESC to close)"
+                      placeholder="Search settings… (Esc to close)"
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-slate-200 dark:border-slate-700"
+                      onChange={event => setSearchQuery(event.target.value)}
+                      className="pl-10"
                       autoFocus
                     />
                   </div>
+
+                  {searchQuery.trim() && (
+                    <div className="space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700">
+                      {matches.length === 0 ? (
+                        <p className="px-2 py-3 text-sm text-muted-foreground">
+                          Nothing matches “{searchQuery}”.
+                        </p>
+                      ) : (
+                        matches.map(tab => (
+                          <button
+                            key={tab.value}
+                            type="button"
+                            onClick={() => openTab(tab.value)}
+                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                          >
+                            <tab.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span className="text-sm font-medium">{tab.label}</span>
+                            <span className="truncate text-xs text-muted-foreground">{tab.description}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
           </Card>
-        </div>
 
-        {/* Last Sync Info */}
-        {lastSync && (
-          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 p-4 rounded-2xl border border-green-200 dark:border-green-800 shadow-sm animate-in fade-in duration-500">
-            <Sparkles className="h-4 w-4" />
-            <span>Last synced: {lastSync.toLocaleString()}</span>
-          </div>
-        )}
-
-        {/* Settings Tabs */}
-        <Tabs defaultValue="profile" value={activeTab} onValueChange={handleTabChange}>
-          <div className="sticky top-4 z-10 mb-8">
-            <TabsList className="grid grid-cols-2 lg:grid-cols-7 w-full max-w-6xl mx-auto p-1.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border shadow-xl rounded-2xl">
-              <TabsTrigger
-                value="profile"
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
-              >
-                <User className="h-4 w-4" />
-                <span>Profile</span>
-                <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘1
-                </kbd>
-              </TabsTrigger>
-              <TabsTrigger
-                value="sessions"
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
-              >
-                <Shield className="h-4 w-4" />
-                <span>Sessions</span>
-                <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘2
-                </kbd>
-              </TabsTrigger>
-              <TabsTrigger
-                value="notifications"
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
-              >
-                <Bell className="h-4 w-4" />
-                <span>Notifications</span>
-                <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘3
-                </kbd>
-              </TabsTrigger>
-              <TabsTrigger
-                value="appearance"
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
-              >
-                <Palette className="h-4 w-4" />
-                <span>Appearance</span>
-                <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘4
-                </kbd>
-              </TabsTrigger>
-              <TabsTrigger
-                value="security"
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
-              >
-                <Shield className="h-4 w-4" />
-                <span>Security</span>
-                <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘5
-                </kbd>
-              </TabsTrigger>
-              <TabsTrigger
-                value="hierarchy"
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
-              >
-                <Users className="h-4 w-4" />
-                <span>Hierarchy</span>
-                <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘6
-                </kbd>
-              </TabsTrigger>
-              <TabsTrigger
-                value="currency"
-                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white rounded-xl transition-all duration-300 relative group"
-              >
-                <Coins className="h-4 w-4" />
-                <span>Currency</span>
-                <kbd className="hidden lg:inline-flex ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  ⌘7
-                </kbd>
-              </TabsTrigger>
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-2xl border bg-white/80 p-1.5 shadow-lg backdrop-blur-xl dark:bg-slate-900/80 sm:grid-cols-4 lg:grid-cols-7">
+              {TABS.map(tab => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="flex items-center gap-2 rounded-xl transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#970E2C] data-[state=active]:to-[#CD2E4F] data-[state=active]:text-white"
+                >
+                  <tab.icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
-          </div>
 
-          <TabsContent value="profile" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
-              <CardHeader className="relative">
-                <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-xl">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                  Profile Settings
-                </CardTitle>
-                <CardDescription className="text-base">
-                  Manage your personal information and profile settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="relative">
-                <ProfileSettings />
-              </CardContent>
-            </Card>
-          </TabsContent>
+            {TABS.map(tab => (
+              <TabsContent key={tab.value} value={tab.value} className="mt-8 space-y-6">
+                <ErrorBoundary>
+                  {tab.bare ? (
+                    tab.render()
+                  ) : (
+                    <Card className="border-0 bg-white/80 shadow-lg backdrop-blur-xl dark:bg-slate-900/80">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-3 text-2xl">
+                          <div className="rounded-xl bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] p-2">
+                            <tab.icon className="h-5 w-5 text-white" />
+                          </div>
+                          {tab.label}
+                        </CardTitle>
+                        <CardDescription className="text-base">{tab.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>{tab.render()}</CardContent>
+                    </Card>
+                  )}
+                </ErrorBoundary>
+              </TabsContent>
+            ))}
+          </Tabs>
 
-          <TabsContent value="sessions" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <ActiveSessions />
-          </TabsContent>
-
-          <TabsContent value="notifications" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <NotificationSettings />
-          </TabsContent>
-
-          <TabsContent value="appearance" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
-              <CardHeader className="relative">
-                <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-xl">
-                    <Palette className="h-5 w-5 text-white" />
-                  </div>
-                  Appearance Settings
-                </CardTitle>
-                <CardDescription className="text-base">
-                  Customize the look and feel of your application
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="relative">
-                <AppearanceSettings />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="security" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
-              <CardHeader className="relative">
-                <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-xl">
-                    <Shield className="h-5 w-5 text-white" />
-                  </div>
-                  Security Settings
-                </CardTitle>
-                <CardDescription className="text-base">
-                  Manage your password and security preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="relative">
-                <SecuritySettings />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="hierarchy" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
-              <CardHeader className="relative">
-                <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-xl">
-                    <Users className="h-5 w-5 text-white" />
-                  </div>
-                  Organization Hierarchy
-                </CardTitle>
-                <CardDescription className="text-base">
-                  View and contact users with higher roles in your organization
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="relative">
-                <HierarchySettings />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="currency" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#970E2C]/5 via-transparent to-[#CD2E4F]/5 pointer-events-none"></div>
-              <CardHeader className="relative">
-                <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-gradient-to-br from-[#970E2C] to-[#CD2E4F] rounded-xl">
-                    <Coins className="h-5 w-5 text-white" />
-                  </div>
-                  Currency Settings
-                </CardTitle>
-                <CardDescription className="text-base">
-                  Choose your preferred currency for displaying amounts
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="relative">
-                <CurrencySettings />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Keyboard Shortcuts Help */}
-        <Card className="border-0 shadow-lg bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-          <CardContent className="p-6">
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+          {/* Shortcuts */}
+          <Card className="border-0 bg-slate-50 shadow-sm dark:bg-slate-900">
+            <CardContent className="flex flex-wrap items-center justify-center gap-6 p-6 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <kbd className="px-2 py-1 bg-white dark:bg-slate-700 rounded border shadow-sm font-mono text-xs">⌘K</kbd>
+                <kbd className="rounded border bg-white px-2 py-1 font-mono text-xs shadow-sm dark:bg-slate-700">
+                  ⌘K
+                </kbd>
                 <span>Search</span>
               </div>
               <div className="flex items-center gap-2">
-                <kbd className="px-2 py-1 bg-white dark:bg-slate-700 rounded border shadow-sm font-mono text-xs">⌘1-7</kbd>
+                <kbd className="rounded border bg-white px-2 py-1 font-mono text-xs shadow-sm dark:bg-slate-700">
+                  ⌘1–7
+                </kbd>
                 <span>Switch tabs</span>
               </div>
               <div className="flex items-center gap-2">
-                <kbd className="px-2 py-1 bg-white dark:bg-slate-700 rounded border shadow-sm font-mono text-xs">ESC</kbd>
+                <kbd className="rounded border bg-white px-2 py-1 font-mono text-xs shadow-sm dark:bg-slate-700">
+                  Esc
+                </kbd>
                 <span>Close search</span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
+
+        <AlertDialog open={confirmModeSwitch} onOpenChange={setConfirmModeSwitch}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Switch to {targetMode === 'indian' ? 'Indian' : 'Western'} accounting mode?
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3">
+                  <p>
+                    This changes the accounting mode for the entire organisation, not just your account.
+                  </p>
+                  {targetMode === 'indian' ? (
+                    <p>
+                      Party ledgers will be created for every active asset and liability account that does not
+                      already have one. Existing ledgers are left untouched.
+                    </p>
+                  ) : (
+                    <p>
+                      Party ledgers are preserved for reference but stop being used for new entries.
+                    </p>
+                  )}
+                  <Badge variant="outline">Affects all users</Badge>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={switchAccountingMode}>
+                Switch to {targetMode === 'indian' ? 'Indian' : 'Western'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-    </div>
     </ErrorBoundary>
   );
 }
