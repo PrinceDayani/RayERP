@@ -332,7 +332,10 @@ const UserManagement = () => {
       });
       
       if (response.ok) {
-        const employees = await response.json();
+        // /api/employees answers { success, data, pagination } - the list is
+        // under .data, so calling .find on the envelope itself throws.
+        const body = await response.json();
+        const employees = Array.isArray(body) ? body : body?.data ?? [];
         const employee = employees.find((emp: any) => emp.user?._id === userId || emp.user === userId);
         setEmployeeDetails(employee || null);
       }

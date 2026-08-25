@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, ArrowLeft, RotateCw } from 'lucide-react';
@@ -19,10 +19,11 @@ export default function DashboardError({
   reset: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    console.error('Dashboard page error:', error);
-  }, [error]);
+    console.error(`Dashboard page error at ${pathname}:`, error);
+  }, [error, pathname]);
 
   return (
     <div className="flex-1 p-6">
@@ -37,6 +38,11 @@ export default function DashboardError({
           <p className="text-sm text-muted-foreground">
             The rest of the application is still working. You can retry this page or go back.
           </p>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Page</p>
+            <p className="rounded bg-muted p-2 font-mono text-xs">{pathname}</p>
+          </div>
 
           {error.message && (
             <div className="space-y-1">
@@ -56,7 +62,7 @@ export default function DashboardError({
             </div>
           )}
 
-          {process.env.NODE_ENV === 'development' && error.stack && (
+          {error.stack && (
             <details className="rounded border border-slate-200 p-2 dark:border-slate-700">
               <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
                 Stack trace
