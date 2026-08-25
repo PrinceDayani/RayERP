@@ -32,7 +32,7 @@ export const getUserProjectIds = async (userId: string): Promise<mongoose.Types.
 
 export const getUserActivityQuery = async (userId: string, roleId: string): Promise<any> => {
   const userRole = await Role.findById(roleId).lean();
-  const hasViewAllPermission = userRole?.permissions?.includes('view_all_activities') || (userRole?.level && userRole.level >= ADMIN_ROLE_LEVEL);
+  const hasViewAllPermission = userRole?.permissions?.includes('activities.view_all') || (userRole?.level && userRole.level >= ADMIN_ROLE_LEVEL);
 
   let query: any = {};
 

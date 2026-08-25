@@ -421,7 +421,26 @@ export const initializePermissions = async () => {
     { name: 'users.assign_roles', description: 'Assign roles to users', category: 'User Management' },
     { name: 'users.reset_password', description: 'Reset user passwords', category: 'User Management' },
     { name: 'users.activate_deactivate', description: 'Activate/deactivate users', category: 'User Management' },
-    
+    { name: 'users.change_password', description: 'Set the password of another user', category: 'User Management' },
+    { name: 'users.approve_status', description: 'Approve or reject account status change requests', category: 'User Management' },
+
+    // Department Management
+    { name: 'departments.view', description: 'View the department directory', category: 'Department Management' },
+    { name: 'departments.details', description: 'View a single department in detail', category: 'Department Management' },
+    { name: 'departments.create', description: 'Create departments', category: 'Department Management' },
+    { name: 'departments.edit', description: 'Edit department details', category: 'Department Management' },
+    { name: 'departments.delete', description: 'Delete departments', category: 'Department Management' },
+    { name: 'departments.view_members', description: 'View department membership', category: 'Department Management' },
+    { name: 'departments.assign_members', description: 'Add or remove department members', category: 'Department Management' },
+    { name: 'departments.manage_permissions', description: 'Grant or revoke department permissions', category: 'Department Management' },
+    { name: 'departments.view_budget', description: 'View department budgets', category: 'Department Management' },
+    { name: 'departments.adjust_budget', description: 'Adjust department budget allocations', category: 'Department Management' },
+    { name: 'departments.view_expenses', description: 'View department expenses', category: 'Department Management' },
+    { name: 'departments.view_goals', description: 'View department goals', category: 'Department Management' },
+    { name: 'departments.view_history', description: 'View department change history', category: 'Department Management' },
+    { name: 'departments.view_performance', description: 'View department performance metrics', category: 'Department Management' },
+    { name: 'departments.view_settings', description: 'View department settings', category: 'Department Management' },
+
     // Employee Management
     { name: 'employees.view', description: 'View employee directory', category: 'Employee Management' },
     { name: 'employees.create', description: 'Add new employees', category: 'Employee Management' },
@@ -444,6 +463,7 @@ export const initializePermissions = async () => {
 
     
     // Finance & Accounting
+    { name: 'finance.view', description: 'Access the finance module', category: 'Finance & Accounting' },
     { name: 'accounts.view', description: 'View chart of accounts', category: 'Finance & Accounting' },
     { name: 'accounts.create', description: 'Create accounts', category: 'Finance & Accounting' },
     { name: 'accounts.edit', description: 'Edit accounts', category: 'Finance & Accounting' },
@@ -513,6 +533,7 @@ export const initializePermissions = async () => {
     
     // Reports & Analytics
     { name: 'reports.view', description: 'View reports', category: 'Reports & Analytics' },
+    { name: 'sales.view', description: 'View sales reports and summaries', category: 'Reports & Analytics' },
     { name: 'reports.create', description: 'Create custom reports', category: 'Reports & Analytics' },
     { name: 'reports.export', description: 'Export reports', category: 'Reports & Analytics' },
     { name: 'reports.schedule', description: 'Schedule reports', category: 'Reports & Analytics' },
@@ -534,6 +555,9 @@ export const initializePermissions = async () => {
 
     // System Administration
     { name: 'admin.view', description: 'View admin panel', category: 'System Administration' },
+    { name: 'admin.access', description: 'Perform administrative assignment operations', category: 'System Administration' },
+    { name: 'admin.execute', description: 'Run maintenance and validation jobs', category: 'System Administration' },
+    { name: 'admin.manage_sessions', description: 'Inspect and clean up user sessions', category: 'System Administration' },
     { name: 'system.view', description: 'View system settings', category: 'System Administration' },
     { name: 'system.manage', description: 'Manage system settings', category: 'System Administration' },
     { name: 'roles.view', description: 'View roles', category: 'System Administration' },
@@ -541,19 +565,26 @@ export const initializePermissions = async () => {
     { name: 'roles.edit', description: 'Edit roles', category: 'System Administration' },
     { name: 'roles.delete', description: 'Delete roles', category: 'System Administration' },
     { name: 'roles.manage', description: 'Manage roles and permissions', category: 'System Administration' },
+    { name: 'permissions.view', description: 'View the permission catalog', category: 'System Administration' },
+    { name: 'permissions.create', description: 'Create permissions', category: 'System Administration' },
     { name: 'permissions.manage', description: 'Manage permissions', category: 'System Administration' },
     { name: 'settings.view', description: 'View system settings', category: 'System Administration' },
     { name: 'settings.edit', description: 'Edit system settings', category: 'System Administration' },
     { name: 'logs.view', description: 'View system logs', category: 'System Administration' },
     { name: 'logs.export', description: 'Export logs', category: 'System Administration' },
     { name: 'audit.view', description: 'View audit trail', category: 'System Administration' },
+    { name: 'audit.manage', description: 'Clean up audit trail records', category: 'System Administration' },
+    { name: 'activities.view', description: 'View and export the activity feed', category: 'System Administration' },
+    { name: 'activities.view_all', description: 'View activity across all users, verify and audit the chain', category: 'System Administration' },
+    { name: 'activities.revert', description: 'Revert a recorded activity', category: 'System Administration' },
     { name: 'backups.view', description: 'View backups', category: 'System Administration' },
     { name: 'backups.create', description: 'Create backups', category: 'System Administration' },
     { name: 'backups.restore', description: 'Restore from backup', category: 'System Administration' },
     { name: 'backups.manage', description: 'Manage system backups', category: 'System Administration' },
     { name: 'notifications.manage', description: 'Manage notifications', category: 'System Administration' },
     { name: 'dashboard.view', description: 'View dashboard', category: 'System Administration' },
-    { name: 'data.export', description: 'Export data', category: 'System Administration' }
+    { name: 'data.export', description: 'Export data', category: 'System Administration' },
+    { name: 'data.import', description: 'Import workbook data', category: 'System Administration' }
   ];
 
   try {
