@@ -44,14 +44,71 @@ export interface IFinancialProgress {
   }[];
 }
 
+export interface ISiteLocation {
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+}
+
+/**
+ * The schedule and value the project was awarded on, captured once so slippage
+ * stays measurable after startDate/endDate/budget are revised in flight. On a
+ * tender-derived project this is the tender position; otherwise it is whatever
+ * the project was first planned at.
+ */
+export interface IProjectBaseline {
+  startDate?: Date;
+  endDate?: Date;
+  contractValue?: number;
+  manHours?: number;
+  source: 'tender' | 'manual';
+  capturedAt: Date;
+}
+
+/**
+ * Denormalized man-hour rollup. `planned` sums task estimates and resource
+ * allocations; `actual` sums logged task time, daily-report hours and
+ * project-attributed attendance. Recomputed by rollUpProjectManHours.
+ */
+export interface IProjectManHours {
+  planned: number;
+  actual: number;
+  lastCalculatedAt?: Date;
+}
+
+export const PROJECT_CATEGORIES = [
+  'construction',
+  'infrastructure',
+  'consultancy',
+  'design',
+  'supply',
+  'maintenance',
+  'software',
+  'research',
+  'other'
+] as const;
+
+export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number];
+
 export interface IProject extends Document {
   name: string;
+  // Human-facing job number, unique across the register. Generated on create
+  // when the caller does not supply one.
+  jobNumber?: string;
   description: string;
   projectType: 'instruction' | 'reporting';
+  // Business classification of the work, distinct from projectType (which is a
+  // progress-tracking mode).
+  projectCategory: ProjectCategory;
   status: 'planning' | 'active' | 'on-hold' | 'completed' | 'archived' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'critical';
   startDate: Date;
   endDate: Date;
+  actualStartDate?: Date;
+  actualEndDate?: Date;
+  baseline?: IProjectBaseline;
   budget: number;
   spentBudget: number;
   currency: string;
@@ -61,12 +118,17 @@ export interface IProject extends Document {
   // Reporting-based project fields
   progressMode: 'task-based' | 'financial' | 'phase-based';
   financialProgress: IFinancialProgress;
+  manHours: IProjectManHours;
 
   managers: mongoose.Types.ObjectId[];
   team: mongoose.Types.ObjectId[];
   owner: mongoose.Types.ObjectId;
   departments: mongoose.Types.ObjectId[];
+  // Free-text client name, kept for records that predate clientContact and for
+  // clients that were never added to the contact book.
   client?: string;
+  clientContact?: mongoose.Types.ObjectId;
+  siteLocation?: ISiteLocation;
   tags: string[];
   
   risks: IRisk[];
@@ -77,6 +139,9 @@ export interface IProject extends Document {
   instructions: IInstruction[];
   
   activeBOQ?: mongoose.Types.ObjectId;
+  // The tender this project was awarded from. Tender.project is the forward
+  // link; this is the reverse, so a project can reach its bid position.
+  tender?: mongoose.Types.ObjectId;
 
   // Workflow integration
   workflowInstanceId?: mongoose.Types.ObjectId;
@@ -145,13 +210,42 @@ const financialProgressSchema = new Schema({
   }]
 }, { _id: false });
 
+const siteLocationSchema = new Schema({
+  address: { type: String, trim: true },
+  city: { type: String, trim: true },
+  state: { type: String, trim: true },
+  pincode: { type: String, trim: true },
+  country: { type: String, trim: true }
+}, { _id: false });
+
+const baselineSchema = new Schema({
+  startDate: Date,
+  endDate: Date,
+  contractValue: { type: Number, min: 0 },
+  manHours: { type: Number, min: 0 },
+  source: { type: String, enum: ['tender', 'manual'], default: 'manual' },
+  capturedAt: { type: Date, default: Date.now }
+}, { _id: false });
+
+const manHoursSchema = new Schema({
+  planned: { type: Number, default: 0, min: 0 },
+  actual: { type: Number, default: 0, min: 0 },
+  lastCalculatedAt: Date
+}, { _id: false });
+
 const projectSchema = new Schema<IProject>({
   name: { type: String, required: true },
+  jobNumber: { type: String, trim: true, uppercase: true },
   description: { type: String, required: true },
   projectType: {
     type: String,
     enum: ['instruction', 'reporting'],
     default: 'instruction'
+  },
+  projectCategory: {
+    type: String,
+    enum: PROJECT_CATEGORIES,
+    default: 'other'
   },
   status: {
     type: String,
@@ -165,6 +259,9 @@ const projectSchema = new Schema<IProject>({
   },
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
+  actualStartDate: Date,
+  actualEndDate: Date,
+  baseline: { type: baselineSchema, default: undefined },
   budget: { type: Number, required: true, default: 0 },
   spentBudget: { type: Number, default: 0 },
   currency: { type: String, default: 'USD', trim: true, uppercase: true, required: true },
@@ -179,11 +276,14 @@ const projectSchema = new Schema<IProject>({
     default: 'task-based'
   },
   financialProgress: { type: financialProgressSchema, default: () => ({}) },
+  manHours: { type: manHoursSchema, default: () => ({}) },
   managers: [{ type: Schema.Types.ObjectId, ref: 'User', required: true }],
   team: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   departments: [{ type: Schema.Types.ObjectId, ref: 'Department' }],
   client: String,
+  clientContact: { type: Schema.Types.ObjectId, ref: 'Contact' },
+  siteLocation: { type: siteLocationSchema, default: undefined },
   tags: [String],
   
   risks: [riskSchema],
@@ -197,6 +297,7 @@ const projectSchema = new Schema<IProject>({
   }],
   instructions: [instructionSchema],
   activeBOQ: { type: Schema.Types.ObjectId, ref: 'BOQ' },
+  tender: { type: Schema.Types.ObjectId, ref: 'Tender' },
 
   // Workflow integration
   workflowInstanceId: { type: Schema.Types.ObjectId, ref: 'WorkflowInstance' },
@@ -240,6 +341,12 @@ projectSchema.pre('aggregate', function (next) {
   next();
 });
 
+// Sparse so the projects that predate the job register do not collide on null.
+projectSchema.index({ jobNumber: 1 }, { unique: true, sparse: true });
+projectSchema.index({ clientContact: 1, status: 1 });
+projectSchema.index({ projectCategory: 1, status: 1 });
+projectSchema.index({ tender: 1 });
+projectSchema.index({ 'siteLocation.city': 1 });
 projectSchema.index({ 'instructions.type': 1 });
 projectSchema.index({ 'instructions.priority': 1 });
 projectSchema.index({ projectType: 1 });

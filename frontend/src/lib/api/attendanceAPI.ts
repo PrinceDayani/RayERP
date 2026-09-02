@@ -9,6 +9,9 @@ export interface Attendance {
     lastName: string;
     employeeId: string;
   };
+  // Set when the day was worked against a project; drives that project's
+  // actual man-hours.
+  project?: { _id: string; name: string; jobNumber?: string } | string;
   date: string;
   checkIn: string;
   checkOut?: string;
@@ -39,7 +42,7 @@ export interface TodayStats {
 }
 
 export const attendanceAPI = {
-  getAll: async (params?: { startDate?: string; endDate?: string; employee?: string }) => {
+  getAll: async (params?: { startDate?: string; endDate?: string; employee?: string; project?: string }) => {
     const response = await api.get('/attendance', { params });
     return unwrapResponse(response.data);
   },

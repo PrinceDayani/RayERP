@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import WorkflowTemplate, { IWorkflowStep } from '../models/WorkflowTemplate';
 import WorkflowInstance, { IWorkflowInstance } from '../models/WorkflowInstance';
 import Project from '../models/Project';
+import { generateProjectJobNumber } from '../controllers/projectController';
 import ProjectPhase, { IProjectPhase, PhaseReviewStatus } from '../models/ProjectPhase';
 import Department from '../models/Department';
 import User from '../models/User';
@@ -141,6 +142,15 @@ export class WorkflowProjectIntegration {
       team?: string[];
       departments?: string[];
       client?: string;
+      clientContact?: string;
+      projectCategory?: string;
+      siteLocation?: {
+        address?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+        country?: string;
+      };
       tags?: string[];
       metadata?: Record<string, any>;
     },
@@ -150,15 +160,34 @@ export class WorkflowProjectIntegration {
     session.startTransaction();
 
     try {
+      // Projects created through a workflow join the same job register as
+      // those created directly, so the number is allocated here too.
+      const startDate = workflowMetadata.startDate || new Date();
+      const endDate = workflowMetadata.endDate || new Date(Date.now() + 90 * 24 * 3600000);
+      const budget = workflowMetadata.budget || 0;
+
       // Create the project
       const projectData = {
         name: workflowMetadata.projectName,
+        jobNumber: await generateProjectJobNumber(),
+        projectCategory: workflowMetadata.projectCategory || 'other',
+        clientContact: workflowMetadata.clientContact
+          ? new mongoose.Types.ObjectId(workflowMetadata.clientContact)
+          : undefined,
+        siteLocation: workflowMetadata.siteLocation,
+        baseline: {
+          startDate,
+          endDate,
+          contractValue: budget,
+          source: 'manual' as const,
+          capturedAt: new Date()
+        },
         description: workflowMetadata.projectDescription || `Project created from workflow`,
         status: 'planning', // Starts in planning, workflow will activate it
         priority: workflowMetadata.priority || 'medium',
-        startDate: workflowMetadata.startDate || new Date(),
-        endDate: workflowMetadata.endDate || new Date(Date.now() + 90 * 24 * 3600000), // Default 90 days
-        budget: workflowMetadata.budget || 0,
+        startDate,
+        endDate,
+        budget,
         currency: workflowMetadata.currency || 'INR',
         managers: workflowMetadata.managers?.map(id => new mongoose.Types.ObjectId(id)) || [],
         team: workflowMetadata.team?.map(id => new mongoose.Types.ObjectId(id)) || [],

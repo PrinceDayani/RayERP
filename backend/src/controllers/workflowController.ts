@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import WorkflowTemplate from '../models/WorkflowTemplate';
+import { PROJECT_CATEGORIES } from '../models/Project';
 import WorkflowInstance from '../models/WorkflowInstance';
 import WorkflowEngine from '../services/workflowEngine';
 import { WorkflowProjectIntegration } from '../services/workflowProjectIntegration';
@@ -390,7 +391,7 @@ export const startWorkflow = async (req: Request, res: Response) => {
 
     // Reverse flow: If entityType is 'project' and no entityId, auto-create the project
     if (entityType === 'project' && !entityId) {
-      const { projectName, projectDescription, startDate, endDate, budget, currency, managers, team, departments, client, tags } = req.body;
+      const { projectName, projectDescription, startDate, endDate, budget, currency, managers, team, departments, client, clientContact, projectCategory, siteLocation, tags } = req.body;
 
       if (!projectName || typeof projectName !== 'string' || !projectName.trim()) {
         return res.status(400).json({
@@ -402,6 +403,15 @@ export const startWorkflow = async (req: Request, res: Response) => {
         if (ids !== undefined && (!Array.isArray(ids) || ids.some(isInvalidId))) {
           return res.status(400).json({ success: false, message: `${label} must be an array of valid ids` });
         }
+      }
+      if (clientContact !== undefined && clientContact && isInvalidId(clientContact)) {
+        return res.status(400).json({ success: false, message: 'Invalid clientContact' });
+      }
+      if (projectCategory !== undefined && !PROJECT_CATEGORIES.includes(projectCategory)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid projectCategory. Allowed: ${PROJECT_CATEGORIES.join(', ')}`
+        });
       }
 
       const result = await WorkflowProjectIntegration.onWorkflowInitiatedForProject(
@@ -418,6 +428,9 @@ export const startWorkflow = async (req: Request, res: Response) => {
           team,
           departments,
           client,
+          clientContact: clientContact || undefined,
+          projectCategory,
+          siteLocation,
           tags,
           metadata
         },

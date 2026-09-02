@@ -1,7 +1,9 @@
 //path: backend/src/controllers/projectController.ts
 import { Request, Response } from 'express';
-import Project from '../models/Project';
+import mongoose from 'mongoose';
+import Project, { PROJECT_CATEGORIES } from '../models/Project';
 import Task from '../models/Task';
+import InvoiceSequence from '../models/InvoiceSequence';
 import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper';
 import { WorkflowProjectIntegration } from '../services/workflowProjectIntegration';
 import { getAccessibleProjectIdsForUser, resolveProjectAccess } from '../middleware/projectAccess.middleware';
@@ -23,11 +25,130 @@ const PROJECT_SORT_MAP: Record<string, Record<string, 1 | -1>> = {
   progress: { progress: -1 }
 };
 
+const JOB_NUMBER_PREFIX = 'JOB';
+
+/**
+ * Next job number in the register, e.g. JOB-2026-00014. Uses the same atomic
+ * counter collection as invoice numbering, keyed on its own prefix, so two
+ * concurrent creates cannot land on the same number.
+ */
+export const generateProjectJobNumber = async (): Promise<string> => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const sequence = await InvoiceSequence.findOneAndUpdate(
+    { prefix: JOB_NUMBER_PREFIX, year, month: null },
+    { $inc: { currentNumber: 1 }, lastGeneratedAt: now },
+    { upsert: true, new: true }
+  );
+  return `${JOB_NUMBER_PREFIX}-${year}-${String(sequence.currentNumber).padStart(5, '0')}`;
+};
+
+const toObjectIdOrUndefined = (value: any): mongoose.Types.ObjectId | undefined =>
+  value && mongoose.Types.ObjectId.isValid(value) ? new mongoose.Types.ObjectId(value) : undefined;
+
+const parseSiteLocation = (value: any) => {
+  if (!value || typeof value !== 'object') return undefined;
+  const location = {
+    address: typeof value.address === 'string' ? value.address.trim() : undefined,
+    city: typeof value.city === 'string' ? value.city.trim() : undefined,
+    state: typeof value.state === 'string' ? value.state.trim() : undefined,
+    pincode: typeof value.pincode === 'string' ? value.pincode.trim() : undefined,
+    country: typeof value.country === 'string' ? value.country.trim() : undefined
+  };
+  return Object.values(location).some(Boolean) ? location : undefined;
+};
+
+const parseProjectCategory = (value: any) =>
+  typeof value === 'string' && (PROJECT_CATEGORIES as readonly string[]).includes(value)
+    ? value
+    : undefined;
+
+const parseOptionalDate = (value: any): Date | undefined => {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? undefined : date;
+};
+
+/**
+ * Recompute a project's planned and actual man-hours from the four places
+ * hours are captured, and persist the rollup on the project.
+ *
+ *   planned  task estimates + resource allocations
+ *   actual   logged task time + daily-report hours + attendance booked to the
+ *            project (approved rows only, so pending requests do not inflate it)
+ *
+ * Task time entries and daily reports can describe the same hours, so the
+ * larger of the two is taken rather than their sum.
+ */
+export const rollUpProjectManHours = async (projectId: string) => {
+  const [ResourceAllocation, DailyReport, Attendance] = await Promise.all([
+    import('../models/ResourceAllocation').then(m => m.default),
+    import('../models/DailyReport').then(m => m.default),
+    import('../models/Attendance').then(m => m.default)
+  ]);
+
+  const projectObjectId = new mongoose.Types.ObjectId(projectId);
+
+  const [taskTotals, allocationTotals, reportTotals, attendanceTotals] = await Promise.all([
+    Task.aggregate([
+      { $match: { project: projectObjectId } },
+      {
+        $group: {
+          _id: null,
+          estimated: { $sum: { $ifNull: ['$estimatedHours', 0] } },
+          logged: { $sum: { $ifNull: ['$actualHours', 0] } }
+        }
+      }
+    ]),
+    ResourceAllocation.aggregate([
+      { $match: { project: projectObjectId } },
+      {
+        $group: {
+          _id: null,
+          allocated: { $sum: { $ifNull: ['$allocatedHours', 0] } },
+          actual: { $sum: { $ifNull: ['$actualHours', 0] } }
+        }
+      }
+    ]),
+    DailyReport.aggregate([
+      { $match: { project: projectObjectId, status: { $ne: 'draft' } } },
+      { $group: { _id: null, hours: { $sum: { $ifNull: ['$totalHours', 0] } } } }
+    ]),
+    Attendance.aggregate([
+      {
+        $match: {
+          project: projectObjectId,
+          approvalStatus: { $in: ['approved', 'auto-approved'] }
+        }
+      },
+      { $group: { _id: null, hours: { $sum: { $ifNull: ['$totalHours', 0] } } } }
+    ])
+  ]);
+
+  const estimated = taskTotals[0]?.estimated || 0;
+  const allocated = allocationTotals[0]?.allocated || 0;
+  const loggedOnTasks = Math.max(taskTotals[0]?.logged || 0, allocationTotals[0]?.actual || 0);
+  const reportedHours = reportTotals[0]?.hours || 0;
+  const attendanceHours = attendanceTotals[0]?.hours || 0;
+
+  const planned = Math.round(estimated + allocated);
+  const actual = Math.round(Math.max(loggedOnTasks, reportedHours) + attendanceHours);
+
+  await Project.findByIdAndUpdate(projectId, {
+    'manHours.planned': planned,
+    'manHours.actual': actual,
+    'manHours.lastCalculatedAt': new Date()
+  });
+
+  return { planned, actual };
+};
+
 const PROJECT_LIST_POPULATE = [
   { path: 'managers', select: 'name email', strictPopulate: false },
   { path: 'team', select: 'name email', strictPopulate: false },
   { path: 'owner', select: 'name email', strictPopulate: false },
-  { path: 'departments', select: 'name description', strictPopulate: false }
+  { path: 'departments', select: 'name description', strictPopulate: false },
+  { path: 'clientContact', select: 'name company email phone address', strictPopulate: false }
 ];
 
 // Fields a user may see for a project they are not assigned to but can reach
@@ -35,6 +156,7 @@ const PROJECT_LIST_POPULATE = [
 const PROJECT_BASIC_FIELDS = [
   '_id',
   'name',
+  'jobNumber',
   'status',
   'priority',
   'startDate',
@@ -225,7 +347,7 @@ export const getProjectsMinimal = async (req: Request, res: Response) => {
       : { $or: [{ owner: user._id }, { team: user._id }, { managers: user._id }] };
 
     const projects = await Project.find(filter)
-      .select('name status')
+      .select('name jobNumber status')
       .sort({ name: 1 })
       .lean();
 
@@ -254,7 +376,8 @@ export const getProjectById = async (req: Request, res: Response) => {
         .populate({ path: 'team', select: 'name email', strictPopulate: false })
         .populate({ path: 'owner', select: 'name email', strictPopulate: false })
         
-        .populate({ path: 'departments', select: 'name description', strictPopulate: false });
+        .populate({ path: 'departments', select: 'name description', strictPopulate: false })
+        .populate({ path: 'clientContact', select: 'name company email phone address', strictPopulate: false });
       
       if (!project) {
         return res.status(404).json({ success: false, message: 'Project not found' });
@@ -267,7 +390,8 @@ export const getProjectById = async (req: Request, res: Response) => {
       .populate({ path: 'team', select: 'name email', strictPopulate: false })
       .populate({ path: 'owner', select: 'name email', strictPopulate: false })
       
-      .populate({ path: 'departments', select: 'name description', strictPopulate: false });
+      .populate({ path: 'departments', select: 'name description', strictPopulate: false })
+      .populate({ path: 'clientContact', select: 'name company email phone address', strictPopulate: false });
     
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
@@ -370,7 +494,42 @@ export const createProject = async (req: Request, res: Response) => {
       owner: user._id,
       risks: Array.isArray(req.body.risks) ? req.body.risks : [],
       dependencies: Array.isArray(req.body.dependencies) ? req.body.dependencies : [],
-      instructions: Array.isArray(req.body.instructions) ? req.body.instructions : []
+      instructions: Array.isArray(req.body.instructions) ? req.body.instructions : [],
+      projectCategory: parseProjectCategory(req.body.projectCategory) || 'other',
+      clientContact: toObjectIdOrUndefined(req.body.clientContact),
+      siteLocation: parseSiteLocation(req.body.siteLocation),
+      tender: toObjectIdOrUndefined(req.body.tender),
+      actualStartDate: parseOptionalDate(req.body.actualStartDate),
+      actualEndDate: parseOptionalDate(req.body.actualEndDate)
+    };
+
+    // A supplied job number wins so an existing register can be carried over;
+    // otherwise the next number in the sequence is allocated.
+    const suppliedJobNumber = typeof req.body.jobNumber === 'string' ? req.body.jobNumber.trim() : '';
+    if (suppliedJobNumber) {
+      const duplicate = await Project.findOne({ jobNumber: suppliedJobNumber.toUpperCase() })
+        .select('_id')
+        .setOptions({ includeDeleted: true });
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: `Job number ${suppliedJobNumber} is already in use`
+        });
+      }
+      (projectData as any).jobNumber = suppliedJobNumber;
+    } else {
+      (projectData as any).jobNumber = await generateProjectJobNumber();
+    }
+
+    // The plan the project starts on is its baseline, so later revisions to
+    // startDate/endDate/budget stay measurable against something.
+    (projectData as any).baseline = {
+      startDate: projectData.startDate,
+      endDate: projectData.endDate,
+      contractValue: projectData.budget,
+      manHours: Number(req.body.baselineManHours) > 0 ? Number(req.body.baselineManHours) : undefined,
+      source: 'manual',
+      capturedAt: new Date()
     };
 
     // Create and save project
@@ -434,7 +593,15 @@ export const createProject = async (req: Request, res: Response) => {
       currency: project.currency,
       progress: project.progress,
       progressMode: project.progressMode,
+      jobNumber: project.jobNumber,
+      projectCategory: project.projectCategory,
       client: project.client,
+      clientContact: project.clientContact,
+      siteLocation: project.siteLocation,
+      tender: project.tender,
+      baseline: project.baseline,
+      actualStartDate: project.actualStartDate,
+      actualEndDate: project.actualEndDate,
       manager: project.managers && project.managers.length > 0 ? project.managers[0] : null,
       team: project.team,
       owner: project.owner,
@@ -600,6 +767,52 @@ export const updateProject = async (req: Request, res: Response) => {
     if (req.body.budget !== undefined) updateData.budget = parseFloat(req.body.budget) || 0;
     if (req.body.progress !== undefined) updateData.progress = Math.min(Math.max(parseInt(req.body.progress) || 0, 0), 100);
     if (req.body.client !== undefined) updateData.client = req.body.client;
+    if (req.body.clientContact !== undefined) {
+      updateData.clientContact = req.body.clientContact
+        ? toObjectIdOrUndefined(req.body.clientContact)
+        : null;
+      if (req.body.clientContact && !updateData.clientContact) {
+        return res.status(400).json({ success: false, message: 'Invalid client contact id' });
+      }
+    }
+    if (req.body.siteLocation !== undefined) {
+      updateData.siteLocation = parseSiteLocation(req.body.siteLocation) || null;
+    }
+    if (req.body.projectCategory !== undefined) {
+      const category = parseProjectCategory(req.body.projectCategory);
+      if (!category) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid project category. Allowed: ${PROJECT_CATEGORIES.join(', ')}`
+        });
+      }
+      updateData.projectCategory = category;
+    }
+    if (req.body.tender !== undefined) {
+      updateData.tender = req.body.tender ? toObjectIdOrUndefined(req.body.tender) : null;
+      if (req.body.tender && !updateData.tender) {
+        return res.status(400).json({ success: false, message: 'Invalid tender id' });
+      }
+    }
+    if (req.body.jobNumber !== undefined) {
+      const jobNumber = String(req.body.jobNumber || '').trim();
+      if (!jobNumber) {
+        return res.status(400).json({ success: false, message: 'Job number cannot be cleared' });
+      }
+      const duplicate = await Project.findOne({
+        jobNumber: jobNumber.toUpperCase(),
+        _id: { $ne: req.params.id }
+      })
+        .select('_id')
+        .setOptions({ includeDeleted: true });
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: `Job number ${jobNumber} is already in use`
+        });
+      }
+      updateData.jobNumber = jobNumber;
+    }
     if (req.body.manager !== undefined) updateData.manager = req.body.manager;
     if (req.body.managers !== undefined) updateData.managers = Array.isArray(req.body.managers) ? req.body.managers : [];
     if (req.body.team !== undefined) updateData.team = Array.isArray(req.body.team) ? req.body.team : [];
@@ -659,6 +872,48 @@ export const updateProject = async (req: Request, res: Response) => {
     if (updateData.startDate && updateData.endDate && updateData.startDate > updateData.endDate) {
       return res.status(400).json({ success: false, message: 'Start date must be before end date' });
     }
+
+    // Actual dates are the as-built schedule; clearing them is allowed because
+    // a wrongly recorded start has to be undoable.
+    for (const field of ['actualStartDate', 'actualEndDate'] as const) {
+      if (req.body[field] === undefined) continue;
+      if (!req.body[field]) {
+        updateData[field] = null;
+        continue;
+      }
+      const parsed = parseOptionalDate(req.body[field]);
+      if (!parsed) {
+        return res.status(400).json({ success: false, message: `Invalid ${field} format` });
+      }
+      updateData[field] = parsed;
+    }
+
+    const resolvedActualStart = updateData.actualStartDate ?? oldProject.actualStartDate;
+    const resolvedActualEnd = updateData.actualEndDate ?? oldProject.actualEndDate;
+    if (resolvedActualStart && resolvedActualEnd && resolvedActualStart > resolvedActualEnd) {
+      return res.status(400).json({
+        success: false,
+        message: 'Actual start date must be before actual end date'
+      });
+    }
+
+    // The baseline is only writable while the project has not been baselined
+    // against a tender, so an awarded position cannot be edited away.
+    if (req.body.baseline !== undefined && oldProject.baseline?.source !== 'tender') {
+      const baseline = req.body.baseline || {};
+      updateData.baseline = {
+        startDate: parseOptionalDate(baseline.startDate) || oldProject.baseline?.startDate,
+        endDate: parseOptionalDate(baseline.endDate) || oldProject.baseline?.endDate,
+        contractValue: Number.isFinite(Number(baseline.contractValue))
+          ? Number(baseline.contractValue)
+          : oldProject.baseline?.contractValue,
+        manHours: Number.isFinite(Number(baseline.manHours))
+          ? Number(baseline.manHours)
+          : oldProject.baseline?.manHours,
+        source: 'manual',
+        capturedAt: oldProject.baseline?.capturedAt || new Date()
+      };
+    }
     
     const project = await Project.findByIdAndUpdate(
       req.params.id,
@@ -667,7 +922,8 @@ export const updateProject = async (req: Request, res: Response) => {
     ).populate('managers', 'name email')
      .populate('team', 'name email')
      .populate('owner', 'name email')
-     .populate('departments', 'name description');
+     .populate('departments', 'name description')
+     .populate('clientContact', 'name company email phone address');
     
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found after update' });
@@ -1025,7 +1281,14 @@ export const getProjectTasks = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Access denied: You are not assigned to this project' });
     }
 
-    const tasks = await Task.find({ project: req.params.id })
+    // ?critical=true narrows the list to the activities with no float, as
+    // flagged by the last critical-path run.
+    const taskFilter: any = { project: req.params.id };
+    if (String(req.query.critical || '') === 'true') {
+      taskFilter.isCritical = true;
+    }
+
+    const tasks = await Task.find(taskFilter)
       .populate('assignedTo', 'name email')
       .populate('assignedBy', 'name email');
     
@@ -1267,8 +1530,11 @@ export const calculateProjectProgress = async (req: Request, res: Response) => {
 
     const { progress, totalTasks, completedTasks, weighted } = await computeProjectProgress(projectId);
 
+    // Man-hours are recomputed alongside progress so the two never disagree.
+    const manHours = await rollUpProjectManHours(projectId);
+
     if (totalTasks === 0) {
-      return res.json({ success: true, data: { progress: 0, message: 'No tasks found' } });
+      return res.json({ success: true, data: { progress: 0, manHours, message: 'No tasks found' } });
     }
 
     project.progress = progress;
@@ -1279,9 +1545,41 @@ export const calculateProjectProgress = async (req: Request, res: Response) => {
     const { io } = await import('../server');
     io.emit('project:progress:updated', { projectId, progress });
 
-    res.json({ success: true, data: { progress, totalTasks, completedTasks, weighted } });
+    res.json({ success: true, data: { progress, totalTasks, completedTasks, weighted, manHours } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error calculating progress', error });
+  }
+};
+
+/**
+ * Recompute the planned vs actual man-hour rollup for a project and return it
+ * alongside the baseline figure, so tender hours and worked hours sit together.
+ */
+export const recalculateProjectManHours = async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return res.status(400).json({ success: false, message: 'Invalid project id' });
+    }
+
+    const project = await Project.findById(projectId).select('baseline manHours');
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    const manHours = await rollUpProjectManHours(projectId);
+
+    res.json({
+      success: true,
+      data: {
+        ...manHours,
+        baselineManHours: project.baseline?.manHours ?? null,
+        lastCalculatedAt: new Date()
+      }
+    });
+  } catch (error) {
+    logger.error('Error recalculating project man-hours', { message: (error as any)?.message });
+    res.status(500).json({ success: false, message: 'Error recalculating man-hours' });
   }
 };
 
@@ -1931,7 +2229,42 @@ export const createProjectFast = async (req: Request, res: Response) => {
       owner: user._id,
       risks: Array.isArray(req.body.risks) ? req.body.risks : [],
       dependencies: Array.isArray(req.body.dependencies) ? req.body.dependencies : [],
-      instructions: Array.isArray(req.body.instructions) ? req.body.instructions : []
+      instructions: Array.isArray(req.body.instructions) ? req.body.instructions : [],
+      projectCategory: parseProjectCategory(req.body.projectCategory) || 'other',
+      clientContact: toObjectIdOrUndefined(req.body.clientContact),
+      siteLocation: parseSiteLocation(req.body.siteLocation),
+      tender: toObjectIdOrUndefined(req.body.tender),
+      actualStartDate: parseOptionalDate(req.body.actualStartDate),
+      actualEndDate: parseOptionalDate(req.body.actualEndDate)
+    };
+
+    // A supplied job number wins so an existing register can be carried over;
+    // otherwise the next number in the sequence is allocated.
+    const suppliedJobNumber = typeof req.body.jobNumber === 'string' ? req.body.jobNumber.trim() : '';
+    if (suppliedJobNumber) {
+      const duplicate = await Project.findOne({ jobNumber: suppliedJobNumber.toUpperCase() })
+        .select('_id')
+        .setOptions({ includeDeleted: true });
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: `Job number ${suppliedJobNumber} is already in use`
+        });
+      }
+      (projectData as any).jobNumber = suppliedJobNumber;
+    } else {
+      (projectData as any).jobNumber = await generateProjectJobNumber();
+    }
+
+    // The plan the project starts on is its baseline, so later revisions to
+    // startDate/endDate/budget stay measurable against something.
+    (projectData as any).baseline = {
+      startDate: projectData.startDate,
+      endDate: projectData.endDate,
+      contractValue: projectData.budget,
+      manHours: Number(req.body.baselineManHours) > 0 ? Number(req.body.baselineManHours) : undefined,
+      source: 'manual',
+      capturedAt: new Date()
     };
 
     // Create and save project
@@ -1954,7 +2287,15 @@ export const createProjectFast = async (req: Request, res: Response) => {
       currency: project.currency,
       progress: project.progress,
       progressMode: project.progressMode,
+      jobNumber: project.jobNumber,
+      projectCategory: project.projectCategory,
       client: project.client,
+      clientContact: project.clientContact,
+      siteLocation: project.siteLocation,
+      tender: project.tender,
+      baseline: project.baseline,
+      actualStartDate: project.actualStartDate,
+      actualEndDate: project.actualEndDate,
       manager: project.managers && project.managers.length > 0 ? project.managers[0] : null,
       team: project.team,
       owner: project.owner,

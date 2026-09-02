@@ -330,6 +330,15 @@ export const workflowsAPI = {
     team?: string[];
     departments?: string[];
     client?: string;
+    clientContact?: string;
+    projectCategory?: string;
+    siteLocation?: {
+      address?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+      country?: string;
+    };
     tags?: string[];
     metadata?: Record<string, any>;
   }) => {

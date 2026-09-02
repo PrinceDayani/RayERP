@@ -7,6 +7,7 @@ export {
   downloadProjectFile,
   deleteProjectFile,
   shareProjectFile,
+  updateProjectFileMetadata,
   getSharedFiles,
   upload
 } from '../../../controllers/projectFileController';

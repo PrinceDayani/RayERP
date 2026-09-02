@@ -3,6 +3,9 @@
 // Critical path analysis over task dependencies. Works in whole-day offsets
 // from a project anchor date, then converts back to dates at the edges.
 
+import Task from '../models/Task';
+import { logger } from './logger';
+
 const HOURS_PER_WORKING_DAY = 8;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -249,4 +252,52 @@ export const calculateCriticalPath = (
     cyclicTaskIds,
     assumedDurationTaskIds: ordered.filter(id => nodes.get(id)!.assumed)
   };
+};
+
+/**
+ * Write the criticality of each task back onto it, so critical activities can
+ * be listed and filtered without replaying the whole graph. Tasks on a
+ * dependency cycle have no defined float and are cleared rather than left
+ * showing a stale result.
+ */
+export const persistCriticalPath = async (
+  projectId: string,
+  result: CpmResult
+): Promise<void> => {
+  const operations: any[] = result.tasks.map(task => ({
+    updateOne: {
+      filter: { _id: task.id },
+      update: {
+        $set: {
+          isCritical: task.isCritical,
+          totalFloat: task.totalFloat,
+          scheduleCalculatedAt: new Date()
+        }
+      }
+    }
+  }));
+
+  for (const id of result.cyclicTaskIds) {
+    operations.push({
+      updateOne: {
+        filter: { _id: id },
+        update: {
+          $set: { isCritical: false, totalFloat: null, scheduleCalculatedAt: new Date() }
+        }
+      }
+    });
+  }
+
+  if (operations.length === 0) return;
+
+  try {
+    await Task.bulkWrite(operations, { ordered: false });
+  } catch (error) {
+    // The computed result is still valid and is returned to the caller; a
+    // failed write only means the cached flags are stale.
+    logger.error('Failed to persist critical path flags', {
+      projectId,
+      message: (error as any)?.message
+    });
+  }
 };

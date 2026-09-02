@@ -18,6 +18,8 @@ import {
   ArrowLeft, CalendarIcon, GitBranch, Layers, Clock, Play, FolderPlus
 } from "lucide-react";
 import { workflowsAPI, WorkflowTemplate } from "@/lib/api/workflowsAPI";
+import { PROJECT_CATEGORIES, type ProjectCategory } from "@/lib/api/projectsAPI";
+import { getContacts, type Contact } from "@/lib/api/contactsAPI";
 import { toast } from "sonner";
 
 export default function CreateProjectFromWorkflowPage() {
@@ -37,8 +39,13 @@ export default function CreateProjectFromWorkflowPage() {
     currency: "INR",
     priority: "medium",
     client: "",
+    clientContact: "",
+    projectCategory: "other" as ProjectCategory,
+    siteAddress: "",
+    siteCity: "",
     tags: "",
   });
+  const [clients, setClients] = useState<Contact[]>([]);
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -55,6 +62,9 @@ export default function CreateProjectFromWorkflowPage() {
       }
     };
     fetchTemplates();
+    getContacts()
+      .then(all => setClients(all.filter(c => c.isCustomer || c.contactType === 'client')))
+      .catch(() => setClients([]));
   }, []);
 
   const handleSubmit = async () => {
@@ -80,6 +90,11 @@ export default function CreateProjectFromWorkflowPage() {
         currency: form.currency,
         priority: form.priority,
         client: form.client || undefined,
+        clientContact: form.clientContact || undefined,
+        projectCategory: form.projectCategory,
+        siteLocation: (form.siteAddress.trim() || form.siteCity.trim())
+          ? { address: form.siteAddress.trim() || undefined, city: form.siteCity.trim() || undefined }
+          : undefined,
         tags: form.tags ? form.tags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
       });
 
@@ -274,6 +289,59 @@ export default function CreateProjectFromWorkflowPage() {
               placeholder="e.g., NHAI, PWD, Municipal Corp"
               value={form.client}
               onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label>Client Contact</Label>
+            <Select
+              value={form.clientContact || "none"}
+              onValueChange={value => setForm(f => ({ ...f, clientContact: value === "none" ? "" : value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Link a contact" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Not linked</SelectItem>
+                {clients.map(contact => (
+                  <SelectItem key={contact._id} value={contact._id!}>
+                    {contact.company ? `${contact.name} — ${contact.company}` : contact.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Project Type</Label>
+            <Select
+              value={form.projectCategory}
+              onValueChange={value => setForm(f => ({ ...f, projectCategory: value as ProjectCategory }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROJECT_CATEGORIES.map(category => (
+                  <SelectItem key={category} value={category}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Project Location</Label>
+            <Input
+              placeholder="Site address"
+              value={form.siteAddress}
+              onChange={e => setForm(f => ({ ...f, siteAddress: e.target.value }))}
+            />
+          </div>
+          <div>
+            <Label>City</Label>
+            <Input
+              placeholder="City"
+              value={form.siteCity}
+              onChange={e => setForm(f => ({ ...f, siteCity: e.target.value }))}
             />
           </div>
           <div className="md:col-span-2">

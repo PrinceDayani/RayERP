@@ -3,7 +3,7 @@
 import { Request, Response } from 'express';
 import Task from '../models/Task';
 import { logger } from '../utils/logger';
-import { calculateCriticalPath } from '../utils/criticalPath';
+import { calculateCriticalPath, persistCriticalPath } from '../utils/criticalPath';
 import Project from '../models/Project';
 import mongoose from 'mongoose';
 
@@ -107,6 +107,7 @@ export const getCriticalPath = async (req: Request, res: Response) => {
     // The schedule is anchored on the project start so offsets line up with
     // the plan rather than with whenever the endpoint happened to be called.
     const result = calculateCriticalPath(tasks as any, project.startDate || new Date());
+    await persistCriticalPath(projectId as string, result);
 
     return res.json({ success: true, data: result });
   } catch (error) {

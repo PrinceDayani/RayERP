@@ -17,7 +17,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { CalendarIcon, ArrowLeft, Save, X, Users, Building2, GitBranch, ClipboardList, BarChart3 } from "lucide-react";
-import { createProject, projectsAPI, type Project } from "@/lib/api/projectsAPI";
+import { createProject, projectsAPI, PROJECT_CATEGORIES, type Project, type ProjectCategory } from "@/lib/api/projectsAPI";
+import { getContacts, type Contact } from "@/lib/api/contactsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { CurrencySelector } from "@/components/ui/currency-selector";
@@ -62,8 +63,16 @@ const CreateProjectPage = () => {
     team: [] as string[],
     departments: [] as string[],
     client: "",
+    clientContact: "",
+    projectCategory: "other" as ProjectCategory,
+    siteAddress: "",
+    siteCity: "",
+    siteState: "",
+    sitePincode: "",
+    siteCountry: "",
     tags: [] as string[]
   });
+  const [clients, setClients] = useState<Contact[]>([]);
 
   const [managerSearch, setManagerSearch] = useState("");
   const [teamSearch, setTeamSearch] = useState("");
@@ -77,6 +86,9 @@ const CreateProjectPage = () => {
       fetchUsers();
       fetchDepartments();
       fetchWorkflowTemplates();
+      getContacts()
+        .then(all => setClients(all.filter(c => c.isCustomer || c.contactType === 'client')))
+        .catch(() => setClients([]));
     }
   }, [isAuthenticated]);
 
@@ -153,6 +165,15 @@ const CreateProjectPage = () => {
         budget: projectForm.budget,
         currency: projectForm.currency,
         client: projectForm.client,
+        clientContact: projectForm.clientContact || undefined,
+        projectCategory: projectForm.projectCategory,
+        siteLocation: {
+          address: projectForm.siteAddress.trim() || undefined,
+          city: projectForm.siteCity.trim() || undefined,
+          state: projectForm.siteState.trim() || undefined,
+          pincode: projectForm.sitePincode.trim() || undefined,
+          country: projectForm.siteCountry.trim() || undefined,
+        },
         manager: projectForm.managers[0] || undefined, // Use first manager
         team: projectForm.team,
         departments: projectForm.departments,
@@ -325,6 +346,60 @@ const CreateProjectPage = () => {
                 <div className="space-y-2">
                   <Label htmlFor="client">Client</Label>
                   <Input id="client" value={projectForm.client} onChange={(e) => setProjectForm({ ...projectForm, client: e.target.value })} placeholder="Client name" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="clientContact">Client Contact</Label>
+                  <Select
+                    value={projectForm.clientContact || "none"}
+                    onValueChange={(value) => setProjectForm({ ...projectForm, clientContact: value === "none" ? "" : value })}
+                  >
+                    <SelectTrigger id="clientContact">
+                      <SelectValue placeholder="Link a contact" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not linked</SelectItem>
+                      {clients.map((contact) => (
+                        <SelectItem key={contact._id} value={contact._id!}>
+                          {contact.company ? `${contact.name} — ${contact.company}` : contact.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="projectCategory">Project Type</Label>
+                  <Select
+                    value={projectForm.projectCategory}
+                    onValueChange={(value) => setProjectForm({ ...projectForm, projectCategory: value as ProjectCategory })}
+                  >
+                    <SelectTrigger id="projectCategory">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROJECT_CATEGORIES.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Project Location</Label>
+                  <Input
+                    value={projectForm.siteAddress}
+                    onChange={(e) => setProjectForm({ ...projectForm, siteAddress: e.target.value })}
+                    placeholder="Site address"
+                  />
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                    <Input value={projectForm.siteCity} onChange={(e) => setProjectForm({ ...projectForm, siteCity: e.target.value })} placeholder="City" />
+                    <Input value={projectForm.siteState} onChange={(e) => setProjectForm({ ...projectForm, siteState: e.target.value })} placeholder="State" />
+                    <Input value={projectForm.sitePincode} onChange={(e) => setProjectForm({ ...projectForm, sitePincode: e.target.value })} placeholder="Pincode" />
+                    <Input value={projectForm.siteCountry} onChange={(e) => setProjectForm({ ...projectForm, siteCountry: e.target.value })} placeholder="Country" />
+                  </div>
                 </div>
               </div>
 

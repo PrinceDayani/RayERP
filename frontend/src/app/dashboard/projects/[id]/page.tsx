@@ -31,9 +31,9 @@ import { getCurrency } from "@/utils/currency";
 import {
   ArrowLeft, Calendar, Users, Coins, BarChart3, Edit, Settings, Layers,
   CheckSquare, FileText, ShieldCheck, Activity, GanttChartSquare, Receipt,
-  ClipboardList, AlertTriangle, Wallet, TrendingUp
+  ClipboardList, AlertTriangle, Wallet, TrendingUp, MapPin, Timer
 } from "lucide-react";
-import { getProjectById, type Project } from "@/lib/api/projectsAPI";
+import { getProjectById, recalculateProjectManHours, type Project } from "@/lib/api/projectsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { GanttChart } from "@/components/GanttChart";
 import tasksAPI, { type Task } from "@/lib/api/tasksAPI";
@@ -69,6 +69,7 @@ const ProjectDetailPage = () => {
   const [budget, setBudget] = useState<any>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recalculating, setRecalculating] = useState(false);
   const [section, setSection] = useState('overview');
 
   const fetchProject = useCallback(async () => {
@@ -291,6 +292,69 @@ const ProjectDetailPage = () => {
   const currency = getCurrency(project);
   const budgetCurrency = budget ? getCurrency(budget) : currency;
 
+  // The linked contact is authoritative for the client; the free-text name is
+  // the fallback for projects that predate the link.
+  const linkedClient = typeof project.clientContact === 'object' ? project.clientContact : null;
+  const clientName = linkedClient
+    ? (linkedClient.company ? `${linkedClient.name} (${linkedClient.company})` : linkedClient.name)
+    : project.client;
+  const clientAddress = linkedClient?.address;
+  const siteLocationText = [
+    project.siteLocation?.address,
+    project.siteLocation?.city,
+    project.siteLocation?.state,
+    project.siteLocation?.pincode,
+    project.siteLocation?.country
+  ].filter(Boolean).join(', ');
+
+  const asDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
+
+  // Slippage is measured against the baseline finish, falling back to the
+  // current planned finish when a project was never baselined.
+  const baselineFinish = project.baseline?.endDate || project.endDate;
+  const actualFinish = project.actualEndDate;
+  const comparison = {
+    baselineStart: asDate(project.baseline?.startDate || project.startDate),
+    baselineEnd: asDate(baselineFinish),
+    actualStart: asDate(project.actualStartDate),
+    actualEnd: asDate(actualFinish),
+    baselineValue: formatAmount(project.baseline?.contractValue ?? project.budget ?? 0, currency),
+    plannedManHours: project.baseline?.manHours
+      ? `${project.baseline.manHours.toLocaleString()} h (tender)`
+      : project.manHours?.planned
+        ? `${project.manHours.planned.toLocaleString()} h`
+        : '—',
+    actualManHours: project.manHours?.actual
+      ? `${project.manHours.actual.toLocaleString()} h`
+      : '—',
+    slipDays:
+      baselineFinish && actualFinish
+        ? Math.round(
+            (new Date(actualFinish).getTime() - new Date(baselineFinish).getTime()) / DAY_MS
+          )
+        : null
+  };
+
+  const handleRecalculateManHours = async () => {
+    try {
+      setRecalculating(true);
+      const result = await recalculateProjectManHours(projectId);
+      setProject(prev => (prev ? { ...prev, manHours: result } : prev));
+      toast({
+        title: 'Man-hours updated',
+        description: `${result.planned.toLocaleString()} h planned, ${result.actual.toLocaleString()} h actual`
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to recalculate man-hours',
+        variant: 'destructive'
+      });
+    } finally {
+      setRecalculating(false);
+    }
+  };
+
   return (
     <div className="flex-1">
       <PageHeader
@@ -309,7 +373,9 @@ const ProjectDetailPage = () => {
           </>
         }
         meta={[
-          project.client && <><Users className="h-3 w-3" />{project.client}</>,
+          project.jobNumber && <span className="font-medium">{project.jobNumber}</span>,
+          clientName && <><Users className="h-3 w-3" />{clientName}</>,
+          siteLocationText && <><MapPin className="h-3 w-3" />{siteLocationText}</>,
           <><Calendar className="h-3 w-3" />
             {new Date(project.startDate).toLocaleDateString()} → {new Date(project.endDate).toLocaleDateString()}
           </>,
@@ -388,12 +454,27 @@ const ProjectDetailPage = () => {
             <Panel title="Key facts" className="lg:col-span-2">
               <DataTable>
                 <tbody>
-                  <Tr><Td className="w-40 text-muted-foreground">Status</Td><Td><StatusPill status={project.status} /></Td></Tr>
-                  <Tr><Td className="text-muted-foreground">Type</Td><Td className="capitalize">{project.projectType || 'instruction'}</Td></Tr>
-                  <Tr><Td className="text-muted-foreground">Client</Td><Td>{project.client || '—'}</Td></Tr>
+                  <Tr><Td className="w-40 text-muted-foreground">Job number</Td><Td className="font-medium">{project.jobNumber || '—'}</Td></Tr>
+                  <Tr><Td className="text-muted-foreground">Status</Td><Td><StatusPill status={project.status} /></Td></Tr>
+                  <Tr><Td className="text-muted-foreground">Type</Td><Td className="capitalize">{project.projectCategory || '—'}</Td></Tr>
+                  <Tr><Td className="text-muted-foreground">Tracking mode</Td><Td className="capitalize">{project.projectType || 'instruction'}</Td></Tr>
+                  <Tr><Td className="text-muted-foreground">Client</Td><Td>{clientName || '—'}</Td></Tr>
+                  <Tr>
+                    <Td className="text-muted-foreground">Client address</Td>
+                    <Td>{clientAddress || '—'}</Td>
+                  </Tr>
+                  <Tr><Td className="text-muted-foreground">Location</Td><Td>{siteLocationText || '—'}</Td></Tr>
                   <Tr><Td className="text-muted-foreground">Currency</Td><Td>{currency}</Td></Tr>
                   <Tr><Td className="text-muted-foreground">Start</Td><Td>{new Date(project.startDate).toLocaleDateString()}</Td></Tr>
                   <Tr><Td className="text-muted-foreground">End</Td><Td>{new Date(project.endDate).toLocaleDateString()}</Td></Tr>
+                  <Tr>
+                    <Td className="text-muted-foreground">Actual start</Td>
+                    <Td>{project.actualStartDate ? new Date(project.actualStartDate).toLocaleDateString() : '—'}</Td>
+                  </Tr>
+                  <Tr>
+                    <Td className="text-muted-foreground">Actual end</Td>
+                    <Td>{project.actualEndDate ? new Date(project.actualEndDate).toLocaleDateString() : '—'}</Td>
+                  </Tr>
                   <Tr>
                     <Td className="text-muted-foreground">Tags</Td>
                     <Td>
@@ -407,6 +488,59 @@ const ProjectDetailPage = () => {
             </Panel>
 
             <div className="space-y-4">
+              <Panel
+                title="Plan vs actual"
+                description={
+                  project.baseline?.source === 'tender'
+                    ? 'Baseline taken from the awarded tender'
+                    : 'Baseline taken from the original plan'
+                }
+              >
+                <DataTable>
+                  <tbody>
+                    <Tr>
+                      <Td className="w-32 text-muted-foreground">Start</Td>
+                      <Td>{comparison.baselineStart}</Td>
+                      <Td>{comparison.actualStart}</Td>
+                    </Tr>
+                    <Tr>
+                      <Td className="text-muted-foreground">Finish</Td>
+                      <Td>{comparison.baselineEnd}</Td>
+                      <Td>
+                        {comparison.actualEnd}
+                        {comparison.slipDays !== null && comparison.slipDays !== 0 && (
+                          <span className={comparison.slipDays > 0 ? 'ml-2 text-rose-600' : 'ml-2 text-emerald-600'}>
+                            {comparison.slipDays > 0
+                              ? `${comparison.slipDays}d late`
+                              : `${Math.abs(comparison.slipDays)}d early`}
+                          </span>
+                        )}
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td className="text-muted-foreground">Value</Td>
+                      <Td>{comparison.baselineValue}</Td>
+                      <Td>{formatAmount(project.budget || 0, currency)}</Td>
+                    </Tr>
+                    <Tr>
+                      <Td className="text-muted-foreground">Man-hours</Td>
+                      <Td>{comparison.plannedManHours}</Td>
+                      <Td>{comparison.actualManHours}</Td>
+                    </Tr>
+                  </tbody>
+                </DataTable>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full"
+                  disabled={recalculating}
+                  onClick={handleRecalculateManHours}
+                >
+                  <Timer className="mr-2 h-4 w-4" />
+                  {recalculating ? 'Recalculating…' : 'Recalculate man-hours'}
+                </Button>
+              </Panel>
+
               <ProjectWorkflowPanel projectId={projectId} projectName={project.name} />
               <Panel title="Team" description={`${project.team?.length || 0} member(s)`}>
                 {!project.team?.length ? (

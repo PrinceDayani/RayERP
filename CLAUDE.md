@@ -651,6 +651,8 @@ If 1 = yes → update the existing file. If 2 = scratch → skip. If 3
 ```
 backend/src/models/
   Project.ts                   team[], managers[]                            → User
+                               clientContact                                 → Contact
+                               tender                                        → Tender
   ProjectPhase.ts              owner, createdBy, reviewSummary[].decidedBy   → User
                                reviewDepartments[]                           → Department
   Task.ts                      assignedTo/By, watchers, comments, ...        → User
@@ -669,6 +671,7 @@ backend/src/models/
 backend/src/models/
   Employee.ts                  employeeId, firstName, lastName, ...
   Attendance.ts                employee, requestedBy, approvedBy
+                               project (optional, for man-hour attribution)
   Leave.ts                     employee, approvedBy, cancelledBy
   Achievement.ts               employee
   EmployeeCareer.ts            employee

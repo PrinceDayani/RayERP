@@ -15,6 +15,7 @@ import {
   cloneProject as cloneProjectController,
   updateProjectRisks,
   calculateProjectProgress,
+  recalculateProjectManHours,
   getProjectTemplates,
   addProjectInstruction,
   updateProjectInstruction,
@@ -168,6 +169,8 @@ router.put('/:id/phases/reorder', validateObjectId(), checkProjectAccess, requir
 // --- Risk Management Routes ---
 router.put('/:id/risks', validateObjectId(), checkProjectAccess, updateProjectRisks);
 router.post('/:id/calculate-progress', validateObjectId(), checkProjectAccess, calculateProjectProgress);
+// Recompute planned vs actual man-hours from tasks, allocations, daily reports and attendance
+router.post('/:id/man-hours/recalculate', validateObjectId(), checkProjectAccess, recalculateProjectManHours);
 
 
 

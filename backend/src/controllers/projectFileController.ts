@@ -5,9 +5,10 @@ import multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as zlib from 'zlib';
+import mongoose from 'mongoose';
 import { promisify } from 'util';
 import sharp from 'sharp';
-import ProjectFile from '../models/ProjectFile';
+import ProjectFile, { PROJECT_FILE_CATEGORIES } from '../models/ProjectFile';
 import Project from '../models/Project';
 import { logActivity } from '../utils/activityLogger';
 import { logger } from '../utils/logger';
@@ -65,11 +66,27 @@ export const getProjectFiles = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    const files = await ProjectFile.find({ project: projectId })
+    // A caller can ask for one slice of the register, e.g. only final drawings
+    // or only certificates.
+    const fileFilter: any = { project: projectId };
+    const requestedCategory = String(req.query.category || '').trim();
+    if (requestedCategory) {
+      if (!(PROJECT_FILE_CATEGORIES as readonly string[]).includes(requestedCategory)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid category. Allowed: ${PROJECT_FILE_CATEGORIES.join(', ')}`
+        });
+      }
+      fileFilter.category = requestedCategory;
+    }
+
+    const files = await ProjectFile.find(fileFilter)
       .select('-fileData')
       .populate('uploadedBy', 'name email')
       .populate('sharedWithDepartments', 'name description')
       .populate('sharedWithUsers', 'name email')
+      .populate('phase', 'name order')
+      .populate('approvedBy', 'name email')
       .sort({ createdAt: -1 });
 
     res.json({ success: true, data: files });
@@ -128,8 +145,21 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
       }
     }
 
-    const { sharedWithUsers, shareType } = req.body;
-    
+    const { sharedWithUsers, shareType, documentNumber, revision, phase, issuedDate } = req.body;
+
+    const category = String(req.body.category || 'other').trim();
+    if (!(PROJECT_FILE_CATEGORIES as readonly string[]).includes(category)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid category. Allowed: ${PROJECT_FILE_CATEGORIES.join(', ')}`
+      });
+    }
+
+    const parsedIssuedDate = issuedDate ? new Date(issuedDate) : undefined;
+    if (parsedIssuedDate && isNaN(parsedIssuedDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid issued date' });
+    }
+
     const projectFile = new ProjectFile({
       name: req.file.filename,
       originalName: req.file.originalname,
@@ -138,6 +168,14 @@ export const uploadProjectFile = async (req: MulterRequest, res: Response) => {
       originalSize: originalSize,
       mimeType: req.file.mimetype,
       project: projectId,
+      category,
+      documentNumber: documentNumber ? String(documentNumber).trim() : undefined,
+      revision: revision ? String(revision).trim() : undefined,
+      phase: phase && mongoose.Types.ObjectId.isValid(phase) ? phase : undefined,
+      issuedDate: parsedIssuedDate,
+      // Drawings and certificates enter the register awaiting sign-off;
+      // anything else is just a file and needs no approval trail.
+      approvalStatus: category === 'other' ? 'draft' : 'pending',
       uploadedBy: userId,
       sharedWithDepartments: sharedWithDepartments ? JSON.parse(sharedWithDepartments) : [],
       sharedWithUsers: sharedWithUsers ? JSON.parse(sharedWithUsers) : [],
@@ -299,6 +337,98 @@ export const getSharedFiles = async (req: Request, res: Response) => {
 };
 
 // Delete project file
+/**
+ * Edit a file's register entry: its category, document number, revision, phase
+ * and approval state. Approving or rejecting is restricted to the project's
+ * owner and managers, so a drawing cannot sign itself off.
+ */
+export const updateProjectFileMetadata = async (req: Request, res: Response) => {
+  try {
+    const { id: projectId, fileId } = req.params;
+    const user = (req as any).user;
+
+    const file = await ProjectFile.findOne({ _id: fileId, project: projectId });
+    if (!file) {
+      return res.status(404).json({ success: false, message: 'File not found' });
+    }
+
+    if (req.body.category !== undefined) {
+      const category = String(req.body.category).trim();
+      if (!(PROJECT_FILE_CATEGORIES as readonly string[]).includes(category)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid category. Allowed: ${PROJECT_FILE_CATEGORIES.join(', ')}`
+        });
+      }
+      file.category = category as any;
+    }
+
+    if (req.body.documentNumber !== undefined) {
+      file.documentNumber = String(req.body.documentNumber || '').trim() || undefined;
+    }
+    if (req.body.revision !== undefined) {
+      file.revision = String(req.body.revision || '').trim() || undefined;
+    }
+    if (req.body.phase !== undefined) {
+      if (req.body.phase && !mongoose.Types.ObjectId.isValid(req.body.phase)) {
+        return res.status(400).json({ success: false, message: 'Invalid phase id' });
+      }
+      file.phase = req.body.phase || undefined;
+    }
+    if (req.body.issuedDate !== undefined) {
+      if (!req.body.issuedDate) {
+        file.issuedDate = undefined;
+      } else {
+        const issuedDate = new Date(req.body.issuedDate);
+        if (isNaN(issuedDate.getTime())) {
+          return res.status(400).json({ success: false, message: 'Invalid issued date' });
+        }
+        file.issuedDate = issuedDate;
+      }
+    }
+
+    if (req.body.approvalStatus !== undefined) {
+      const approvalStatus = String(req.body.approvalStatus).trim();
+      if (!['draft', 'pending', 'approved', 'rejected'].includes(approvalStatus)) {
+        return res.status(400).json({ success: false, message: 'Invalid approval status' });
+      }
+
+      if (approvalStatus === 'approved' || approvalStatus === 'rejected') {
+        const project = await Project.findById(projectId).select('owner managers');
+        const roleName = typeof user.role === 'object' && user.role ? user.role.name : null;
+        const isRoot = roleName === 'Root';
+        const isOwner = project?.owner?.toString() === user._id?.toString();
+        const isManager = !!project?.managers?.some(
+          (m: any) => m.toString() === user._id?.toString()
+        );
+        if (!isRoot && !isOwner && !isManager) {
+          return res.status(403).json({
+            success: false,
+            message: 'Only the project owner or a manager can approve documents'
+          });
+        }
+        file.approvedBy = user._id;
+        file.approvedAt = new Date();
+      } else {
+        file.approvedBy = undefined;
+        file.approvedAt = undefined;
+      }
+
+      file.approvalStatus = approvalStatus as any;
+    }
+
+    await file.save();
+
+    const response = file.toObject();
+    delete response.fileData;
+
+    res.json({ success: true, data: response });
+  } catch (error) {
+    logger.error('Error updating file metadata:', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 export const deleteProjectFile = async (req: Request, res: Response) => {
   try {
     const { id: projectId, fileId } = req.params;

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Tender, { ITender, TenderStatus, TenderDirection, ITenderOutcome } from '../models/Tender';
 import Project from '../models/Project';
+import { generateProjectJobNumber } from './projectController';
 import WorkOrder from '../models/WorkOrder';
 import BOQ from '../models/BOQ';
 import mongoose from 'mongoose';
@@ -1640,11 +1641,22 @@ export const convertTenderToProject = async (req: Request, res: Response) => {
 
     const phases = Array.isArray(req.body.phases) ? req.body.phases : [];
 
+    // The tender's own classification carries over so the project register can
+    // be filtered the same way the tender register is.
+    const categoryFromTender: Record<string, string> = {
+      works: 'construction',
+      goods: 'supply',
+      services: 'maintenance',
+      consultancy: 'consultancy'
+    };
+
     const project = await Project.create({
       name: req.body.name?.trim() || tender.title,
+      jobNumber: await generateProjectJobNumber(),
       description: req.body.description?.trim() || tender.scopeOfWork || tender.description || tender.title,
       status: 'planning',
       priority: tender.priority,
+      projectCategory: categoryFromTender[tender.category] || 'other',
       startDate,
       endDate,
       budget: contractValue,
@@ -1654,6 +1666,17 @@ export const convertTenderToProject = async (req: Request, res: Response) => {
       team: Array.isArray(req.body.team) ? req.body.team : [],
       departments: tender.department ? [tender.department] : [],
       client: tender.issuingAuthority?.name,
+      siteLocation: tender.location ? { address: tender.location } : undefined,
+      tender: tender._id,
+      // Awarded position, frozen. Everything downstream measures slippage
+      // against this rather than against the editable project dates.
+      baseline: {
+        startDate,
+        endDate,
+        contractValue,
+        source: 'tender',
+        capturedAt: new Date()
+      },
       progressMode: phases.length ? 'phase-based' : 'task-based',
       tags: ['tender', ...(tender.tags || [])]
     });

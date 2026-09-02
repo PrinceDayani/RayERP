@@ -23,6 +23,7 @@ import { toast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 import attendanceAPI, { TodayStats } from '@/lib/api/attendanceAPI';
 import employeeAPI from '@/lib/api/employeesAPI';
+import { getProjectsMinimal } from '@/lib/api/projectsAPI';
 import AttendanceDashboard from '@/components/employee/AttendanceDashboard';
 
 interface AttendanceRecord {
@@ -64,8 +65,10 @@ const AttendanceManagement = () => {
     status: 'present',
     checkIn: '09:00',
     checkOut: '17:00',
-    notes: ''
+    notes: '',
+    project: ''
   });
+  const [projectOptions, setProjectOptions] = useState<{ _id: string; name: string; jobNumber?: string }[]>([]);
   const [stats, setStats] = useState({
     totalDays: 0,
     presentDays: 0,
@@ -91,6 +94,14 @@ const AttendanceManagement = () => {
       fetchTodayStats();
     }
   }, [isAuthenticated, selectedDate, selectedEmployee]);
+
+  // Projects a day can be booked against, loaded once.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    getProjectsMinimal()
+      .then((projects: any[]) => setProjectOptions(projects || []))
+      .catch(() => setProjectOptions([]));
+  }, [isAuthenticated]);
 
   // Real-time updates every 30 seconds
   useEffect(() => {
@@ -289,7 +300,8 @@ const AttendanceManagement = () => {
         status: attendanceForm.status,
         checkIn: `${attendanceForm.date}T${attendanceForm.checkIn}:00`,
         checkOut: attendanceForm.checkOut ? `${attendanceForm.date}T${attendanceForm.checkOut}:00` : undefined,
-        notes: attendanceForm.notes
+        notes: attendanceForm.notes,
+        project: attendanceForm.project || undefined
       };
       
       await attendanceAPI.markAttendance(data);
@@ -304,7 +316,8 @@ const AttendanceManagement = () => {
         status: 'present',
         checkIn: '09:00',
         checkOut: '17:00',
-        notes: ''
+        notes: '',
+        project: ''
       });
       await Promise.all([fetchAttendance(), fetchStats(), fetchTodayStats()]);
     } catch (error: any) {
@@ -625,6 +638,28 @@ const AttendanceManagement = () => {
                     onChange={(e) => setAttendanceForm({...attendanceForm, checkOut: e.target.value})}
                   />
                 </div>
+              </div>
+              <div>
+                <Label>Project</Label>
+                <Select
+                  value={attendanceForm.project || 'none'}
+                  onValueChange={(value) => setAttendanceForm({...attendanceForm, project: value === 'none' ? '' : value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Not booked to a project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not booked to a project</SelectItem>
+                    {projectOptions.map((project) => (
+                      <SelectItem key={project._id} value={project._id}>
+                        {project.jobNumber ? `${project.jobNumber} — ${project.name}` : project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Site attendance booked to a project counts toward its actual man-hours.
+                </p>
               </div>
               <div>
                 <Label>Notes</Label>

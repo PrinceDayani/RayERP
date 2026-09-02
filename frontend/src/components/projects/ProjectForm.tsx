@@ -11,7 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, X, ClipboardList, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { type Project, type MinimalUser, projectsAPI } from "@/lib/api/projectsAPI";
+import { type Project, type MinimalUser, type ProjectCategory, PROJECT_CATEGORIES, projectsAPI } from "@/lib/api/projectsAPI";
+import { getContacts, type Contact } from "@/lib/api/contactsAPI";
 import { toast } from "@/components/ui/use-toast";
 import { CURRENCY_CONFIG } from '@/config/currency.config';
 import { useGlobalCurrency } from '@/hooks/useGlobalCurrency';
@@ -60,7 +61,25 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     currency: (project as any)?.currency || 'INR',
     progress: project?.progress?.toString() || "0",
     client: project?.client || "",
+    jobNumber: project?.jobNumber || "",
+    projectCategory: (project?.projectCategory || "other") as ProjectCategory,
+    clientContact:
+      typeof project?.clientContact === "object" && project?.clientContact
+        ? project.clientContact._id
+        : (project?.clientContact as string) || "",
+    siteAddress: project?.siteLocation?.address || "",
+    siteCity: project?.siteLocation?.city || "",
+    siteState: project?.siteLocation?.state || "",
+    sitePincode: project?.siteLocation?.pincode || "",
+    siteCountry: project?.siteLocation?.country || "",
   });
+  const [clients, setClients] = useState<Contact[]>([]);
+  const [actualStartDate, setActualStartDate] = useState<Date | undefined>(
+    project?.actualStartDate ? new Date(project.actualStartDate) : undefined
+  );
+  const [actualEndDate, setActualEndDate] = useState<Date | undefined>(
+    project?.actualEndDate ? new Date(project.actualEndDate) : undefined
+  );
   const [selectedManagers, setSelectedManagers] = useState<string[]>(
     Array.isArray(project?.managers) 
       ? project.managers.map(manager => typeof manager === 'object' ? (manager as any)._id : manager)
@@ -98,6 +117,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 
   useEffect(() => {
     loadCachedData();
+  }, []);
+
+  // Only contacts flagged as clients are offered, so the picker does not list
+  // every vendor in the contact book.
+  useEffect(() => {
+    getContacts()
+      .then(all => setClients(all.filter(c => c.isCustomer || c.contactType === 'client')))
+      .catch(() => setClients([]));
   }, []);
 
   useEffect(() => {
@@ -223,6 +250,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       currency: formData.currency.toUpperCase(),
       progress: formData.progress ? Math.min(Math.max(parseInt(formData.progress), 0), 100) : 0,
       client: formData.client.trim() || undefined,
+      jobNumber: formData.jobNumber.trim() || undefined,
+      projectCategory: formData.projectCategory,
+      clientContact: formData.clientContact || null,
+      siteLocation: {
+        address: formData.siteAddress.trim() || undefined,
+        city: formData.siteCity.trim() || undefined,
+        state: formData.siteState.trim() || undefined,
+        pincode: formData.sitePincode.trim() || undefined,
+        country: formData.siteCountry.trim() || undefined,
+      },
+      actualStartDate: actualStartDate ? actualStartDate.toISOString() : null,
+      actualEndDate: actualEndDate ? actualEndDate.toISOString() : null,
       managers: selectedManagers.length > 0 ? selectedManagers : [],
       team: selectedTeam.length > 0 ? selectedTeam : [],
       departments: selectedDepartments.length > 0 ? selectedDepartments : [],
@@ -490,6 +529,164 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             onChange={(e) => handleInputChange("client", e.target.value)}
             placeholder="Enter client name"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="clientContact">Client Contact</Label>
+          <Select
+            value={formData.clientContact || "none"}
+            onValueChange={(value) => handleInputChange("clientContact", value === "none" ? "" : value)}
+          >
+            <SelectTrigger id="clientContact">
+              <SelectValue placeholder="Link a contact" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Not linked</SelectItem>
+              {clients.map((contact) => (
+                <SelectItem key={contact._id} value={contact._id!}>
+                  {contact.company ? `${contact.name} — ${contact.company}` : contact.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Links the project to the contact book so the client address travels with it.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="jobNumber">Job Number</Label>
+          <Input
+            id="jobNumber"
+            value={formData.jobNumber}
+            onChange={(e) => handleInputChange("jobNumber", e.target.value)}
+            placeholder={project ? "" : "Assigned automatically"}
+          />
+          <p className="text-xs text-muted-foreground">
+            {project
+              ? "Must stay unique across the job register."
+              : "Leave blank to take the next number in the register."}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="projectCategory">Project Type</Label>
+          <Select
+            value={formData.projectCategory}
+            onValueChange={(value) => handleInputChange("projectCategory", value)}
+          >
+            <SelectTrigger id="projectCategory">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PROJECT_CATEGORIES.map((category) => (
+                <SelectItem key={category} value={category} className="capitalize">
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Project Location</Label>
+        <Input
+          value={formData.siteAddress}
+          onChange={(e) => handleInputChange("siteAddress", e.target.value)}
+          placeholder="Site address"
+        />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <Input
+            value={formData.siteCity}
+            onChange={(e) => handleInputChange("siteCity", e.target.value)}
+            placeholder="City"
+          />
+          <Input
+            value={formData.siteState}
+            onChange={(e) => handleInputChange("siteState", e.target.value)}
+            placeholder="State"
+          />
+          <Input
+            value={formData.sitePincode}
+            onChange={(e) => handleInputChange("sitePincode", e.target.value)}
+            placeholder="Pincode"
+          />
+          <Input
+            value={formData.siteCountry}
+            onChange={(e) => handleInputChange("siteCountry", e.target.value)}
+            placeholder="Country"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Actual Start Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {actualStartDate ? format(actualStartDate, "PPP") : "Not started"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={actualStartDate}
+                selectedDate={actualStartDate}
+                onSelect={setActualStartDate}
+                disabled={undefined}
+              />
+              {actualStartDate && (
+                <div className="p-2 border-t">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setActualStartDate(undefined)}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Actual End Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {actualEndDate ? format(actualEndDate, "PPP") : "Not finished"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={actualEndDate}
+                selectedDate={actualEndDate}
+                onSelect={setActualEndDate}
+                disabled={undefined}
+              />
+              {actualEndDate && (
+                <div className="p-2 border-t">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setActualEndDate(undefined)}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

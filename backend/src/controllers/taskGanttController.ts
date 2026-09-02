@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Task from '../models/Task';
 import { logger } from '../utils/logger';
-import { calculateCriticalPath } from '../utils/criticalPath';
+import { calculateCriticalPath, persistCriticalPath } from '../utils/criticalPath';
 import Project from '../models/Project';
 import mongoose from 'mongoose';
 
@@ -28,6 +28,7 @@ export const getGanttChartData = async (req: Request, res: Response) => {
     // the chart and the critical-path endpoint cannot disagree. Previously
     // start dates were guessed from createdAt.
     const schedule = calculateCriticalPath(tasks as any, project.startDate || new Date());
+    await persistCriticalPath(projectId as string, schedule);
     const byId = new Map(schedule.tasks.map(t => [t.id, t]));
 
     const ganttData = tasks.map((task: any) => {

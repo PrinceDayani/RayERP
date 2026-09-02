@@ -22,13 +22,67 @@ export interface Risk {
   status: 'identified' | 'mitigated' | 'resolved';
 }
 
+export const PROJECT_CATEGORIES = [
+  'construction',
+  'infrastructure',
+  'consultancy',
+  'design',
+  'supply',
+  'maintenance',
+  'software',
+  'research',
+  'other'
+] as const;
+
+export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number];
+
+export interface SiteLocation {
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+}
+
+/** The schedule and value the project was awarded on. Read-only once sourced from a tender. */
+export interface ProjectBaseline {
+  startDate?: string;
+  endDate?: string;
+  contractValue?: number;
+  manHours?: number;
+  source: 'tender' | 'manual';
+  capturedAt: string;
+}
+
+export interface ProjectManHours {
+  planned: number;
+  actual: number;
+  lastCalculatedAt?: string;
+}
+
+/** Client as it comes back populated from Contact. */
+export interface ProjectClientContact {
+  _id: string;
+  name: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
 export interface Project {
   _id: string;
   name: string;
+  jobNumber?: string;
   description: string;
   projectType?: 'instruction' | 'reporting';
+  projectCategory?: ProjectCategory;
   startDate: string;
   endDate: string;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
+  baseline?: ProjectBaseline;
+  manHours?: ProjectManHours;
   status: 'planning' | 'active' | 'on-hold' | 'completed' | 'archived' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'critical';
   budget: number;
@@ -54,6 +108,9 @@ export interface Project {
   team: string[];
   departments?: string[];
   client?: string;
+  clientContact?: string | ProjectClientContact;
+  siteLocation?: SiteLocation;
+  tender?: string;
   tags?: string[];
   /** Milestones live on ProjectPhase — see projectPhasesAPI. */
   risks?: Risk[];
@@ -248,6 +305,19 @@ export const projectsAPI = {
     return unwrapResponse(response.data);
   },
 
+  // Recomputes planned vs actual man-hours from tasks, allocations, daily
+  // reports and project-attributed attendance.
+  recalculateManHours: async (projectId: string) => {
+    const response = await api.post(`/projects/${projectId}/man-hours/recalculate`);
+    return unwrapResponse(response.data) as ProjectManHours & { baselineManHours: number | null };
+  },
+
+  // Activities with no float, as flagged by the last critical-path run.
+  getCriticalTasks: async (projectId: string) => {
+    const response = await api.get(`/projects/${projectId}/tasks`, { params: { critical: true } });
+    return unwrapResponse(response.data);
+  },
+
   // Templates
   getTemplates: async () => {
     const response = await api.get("/projects/templates/list");
@@ -290,6 +360,8 @@ export const getAllProjectsTimelineData = projectsAPI.getAllTimelineData;
 export const updateProjectRisks = projectsAPI.updateRisks;
 export const cloneProject = projectsAPI.cloneProject;
 export const calculateProjectProgress = projectsAPI.calculateProgress;
+export const recalculateProjectManHours = projectsAPI.recalculateManHours;
+export const getProjectCriticalTasks = projectsAPI.getCriticalTasks;
 export const getProjectTemplates = projectsAPI.getTemplates;
 export const getProjectsPaged = projectsAPI.getPaged;
 export const getProjectsMinimal = projectsAPI.getMinimal;

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Attendance from '../models/Attendance';
 import Employee from '../models/Employee';
 import { logger } from '../utils/logger';
@@ -15,7 +16,9 @@ export const getTodayStats = async (req: Request, res: Response) => {
     // Get today's attendance
     const todayAttendance = await Attendance.find({
       date: { $gte: today, $lt: tomorrow }
-    }).populate('employee', 'firstName lastName employeeId');
+    })
+      .populate('employee', 'firstName lastName employeeId')
+      .populate('project', 'name jobNumber');
     
     // Get total active employees
     const totalEmployees = await Employee.countDocuments({ status: 'active' });
@@ -67,9 +70,18 @@ export const getAllAttendance = async (req: Request, res: Response) => {
     if (employee) {
       filter.employee = employee;
     }
-    
+
+    const { project } = req.query;
+    if (project) {
+      if (!mongoose.Types.ObjectId.isValid(project as string)) {
+        return res.status(400).json({ success: false, message: 'Invalid project id' });
+      }
+      filter.project = project;
+    }
+
     const attendance = await Attendance.find(filter)
       .populate('employee', 'firstName lastName employeeId')
+      .populate('project', 'name jobNumber')
       .sort({ date: -1, checkIn: -1 });
 
     res.json({ success: true, data: attendance });
@@ -83,7 +95,8 @@ export const getAttendanceById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const attendance = await Attendance.findById(id)
-      .populate('employee', 'firstName lastName employeeId');
+      .populate('employee', 'firstName lastName employeeId')
+      .populate('project', 'name jobNumber');
     
     if (!attendance) {
       return res.status(404).json({ success: false, message: 'Attendance record not found' });
@@ -97,7 +110,11 @@ export const getAttendanceById = async (req: Request, res: Response) => {
 
 export const checkIn = async (req: Request, res: Response) => {
   try {
-    const { employee } = req.body;
+    const { employee, project } = req.body;
+
+    if (project && !mongoose.Types.ObjectId.isValid(project)) {
+      return res.status(400).json({ message: 'Invalid project id' });
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -122,6 +139,7 @@ export const checkIn = async (req: Request, res: Response) => {
     
     const attendance = new Attendance({
       employee,
+      project: project || undefined,
       date: today,
       checkIn: checkInTime,
       status,
@@ -249,8 +267,12 @@ export const getAttendanceStats = async (req: Request, res: Response) => {
 
 export const requestAttendance = async (req: Request, res: Response) => {
   try {
-    const { employee, date, status, checkIn, checkOut, notes } = req.body;
-    
+    const { employee, date, status, checkIn, checkOut, notes, project } = req.body;
+
+    if (project && !mongoose.Types.ObjectId.isValid(project)) {
+      return res.status(400).json({ message: 'Invalid project id' });
+    }
+
     const attendanceDate = new Date(date);
     attendanceDate.setHours(0, 0, 0, 0);
     
@@ -275,6 +297,9 @@ export const requestAttendance = async (req: Request, res: Response) => {
     
     const attendance = new Attendance({
       employee,
+      // Site attendance booked against a project feeds that project's actual
+      // man-hours; office attendance leaves this unset.
+      project: project || undefined,
       date: attendanceDate,
       checkIn: checkInTime,
       checkOut: checkOutTime,
@@ -416,7 +441,7 @@ export const markAttendance = requestAttendance; // Alias for backward compatibi
 export const updateAttendance = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { status, checkIn, checkOut, notes } = req.body;
+    const { status, checkIn, checkOut, notes, project } = req.body;
     
     const attendance = await Attendance.findById(id);
     if (!attendance) {
@@ -428,6 +453,12 @@ export const updateAttendance = async (req: Request, res: Response) => {
     if (checkIn) attendance.checkIn = new Date(checkIn);
     if (checkOut) attendance.checkOut = new Date(checkOut);
     if (notes !== undefined) attendance.notes = notes;
+    if (project !== undefined) {
+      if (project && !mongoose.Types.ObjectId.isValid(project)) {
+        return res.status(400).json({ success: false, message: 'Invalid project id' });
+      }
+      attendance.project = project || undefined;
+    }
     
     // Recalculate total hours if both times are present
     if (attendance.checkOut && attendance.checkIn) {

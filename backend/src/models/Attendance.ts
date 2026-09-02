@@ -2,6 +2,9 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IAttendance extends Document {
   employee: mongoose.Types.ObjectId;
+  // Project the day was worked against, when the site posting is known. Left
+  // unset for office attendance that is not chargeable to one project.
+  project?: mongoose.Types.ObjectId;
   date: Date;
   checkIn: Date;
   checkOut?: Date;
@@ -27,6 +30,7 @@ export interface IAttendance extends Document {
 
 const attendanceSchema = new Schema<IAttendance>({
   employee: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+  project: { type: Schema.Types.ObjectId, ref: 'Project' },
   date: { type: Date, required: true },
   checkIn: { type: Date, required: true },
   checkOut: Date,
@@ -61,5 +65,6 @@ const attendanceSchema = new Schema<IAttendance>({
 }, { timestamps: true });
 
 attendanceSchema.index({ employee: 1, date: 1 }, { unique: true });
+attendanceSchema.index({ project: 1, date: -1 });
 
 export default mongoose.model<IAttendance>('Attendance', attendanceSchema);

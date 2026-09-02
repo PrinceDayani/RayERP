@@ -22,7 +22,14 @@ import {
   X,
   Eye
 } from "lucide-react";
-import { projectFilesAPI, ProjectFile } from "@/lib/api/projectFilesAPI";
+import {
+  projectFilesAPI,
+  ProjectFile,
+  PROJECT_FILE_CATEGORIES,
+  PROJECT_FILE_CATEGORY_LABELS,
+  type ProjectFileCategory
+} from "@/lib/api/projectFilesAPI";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 
 
@@ -42,6 +49,11 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
   const [previewFile, setPreviewFile] = useState<ProjectFile | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Register metadata applied to everything in the current upload batch.
+  const [uploadCategory, setUploadCategory] = useState<ProjectFileCategory>('other');
+  const [uploadDocumentNumber, setUploadDocumentNumber] = useState("");
+  const [uploadRevision, setUploadRevision] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<'all' | ProjectFileCategory>('all');
 
   useEffect(() => {
     if (projectId) {
@@ -100,10 +112,39 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const filteredFiles = files.filter(file =>
-    file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    file.mimeType.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredFiles = files.filter(file => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch =
+      file.name.toLowerCase().includes(term) ||
+      file.mimeType.toLowerCase().includes(term) ||
+      (file.documentNumber || '').toLowerCase().includes(term);
+    const matchesCategory = categoryFilter === 'all' || file.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const approvalTone = (status: ProjectFile['approvalStatus']) => {
+    if (status === 'approved') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (status === 'rejected') return 'bg-rose-50 text-rose-700 border-rose-200';
+    if (status === 'pending') return 'bg-amber-50 text-amber-700 border-amber-200';
+    return 'bg-gray-50 text-gray-600 border-gray-200';
+  };
+
+  const handleApprovalChange = async (
+    file: ProjectFile,
+    approvalStatus: ProjectFile['approvalStatus']
+  ) => {
+    try {
+      const updated = await projectFilesAPI.updateMetadata(projectId!, file._id, { approvalStatus });
+      setFiles(prev => prev.map(f => (f._id === file._id ? { ...f, ...updated } : f)));
+      toast({ title: "Updated", description: `Marked as ${approvalStatus}` });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to update document status",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDownload = async (file: ProjectFile) => {
     try {
@@ -179,6 +220,9 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
       for (const file of selectedFiles) {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('category', uploadCategory);
+        if (uploadDocumentNumber.trim()) formData.append('documentNumber', uploadDocumentNumber.trim());
+        if (uploadRevision.trim()) formData.append('revision', uploadRevision.trim());
         await projectFilesAPI.upload(projectId!, formData);
       }
       toast({
@@ -186,6 +230,8 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
         description: `${selectedFiles.length} file(s) uploaded successfully`,
       });
       setSelectedFiles([]);
+      setUploadDocumentNumber("");
+      setUploadRevision("");
       setIsUploadDialogOpen(false);
       fetchFiles();
     } catch (error) {
@@ -288,6 +334,40 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
                         </div>
                       ))}
                     </div>
+                    <div className="space-y-2 rounded-md border p-3">
+                      <p className="text-sm font-medium">Register entry</p>
+                      <Select
+                        value={uploadCategory}
+                        onValueChange={(value) => setUploadCategory(value as ProjectFileCategory)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PROJECT_FILE_CATEGORIES.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {PROJECT_FILE_CATEGORY_LABELS[category]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          placeholder="Document / drawing no."
+                          value={uploadDocumentNumber}
+                          onChange={(e) => setUploadDocumentNumber(e.target.value)}
+                        />
+                        <Input
+                          placeholder="Revision"
+                          value={uploadRevision}
+                          onChange={(e) => setUploadRevision(e.target.value)}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Applied to every file in this batch. Anything other than &quot;Other&quot; enters
+                        the register awaiting approval.
+                      </p>
+                    </div>
                     <Button 
                       onClick={uploadFiles} 
                       disabled={uploading}
@@ -304,15 +384,33 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search files..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          {/* Search and register filter */}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search files or document numbers..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select
+              value={categoryFilter}
+              onValueChange={(value) => setCategoryFilter(value as 'all' | ProjectFileCategory)}
+            >
+              <SelectTrigger className="sm:w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All documents</SelectItem>
+                {PROJECT_FILE_CATEGORIES.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {PROJECT_FILE_CATEGORY_LABELS[category]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Files Grid */}
@@ -331,13 +429,31 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
 
                     {/* File Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h3 className="font-medium truncate">{file.originalName}</h3>
                         <Badge variant="outline" className={getCategoryColor(file.mimeType)}>
                           {file.mimeType.split('/')[1]?.toUpperCase() || 'FILE'}
                         </Badge>
+                        {file.category && file.category !== 'other' && (
+                          <Badge variant="outline">
+                            {PROJECT_FILE_CATEGORY_LABELS[file.category]}
+                          </Badge>
+                        )}
+                        {file.category !== 'other' && (
+                          <Badge variant="outline" className={approvalTone(file.approvalStatus)}>
+                            {file.approvalStatus}
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        {file.documentNumber && (
+                          <>
+                            <span className="font-medium text-foreground">
+                              {file.documentNumber}{file.revision ? ` rev ${file.revision}` : ''}
+                            </span>
+                            <span>•</span>
+                          </>
+                        )}
                         <span>{formatFileSize(file.size)}</span>
                         <span>•</span>
                         <span>Uploaded by {(file.uploadedBy as any)?.name || 'Unknown'}</span>
@@ -348,6 +464,15 @@ const ProjectFiles: React.FC<ProjectFilesProps> = ({ projectId }) => {
 
                     {/* Actions */}
                     <div className="flex gap-2">
+                      {file.category !== 'other' && file.approvalStatus !== 'approved' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleApprovalChange(file, 'approved')}
+                        >
+                          Approve
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"

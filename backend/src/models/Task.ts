@@ -19,6 +19,11 @@ export interface ITask extends Document {
   scheduledStart?: Date | null;
   durationDays?: number | null;
   actualHours: number;
+  // Critical-path results, persisted by the CPM endpoints so criticality can be
+  // filtered and reported on without recomputing the whole graph.
+  isCritical: boolean;
+  totalFloat?: number | null;
+  scheduleCalculatedAt?: Date | null;
   order: number;
   column: string;
   tags: {
@@ -111,6 +116,9 @@ const taskSchema = new Schema<ITask>({
   scheduledStart: { type: Date, default: null },
   durationDays: { type: Number, min: 0, default: null },
   actualHours: { type: Number, default: 0 },
+  isCritical: { type: Boolean, default: false },
+  totalFloat: { type: Number, default: null },
+  scheduleCalculatedAt: { type: Date, default: null },
   order: { type: Number, default: 0 },
   column: { type: String, default: 'todo' },
   tags: [{
@@ -178,6 +186,7 @@ taskSchema.index({ project: 1, status: 1 });
 taskSchema.index({ project: 1, order: 1 });
 taskSchema.index({ project: 1, column: 1, order: 1 });
 taskSchema.index({ project: 1, scheduledStart: 1 });
+taskSchema.index({ project: 1, isCritical: 1, status: 1 });
 
 taskSchema.pre('validate', function(next) {
   if (this.taskType === 'project' && !this.project) {
