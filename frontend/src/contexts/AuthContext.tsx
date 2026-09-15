@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import { hasPermission as checkPermission, type User as PermissionUser } from '@/lib/permissions';
@@ -67,6 +68,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const API_URL = process.env.NEXT_PUBLIC_API_URL  || process.env.BACKEND_URL;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -399,6 +401,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // survive into the next sign-in. Any half-finished 2FA challenge goes too.
       mfaTokenRef.current = null;
       setAwaitingTwoFactor(false);
+
+      // Cached query data is per-user (project lists, stats); the next person to
+      // sign in on this browser must not be shown it.
+      queryClient.clear();
 
       const { resetCsrfToken } = await import('@/lib/api/csrf');
       resetCsrfToken();
