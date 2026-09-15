@@ -22,7 +22,10 @@ const PROJECT_SORT_MAP: Record<string, Record<string, 1 | -1>> = {
   name: { name: 1 },
   endDate: { endDate: 1 },
   startDate: { startDate: 1 },
-  progress: { progress: -1 }
+  progress: { progress: -1 },
+  client: { client: 1, name: 1 },
+  value: { budget: -1 },
+  jobNumber: { jobNumber: 1 }
 };
 
 const JOB_NUMBER_PREFIX = 'JOB';
@@ -173,8 +176,14 @@ const toBasicProject = (project: any) => {
 // Translates status/priority/tag/search query params into a Mongo filter.
 // Every value is validated against the schema's own enums rather than passed
 // through, and free text is regex-escaped before it reaches the query.
-const buildProjectFilter = (query: any, search: string | null) => {
+//
+// SECURITY: client, city and tags are withheld from department-level (basic)
+// views. When `assignedIds` is given, conditions on those fields only match the
+// user's own projects, so filtering or searching cannot reveal them.
+const buildProjectFilter = (query: any, search: string | null, assignedIds?: mongoose.Types.ObjectId[]) => {
   const filter: any = {};
+  const and: any[] = [];
+  const hidden = (condition: any) => (assignedIds ? { $and: [{ _id: { $in: assignedIds } }, condition] } : condition);
 
   const validStatuses = ['planning', 'active', 'on-hold', 'completed', 'archived', 'cancelled'];
   const validPriorities = ['low', 'medium', 'high', 'critical'];
@@ -196,7 +205,7 @@ const buildProjectFilter = (query: any, search: string | null) => {
   }
 
   if (typeof query.tag === 'string' && query.tag.trim()) {
-    filter.tags = query.tag.trim();
+    and.push(hidden({ tags: query.tag.trim() }));
   }
 
   // Past their end date and not already closed out. Combines with an explicit
@@ -207,12 +216,70 @@ const buildProjectFilter = (query: any, search: string | null) => {
     filter.status = filter.status ? { ...filter.status, $nin: closed } : { $nin: closed };
   }
 
-  if (search) {
-    const pattern = new RegExp(escapeRegex(search), 'i');
-    filter.$and = [{ $or: [{ name: pattern }, { client: pattern }] }];
+  // Exact client and city, as picked from the facet dropdowns. City matching
+  // ignores case because the register mixes "Rajkot" and "rajkot".
+  if (typeof query.client === 'string' && query.client.trim() && query.client.length <= 200) {
+    and.push(hidden({ client: query.client.trim() }));
+  }
+  if (typeof query.city === 'string' && query.city.trim() && query.city.length <= 100) {
+    and.push(hidden({ 'siteLocation.city': new RegExp(`^${escapeRegex(query.city.trim())}$`, 'i') }));
   }
 
+  if (search) {
+    const pattern = new RegExp(escapeRegex(search), 'i');
+    and.push({
+      $or: [
+        { name: pattern },
+        { jobNumber: pattern },
+        hidden({ $or: [{ client: pattern }, { 'siteLocation.city': pattern }, { tags: pattern }] })
+      ]
+    });
+  }
+
+  if (and.length) filter.$and = and;
   return filter;
+};
+
+/**
+ * Which projects a user can list. `all` users see everything; others see the
+ * projects they are attached to (`assignedIds`, full detail) plus any reached
+ * through a department projects.view grant (reduced detail).
+ */
+const resolveListAccess = async (user: any) => {
+  const access = await getAccessibleProjectIdsForUser(user);
+  if (access.all) return { all: true as const, assignedIds: null, conditions: null };
+
+  const conditions: any[] = [{ _id: { $in: access.ids } }];
+  const assignedIds = new Set(access.ids.map(id => id.toString()));
+
+  const Employee = (await import('../models/Employee')).default;
+  const Department = (await import('../models/Department')).default;
+  const employee = await Employee.findOne({ user: user._id }).select('department departments').lean();
+
+  if (employee) {
+    const departmentNames = employee.departments?.length
+      ? employee.departments
+      : (employee.department ? [employee.department] : []);
+
+    if (departmentNames.length > 0) {
+      const departments = await Department.find({
+        name: { $in: departmentNames },
+        status: 'active'
+      }).select('_id permissions').lean();
+
+      const grantsProjectView = departments.some(
+        dept => dept.permissions && dept.permissions.includes('projects.view')
+      );
+
+      // Project.departments holds Department ids, while Employee.departments
+      // holds names, so the ids have to be resolved before matching.
+      if (grantsProjectView && departments.length) {
+        conditions.push({ departments: { $in: departments.map(d => d._id) } });
+      }
+    }
+  }
+
+  return { all: false as const, assignedIds, conditions, ids: access.ids };
 };
 
 export const getAllProjects = async (req: Request, res: Response) => {
@@ -227,11 +294,10 @@ export const getAllProjects = async (req: Request, res: Response) => {
       defaultSort: 'recent'
     });
 
-    const filter: any = buildProjectFilter(req.query, search);
-
     // Owner / manager / team membership plus explicit ProjectPermission grants.
     // `all` is true only for users who genuinely see every project.
-    const access = await getAccessibleProjectIdsForUser(user);
+    const access = await resolveListAccess(user);
+    const filter: any = buildProjectFilter(req.query, search, access.all ? undefined : access.ids);
 
     // SECURITY: the shared 'all' scope may only be used when access resolution
     // returned every project; everyone else is keyed per user so one user's
@@ -241,7 +307,9 @@ export const getAllProjects = async (req: Request, res: Response) => {
       status: filter.status?.$in ?? [],
       priority: filter.priority?.$in ?? [],
       projectType: filter.projectType ?? '',
-      tag: filter.tags ?? '',
+      tag: typeof req.query.tag === 'string' ? req.query.tag.trim() : '',
+      client: typeof req.query.client === 'string' ? req.query.client.trim() : '',
+      city: typeof req.query.city === 'string' ? req.query.city.trim().toLowerCase() : '',
       overdue: req.query.overdue === 'true',
       search: search ?? '',
       sort,
@@ -256,40 +324,9 @@ export const getAllProjects = async (req: Request, res: Response) => {
 
     // Ids the user is directly attached to; everything else they can reach is
     // department-derived and returned in the reduced shape.
-    let assignedIds: Set<string> | null = null;
-
+    const assignedIds = access.assignedIds;
     if (!access.all) {
-      const accessConditions: any[] = [{ _id: { $in: access.ids } }];
-      assignedIds = new Set(access.ids.map(id => id.toString()));
-
-      const Employee = (await import('../models/Employee')).default;
-      const Department = (await import('../models/Department')).default;
-      const employee = await Employee.findOne({ user: user._id }).select('department departments').lean();
-
-      if (employee) {
-        const departmentNames = employee.departments?.length
-          ? employee.departments
-          : (employee.department ? [employee.department] : []);
-
-        if (departmentNames.length > 0) {
-          const departments = await Department.find({
-            name: { $in: departmentNames },
-            status: 'active'
-          }).select('_id permissions').lean();
-
-          const grantsProjectView = departments.some(
-            dept => dept.permissions && dept.permissions.includes('projects.view')
-          );
-
-          // Project.departments holds Department ids, while Employee.departments
-          // holds names, so the ids have to be resolved before matching.
-          if (grantsProjectView && departments.length) {
-            accessConditions.push({ departments: { $in: departments.map(d => d._id) } });
-          }
-        }
-      }
-
-      filter.$and = [...(filter.$and || []), { $or: accessConditions }];
+      filter.$and = [...(filter.$and || []), { $or: access.conditions }];
     }
 
     const query = Project.find(filter)
@@ -325,6 +362,62 @@ export const getAllProjects = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Error fetching projects', { message: error?.message });
     res.status(500).json({ success: false, message: 'Error fetching projects' });
+  }
+};
+
+// Client and city options for the list filters, plus per-client totals for the
+// grouped view. Each facet ignores its own filter so its dropdown still offers
+// the alternatives. Only projects the user has full access to contribute: basic
+// views withhold client, city and budget.
+export const getProjectFacets = async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { search } = parseListParams(req.query, { sortMap: PROJECT_SORT_MAP, defaultSort: 'recent' });
+    const access = await resolveListAccess(user);
+    const scoped = (filter: any) => (access.all ? filter : { $and: [filter, { _id: { $in: access.ids } }] });
+    const without = (key: 'client' | 'city') => scoped(buildProjectFilter({ ...req.query, [key]: undefined }, search));
+
+    const [clients, cities, groups] = await Promise.all([
+      Project.aggregate([
+        { $match: without('client') },
+        { $group: { _id: '$client', count: { $sum: 1 } } },
+        { $match: { _id: { $nin: [null, ''] } } },
+        { $sort: { _id: 1 } }
+      ]),
+      Project.aggregate([
+        { $match: without('city') },
+        { $match: { 'siteLocation.city': { $nin: [null, ''] } } },
+        { $group: { _id: { $toLower: '$siteLocation.city' }, name: { $first: '$siteLocation.city' }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]),
+      Project.aggregate([
+        { $match: scoped(buildProjectFilter(req.query, search)) },
+        {
+          $group: {
+            _id: { $ifNull: ['$client', ''] },
+            count: { $sum: 1 },
+            value: { $sum: { $ifNull: ['$budget', 0] } },
+            progress: { $avg: { $ifNull: ['$progress', 0] } }
+          }
+        }
+      ])
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        clients: clients.map(c => ({ name: c._id, count: c.count })),
+        cities: cities.map(c => ({ name: c.name, count: c.count })),
+        groups: groups.map(g => ({ client: g._id, count: g.count, value: g.value, progress: Math.round(g.progress) }))
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching project facets', { message: error?.message });
+    res.status(500).json({ success: false, message: 'Error fetching project facets' });
   }
 };
 

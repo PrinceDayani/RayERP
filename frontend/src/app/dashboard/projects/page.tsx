@@ -98,7 +98,7 @@ const ProjectManagementDashboard: React.FC = () => {
   }, [socket, loadStats]);
 
   const handleStatSelect = (tile: StatFilter) => {
-    setFilters(current => (statTileFor(current) === tile ? { ...DEFAULT_FILTERS, q: current.q, sort: current.sort } : filtersForTile(tile, current)));
+    setFilters(current => (statTileFor(current) === tile ? { ...DEFAULT_FILTERS, q: current.q, client: current.client, city: current.city, sort: current.sort } : filtersForTile(tile, current)));
   };
 
   if (!isAuthenticated) {

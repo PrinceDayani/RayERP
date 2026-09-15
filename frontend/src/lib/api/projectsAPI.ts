@@ -143,12 +143,21 @@ export interface ProjectListParams {
   /** Past end date and not completed/cancelled/archived. */
   overdue?: boolean;
   q?: string;
-  sort?: 'recent' | 'created' | 'name' | 'endDate' | 'startDate' | 'progress';
+  client?: string;
+  city?: string;
+  sort?: 'recent' | 'created' | 'name' | 'endDate' | 'startDate' | 'progress' | 'client' | 'value' | 'jobNumber';
 }
 
 export interface PaginatedProjects {
   data: Project[];
   pagination: { page: number; limit: number; total: number; pages: number };
+}
+
+export interface ProjectFacets {
+  clients: { name: string; count: number }[];
+  cities: { name: string; count: number }[];
+  /** Totals per client under the current filters; `client` is '' for projects without one. */
+  groups: { client: string; count: number; value: number; progress: number }[];
 }
 
 export const projectsAPI = {
@@ -168,6 +177,12 @@ export const projectsAPI = {
       data: response.data?.data ?? [],
       pagination: response.data?.pagination ?? { page: 1, limit: 25, total: 0, pages: 0 }
     };
+  },
+
+  // Client/city filter options and per-client totals for the listing.
+  getFacets: async (params: ProjectListParams): Promise<ProjectFacets> => {
+    const response = await api.get("/projects/facets", { params });
+    return response.data?.data ?? { clients: [], cities: [], groups: [] };
   },
 
   // Id/name pairs for dropdowns.
@@ -364,6 +379,7 @@ export const recalculateProjectManHours = projectsAPI.recalculateManHours;
 export const getProjectCriticalTasks = projectsAPI.getCriticalTasks;
 export const getProjectTemplates = projectsAPI.getTemplates;
 export const getProjectsPaged = projectsAPI.getPaged;
+export const getProjectFacets = projectsAPI.getFacets;
 export const getProjectsMinimal = projectsAPI.getMinimal;
 export const restoreProject = projectsAPI.restore;
 export const requestProjectAccess = projectsAPI.requestAccess;

@@ -26,7 +26,8 @@ import {
   getProjectsMinimal,
   getUsersMinimal,
   getDepartmentsMinimal,
-  requestProjectAccess
+  requestProjectAccess,
+  getProjectFacets
 } from '../controllers/projectController';
 import {
   listProjectPhases,
@@ -71,6 +72,8 @@ router.get('/departments/minimal', requirePermission('projects.view'), getDepart
 // --- Core Project Routes ---
 router.get('/stats', requirePermission('projects.view'), getProjectStats);
 router.get('/by-view', requirePermission('projects.view'), getProjectsByView);
+// Client/city filter options and per-client totals for the project list.
+router.get('/facets', requirePermission('projects.view'), getProjectFacets);
 router.get('/', requirePermission('projects.view'), getAllProjects);
 router.get('/:id', validateObjectId(), requirePermission('projects.view'), checkProjectAccess, getProjectById);
 router.post('/',

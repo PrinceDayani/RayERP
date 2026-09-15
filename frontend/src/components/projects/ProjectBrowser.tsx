@@ -22,20 +22,25 @@ import { AccessLevelIndicator } from "@/components/ui/access-level-indicator";
 import { AccessRequestDialog } from "@/components/ui/access-request-dialog";
 import { toast } from "@/components/ui/use-toast";
 import {
-  Search, Plus, Filter, X, Grid3X3, List, Columns3, Briefcase, Calendar, Users,
-  MoreHorizontal, Edit, Copy, Archive, ArchiveRestore, Trash2, AlertTriangle, ChevronDown, Coins, UserPlus
+  Search, Plus, Filter, X, Grid3X3, Columns3, Briefcase, Calendar, Users, Table2, Layers, Download, MapPin,
+  MoreHorizontal, Edit, Copy, Archive, ArchiveRestore, Trash2, AlertTriangle, ChevronDown, ChevronRight, Coins,
+  UserPlus, ArrowDown, Loader2
 } from "lucide-react";
 import {
-  getProjectsPaged, cloneProject, deleteProject, setProjectStatus, type Project
+  getProjectsPaged, getProjectFacets, cloneProject, deleteProject, setProjectStatus,
+  type Project, type ProjectFacets, type ProjectListParams
 } from "@/lib/api/projectsAPI";
 import { useGlobalCurrency } from "@/hooks/useGlobalCurrency";
 import { useSocket } from "@/hooks/useSocket";
+import { exportToCSV } from "@/utils/exportUtils";
 import {
   PROJECT_STATUSES, PROJECT_PRIORITIES, statusColor, priorityColor, priorityAccent,
   labelFor, isOverdue, daysRemaining, formatDate, isBasicView
 } from "./projectMeta";
 
-const PAGE_SIZE = 24;
+const PAGE_SIZES = [25, 50, 100] as const;
+// The API caps a page at 100; exports walk the pages at that size.
+const EXPORT_PAGE_SIZE = 100;
 
 export interface ProjectFilters {
   q: string;
@@ -43,7 +48,9 @@ export interface ProjectFilters {
   priorities: string[];
   projectType: 'all' | 'instruction' | 'reporting';
   overdue: boolean;
-  sort: 'recent' | 'name' | 'progress' | 'endDate';
+  client: string;
+  city: string;
+  sort: 'recent' | 'name' | 'progress' | 'endDate' | 'client' | 'value' | 'jobNumber';
 }
 
 export const DEFAULT_FILTERS: ProjectFilters = {
@@ -52,6 +59,8 @@ export const DEFAULT_FILTERS: ProjectFilters = {
   priorities: [],
   projectType: 'all',
   overdue: false,
+  client: '',
+  city: '',
   sort: 'recent'
 };
 
@@ -70,19 +79,44 @@ export const filtersForTile = (
 ): ProjectFilters => ({
   ...DEFAULT_FILTERS,
   q: current.q,
+  client: current.client,
+  city: current.city,
   sort: current.sort,
   statuses: tile === 'active' ? ['active'] : tile === 'completed' ? ['completed'] : [],
   overdue: tile === 'overdue'
 });
 
-type ViewMode = 'grid' | 'list' | 'board';
+type ViewMode = 'table' | 'grid' | 'board';
 
 const SORT_LABELS: Record<ProjectFilters['sort'], string> = {
   recent: 'Recently updated',
   name: 'Name (A–Z)',
+  client: 'Client (A–Z)',
+  jobNumber: 'Job number',
   progress: 'Progress',
+  value: 'Value (high–low)',
   endDate: 'Due date'
 };
+
+const teamOf = (project: Project): { _id?: string; name?: string }[] =>
+  (Array.isArray(project.team) ? project.team : []).map(member =>
+    typeof member === 'object' && member !== null ? member : { _id: member }
+  );
+
+const clientLine = (project: Project) =>
+  [project.client, project.siteLocation?.city].filter(Boolean).join(' · ');
+
+/** Query params for the list and facet endpoints from the browser filters. */
+const toListParams = (filters: ProjectFilters): ProjectListParams => ({
+  sort: filters.sort,
+  ...(filters.q ? { q: filters.q } : {}),
+  ...(filters.statuses.length ? { status: filters.statuses.join(',') } : {}),
+  ...(filters.priorities.length ? { priority: filters.priorities.join(',') } : {}),
+  ...(filters.projectType !== 'all' ? { projectType: filters.projectType } : {}),
+  ...(filters.overdue ? { overdue: true } : {}),
+  ...(filters.client ? { client: filters.client } : {}),
+  ...(filters.city ? { city: filters.city } : {})
+});
 
 // ---------------------------------------------------------------------------
 // Filter controls
@@ -134,6 +168,75 @@ const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, selected, onC
   );
 };
 
+interface SearchableSelectProps {
+  label: string;
+  options: { name: string; count: number }[];
+  value: string;
+  onChange: (value: string) => void;
+}
+
+/** Single choice from a long option list, with a type-to-narrow box. */
+const SearchableSelect: React.FC<SearchableSelectProps> = ({ label, options, value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [term, setTerm] = useState('');
+  const visible = term
+    ? options.filter(option => option.name.toLowerCase().includes(term.toLowerCase()))
+    : options;
+
+  const pick = (next: string) => {
+    onChange(next);
+    setOpen(false);
+    setTerm('');
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="h-10 justify-between gap-2 min-w-[9rem] max-w-[14rem]">
+          <span className="truncate">
+            {value ? <span className="text-[#970E2C] dark:text-[#e5809a] font-medium">{value}</span> : label}
+          </span>
+          <ChevronDown className="h-4 w-4 opacity-60 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 p-2">
+        <Input
+          autoFocus
+          aria-label={`Search ${label.toLowerCase()}`}
+          placeholder={`Search ${label.toLowerCase()}...`}
+          value={term}
+          onChange={e => setTerm(e.target.value)}
+          className="h-9 mb-2"
+        />
+        <div className="max-h-64 overflow-y-auto space-y-0.5">
+          {visible.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-2 py-3 text-center">No matches</p>
+          ) : (
+            visible.map(option => (
+              <button
+                key={option.name}
+                type="button"
+                onClick={() => pick(option.name)}
+                className={`w-full flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm text-left hover:bg-muted ${
+                  option.name === value ? 'bg-muted font-medium' : ''
+                }`}
+              >
+                <span className="truncate">{option.name}</span>
+                <span className="text-xs text-muted-foreground tabular-nums shrink-0">{option.count}</span>
+              </button>
+            ))
+          )}
+        </div>
+        {value && (
+          <Button variant="ghost" size="sm" className="w-full mt-2 h-8" onClick={() => pick('')}>
+            Clear {label.toLowerCase()}
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 interface FilterBarProps {
   filters: ProjectFilters;
   onChange: (filters: ProjectFilters) => void;
@@ -141,16 +244,22 @@ interface FilterBarProps {
   onViewChange: (view: ViewMode) => void;
   searchDraft: string;
   onSearchDraft: (value: string) => void;
+  facets: ProjectFacets;
+  grouped: boolean;
+  onGroupedChange: (grouped: boolean) => void;
+  onExport: () => void;
+  exporting: boolean;
 }
 
 const VIEW_BUTTONS: { mode: ViewMode; icon: typeof Grid3X3; label: string }[] = [
+  { mode: 'table', icon: Table2, label: 'Table view' },
   { mode: 'grid', icon: Grid3X3, label: 'Grid view' },
-  { mode: 'list', icon: List, label: 'List view' },
   { mode: 'board', icon: Columns3, label: 'Board view' }
 ];
 
 const FilterBar: React.FC<FilterBarProps> = ({
-  filters, onChange, view, onViewChange, searchDraft, onSearchDraft
+  filters, onChange, view, onViewChange, searchDraft, onSearchDraft,
+  facets, grouped, onGroupedChange, onExport, exporting
 }) => {
   const chips: { key: string; label: string; clear: () => void }[] = [];
 
@@ -178,6 +287,12 @@ const FilterBar: React.FC<FilterBarProps> = ({
   if (filters.overdue) {
     chips.push({ key: 'overdue', label: 'Overdue only', clear: () => onChange({ ...filters, overdue: false }) });
   }
+  if (filters.client) {
+    chips.push({ key: 'client', label: `Client: ${filters.client}`, clear: () => onChange({ ...filters, client: '' }) });
+  }
+  if (filters.city) {
+    chips.push({ key: 'city', label: `City: ${filters.city}`, clear: () => onChange({ ...filters, city: '' }) });
+  }
   if (filters.q) {
     chips.push({
       key: 'q',
@@ -196,7 +311,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
             aria-label="Search projects"
-            placeholder="Search projects by name or client..."
+            placeholder="Search by name, client, job number, city or tag..."
             value={searchDraft}
             onChange={e => onSearchDraft(e.target.value)}
             className="pl-9 pr-9 h-10"
@@ -217,6 +332,18 @@ const FilterBar: React.FC<FilterBarProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <SearchableSelect
+            label="Client"
+            options={facets.clients}
+            value={filters.client}
+            onChange={client => onChange({ ...filters, client })}
+          />
+          <SearchableSelect
+            label="City"
+            options={facets.cities}
+            value={filters.city}
+            onChange={city => onChange({ ...filters, city })}
+          />
           <MultiSelect
             label="Status"
             options={PROJECT_STATUSES}
@@ -243,7 +370,8 @@ const FilterBar: React.FC<FilterBarProps> = ({
             </SelectContent>
           </Select>
           <Select
-            value={filters.sort}
+            value={grouped ? 'client' : filters.sort}
+            disabled={grouped}
             onValueChange={value => onChange({ ...filters, sort: value as ProjectFilters['sort'] })}
           >
             <SelectTrigger className="h-10 w-[11rem]" aria-label="Sort projects">
@@ -255,6 +383,23 @@ const FilterBar: React.FC<FilterBarProps> = ({
               ))}
             </SelectContent>
           </Select>
+
+          {view === 'table' && (
+            <Button
+              variant="outline"
+              aria-pressed={grouped}
+              onClick={() => onGroupedChange(!grouped)}
+              className={`h-10 gap-2 ${grouped ? 'border-[#970E2C] text-[#970E2C] dark:border-[#e5809a] dark:text-[#e5809a]' : ''}`}
+            >
+              <Layers className="h-4 w-4" />
+              Group by client
+            </Button>
+          )}
+
+          <Button variant="outline" className="h-10 gap-2" onClick={onExport} disabled={exporting}>
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Export CSV
+          </Button>
 
           <div className="flex items-center rounded-lg border p-0.5">
             {VIEW_BUTTONS.map(({ mode, icon: Icon, label }) => (
@@ -437,7 +582,7 @@ const ProjectGridCard: React.FC<{ project: Project; actions: ProjectActions }> =
   if (isBasicView(project)) return <BasicViewCard project={project} onOpen={open} />;
 
   const overdue = isOverdue(project);
-  const team = Array.isArray(project.team) ? project.team : [];
+  const team = teamOf(project);
 
   return (
     <Card
@@ -460,11 +605,15 @@ const ProjectGridCard: React.FC<{ project: Project; actions: ProjectActions }> =
             <Briefcase className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base leading-snug line-clamp-1 group-hover:text-[#970E2C] dark:group-hover:text-[#e5809a] transition-colors">
+            <h3
+              title={project.name}
+              className="font-semibold text-base leading-snug line-clamp-2 min-h-[2.75rem] group-hover:text-[#970E2C] dark:group-hover:text-[#e5809a] transition-colors"
+            >
               {project.name}
             </h3>
-            <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5 min-h-[2.5rem]">
-              {project.description || 'No description'}
+            <p className="text-sm text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+              {project.jobNumber && <span className="font-mono text-xs">{project.jobNumber} ·</span>}
+              {clientLine(project) || 'No client'}
             </p>
           </div>
           <ProjectMenu project={project} actions={actions} />
@@ -510,16 +659,29 @@ const ProjectGridCard: React.FC<{ project: Project; actions: ProjectActions }> =
   );
 };
 
-const ProjectListRow: React.FC<{ project: Project; actions: ProjectActions }> = ({ project, actions }) => {
+const TABLE_COLUMNS: { key: string; label: string; sort?: ProjectFilters['sort']; className: string }[] = [
+  { key: 'job', label: 'Job No.', sort: 'jobNumber', className: 'w-[8.5rem] hidden xl:table-cell' },
+  { key: 'name', label: 'Project', sort: 'name', className: 'min-w-[16rem]' },
+  { key: 'client', label: 'Client', sort: 'client', className: 'w-[13rem] hidden md:table-cell' },
+  { key: 'city', label: 'City', className: 'w-[8rem] hidden lg:table-cell' },
+  { key: 'status', label: 'Status', className: 'w-[7.5rem]' },
+  { key: 'progress', label: 'Progress', sort: 'progress', className: 'w-[9rem] hidden sm:table-cell' },
+  { key: 'value', label: 'Value', sort: 'value', className: 'w-[8rem] text-right hidden lg:table-cell' },
+  { key: 'team', label: 'Team', className: 'w-[4.5rem] text-right hidden xl:table-cell' },
+  { key: 'due', label: 'Due', sort: 'endDate', className: 'w-[7.5rem] hidden md:table-cell' },
+  { key: 'actions', label: '', className: 'w-10' }
+];
+
+const ProjectTableRow: React.FC<{ project: Project; actions: ProjectActions }> = ({ project, actions }) => {
   const { formatAmount } = useGlobalCurrency();
   const basic = isBasicView(project);
   const overdue = isOverdue(project);
-  const team = Array.isArray(project.team) ? project.team : [];
+  const team = teamOf(project);
   const open = () => actions.onOpen(project);
+  const hidden = <span className="text-muted-foreground/60">—</span>;
 
   return (
-    <div
-      role="button"
+    <tr
       tabIndex={0}
       onClick={open}
       onKeyDown={e => {
@@ -528,56 +690,164 @@ const ProjectListRow: React.FC<{ project: Project; actions: ProjectActions }> = 
           open();
         }
       }}
-      className={`flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#970E2C]/40 ${
+      className={`border-b last:border-0 cursor-pointer transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:bg-muted/60 ${
         basic ? 'bg-amber-50/40 dark:bg-amber-950/20' : ''
-      }`}
+      } ${project.status === 'archived' ? 'opacity-70' : ''}`}
     >
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${priorityAccent(project.priority)}`}>
-        <Briefcase className="h-4 w-4" />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium truncate">{project.name}</span>
-          {basic && <AccessLevelIndicator isBasicView className="shrink-0" />}
-          {overdue && <OverdueBadge project={project} />}
+      <td className="px-3 py-2.5 hidden xl:table-cell font-mono text-xs text-muted-foreground whitespace-nowrap">
+        {project.jobNumber || '—'}
+      </td>
+      <td className="px-3 py-2.5">
+        <div className="flex items-start gap-2 min-w-0">
+          <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${priorityAccent(project.priority)}`} title={`${labelFor(project.priority)} priority`} />
+          <div className="min-w-0">
+            <p className="font-medium leading-snug line-clamp-2" title={project.name}>{project.name}</p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-0.5 md:hidden text-xs text-muted-foreground">
+              {!basic && clientLine(project)}
+            </div>
+            {(basic || overdue) && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                {basic && <AccessLevelIndicator isBasicView className="shrink-0" />}
+                {overdue && <OverdueBadge project={project} />}
+              </div>
+            )}
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground truncate">
-          {basic ? 'Department view — details hidden' : project.description || 'No description'}
-        </p>
-      </div>
-
-      <Badge variant="secondary" className={`${statusColor(project.status)} hidden sm:inline-flex shrink-0`}>
-        {labelFor(project.status)}
-      </Badge>
-      <Badge variant="outline" className={`${priorityColor(project.priority)} hidden md:inline-flex shrink-0`}>
-        {labelFor(project.priority)}
-      </Badge>
-
-      {!basic && (
-        <div className="hidden lg:flex items-center gap-2 w-32 shrink-0">
-          <Progress value={project.progress ?? 0} className="h-1.5 flex-1" />
-          <span className="text-xs tabular-nums text-muted-foreground w-9 text-right">{project.progress ?? 0}%</span>
-        </div>
-      )}
-
-      <div className={`hidden xl:block text-sm w-28 shrink-0 text-right ${overdue ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
+      </td>
+      <td className="px-3 py-2.5 hidden md:table-cell text-sm">
+        {basic ? hidden : <span className="line-clamp-2" title={project.client}>{project.client || '—'}</span>}
+      </td>
+      <td className="px-3 py-2.5 hidden lg:table-cell text-sm text-muted-foreground">
+        {basic ? hidden : project.siteLocation?.city || '—'}
+      </td>
+      <td className="px-3 py-2.5">
+        <Badge variant="secondary" className={`${statusColor(project.status)} whitespace-nowrap`}>{labelFor(project.status)}</Badge>
+      </td>
+      <td className="px-3 py-2.5 hidden sm:table-cell">
+        {basic ? hidden : (
+          <div className="flex items-center gap-2">
+            <Progress value={project.progress ?? 0} className="h-1.5 flex-1" />
+            <span className="text-xs tabular-nums text-muted-foreground w-9 text-right">{Math.round(project.progress ?? 0)}%</span>
+          </div>
+        )}
+      </td>
+      <td className="px-3 py-2.5 hidden lg:table-cell text-sm text-right tabular-nums whitespace-nowrap">
+        {basic ? hidden : project.budget ? formatAmount(project.budget, project.currency || 'INR') : '—'}
+      </td>
+      <td className="px-3 py-2.5 hidden xl:table-cell text-sm text-right tabular-nums text-muted-foreground">
+        {basic ? hidden : (
+          <span className="inline-flex items-center gap-1" title={team.map(m => m.name).filter(Boolean).join(', ')}>
+            <Users className="h-3.5 w-3.5" />{team.length}
+          </span>
+        )}
+      </td>
+      <td className={`px-3 py-2.5 hidden md:table-cell text-sm whitespace-nowrap ${overdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground'}`}>
         {formatDate(project.endDate)}
-      </div>
+      </td>
+      <td className="px-1 py-2.5">
+        {!basic && <ProjectMenu project={project} actions={actions} />}
+      </td>
+    </tr>
+  );
+};
 
-      {!basic && (
-        <>
-          <div className="hidden xl:flex items-center gap-1.5 text-sm text-muted-foreground w-14 shrink-0 justify-end">
-            <Users className="h-3.5 w-3.5" />
-            <span className="tabular-nums">{team.length}</span>
-          </div>
-          <div className="hidden 2xl:block text-sm text-muted-foreground w-28 shrink-0 text-right truncate">
-            {formatAmount(project.budget || 0, project.currency || 'INR')}
-          </div>
-          <ProjectMenu project={project} actions={actions} />
-        </>
-      )}
-    </div>
+interface ProjectTableProps {
+  projects: Project[];
+  actions: ProjectActions;
+  sort: ProjectFilters['sort'];
+  onSort: (sort: ProjectFilters['sort']) => void;
+  /** Present when grouping by client: totals keyed by client name ('' for none). */
+  groups: Map<string, ProjectFacets['groups'][number]> | null;
+}
+
+const ProjectTable: React.FC<ProjectTableProps> = ({ projects, actions, sort, onSort, groups }) => {
+  const { formatAmount } = useGlobalCurrency();
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  // Department-view rows carry no client; they group together at the end.
+  const RESTRICTED = '__restricted__';
+  const sections = useMemo(() => {
+    if (!groups) return [{ key: '', rows: projects }];
+    const ordered = new Map<string, Project[]>();
+    for (const project of projects) {
+      const key = isBasicView(project) ? RESTRICTED : project.client || '';
+      ordered.set(key, [...(ordered.get(key) || []), project]);
+    }
+    return [...ordered.entries()].map(([key, rows]) => ({ key, rows }));
+  }, [projects, groups]);
+
+  const toggle = (key: string) =>
+    setCollapsed(current => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="bg-muted/60 sticky top-0 z-10">
+            <tr className="border-b">
+              {TABLE_COLUMNS.map(column => (
+                <th
+                  key={column.key}
+                  scope="col"
+                  aria-sort={column.sort && sort === column.sort ? 'descending' : undefined}
+                  className={`px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground ${column.className}`}
+                >
+                  {column.sort && !groups ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort(column.sort!)}
+                      className={`inline-flex items-center gap-1 uppercase hover:text-foreground ${sort === column.sort ? 'text-foreground' : ''}`}
+                    >
+                      {column.label}
+                      <ArrowDown className={`h-3 w-3 ${sort === column.sort ? 'opacity-100' : 'opacity-0'}`} />
+                    </button>
+                  ) : column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sections.map(section => {
+              const group = section.key === RESTRICTED ? undefined : groups?.get(section.key);
+              const isCollapsed = collapsed.has(section.key);
+              return (
+                <React.Fragment key={section.key || 'none'}>
+                  {groups && (
+                    <tr className="bg-muted/30 border-b">
+                      <td colSpan={TABLE_COLUMNS.length} className="px-3 py-2">
+                        <button
+                          type="button"
+                          aria-expanded={!isCollapsed}
+                          onClick={() => toggle(section.key)}
+                          className="w-full flex flex-wrap items-center gap-x-4 gap-y-1 text-left"
+                        >
+                          <span className="flex items-center gap-1.5 font-semibold text-sm">
+                            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            {section.key === RESTRICTED ? 'Department view (client hidden)' : section.key || 'No client'}
+                          </span>
+                          <span className="text-xs text-muted-foreground tabular-nums">
+                            {group
+                              ? <>{group.count} project{group.count === 1 ? '' : 's'} · {formatAmount(group.value, 'INR')} · avg {group.progress}%</>
+                              : <>{section.rows.length} on this page</>}
+                          </span>
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                  {!isCollapsed && section.rows.map(project => (
+                    <ProjectTableRow key={project._id} project={project} actions={actions} />
+                  ))}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 };
 
@@ -626,7 +896,12 @@ const ProjectBoard: React.FC<{ projects: Project[]; actions: ProjectActions }> =
                   className="cursor-pointer transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#970E2C]/40"
                 >
                   <CardContent className="p-3 space-y-2">
-                    <p className="font-medium text-sm leading-snug line-clamp-2">{project.name}</p>
+                    <p className="font-medium text-sm leading-snug line-clamp-2" title={project.name}>{project.name}</p>
+                    {!isBasicView(project) && clientLine(project) && (
+                      <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                        <MapPin className="h-3 w-3 shrink-0" />{clientLine(project)}
+                      </p>
+                    )}
                     <div className="flex items-center justify-between gap-2">
                       <Badge variant="outline" className={`${priorityColor(project.priority)} text-[11px]`}>
                         {labelFor(project.priority)}
@@ -673,7 +948,11 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
   const [total, setTotal] = useState(0);
   const [initialLoad, setInitialLoad] = useState(true);
   const [fetching, setFetching] = useState(false);
-  const [view, setView] = useState<ViewMode>('grid');
+  const [view, setView] = useState<ViewMode>('table');
+  const [pageSize, setPageSize] = useState<number>(50);
+  const [grouped, setGrouped] = useState(false);
+  const [facets, setFacets] = useState<ProjectFacets>({ clients: [], cities: [], groups: [] });
+  const [exporting, setExporting] = useState(false);
   const [searchDraft, setSearchDraft] = useState(filters.q);
   const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
 
@@ -699,21 +978,17 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
     setSearchDraft(current => (current === filters.q ? current : filters.q));
   }, [filters.q]);
 
-  const filterKey = JSON.stringify(filters);
+  // Grouping needs rows ordered by client so each group is contiguous.
+  const effectiveFilters = useMemo<ProjectFilters>(
+    () => (grouped && view === 'table' ? { ...filters, sort: 'client' } : filters),
+    [filters, grouped, view]
+  );
+  const filterKey = JSON.stringify(effectiveFilters) + `|${pageSize}`;
 
   const load = useCallback(async (targetPage: number) => {
     setFetching(true);
     try {
-      const result = await getProjectsPaged({
-        page: targetPage,
-        limit: PAGE_SIZE,
-        sort: filters.sort,
-        ...(filters.q ? { q: filters.q } : {}),
-        ...(filters.statuses.length ? { status: filters.statuses.join(',') } : {}),
-        ...(filters.priorities.length ? { priority: filters.priorities.join(',') } : {}),
-        ...(filters.projectType !== 'all' ? { projectType: filters.projectType } : {}),
-        ...(filters.overdue ? { overdue: true } : {})
-      });
+      const result = await getProjectsPaged({ page: targetPage, limit: pageSize, ...toListParams(effectiveFilters) });
       setProjects(result.data);
       setPageCount(Math.max(1, result.pagination.pages));
       setTotal(result.pagination.total);
@@ -743,11 +1018,28 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
     load(page);
   }, [load, page]);
 
+  // Facets follow the filters but not the page; a failure only empties the dropdowns.
+  const facetKey = JSON.stringify({ ...filters, sort: undefined });
+  const loadFacets = useCallback(async () => {
+    try {
+      setFacets(await getProjectFacets(toListParams(filters)));
+    } catch {
+      setFacets({ clients: [], cities: [], groups: [] });
+    }
+  }, [facetKey]);
+
+  useEffect(() => {
+    loadFacets();
+  }, [loadFacets]);
+
   // Socket updates must reload with whatever the user is currently looking at,
   // so the handler reads the live loader instead of closing over the first one.
-  const reload = useRef(() => load(page));
+  const reload = useRef<() => void>(() => load(page));
   useEffect(() => {
-    reload.current = () => load(page);
+    reload.current = () => {
+      load(page);
+      loadFacets();
+    };
   });
 
   useEffect(() => {
@@ -819,15 +1111,64 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
     }
   };
 
+  // Exports every project matching the current filters, not just this page.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const rows: Project[] = [];
+      for (let p = 1; ; p++) {
+        const result = await getProjectsPaged({ page: p, limit: EXPORT_PAGE_SIZE, ...toListParams(effectiveFilters) });
+        rows.push(...result.data);
+        if (p >= result.pagination.pages || result.data.length === 0) break;
+      }
+      // Department-view rows arrive without client, budget or team; they stay blank.
+      exportToCSV({
+        filename: 'projects',
+        data: rows,
+        columns: [
+          { header: 'Job No.', accessor: 'jobNumber' },
+          { header: 'Project', accessor: 'name' },
+          { header: 'Client', accessor: 'client' },
+          { header: 'City', accessor: (p: Project) => p.siteLocation?.city },
+          { header: 'Status', accessor: (p: Project) => labelFor(p.status) },
+          { header: 'Priority', accessor: (p: Project) => labelFor(p.priority) },
+          { header: 'Progress %', accessor: (p: Project) => (isBasicView(p) ? '' : Math.round(p.progress ?? 0)) },
+          { header: 'Value', accessor: (p: Project) => (isBasicView(p) ? '' : p.budget ?? 0) },
+          { header: 'Currency', accessor: (p: Project) => (isBasicView(p) ? '' : p.currency || 'INR') },
+          { header: 'Start', accessor: (p: Project) => p.startDate?.slice(0, 10) },
+          { header: 'Due', accessor: (p: Project) => p.endDate?.slice(0, 10) },
+          { header: 'Team', accessor: (p: Project) => teamOf(p).map(m => m.name).filter(Boolean).join('; ') },
+          { header: 'Access', accessor: (p: Project) => (isBasicView(p) ? 'Department view' : 'Full') }
+        ]
+      });
+      toast({ title: `Exported ${rows.length} project${rows.length === 1 ? '' : 's'}` });
+    } catch (error: any) {
+      toast({
+        title: 'Export failed',
+        description: error?.response?.data?.message || error?.message || 'Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const groupTotals = useMemo(
+    () => (grouped && view === 'table' ? new Map(facets.groups.map(g => [g.client, g])) : null),
+    [grouped, view, facets.groups]
+  );
+
   const hasFilters =
     !!filters.q ||
     filters.statuses.length > 0 ||
     filters.priorities.length > 0 ||
     filters.projectType !== 'all' ||
-    filters.overdue;
+    filters.overdue ||
+    !!filters.client ||
+    !!filters.city;
 
-  const rangeStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const rangeEnd = Math.min(page * PAGE_SIZE, total);
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, total);
 
   return (
     <div className="space-y-4">
@@ -840,6 +1181,11 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
             onViewChange={setView}
             searchDraft={searchDraft}
             onSearchDraft={setSearchDraft}
+            facets={facets}
+            grouped={grouped}
+            onGroupedChange={setGrouped}
+            onExport={handleExport}
+            exporting={exporting}
           />
         </CardContent>
       </Card>
@@ -907,14 +1253,14 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
               ))}
             </div>
           )}
-          {view === 'list' && (
-            <Card className="overflow-hidden">
-              <div className="divide-y">
-                {projects.map(project => (
-                  <ProjectListRow key={project._id} project={project} actions={actions} />
-                ))}
-              </div>
-            </Card>
+          {view === 'table' && (
+            <ProjectTable
+              projects={projects}
+              actions={actions}
+              sort={effectiveFilters.sort}
+              onSort={sort => onFiltersChange({ ...filters, sort })}
+              groups={groupTotals}
+            />
           )}
           {view === 'board' && <ProjectBoard projects={projects} actions={actions} />}
         </div>
@@ -926,6 +1272,20 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
             Showing <span className="font-medium text-foreground tabular-nums">{rangeStart}–{rangeEnd}</span> of{' '}
             <span className="font-medium text-foreground tabular-nums">{total}</span> project{total === 1 ? '' : 's'}
           </p>
+          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Per page</span>
+            <Select value={String(pageSize)} onValueChange={value => setPageSize(Number(value))}>
+              <SelectTrigger className="h-8 w-[4.75rem]" aria-label="Projects per page">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZES.map(size => (
+                  <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {pageCount > 1 && (
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" disabled={page <= 1 || fetching} onClick={() => setPage(p => p - 1)}>
@@ -944,6 +1304,7 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
               </Button>
             </div>
           )}
+          </div>
         </div>
       )}
 
