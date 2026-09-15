@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,12 @@ import {
 } from "./projectMeta";
 
 const PAGE_SIZES = [25, 50, 100] as const;
+/** Root query key for project list data; invalidate it after any project change. */
+export const PROJECTS_QUERY_KEY = ['projects'] as const;
+/** Matches the server-side cache TTL. */
+export const PROJECT_QUERY_STALE_MS = 60_000;
+const EMPTY_PROJECTS: Project[] = [];
+const EMPTY_FACETS: ProjectFacets = { clients: [], cities: [], groups: [] };
 // The API caps a page at 100; exports walk the pages at that size.
 const EXPORT_PAGE_SIZE = 100;
 
@@ -942,16 +949,10 @@ interface ProjectBrowserProps {
 const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChange, onAccessCountsChange }) => {
   const router = useRouter();
   const socket = useSocket();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [page, setPage] = useState(1);
-  const [pageCount, setPageCount] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [fetching, setFetching] = useState(false);
+  const queryClient = useQueryClient();
   const [view, setView] = useState<ViewMode>('table');
   const [pageSize, setPageSize] = useState<number>(50);
   const [grouped, setGrouped] = useState(false);
-  const [facets, setFacets] = useState<ProjectFacets>({ clients: [], cities: [], groups: [] });
   const [exporting, setExporting] = useState(false);
   const [searchDraft, setSearchDraft] = useState(filters.q);
   const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
@@ -983,68 +984,60 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
     () => (grouped && view === 'table' ? { ...filters, sort: 'client' } : filters),
     [filters, grouped, view]
   );
-  const filterKey = JSON.stringify(effectiveFilters) + `|${pageSize}`;
+  const listParams = useMemo(() => toListParams(effectiveFilters), [effectiveFilters]);
+  const filterKey = JSON.stringify(listParams) + `|${pageSize}`;
 
-  const load = useCallback(async (targetPage: number) => {
-    setFetching(true);
-    try {
-      const result = await getProjectsPaged({ page: targetPage, limit: pageSize, ...toListParams(effectiveFilters) });
-      setProjects(result.data);
-      setPageCount(Math.max(1, result.pagination.pages));
-      setTotal(result.pagination.total);
-    } catch (error: any) {
-      toast({
-        title: "Couldn't load projects",
-        description: error?.response?.data?.message || error?.message || 'Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setFetching(false);
-      setInitialLoad(false);
-    }
-  }, [filterKey]);
+  // The page belongs to the filters it was chosen under, so a filter change
+  // lands on page 1 without first fetching the old page under new filters.
+  const [pageState, setPageState] = useState({ key: filterKey, page: 1 });
+  const page = pageState.key === filterKey ? pageState.page : 1;
+  const setPage = (next: number) => setPageState({ key: filterKey, page: next });
 
-  // A filter change always returns to the first page. Resetting here rather
-  // than in a separate effect avoids fetching the old page under new filters.
-  const lastFilterKey = useRef(filterKey);
-  useEffect(() => {
-    if (lastFilterKey.current !== filterKey) {
-      lastFilterKey.current = filterKey;
-      if (page !== 1) {
-        setPage(1);
-        return;
-      }
-    }
-    load(page);
-  }, [load, page]);
-
-  // Facets follow the filters but not the page; a failure only empties the dropdowns.
-  const facetKey = JSON.stringify({ ...filters, sort: undefined });
-  const loadFacets = useCallback(async () => {
-    try {
-      setFacets(await getProjectFacets(toListParams(filters)));
-    } catch {
-      setFacets({ clients: [], cities: [], groups: [] });
-    }
-  }, [facetKey]);
-
-  useEffect(() => {
-    loadFacets();
-  }, [loadFacets]);
-
-  // Socket updates must reload with whatever the user is currently looking at,
-  // so the handler reads the live loader instead of closing over the first one.
-  const reload = useRef<() => void>(() => load(page));
-  useEffect(() => {
-    reload.current = () => {
-      load(page);
-      loadFacets();
-    };
+  // Cached per filter set and page: revisiting the tab or paging back renders
+  // immediately, while socket events and edits invalidate everything under 'projects'.
+  const listQuery = useQuery({
+    queryKey: [...PROJECTS_QUERY_KEY, 'list', listParams, page, pageSize],
+    queryFn: () => getProjectsPaged({ page, limit: pageSize, ...listParams }),
+    placeholderData: keepPreviousData,
+    staleTime: PROJECT_QUERY_STALE_MS
   });
 
   useEffect(() => {
+    if (!listQuery.error) return;
+    const error: any = listQuery.error;
+    toast({
+      title: "Couldn't load projects",
+      description: error?.response?.data?.message || error?.message || 'Please try again.',
+      variant: 'destructive'
+    });
+  }, [listQuery.error]);
+
+  // Facets follow the filters but not the page or sort; a failure only empties the dropdowns.
+  const facetParams = useMemo(() => {
+    const { sort: _sort, ...rest } = toListParams(filters);
+    return rest;
+  }, [filters]);
+  const facetsQuery = useQuery({
+    queryKey: [...PROJECTS_QUERY_KEY, 'facets', facetParams],
+    queryFn: () => getProjectFacets(facetParams),
+    placeholderData: keepPreviousData,
+    staleTime: PROJECT_QUERY_STALE_MS
+  });
+  const facets: ProjectFacets = facetsQuery.data ?? EMPTY_FACETS;
+
+  const projects = listQuery.data?.data ?? EMPTY_PROJECTS;
+  const total = listQuery.data?.pagination.total ?? 0;
+  const pageCount = Math.max(1, listQuery.data?.pagination.pages ?? 1);
+  const initialLoad = listQuery.isPending;
+  const fetching = listQuery.isFetching;
+
+  const refresh = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY }),
+    [queryClient]
+  );
+
+  useEffect(() => {
     if (!socket) return;
-    const refresh = () => reload.current();
     socket.on('project:created', refresh);
     socket.on('project:updated', refresh);
     socket.on('project:deleted', refresh);
@@ -1053,7 +1046,7 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
       socket.off('project:updated', refresh);
       socket.off('project:deleted', refresh);
     };
-  }, [socket]);
+  }, [socket, refresh]);
 
   useEffect(() => {
     if (!onAccessCountsChange) return;
@@ -1068,7 +1061,7 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
       try {
         await cloneProject(project._id);
         toast({ title: `Duplicated "${project.name}"` });
-        reload.current();
+        refresh();
       } catch (error: any) {
         toast({
           title: 'Failed to duplicate project',
@@ -1082,7 +1075,7 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
       try {
         await setProjectStatus(project._id, target);
         toast({ title: target === 'archived' ? `Archived "${project.name}"` : `Restored "${project.name}"` });
-        reload.current();
+        refresh();
       } catch (error: any) {
         toast({
           title: `Failed to ${target === 'archived' ? 'archive' : 'restore'} project`,
@@ -1092,7 +1085,7 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
       }
     },
     onDelete: project => setPendingDelete(project)
-  }), [router]);
+  }), [router, refresh]);
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
@@ -1101,7 +1094,7 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
     try {
       await deleteProject(project._id);
       toast({ title: `Deleted "${project.name}"` });
-      reload.current();
+      refresh();
     } catch (error: any) {
       toast({
         title: 'Failed to delete project',
@@ -1288,7 +1281,7 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
           </div>
           {pageCount > 1 && (
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1 || fetching} onClick={() => setPage(p => p - 1)}>
+              <Button variant="outline" size="sm" disabled={page <= 1 || fetching} onClick={() => setPage(page - 1)}>
                 Previous
               </Button>
               <span className="text-sm text-muted-foreground tabular-nums px-1">
@@ -1298,7 +1291,7 @@ const ProjectBrowser: React.FC<ProjectBrowserProps> = ({ filters, onFiltersChang
                 variant="outline"
                 size="sm"
                 disabled={page >= pageCount || fetching}
-                onClick={() => setPage(p => p + 1)}
+                onClick={() => setPage(page + 1)}
               >
                 Next
               </Button>

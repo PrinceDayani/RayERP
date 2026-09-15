@@ -8,7 +8,9 @@ import { createTimelineEvent, getEntityTimeline } from '../utils/timelineHelper'
 import { WorkflowProjectIntegration } from '../services/workflowProjectIntegration';
 import { getAccessibleProjectIdsForUser, resolveProjectAccess } from '../middleware/projectAccess.middleware';
 import NotificationEmitter from '../utils/notificationEmitter';
-import { getCachedProjectList, setCachedProjectList, invalidateProjectListCache } from '../utils/projectCache';
+import {
+  getCachedProjectList, setCachedProjectList, invalidateProjectListCache, getCachedProjectView, setCachedProjectView
+} from '../utils/projectCache';
 import { logger } from '../utils/logger';
 import { emitProjectStats } from '../utils/socketEvents';
 import { computeProjectProgress } from '../utils/projectProgress';
@@ -378,6 +380,19 @@ export const getProjectFacets = async (req: Request, res: Response) => {
 
     const { search } = parseListParams(req.query, { sortMap: PROJECT_SORT_MAP, defaultSort: 'recent' });
     const access = await resolveListAccess(user);
+
+    // SECURITY: same scoping rule as the list — only full-visibility users share an entry.
+    const scope = access.all ? 'all' : `u:${user._id.toString()}`;
+    const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+    const queryKey = JSON.stringify({
+      status: str(req.query.status), priority: str(req.query.priority), projectType: str(req.query.projectType),
+      tag: str(req.query.tag), client: str(req.query.client), city: str(req.query.city).toLowerCase(),
+      overdue: req.query.overdue === 'true', search: search ?? ''
+    });
+    const cached = await getCachedProjectView('facets', scope, queryKey);
+    if (cached !== null) {
+      return res.json(cached);
+    }
     const scoped = (filter: any) => (access.all ? filter : { $and: [filter, { _id: { $in: access.ids } }] });
     const without = (key: 'client' | 'city') => scoped(buildProjectFilter({ ...req.query, [key]: undefined }, search));
 
@@ -407,14 +422,16 @@ export const getProjectFacets = async (req: Request, res: Response) => {
       ])
     ]);
 
-    res.json({
+    const payload = {
       success: true,
       data: {
         clients: clients.map(c => ({ name: c._id, count: c.count })),
         cities: cities.map(c => ({ name: c.name, count: c.count })),
         groups: groups.map(g => ({ client: g._id, count: g.count, value: g.value, progress: Math.round(g.progress) }))
       }
-    });
+    };
+    await setCachedProjectView('facets', scope, queryKey, payload);
+    res.json(payload);
   } catch (error) {
     logger.error('Error fetching project facets', { message: error?.message });
     res.status(500).json({ success: false, message: 'Error fetching project facets' });
@@ -1499,14 +1516,22 @@ export const getProjectStats = async (req: Request, res: Response) => {
     let query: any = {};
     const roleName = typeof user.role === 'object' && 'name' in user.role ? user.role.name : null;
     const rolePermissions = (typeof user.role === 'object' && 'permissions' in user.role ? user.role.permissions : []) as string[];
-    
+
     // Root and users with projects.view_all can see all project stats
-    if (roleName !== 'Root' && !rolePermissions.includes('projects.view_all') && !rolePermissions.includes('*')) {
+    const seesAll = roleName === 'Root' || rolePermissions.includes('projects.view_all') || rolePermissions.includes('*');
+    if (!seesAll) {
       query = { $or: [
         { owner: user._id },
         { team: user._id },
         { managers: user._id }
       ] };
+    }
+
+    // Stats are scoped exactly like the query above: shared only when unrestricted.
+    const scope = seesAll ? 'all' : `u:${user._id.toString()}`;
+    const cached = await getCachedProjectView('stats', scope, 'summary');
+    if (cached !== null) {
+      return res.json(cached);
     }
 
     const totalProjects = await Project.countDocuments(query);
@@ -1533,8 +1558,10 @@ export const getProjectStats = async (req: Request, res: Response) => {
       atRiskProjects: await Project.countDocuments({ ...query, 'risks.severity': { $in: ['high', 'critical'] } }),
       overdueProjects: await Project.countDocuments({ ...query, endDate: { $lt: new Date() }, status: { $ne: 'completed' } })
     };
-    
-    res.json({ success: true, data: stats });
+
+    const payload = { success: true, data: stats };
+    await setCachedProjectView('stats', scope, 'summary', payload);
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching project stats', error });
   }

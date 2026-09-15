@@ -22,9 +22,16 @@ export const getProjectListVersion = async (): Promise<string> => {
 export const buildProjectListKey = (scope: string, queryKey: string, version: string): string =>
   `projects:list:v${version}:${scope}:${queryKey}`;
 
-export const getCachedProjectList = async <T>(scope: string, queryKey: string): Promise<T | null> => {
+// Other project read models (stats, facets) share the list's version counter,
+// so any project write invalidates all of them together.
+export type ProjectCacheView = 'list' | 'stats' | 'facets';
+
+const buildViewKey = (view: ProjectCacheView, scope: string, queryKey: string, version: string) =>
+  view === 'list' ? buildProjectListKey(scope, queryKey, version) : `projects:${view}:v${version}:${scope}:${queryKey}`;
+
+export const getCachedProjectView = async <T>(view: ProjectCacheView, scope: string, queryKey: string): Promise<T | null> => {
   const version = await getProjectListVersion();
-  const cached = await getCache(buildProjectListKey(scope, queryKey, version));
+  const cached = await getCache(buildViewKey(view, scope, queryKey, version));
   if (cached === null) {
     return null;
   }
@@ -36,10 +43,21 @@ export const getCachedProjectList = async <T>(scope: string, queryKey: string): 
   }
 };
 
-export const setCachedProjectList = async (scope: string, queryKey: string, payload: unknown): Promise<void> => {
+export const setCachedProjectView = async (
+  view: ProjectCacheView,
+  scope: string,
+  queryKey: string,
+  payload: unknown
+): Promise<void> => {
   const version = await getProjectListVersion();
-  await setCache(buildProjectListKey(scope, queryKey, version), JSON.stringify(payload), PROJECT_LIST_TTL_SECONDS);
+  await setCache(buildViewKey(view, scope, queryKey, version), JSON.stringify(payload), PROJECT_LIST_TTL_SECONDS);
 };
+
+export const getCachedProjectList = <T>(scope: string, queryKey: string): Promise<T | null> =>
+  getCachedProjectView<T>('list', scope, queryKey);
+
+export const setCachedProjectList = (scope: string, queryKey: string, payload: unknown): Promise<void> =>
+  setCachedProjectView('list', scope, queryKey, payload);
 
 export const invalidateProjectListCache = async (): Promise<void> => {
   const current = parseInt(await getProjectListVersion(), 10) || 0;

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { TieredAccessWrapper } from "@/components/common/TieredAccessWrapper";
 import ProjectCurrencySwitcher from "@/components/projects/ProjectCurrencySwitcher";
 import ProjectStatsCards, { type ProjectStats, type StatFilter } from "@/components/projects/ProjectStatsCards";
 import ProjectBrowser, {
-  DEFAULT_FILTERS, filtersForTile, statTileFor, type ProjectFilters
+  DEFAULT_FILTERS, PROJECTS_QUERY_KEY, PROJECT_QUERY_STALE_MS, filtersForTile, statTileFor, type ProjectFilters
 } from "@/components/projects/ProjectBrowser";
 import MyTasksPanel from "@/components/projects/MyTasksPanel";
 import AllTasksPanel from "@/components/projects/AllTasksPanel";
@@ -63,39 +64,34 @@ const ProjectManagementDashboard: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const socket = useSocket();
-  const [stats, setStats] = useState<ProjectStats>(EMPTY_STATS);
-  const [statsLoading, setStatsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [filters, setFilters] = useState<ProjectFilters>(DEFAULT_FILTERS);
   const [accessCounts, setAccessCounts] = useState({ full: 0, basic: 0 });
 
-  const loadStats = useCallback(async () => {
-    try {
-      setStats(await getProjectStats());
-    } catch {
-      // The stats strip is supplementary; the project list reports its own errors.
-      setStats(EMPTY_STATS);
-    } finally {
-      setStatsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    loadStats();
-  }, [isAuthenticated, loadStats]);
+  // The stats strip is supplementary; on failure it shows zeros and the project
+  // list reports its own errors.
+  const statsQuery = useQuery<ProjectStats>({
+    queryKey: [...PROJECTS_QUERY_KEY, 'stats'],
+    queryFn: getProjectStats,
+    enabled: isAuthenticated,
+    staleTime: PROJECT_QUERY_STALE_MS
+  });
+  const stats = statsQuery.data ?? EMPTY_STATS;
+  const statsLoading = statsQuery.isPending && isAuthenticated;
 
   // Counts change whenever a project is created, updated or removed anywhere.
   useEffect(() => {
     if (!socket) return;
-    socket.on('project:created', loadStats);
-    socket.on('project:updated', loadStats);
-    socket.on('project:deleted', loadStats);
+    const refresh = () => queryClient.invalidateQueries({ queryKey: [...PROJECTS_QUERY_KEY, 'stats'] });
+    socket.on('project:created', refresh);
+    socket.on('project:updated', refresh);
+    socket.on('project:deleted', refresh);
     return () => {
-      socket.off('project:created', loadStats);
-      socket.off('project:updated', loadStats);
-      socket.off('project:deleted', loadStats);
+      socket.off('project:created', refresh);
+      socket.off('project:updated', refresh);
+      socket.off('project:deleted', refresh);
     };
-  }, [socket, loadStats]);
+  }, [socket, queryClient]);
 
   const handleStatSelect = (tile: StatFilter) => {
     setFilters(current => (statTileFor(current) === tile ? { ...DEFAULT_FILTERS, q: current.q, client: current.client, city: current.city, sort: current.sort } : filtersForTile(tile, current)));

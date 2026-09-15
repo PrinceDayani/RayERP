@@ -1,4 +1,5 @@
 import { io } from '../server';
+import { invalidateProjectListCache } from './projectCache';
 
 /**
  * Socket Event Emitter Utility Functions
@@ -72,6 +73,9 @@ const computeProjectStats = async () => {
 };
 
 export const emitProjectStats = async (): Promise<void> => {
+  // Every project or task write lands here, so the cached list, stats and
+  // facets are invalidated before the debounce, not after it.
+  await invalidateProjectListCache();
   if (projectStatsTimer) return;
 
   projectStatsTimer = setTimeout(async () => {
