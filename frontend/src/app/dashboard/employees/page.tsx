@@ -34,6 +34,7 @@ import attendanceAPI from "@/lib/api/attendanceAPI";
 import leaveAPI from "@/lib/api/leaveAPI";
 import employeeReportAPI from "@/lib/api/employeeReportAPI";
 import EmployeeFilters from "@/components/employee/EmployeeFilters";
+import { format } from "date-fns";
 
 interface LeaveCreateRequest {
   employee: string;
@@ -922,8 +923,8 @@ const EmployeeReports = () => {
   const [attendanceSummary, setAttendanceSummary] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd'),
+    endDate: format(new Date(), 'yyyy-MM-dd'),
     department: ''
   });
 
@@ -1126,7 +1127,7 @@ const TodayAttendance = () => {
   const fetchTodayAttendance = async () => {
     try {
       setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
+      const today = format(new Date(), 'yyyy-MM-dd');
       const params = {
         startDate: today,
         endDate: today

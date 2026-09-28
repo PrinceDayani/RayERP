@@ -25,6 +25,7 @@ import attendanceAPI, { TodayStats } from '@/lib/api/attendanceAPI';
 import employeeAPI from '@/lib/api/employeesAPI';
 import { getProjectsMinimal } from '@/lib/api/projectsAPI';
 import AttendanceDashboard from '@/components/employee/AttendanceDashboard';
+import { format } from 'date-fns';
 
 interface AttendanceRecord {
   _id: string;
@@ -56,12 +57,12 @@ const AttendanceManagement = () => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedEmployee, setSelectedEmployee] = useState('all');
   const [isMarkAttendanceOpen, setIsMarkAttendanceOpen] = useState(false);
   const [attendanceForm, setAttendanceForm] = useState({
     employee: '',
-    date: new Date().toISOString().split('T')[0],
+    date: format(new Date(), 'yyyy-MM-dd'),
     status: 'present',
     checkIn: '09:00',
     checkOut: '17:00',
@@ -188,7 +189,7 @@ const AttendanceManagement = () => {
       
       // For today's attendance, use current date
       const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = format(today, 'yyyy-MM-dd');
       
       if (selectedDate) {
         params.startDate = selectedDate;
@@ -298,8 +299,8 @@ const AttendanceManagement = () => {
         employee: attendanceForm.employee,
         date: attendanceForm.date,
         status: attendanceForm.status,
-        checkIn: `${attendanceForm.date}T${attendanceForm.checkIn}:00`,
-        checkOut: attendanceForm.checkOut ? `${attendanceForm.date}T${attendanceForm.checkOut}:00` : undefined,
+        checkIn: new Date(`${attendanceForm.date}T${attendanceForm.checkIn}:00`).toISOString(),
+        checkOut: attendanceForm.checkOut ? new Date(`${attendanceForm.date}T${attendanceForm.checkOut}:00`).toISOString() : undefined,
         notes: attendanceForm.notes,
         project: attendanceForm.project || undefined
       };
@@ -312,7 +313,7 @@ const AttendanceManagement = () => {
       setIsMarkAttendanceOpen(false);
       setAttendanceForm({
         employee: '',
-        date: new Date().toISOString().split('T')[0],
+        date: format(new Date(), 'yyyy-MM-dd'),
         status: 'present',
         checkIn: '09:00',
         checkOut: '17:00',

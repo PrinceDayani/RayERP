@@ -3,21 +3,31 @@ import mongoose from 'mongoose';
 import Attendance from '../models/Attendance';
 import Employee from '../models/Employee';
 import { logger } from '../utils/logger';
+import { addZonedDays, parseZonedDay, startOfZonedDay, zonedTimeToUtc } from '../utils/timezoneHelper';
 // Socket will be imported dynamically to avoid circular dependency
 
-// Office hours start at 10:00; arriving more than 15 minutes after that is late.
-// Keep in sync with lateAfter in the device-log import map.
+// Office hours start at 10:00 (APP_TIMEZONE); arriving more than 15 minutes
+// after that is late. Keep in sync with lateAfter in the device-log import map.
 const WORK_START_HOUR = 10;
 const LATE_GRACE_MINUTES = 15;
+
+// Attendance days are stored as midnight in APP_TIMEZONE.
+const statusForArrival = (arrival: Date) => {
+  const workStart = new Date(startOfZonedDay(arrival).getTime() + WORK_START_HOUR * 3_600_000);
+  const lateMinutes = (arrival.getTime() - workStart.getTime()) / 60_000;
+  return lateMinutes > LATE_GRACE_MINUTES ? 'late' : 'present';
+};
+
+// The single-day view lists every employee, so the default page covers a full office.
+const DEFAULT_PAGE_SIZE = 200;
+const MAX_PAGE_SIZE = 500;
 
 // Add a new endpoint for today's dashboard stats
 export const getTodayStats = async (req: Request, res: Response) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
+    const today = startOfZonedDay();
+    const tomorrow = addZonedDays(today, 1);
+
     // Get today's attendance
     const todayAttendance = await Attendance.find({
       date: { $gte: today, $lt: tomorrow }
@@ -53,24 +63,20 @@ export const getAllAttendance = async (req: Request, res: Response) => {
     const filter: any = {};
     
     if (startDate && endDate) {
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
-      
-      // Set start to beginning of day
-      start.setHours(0, 0, 0, 0);
-      // Set end to end of day
-      end.setHours(23, 59, 59, 999);
-      
-      filter.date = { $gte: start, $lte: end };
+      const start = parseZonedDay(startDate);
+      const end = parseZonedDay(endDate);
+      if (!start || !end) {
+        return res.status(400).json({ success: false, message: 'Invalid startDate or endDate' });
+      }
+      filter.date = { $gte: start, $lt: addZonedDays(end, 1) };
     } else {
       // Default to today if no date range specified
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      filter.date = { $gte: today, $lt: tomorrow };
+      const today = startOfZonedDay();
+      filter.date = { $gte: today, $lt: addZonedDays(today, 1) };
     }
+
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.limit as string, 10) || DEFAULT_PAGE_SIZE));
     
     if (employee) {
       if (!mongoose.Types.ObjectId.isValid(employee as string)) {
@@ -87,12 +93,22 @@ export const getAllAttendance = async (req: Request, res: Response) => {
       filter.project = project;
     }
 
-    const attendance = await Attendance.find(filter)
-      .populate('employee', 'firstName lastName employeeId')
-      .populate('project', 'name jobNumber')
-      .sort({ date: -1, checkIn: -1 });
+    const [attendance, total] = await Promise.all([
+      Attendance.find(filter)
+        .populate('employee', 'firstName lastName employeeId')
+        .populate('project', 'name jobNumber')
+        .sort({ date: -1, checkIn: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Attendance.countDocuments(filter),
+    ]);
 
-    res.json({ success: true, data: attendance });
+    res.json({
+      success: true,
+      data: attendance,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     logger.error('Error fetching attendance', { message: (error as any)?.message });
     res.status(500).json({ success: false, message: 'Error fetching attendance' });
@@ -126,28 +142,20 @@ export const checkIn = async (req: Request, res: Response) => {
     if (project && !mongoose.Types.ObjectId.isValid(project)) {
       return res.status(400).json({ message: 'Invalid project id' });
     }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
+    const checkInTime = new Date();
+    const today = startOfZonedDay(checkInTime);
+
     const existingAttendance = await Attendance.findOne({
       employee,
       date: today
     });
-    
+
     if (existingAttendance) {
       return res.status(400).json({ message: 'Already checked in today' });
     }
-    
-    const checkInTime = new Date();
-    const workStartTime = new Date(today);
-    workStartTime.setHours(WORK_START_HOUR, 0, 0, 0);
 
-    let status = 'present';
-    if (checkInTime > workStartTime) {
-      const lateMinutes = (checkInTime.getTime() - workStartTime.getTime()) / (1000 * 60);
-      if (lateMinutes > LATE_GRACE_MINUTES) status = 'late';
-    }
-    
+    const status = statusForArrival(checkInTime);
+
     const attendance = new Attendance({
       employee,
       project: project || undefined,
@@ -181,9 +189,8 @@ export const checkIn = async (req: Request, res: Response) => {
 export const checkOut = async (req: Request, res: Response) => {
   try {
     const { employee } = req.body;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
+    const today = startOfZonedDay();
+
     const attendance = await Attendance.findOne({
       employee,
       date: today
@@ -243,21 +250,14 @@ export const getAttendanceStats = async (req: Request, res: Response) => {
     if (employeeId && !mongoose.Types.ObjectId.isValid(employeeId as string)) {
       return res.status(400).json({ success: false, message: 'Invalid employee id' });
     }
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-    
-    const filter: any = { date: { $gte: startDate, $lte: endDate } };
+    const filter: any = { date: { $gte: zonedTimeToUtc(year, month, 1), $lt: zonedTimeToUtc(year, month + 1, 1) } };
     if (employeeId) filter.employee = employeeId;
-    
+
     const attendance = await Attendance.find(filter);
-    
+
     // Get today's stats for real-time dashboard
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    const todayFilter: any = { date: { $gte: today, $lt: tomorrow } };
+    const today = startOfZonedDay();
+    const todayFilter: any = { date: { $gte: today, $lt: addZonedDays(today, 1) } };
     if (employeeId) todayFilter.employee = employeeId;
     
     const todayAttendance = await Attendance.find(todayFilter);
@@ -292,9 +292,11 @@ export const requestAttendance = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid project id' });
     }
 
-    const attendanceDate = new Date(date);
-    attendanceDate.setHours(0, 0, 0, 0);
-    
+    const attendanceDate = parseZonedDay(date);
+    if (!attendanceDate) {
+      return res.status(400).json({ message: 'Valid date is required' });
+    }
+
     // Check if attendance already exists
     const existingAttendance = await Attendance.findOne({
       employee,
@@ -413,23 +415,15 @@ export const syncCardData = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid exitTime' });
     }
 
-    const attendanceDate = new Date(entryDate);
-    attendanceDate.setHours(0, 0, 0, 0);
-    
+    const attendanceDate = startOfZonedDay(entryDate);
+
     let attendance = await Attendance.findOne({
       employee: employeeId,
       date: attendanceDate
     });
-    
-    const workStartTime = new Date(attendanceDate);
-    workStartTime.setHours(WORK_START_HOUR, 0, 0, 0);
 
-    let status = 'present';
-    if (entryDate > workStartTime) {
-      const lateMinutes = (entryDate.getTime() - workStartTime.getTime()) / (1000 * 60);
-      if (lateMinutes > LATE_GRACE_MINUTES) status = 'late';
-    }
-    
+    const status = statusForArrival(entryDate);
+
     if (attendance) {
       // Update existing with card data
       attendance.cardEntryTime = entryDate;

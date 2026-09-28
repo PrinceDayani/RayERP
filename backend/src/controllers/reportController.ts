@@ -5,6 +5,7 @@ import Employee from '../models/Employee';
 import Attendance from '../models/Attendance';
 import mongoose from 'mongoose';
 import { logger } from '../utils/logger';
+import { appTimezone } from '../utils/timezoneHelper';
 
 /**
  * @desc    Get project reports
@@ -349,8 +350,11 @@ export const getOverviewStats = async (req: Request, res: Response) => {
       { $match: { date: { $gte: fiveMonthsAgo } } },
       {
         $group: {
-          _id: { month: { $month: '$date' }, year: { $year: '$date' } },
-          present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+          _id: {
+            month: { $month: { date: '$date', timezone: appTimezone() } },
+            year: { $year: { date: '$date', timezone: appTimezone() } }
+          },
+          present: { $sum: { $cond: [{ $in: ['$status', ['present', 'late', 'half-day']] }, 1, 0] } },
           total: { $sum: 1 }
         }
       },

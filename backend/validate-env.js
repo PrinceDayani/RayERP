@@ -99,6 +99,17 @@ function validateEnvironment() {
     }
   }
 
+  // Optional business timezone for calendar-day boundaries; defaults to Asia/Kolkata.
+  const appTimezone = process.env.APP_TIMEZONE;
+  if (appTimezone) {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: appTimezone });
+    } catch {
+      console.error(`❌ APP_TIMEZONE "${appTimezone}" is not a valid IANA timezone (e.g. Asia/Kolkata).`);
+      process.exit(1);
+    }
+  }
+
   console.log('✅ All environment variables are properly configured!');
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🚀 Port: ${process.env.PORT}`);

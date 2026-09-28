@@ -11,6 +11,7 @@ import FileShare from '../models/FileShare';
 import Contact from '../models/Contact';
 import { registerCacheInvalidator } from '../utils/dashboardCache';
 import { logger } from '../utils/logger';
+import { appTimezone, startOfZonedDay } from '../utils/timezoneHelper';
 
 let comprehensiveCache: { data: any; timestamp: number } | null = null;
 const CACHE_TTL = 120000; // 2 minutes
@@ -46,7 +47,7 @@ export const getDashboardAnalytics = async (req: Request, res: Response) => {
     
     // Attendance metrics
     const todayAttendance = await Attendance.countDocuments({
-      date: { $gte: new Date(today.setHours(0, 0, 0, 0)) }
+      date: { $gte: startOfZonedDay() }
     });
     
     const dashboardData = {
@@ -374,8 +375,8 @@ export const getComprehensiveAnalytics = async (req: Request, res: Response) => 
         $match: { date: { $gte: sevenDaysAgo } }
       }, {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
-          present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: appTimezone() } },
+          present: { $sum: { $cond: [{ $in: ['$status', ['present', 'late', 'half-day']] }, 1, 0] } },
           total: { $sum: 1 }
         }
       }, { $sort: { _id: 1 } }]),

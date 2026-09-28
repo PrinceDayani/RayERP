@@ -28,6 +28,7 @@ import AchievementsSection from '@/components/employee/AchievementsSection';
 import PayrollDetails from '@/components/employee/PayrollDetails';
 import type { Compensation, BankDetails, StatutoryDetails, SalaryRevision } from '@/lib/api/employeesAPI';
 import { achievementAPI, careerAPI } from '@/lib/api/employeeProfileAPI';
+import { format } from 'date-fns';
 
 interface Employee {
   _id: string;
@@ -186,8 +187,8 @@ export default function EmployeeDetailPage() {
       startDate.setDate(startDate.getDate() - 7);
       const data = await attendanceAPI.getAll({
         employee: employeeId,
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0]
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd')
       });
       setRecentAttendance(data);
     } catch (error) {

@@ -2,23 +2,39 @@ import { Request, Response } from 'express';
 import Employee from '../models/Employee';
 import Attendance from '../models/Attendance';
 import Leave from '../models/Leave';
+import { addZonedDays, parseZonedDay, zonedTimeToUtc } from '../utils/timezoneHelper';
+
 export const getEmployeeReport = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate, department } = req.query;
-    
+
     const filter: any = {};
     if (department) filter.department = department;
-    
+
+    let range: { start: Date; end: Date } | null = null;
+    if (startDate && endDate) {
+      const start = parseZonedDay(startDate);
+      const end = parseZonedDay(endDate);
+      if (!start || !end) {
+        return res.status(400).json({ success: false, message: 'Invalid startDate or endDate' });
+      }
+      range = { start, end: addZonedDays(end, 1) };
+    }
+
     const employees = await Employee.find(filter);
-    
+
     const report = await Promise.all(employees.map(async (emp) => {
       const attendanceFilter: any = { employee: emp._id };
-      if (startDate && endDate) {
-        attendanceFilter.date = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
+      const leaveFilter: any = { employee: emp._id, status: 'approved' };
+      if (range) {
+        attendanceFilter.date = { $gte: range.start, $lt: range.end };
+        // Leaves that overlap the range at all.
+        leaveFilter.startDate = { $lt: range.end };
+        leaveFilter.endDate = { $gte: range.start };
       }
-      
+
       const attendance = await Attendance.find(attendanceFilter);
-      const leaves = await Leave.find({ employee: emp._id, status: 'approved', ...attendanceFilter });
+      const leaves = await Leave.find(leaveFilter);
       
       return {
         employee: {
@@ -66,12 +82,14 @@ export const getDepartmentSummary = async (req: Request, res: Response) => {
 
 export const getAttendanceSummary = async (req: Request, res: Response) => {
   try {
-    const { month, year } = req.query;
-    const startDate = new Date(parseInt(year as string), parseInt(month as string) - 1, 1);
-    const endDate = new Date(parseInt(year as string), parseInt(month as string), 0);
-    
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+    if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year) || year < 1970) {
+      return res.status(400).json({ success: false, message: 'Valid month (1-12) and year are required' });
+    }
+
     const summary = await Attendance.aggregate([
-      { $match: { date: { $gte: startDate, $lte: endDate } } },
+      { $match: { date: { $gte: zonedTimeToUtc(year, month, 1), $lt: zonedTimeToUtc(year, month + 1, 1) } } },
       { $group: {
         _id: '$status',
         count: { $sum: 1 },
