@@ -5,6 +5,11 @@ import Employee from '../models/Employee';
 import { logger } from '../utils/logger';
 // Socket will be imported dynamically to avoid circular dependency
 
+// Office hours start at 10:00; arriving more than 15 minutes after that is late.
+// Keep in sync with lateAfter in the device-log import map.
+const WORK_START_HOUR = 10;
+const LATE_GRACE_MINUTES = 15;
+
 // Add a new endpoint for today's dashboard stats
 export const getTodayStats = async (req: Request, res: Response) => {
   try {
@@ -135,12 +140,12 @@ export const checkIn = async (req: Request, res: Response) => {
     
     const checkInTime = new Date();
     const workStartTime = new Date(today);
-    workStartTime.setHours(9, 0, 0, 0);
-    
+    workStartTime.setHours(WORK_START_HOUR, 0, 0, 0);
+
     let status = 'present';
     if (checkInTime > workStartTime) {
       const lateMinutes = (checkInTime.getTime() - workStartTime.getTime()) / (1000 * 60);
-      if (lateMinutes > 15) status = 'late';
+      if (lateMinutes > LATE_GRACE_MINUTES) status = 'late';
     }
     
     const attendance = new Attendance({
@@ -417,12 +422,12 @@ export const syncCardData = async (req: Request, res: Response) => {
     });
     
     const workStartTime = new Date(attendanceDate);
-    workStartTime.setHours(9, 0, 0, 0);
-    
+    workStartTime.setHours(WORK_START_HOUR, 0, 0, 0);
+
     let status = 'present';
     if (entryDate > workStartTime) {
       const lateMinutes = (entryDate.getTime() - workStartTime.getTime()) / (1000 * 60);
-      if (lateMinutes > 15) status = 'late';
+      if (lateMinutes > LATE_GRACE_MINUTES) status = 'late';
     }
     
     if (attendance) {
