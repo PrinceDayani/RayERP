@@ -36,7 +36,7 @@ router.post('/checkout', requireAttendancePermission('attendance.mark', true), c
 router.put('/:id/approve', requireManagerPermission('attendance.edit'), approveAttendance);
 
 // Card system integration - system level access
-router.post('/card-sync', syncCardData);
+router.post('/card-sync', requirePermission('attendance.edit'), syncCardData);
 
 // Edit attendance - only managers can edit any attendance records
 router.put('/:id', requireManagerPermission('attendance.edit'), updateAttendance);

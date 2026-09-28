@@ -68,6 +68,9 @@ export const getAllAttendance = async (req: Request, res: Response) => {
     }
     
     if (employee) {
+      if (!mongoose.Types.ObjectId.isValid(employee as string)) {
+        return res.status(400).json({ success: false, message: 'Invalid employee id' });
+      }
       filter.employee = employee;
     }
 
@@ -94,6 +97,9 @@ export const getAllAttendance = async (req: Request, res: Response) => {
 export const getAttendanceById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid attendance id' });
+    }
     const attendance = await Attendance.findById(id)
       .populate('employee', 'firstName lastName employeeId')
       .populate('project', 'name jobNumber');
@@ -223,9 +229,17 @@ export const checkOut = async (req: Request, res: Response) => {
 
 export const getAttendanceStats = async (req: Request, res: Response) => {
   try {
-    const { employeeId, month, year } = req.query;
-    const startDate = new Date(parseInt(year as string), parseInt(month as string) - 1, 1);
-    const endDate = new Date(parseInt(year as string), parseInt(month as string), 0);
+    const { employeeId } = req.query;
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+    if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year) || year < 1970) {
+      return res.status(400).json({ success: false, message: 'Valid month (1-12) and year are required' });
+    }
+    if (employeeId && !mongoose.Types.ObjectId.isValid(employeeId as string)) {
+      return res.status(400).json({ success: false, message: 'Invalid employee id' });
+    }
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
     
     const filter: any = { date: { $gte: startDate, $lte: endDate } };
     if (employeeId) filter.employee = employeeId;
@@ -332,9 +346,15 @@ export const requestAttendance = async (req: Request, res: Response) => {
 export const approveAttendance = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { approvedBy, rejectionReason } = req.body;
-    const { action } = req.body; // 'approve' or 'reject'
-    
+    const { action, rejectionReason } = req.body;
+
+    if (action !== 'approve' && action !== 'reject') {
+      return res.status(400).json({ message: "action must be 'approve' or 'reject'" });
+    }
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid attendance id' });
+    }
+
     const attendance = await Attendance.findById(id);
     if (!attendance) {
       return res.status(404).json({ message: 'Attendance request not found' });
@@ -344,8 +364,12 @@ export const approveAttendance = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Attendance request already processed' });
     }
     
+    // The approver is the acting user's Employee record; Root and other users
+    // without one approve with approvedBy left unset.
+    const approver = await Employee.findOne({ user: req.user._id }).select('_id');
+
     attendance.approvalStatus = action === 'approve' ? 'approved' : 'rejected';
-    attendance.approvedBy = approvedBy;
+    attendance.approvedBy = approver?._id;
     attendance.approvedDate = new Date();
     
     if (action === 'reject') {
@@ -360,7 +384,7 @@ export const approveAttendance = async (req: Request, res: Response) => {
     io.emit('attendance:approved', attendance);
     
     res.json({
-      message: `Attendance request ${action}d successfully`,
+      message: `Attendance request ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
       attendance
     });
   } catch (error) {
@@ -372,8 +396,18 @@ export const approveAttendance = async (req: Request, res: Response) => {
 export const syncCardData = async (req: Request, res: Response) => {
   try {
     const { cardId, entryTime, exitTime, employeeId } = req.body;
-    
+
+    if (!employeeId || !mongoose.Types.ObjectId.isValid(employeeId)) {
+      return res.status(400).json({ message: 'Valid employeeId is required' });
+    }
     const entryDate = new Date(entryTime);
+    if (!entryTime || isNaN(entryDate.getTime())) {
+      return res.status(400).json({ message: 'Valid entryTime is required' });
+    }
+    if (exitTime && isNaN(new Date(exitTime).getTime())) {
+      return res.status(400).json({ message: 'Invalid exitTime' });
+    }
+
     const attendanceDate = new Date(entryDate);
     attendanceDate.setHours(0, 0, 0, 0);
     
