@@ -6,3 +6,7 @@
 /*.xls
 /*.csv
 /*.pdf
+
+# Local scratch folder for source files: biometric device dumps, staff photos,
+# attendance logs and project workbooks. Staff PII; never committed.
+/MISC/
