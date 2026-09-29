@@ -44,7 +44,7 @@ const AnalyticsCharts = memo(function AnalyticsCharts({ monthlyRevenue, taskDist
           <span>Real-time data</span>
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center">
@@ -101,7 +101,7 @@ const AnalyticsCharts = memo(function AnalyticsCharts({ monthlyRevenue, taskDist
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 xl:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center">
               <Users className="h-4 w-4 mr-2" />Team Productivity
