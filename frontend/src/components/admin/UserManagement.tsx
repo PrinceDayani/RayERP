@@ -269,11 +269,7 @@ export function UserManagement({ isLoading }: UserManagementProps) {
       return;
     }
 
-    if (changePassword.newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
+    // Length and strength are enforced by the server's password policy.
     setIsSubmitting(true);
     try {
       await adminAPI.changeUserPassword(currentUser.id, changePassword.newPassword);
@@ -295,8 +291,7 @@ export function UserManagement({ isLoading }: UserManagementProps) {
       setChangePassword({ newPassword: "", confirmPassword: "" });
       setIsChangePasswordOpen(false);
     } catch (error: any) {
-      console.error("Failed to change password:", error);
-      toast.error(error.message || "Failed to change password");
+      toast.error(error?.response?.data?.message || error?.message || "Failed to change password");
     } finally {
       setIsSubmitting(false);
     }

@@ -310,14 +310,10 @@ const adminAPI = {
     }
   },
 
+  // A 400 here is a password-policy rejection the caller shows to the admin,
+  // not a fault, so it is passed through rather than logged.
   changeUserPassword: async (userId: string, newPassword: string): Promise<void> => {
-    try {
-      const response = await apiClient.put(`/users/${userId}/change-password`, { newPassword });
-      return response;
-    } catch (error) {
-      console.error('Error changing user password:', error);
-      throw error;
-    }
+    await apiClient.put(`/users/${userId}/change-password`, { newPassword });
   },
 
   updateUserStatus: async (userId: string, status: 'active' | 'inactive' | 'disabled' | 'pending_approval', reason?: string): Promise<any> => {

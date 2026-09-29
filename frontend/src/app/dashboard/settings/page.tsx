@@ -27,7 +27,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api/api';
 import { withCsrf } from '@/lib/api/csrf';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import {
   Bell,
   Coins,
@@ -214,8 +214,6 @@ export default function SettingsPage() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-        <Toaster position="top-right" />
-
         <div className="container mx-auto max-w-7xl space-y-8 px-4 py-8">
           {/* Header */}
           <Card className="border-0 bg-white/80 shadow-xl backdrop-blur-xl dark:bg-slate-900/80">

@@ -448,15 +448,8 @@ const UserManagement = () => {
       return;
     }
 
-    if (changePassword.newPassword.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    // Length and strength are the server's call: it holds the organisation
+    // password policy, and its rejection message says exactly what is missing.
     try {
       const { default: adminAPI } = await import('@/lib/api/adminAPI');
       await adminAPI.changeUserPassword(selectedUser._id, changePassword.newPassword);
@@ -472,7 +465,7 @@ const UserManagement = () => {
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.message || 'Failed to change password',
+        description: err?.response?.data?.message || err?.message || 'Failed to change password',
         variant: "destructive"
       });
     }
