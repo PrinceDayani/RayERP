@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import fs from 'fs';
 import path from 'path';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import { logger } from '../utils/logger';
 
 /**

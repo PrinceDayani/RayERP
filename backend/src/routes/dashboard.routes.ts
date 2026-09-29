@@ -1,7 +1,7 @@
 import express from 'express';
 import { protect } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/rbac.middleware';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
 import { Invoice } from '../models/Finance';

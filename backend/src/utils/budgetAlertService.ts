@@ -60,7 +60,7 @@ const createAlert = async (budget: any, type: string, threshold: number, utiliza
 
   // Create notifications
   const User = require('../models/User').default;
-  const Department = require('../models/Department').default;
+  const Department = require('../modules/hr/departments/Department').default;
 
   // Notify department members
   if (budget.createdByDepartment) {

@@ -133,6 +133,17 @@ const nextConfig = {
         destination: '/dashboard',
         permanent: true,
       },
+      // HR screens moved under /dashboard/hr; keep old bookmarks working.
+      {
+        source: '/dashboard/:section(employees|departments)/:path*',
+        destination: '/dashboard/hr/:section/:path*',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/hr',
+        destination: '/dashboard/hr/employees',
+        permanent: false,
+      },
     ];
   },
 

@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { ResourceAllocation, Task, Skill, Achievement, WorkSummary } from '@/types/employee-profile';
+import { ResourceAllocation, Task, Skill, Achievement, WorkSummary } from '@/types/hr/employee-profile';
 
 interface Employee {
     firstName: string;

@@ -260,7 +260,7 @@ export const getTaskById = async (req: Request, res: Response) => {
       ((task.assignedBy as any)._id?.toString() || task.assignedBy.toString()) === userIdStr;
 
     // For the optional HR-domain department fallback below
-    const Employee = (await import('../models/Employee')).default;
+    const Employee = (await import('../modules/hr/employees/Employee')).default;
     const employee = await Employee.findOne({ user: user._id });
     
     // If assigned to task or project, return full details
@@ -273,7 +273,7 @@ export const getTaskById = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Access denied: You are not assigned to this task or project' });
     }
 
-    const Department = (await import('../models/Department')).default;
+    const Department = (await import('../modules/hr/departments/Department')).default;
     const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
 
     if (departmentNames.length > 0) {

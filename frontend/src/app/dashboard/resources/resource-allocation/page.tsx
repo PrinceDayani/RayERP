@@ -125,7 +125,7 @@ export default function ResourceAllocationPage() {
   const header = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/employees')}>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/hr/employees')}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
         <div>
@@ -364,11 +364,11 @@ export default function ResourceAllocationPage() {
                   role="button"
                   tabIndex={0}
                   className="hover:shadow-md transition-shadow cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                  onClick={() => router.push(`/dashboard/employees/${plan.employee._id}`)}
+                  onClick={() => router.push(`/dashboard/hr/employees/${plan.employee._id}`)}
                   onKeyDown={e => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      router.push(`/dashboard/employees/${plan.employee._id}`);
+                      router.push(`/dashboard/hr/employees/${plan.employee._id}`);
                     }
                   }}
                 >

@@ -2,7 +2,7 @@ import express from 'express';
 import { protect } from '../middleware/auth.middleware';
 import Project from '../models/Project';
 import Task from '../models/Task';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import { logger } from '../utils/logger';
 
 const router = express.Router();

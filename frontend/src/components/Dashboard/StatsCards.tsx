@@ -67,7 +67,7 @@ const StatsCards: React.FC<StatsCardsProps> = memo(({ stats, trends, isAuthentic
       description: "from last period",
       trendColorClass: trends?.employees?.direction === 'up' ? "text-theme-success" : "text-red-600",
       badgeVariant: "default" as const,
-      viewLink: "/dashboard/employees"
+      viewLink: "/dashboard/hr/employees"
     },
     {
       title: "Active Employees",
@@ -75,7 +75,7 @@ const StatsCards: React.FC<StatsCardsProps> = memo(({ stats, trends, isAuthentic
       description: "Currently working",
       trendColorClass: "text-theme-success",
       badgeVariant: "secondary" as const,
-      viewLink: "/dashboard/employees"
+      viewLink: "/dashboard/hr/employees"
     },
     {
       title: "Total Projects",

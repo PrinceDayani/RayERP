@@ -15,7 +15,7 @@
  */
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import Department from '../models/Department';
+import Department from '../modules/hr/departments/Department';
 import Budget from '../models/Budget';
 import Project from '../models/Project';
 import Broadcast from '../models/Broadcast';

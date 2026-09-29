@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { Role } from '../models/Role';
 import User from '../models/User';
-import Employee from '../models/Employee';
-import Department from '../models/Department';
+import Employee from '../modules/hr/employees/Employee';
+import Department from '../modules/hr/departments/Department';
 
 export const assignPermissionsToRole = async (req: Request, res: Response) => {
   try {

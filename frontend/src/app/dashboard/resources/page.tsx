@@ -19,7 +19,7 @@ import {
   Activity,
   ArrowRight
 } from 'lucide-react';
-import { employeesAPI } from '@/lib/api/employeesAPI';
+import { employeesAPI } from '@/lib/api/hr/employeesAPI';
 import { getProjectsMinimal } from '@/lib/api/projectsAPI';
 import { resourceApi } from '@/lib/api/resources';
 import EnhancedSkillMatrix from '@/components/resources/EnhancedSkillMatrix';
@@ -261,7 +261,7 @@ export default function ResourceDashboard() {
         </Card>
 
         <Card className="hover:shadow-md transition-shadow cursor-pointer" 
-              onClick={() => router.push('/dashboard/employees')}>
+              onClick={() => router.push('/dashboard/hr/employees')}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -317,7 +317,7 @@ export default function ResourceDashboard() {
                         <div>
                           <p
                             className="font-medium cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => router.push(`/dashboard/employees/${allocation.user?._id || allocation.employee?._id || allocation.employeeId}`)}
+                            onClick={() => router.push(`/dashboard/hr/employees/${allocation.user?._id || allocation.employee?._id || allocation.employeeId}`)}
                           >
                             {allocation.user?.name || (allocation.employee?.firstName ? `${allocation.employee.firstName} ${allocation.employee.lastName}` : 'Unassigned')}
                           </p>

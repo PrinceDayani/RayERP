@@ -24,7 +24,7 @@ import fs from 'fs';
 import Project from '../models/Project';
 import Task from '../models/Task';
 import Contact from '../models/Contact';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import User from '../models/User';
 import { Role } from '../models/Role';
 

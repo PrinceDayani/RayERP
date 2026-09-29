@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect } from '../middleware/auth.middleware';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
 import { logger } from '../utils/logger';

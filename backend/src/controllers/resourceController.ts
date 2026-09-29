@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import ResourceAllocation from '../models/ResourceAllocation';
-import Employee, { SkillLevel, ISkill } from '../models/Employee';
+import Employee, { SkillLevel, ISkill } from '../modules/hr/employees/Employee';
 import Project, { SkillLevel as ProjectSkillLevel } from '../models/Project';
 import Task from '../models/Task';
-import Department from '../models/Department';
+import Department from '../modules/hr/departments/Department';
 import mongoose from 'mongoose';
 
 // Resolve `user` field from request body: accepts `user` (User._id) directly

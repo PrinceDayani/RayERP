@@ -4,7 +4,7 @@ import WorkflowInstance, { IWorkflowInstance } from '../models/WorkflowInstance'
 import Project from '../models/Project';
 import { generateProjectJobNumber } from '../controllers/projectController';
 import ProjectPhase, { IProjectPhase, PhaseReviewStatus } from '../models/ProjectPhase';
-import Department from '../models/Department';
+import Department from '../modules/hr/departments/Department';
 import User from '../models/User';
 import Task from '../models/Task';
 import { WorkflowEngine } from './workflowEngine';

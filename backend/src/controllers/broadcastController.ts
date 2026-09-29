@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Broadcast from '../models/Broadcast';
 import User from '../models/User';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import { io } from '../server';
 
 export const broadcastController = {

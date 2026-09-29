@@ -668,15 +668,22 @@ backend/src/models/
 ### HR rail (Employee-anchored, leave alone)
 
 ```
-backend/src/models/
-  Employee.ts                  employeeId, firstName, lastName, ...
-  Attendance.ts                employee, requestedBy, approvedBy
+backend/src/modules/hr/
+  employees/Employee.ts        employeeId, firstName, lastName, ...
+  attendance/Attendance.ts     employee, requestedBy, approvedBy
                                project (optional, for man-hour attribution)
-  Leave.ts                     employee, approvedBy, cancelledBy
-  Achievement.ts               employee
-  EmployeeCareer.ts            employee
+  leave/Leave.ts               employee, approvedBy, cancelledBy
+  achievements/Achievement.ts  employee
+  career/EmployeeCareer.ts     employee
+  departments/Department.ts
+backend/src/models/
   Expense.ts                   employeeId (optional)
 ```
+
+HR code lives in `backend/src/modules/hr/<feature>/` (model, controller,
+routes, permission middleware together) and `frontend/src/app/dashboard/hr/`,
+`components/hr/`, `lib/api/hr/`. Put new HR code there, not in the flat
+`models/` / `controllers/` / `routes/` folders.
 
 If a future model fits neither pattern cleanly, ask — don't guess.
 

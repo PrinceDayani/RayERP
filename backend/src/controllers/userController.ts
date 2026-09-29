@@ -14,7 +14,7 @@ import {
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const users = await User.find().populate('role').select('-password');
-    const Employee = (await import('../models/Employee')).default;
+    const Employee = (await import('../modules/hr/employees/Employee')).default;
     
     const usersWithDetails = await Promise.all(users.map(async (user) => {
       const employee = await Employee.findOne({ user: user._id });
@@ -453,7 +453,7 @@ export const getProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    const Employee = (await import('../models/Employee')).default;
+    const Employee = (await import('../modules/hr/employees/Employee')).default;
     const employee = await Employee.findOne({ user: userId });
     
     const userProfile = {
@@ -486,7 +486,7 @@ export const getCompleteProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
-    const Employee = (await import('../models/Employee')).default;
+    const Employee = (await import('../modules/hr/employees/Employee')).default;
     const Project = (await import('../models/Project')).default;
     
     const employee = await Employee.findOne({ user: userId });
@@ -553,7 +553,7 @@ export const updateProfile = async (req: Request, res: Response) => {
     if (name) user.name = name;
     await user.save();
     
-    const Employee = (await import('../models/Employee')).default;
+    const Employee = (await import('../modules/hr/employees/Employee')).default;
     const employee = await Employee.findOne({ user: userId });
     if (employee) {
       if (phone) employee.phone = phone;
@@ -672,7 +672,7 @@ export const uploadAvatar = async (req: Request, res: Response) => {
 
     const avatarUrl = `/uploads/avatars/${req.file.filename}`;
     
-    const Employee = (await import('../models/Employee')).default;
+    const Employee = (await import('../modules/hr/employees/Employee')).default;
     const employee = await Employee.findOne({ user: userId });
     
     if (employee) {

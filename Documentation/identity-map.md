@@ -372,7 +372,7 @@ Root is already special-cased in:
 - `middleware/auth.middleware.ts` — `requirePermission`, `requireAdminOrRoot`
 - `middleware/rbac.middleware.ts` — `isRootRole` + bypass in
   `requirePermission` / `requireAnyPermission`
-- `controllers/employeeController.ts` — skips employee check for
+- `modules/hr/employees/employeeController.ts` — skips employee check for
   Root/Super Admin in self-view endpoints
 - `models/User.ts` — pre-save: cannot assign Root role to other users;
   pre-update/delete: Root user cannot be modified or deleted

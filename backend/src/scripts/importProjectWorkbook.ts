@@ -21,7 +21,7 @@ import ExcelJS from 'exceljs';
 import Project from '../models/Project';
 import Budget from '../models/Budget';
 import Contact from '../models/Contact';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import FinancialEntry from '../models/FinancialEntry';
 import User from '../models/User';
 import { Role } from '../models/Role';

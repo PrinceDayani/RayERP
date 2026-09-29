@@ -89,7 +89,7 @@ export const rollUpProjectManHours = async (projectId: string) => {
   const [ResourceAllocation, DailyReport, Attendance] = await Promise.all([
     import('../models/ResourceAllocation').then(m => m.default),
     import('../models/DailyReport').then(m => m.default),
-    import('../models/Attendance').then(m => m.default)
+    import('../modules/hr/attendance/Attendance').then(m => m.default)
   ]);
 
   const projectObjectId = new mongoose.Types.ObjectId(projectId);
@@ -254,8 +254,8 @@ const resolveListAccess = async (user: any) => {
   const conditions: any[] = [{ _id: { $in: access.ids } }];
   const assignedIds = new Set(access.ids.map(id => id.toString()));
 
-  const Employee = (await import('../models/Employee')).default;
-  const Department = (await import('../models/Department')).default;
+  const Employee = (await import('../modules/hr/employees/Employee')).default;
+  const Department = (await import('../modules/hr/departments/Department')).default;
   const employee = await Employee.findOne({ user: user._id }).select('department departments').lean();
 
   if (employee) {
@@ -515,7 +515,7 @@ export const getProjectById = async (req: Request, res: Response) => {
     const isManager = !!(project.managers && project.managers.some((m: any) => (m?._id?.toString() || m?.toString()) === userIdStr));
 
     // Employee record only needed for the department-based fallback below
-    const Employee = (await import('../models/Employee')).default;
+    const Employee = (await import('../modules/hr/employees/Employee')).default;
     const employee = await Employee.findOne({ user: user._id });
 
     const isAssigned = isOwner || isTeamMember || isManager;
@@ -527,7 +527,7 @@ export const getProjectById = async (req: Request, res: Response) => {
     
     // Check department permission for basic view
     if (employee) {
-      const Department = (await import('../models/Department')).default;
+      const Department = (await import('../modules/hr/departments/Department')).default;
       const departmentNames = employee.departments || (employee.department ? [employee.department] : []);
       
       if (departmentNames.length > 0) {
@@ -2539,7 +2539,7 @@ export const getUsersMinimal = async (req: Request, res: Response) => {
 
 export const getDepartmentsMinimal = async (req: Request, res: Response) => {
   try {
-    const Department = (await import('../models/Department')).default;
+    const Department = (await import('../modules/hr/departments/Department')).default;
     
     // Only fetch essential fields
     const departments = await Department.find(

@@ -13,14 +13,14 @@ export const MODULE_PERMISSIONS = {
   employees: {
     permissions: ['employees.view', 'employees.manage'],
     name: 'Employee Management',
-    routes: ['/dashboard/employees']
+    routes: ['/dashboard/hr/employees']
   },
   
   // Department Module
   departments: {
     permissions: ['departments.view', 'departments.manage'],
     name: 'Department Management',
-    routes: ['/dashboard/departments']
+    routes: ['/dashboard/hr/departments']
   },
   
   // Project Module

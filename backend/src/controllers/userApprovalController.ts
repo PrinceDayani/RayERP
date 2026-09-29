@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import User from '../models/User';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import { Role } from '../models/Role';
 import Notification from '../models/Notification';
 import UserStatusRequest from '../models/UserStatusRequest';

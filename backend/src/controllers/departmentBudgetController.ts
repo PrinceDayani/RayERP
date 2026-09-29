@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import DepartmentBudget from '../models/DepartmentBudget';
-import Department from '../models/Department';
+import Department from '../modules/hr/departments/Department';
 import ApprovalRequest from '../models/ApprovalRequest';
 import ApprovalConfig from '../models/ApprovalConfig';
 

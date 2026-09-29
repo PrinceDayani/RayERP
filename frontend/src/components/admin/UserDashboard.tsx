@@ -17,14 +17,14 @@ import {
 } from "lucide-react";
 import { getSocket } from "@/lib/socket";
 import { formatINR } from "@/lib/currency";
-import { employeesAPI } from "@/lib/api/employeesAPI";
+import { employeesAPI } from "@/lib/api/hr/employeesAPI";
 import { projectsAPI } from "@/lib/api/projectsAPI";
 import { tasksAPI } from "@/lib/api/tasksAPI";
 import { trendsAPI, TrendsResponse } from "@/lib/api/trendsAPI";
 import { analyticsAPI } from "@/lib/api/analyticsAPI";
 
 const AnalyticsCharts = lazy(() => import('@/components/Dashboard/AnalyticsCharts'));
-const EmployeeList = lazy(() => import('@/components/employee/EmployeeList'));
+const EmployeeList = lazy(() => import('@/components/hr/employee/EmployeeList'));
 const ProjectList = lazy(() => import('@/components/projects/ProjectList'));
 const TaskList = lazy(() => import('@/components/tasks/TaskList'));
 
@@ -385,7 +385,7 @@ const EmployeeSection = ({ router }: { router: any }) => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">Employee Management</h2>
-        <Button onClick={() => router.push("/dashboard/employees")}>
+        <Button onClick={() => router.push("/dashboard/hr/employees")}>
           View All Employees
         </Button>
       </div>
@@ -402,7 +402,7 @@ const EmployeeSection = ({ router }: { router: any }) => {
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <Suspense fallback={<Skeleton className="h-64" />}>
-            <EmployeeList employees={employees} onEdit={(id) => router.push(`/dashboard/employees/${id}/edit`)} />
+            <EmployeeList employees={employees} onEdit={(id) => router.push(`/dashboard/hr/employees/${id}/edit`)} />
           </Suspense>
         </CardContent>
       </Card>

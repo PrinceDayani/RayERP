@@ -197,18 +197,6 @@ app.use("/api", routes);
 app.use("/api", assignmentRoutes);
 app.use("/api/backup", backupRoutes);
 
-// Salary Management Routes
-import salaryRoutes from "./routes/salary.routes";
-app.use("/api/salary", salaryRoutes);
-
-// Employee Career Routes
-import careerRoutes from "./routes/career.routes";
-app.use("/api/career", careerRoutes);
-
-// Achievement Routes
-import achievementRoutes from "./routes/achievement.routes";
-app.use("/api/achievements", achievementRoutes);
-
 // Budget Module Routes (Modules 1-10) - Complete!
 import budgetApprovalWorkflowRoutes from "./routes/budgetApprovalWorkflow.routes";
 import budgetRevisionRoutes from "./routes/budgetRevision.routes";

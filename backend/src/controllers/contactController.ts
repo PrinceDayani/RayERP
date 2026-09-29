@@ -97,7 +97,7 @@ export const getContacts = async (req: Request, res: Response) => {
     const skip = (pageNum - 1) * limitNum;
     
     const User = require('../models/User').default;
-    const Employee = require('../models/Employee').default;
+    const Employee = require('../modules/hr/employees/Employee').default;
     
     const [user, employee] = await Promise.all([
       User.findById(userId).populate('role').lean(),
@@ -203,7 +203,7 @@ export const getContactById = async (req: Request, res: Response) => {
     }
     
     const User = require('../models/User').default;
-    const Employee = require('../models/Employee').default;
+    const Employee = require('../modules/hr/employees/Employee').default;
     
     const [user, employee, contact] = await Promise.all([
       User.findById(userId).populate('role').lean(),
@@ -268,7 +268,7 @@ export const createContact = async (req: Request, res: Response) => {
       }
       
       // Verify department exists
-      const Department = require('../models/Department').default;
+      const Department = require('../modules/hr/departments/Department').default;
       const deptExists = await Department.findById(department).lean();
       if (!deptExists) {
         return res.status(400).json({ success: false, message: 'Department not found' });
@@ -434,7 +434,7 @@ export const updateContact = async (req: Request, res: Response) => {
         return res.status(400).json({ success: false, message: 'Department is required for departmental contacts' });
       }
       
-      const Department = require('../models/Department').default;
+      const Department = require('../modules/hr/departments/Department').default;
       const deptExists = await Department.findById(sanitizedData.department).lean();
       if (!deptExists) {
         return res.status(400).json({ success: false, message: 'Department not found' });
@@ -624,7 +624,7 @@ export const searchContacts = async (req: Request, res: Response) => {
     const limitNum = Math.min(50, Math.max(1, parseInt(limit as string) || 20));
     
     const User = require('../models/User').default;
-    const Employee = require('../models/Employee').default;
+    const Employee = require('../modules/hr/employees/Employee').default;
     
     const user = await User.findById(userId).populate('role').lean();
     const employee = await Employee.findOne({ user: userId }).lean();
@@ -706,7 +706,7 @@ export const filterContacts = async (req: Request, res: Response) => {
     
     // Get user with employee info
     const User = require('../models/User').default;
-    const Employee = require('../models/Employee').default;
+    const Employee = require('../modules/hr/employees/Employee').default;
     
     const user = await User.findById(userId).populate('role');
     const employee = await Employee.findOne({ user: userId });
@@ -787,7 +787,7 @@ export const getCustomers = async (req: Request, res: Response) => {
     const skip = (pageNum - 1) * limitNum;
     
     const User = require('../models/User').default;
-    const Employee = require('../models/Employee').default;
+    const Employee = require('../modules/hr/employees/Employee').default;
     
     const [user, employee] = await Promise.all([
       User.findById(userId).populate('role').lean(),
@@ -842,8 +842,8 @@ export const getContactStats = async (req: Request, res: Response) => {
     
     // Get user with employee info
     const User = require('../models/User').default;
-    const Employee = require('../models/Employee').default;
-    const Department = require('../models/Department').default;
+    const Employee = require('../modules/hr/employees/Employee').default;
+    const Department = require('../modules/hr/departments/Department').default;
     
     const user = await User.findById(userId).populate('role');
     const employee = await Employee.findOne({ user: userId });

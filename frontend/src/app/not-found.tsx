@@ -21,7 +21,7 @@ export default function NotFound() {
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Projects', href: '/dashboard/projects', icon: FileQuestion },
     { name: 'Finance', href: '/dashboard/finance', icon: FileQuestion },
-    { name: 'Employees', href: '/dashboard/employees', icon: FileQuestion },
+    { name: 'Employees', href: '/dashboard/hr/employees', icon: FileQuestion },
   ];
 
   return (

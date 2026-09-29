@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import Project from '../models/Project';
 import Task from '../models/Task';
-import Employee from '../models/Employee';
-import Attendance from '../models/Attendance';
+import Employee from '../modules/hr/employees/Employee';
+import Attendance from '../modules/hr/attendance/Attendance';
 import mongoose from 'mongoose';
 import { logger } from '../utils/logger';
 import { appTimezone } from '../utils/timezoneHelper';

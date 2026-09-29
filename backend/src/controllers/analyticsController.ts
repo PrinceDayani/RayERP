@@ -1,9 +1,9 @@
 // src/controllers/analyticsController.ts
 import { Request, Response } from 'express';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import Project from '../models/Project';
 import Task from '../models/Task';
-import Attendance from '../models/Attendance';
+import Attendance from '../modules/hr/attendance/Attendance';
 import DepartmentBudget from '../models/DepartmentBudget';
 import { GLBudget } from '../models/GLBudget';
 import Chat from '../models/Chat';

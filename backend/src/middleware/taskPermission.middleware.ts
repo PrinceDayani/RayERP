@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import User from '../models/User';
-import Employee from '../models/Employee';
-import Department from '../models/Department';
+import Employee from '../modules/hr/employees/Employee';
+import Department from '../modules/hr/departments/Department';
 import Task from '../models/Task';
 import Project from '../models/Project';
 import { logger } from '../utils/logger';

@@ -27,6 +27,7 @@ import {
   Boxes,
   Building,
   Building2,
+  CalendarCheck,
   Activity,
   MessageCircle,
   GitBranch,
@@ -123,8 +124,9 @@ export default function Layout({ children }: LayoutProps) {
       title: "Human Resources",
       items: [
         { path: "/dashboard/users", name: "User Management", icon: UserCog, description: "System user administration", access: isAdmin || isSuperAdmin || isElevated } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/employees", name: "Employees", icon: UserCheck, description: "Employee management", access: hasEmployeeAccess } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/departments", name: "Departments", icon: Building, description: "Department management", access: hasDepartmentAccess } as MenuItem & { icon: any; description: string }
+        { path: "/dashboard/hr/employees", name: "Employees", icon: UserCheck, description: "Employee management", access: hasEmployeeAccess } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/hr/employees/attendance", name: "Attendance", icon: CalendarCheck, description: "Daily attendance and man-hours", access: hasEmployeeAccess } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/hr/departments", name: "Departments", icon: Building, description: "Department management", access: hasDepartmentAccess } as MenuItem & { icon: any; description: string }
       ]
     },
     {

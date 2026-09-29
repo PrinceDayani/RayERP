@@ -1,7 +1,7 @@
 // Direct exports from api modules
 import apiInstance, { apiRequest as apiRequestFn } from './api';
 import authAPIModule from './authAPI';
-import employeesAPIModule from './employeesAPI';
+import employeesAPIModule from './hr/employeesAPI';
 import contactsAPIModule from './contactsAPI';
 import analyticsAPIModule from './analyticsAPI';
 import trendsAPIModule from './trendsAPI';
@@ -34,7 +34,7 @@ export const adminAPI = adminAPIModule;
 
 // Re-export types
 export type { User, CreateUserData, UpdateUserData, StatusChangeRequest } from './usersAPI';
-export type { Employee } from './employeesAPI';
+export type { Employee } from './hr/employeesAPI';
 export type { AnalyticsResponse } from './analyticsAPI';
 export type { Contact, ContactFilterOptions, ContactStats, ContactFilterParams } from './contactsAPI';
 
@@ -42,5 +42,5 @@ export type { Contact, ContactFilterOptions, ContactStats, ContactFilterParams }
 export { getContacts, getContact, createContact, updateContact, deleteContact, searchContacts, filterContacts, getContactStats } from './contactsAPI';
 
 // Re-export functions from employeesAPI
-export { getAllEmployees } from './employeesAPI';
+export { getAllEmployees } from './hr/employeesAPI';
 

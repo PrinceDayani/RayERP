@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import User from '../models/User';
 import UserSession from '../models/UserSession';
 import mongoose from 'mongoose';

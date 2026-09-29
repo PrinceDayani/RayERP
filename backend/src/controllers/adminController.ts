@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
-import Employee from '../models/Employee';
+import Employee from '../modules/hr/employees/Employee';
 import ActivityLog from '../models/ActivityLog';
 import AdminSettings from '../models/AdminSettings';
 import { logger } from '../utils/logger';

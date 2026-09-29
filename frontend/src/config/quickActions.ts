@@ -12,7 +12,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
   {
     title: "Add Employee",
     description: "Register a new employee",
-    href: "/dashboard/employees/create",
+    href: "/dashboard/hr/employees/create",
     color: "blue",
     badgeText: "EMPLOYEE"
   },
@@ -40,7 +40,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
   {
     title: "Attendance",
     description: "Track employee attendance",
-    href: "/dashboard/employees/attendance",
+    href: "/dashboard/hr/employees/attendance",
     color: "amber",
     badgeText: "ATTENDANCE"
   },
@@ -54,7 +54,7 @@ export const QUICK_ACTIONS: QuickAction[] = [
   {
     title: "Employee List",
     description: "View and manage employees",
-    href: "/dashboard/employees",
+    href: "/dashboard/hr/employees",
     color: "pink",
     badgeText: "LIST"
   },

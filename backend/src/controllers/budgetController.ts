@@ -12,7 +12,7 @@ export const createBudget = async (req: Request, res: Response) => {
 
     // Check if user's department has finance.view permission
     const User = require('../models/User').default;
-    const Department = require('../models/Department').default;
+    const Department = require('../modules/hr/departments/Department').default;
     
     const user = await User.findById(req.user.id).populate('role');
     
@@ -24,7 +24,7 @@ export const createBudget = async (req: Request, res: Response) => {
     
     if (!isRootOrSuperAdmin) {
       // For non-root users, check if they have an employee record with department
-      const Employee = require('../models/Employee').default;
+      const Employee = require('../modules/hr/employees/Employee').default;
       const employee = await Employee.findOne({ user: req.user.id });
       
       if (!employee || !employee.department) {
