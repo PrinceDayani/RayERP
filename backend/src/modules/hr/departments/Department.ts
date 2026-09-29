@@ -13,6 +13,8 @@ export interface IDepartment extends Document {
   status: 'active' | 'inactive';
   employeeCount: number;
   permissions: string[];
+  // Shift for members without their own; falls back to the organisation's timings.
+  workSchedule?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,7 +31,8 @@ const departmentSchema = new Schema<IDepartment>({
   budget: { type: Number, required: true, min: 0, default: 0 },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   employeeCount: { type: Number, default: 0, min: 0 },
-  permissions: [{ type: String, trim: true }]
+  permissions: [{ type: String, trim: true }],
+  workSchedule: { type: Schema.Types.ObjectId, ref: 'WorkSchedule' }
 }, { timestamps: true });
 
 departmentSchema.index({ name: 1 });

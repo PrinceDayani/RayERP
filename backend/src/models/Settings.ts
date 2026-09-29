@@ -19,9 +19,30 @@ export interface IProjectSettings {
   fileSharePermissions: 'project-members' | 'department-members' | 'all-users';
 }
 
+export interface IOrganizationAddress {
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+
+// The organisation singleton. Its identity fields are owned by the
+// Organization module (modules/organization/profile).
 export interface ISettings extends Document {
   accountingMode: 'western' | 'indian';
   companyName: string;
+  legalName?: string;
+  address?: IOrganizationAddress;
+  phone?: string;
+  email?: string;
+  website?: string;
+  gstin?: string;
+  pan?: string;
+  cin?: string;
+  // data:image/(png|jpeg|webp);base64,... capped in the profile controller.
+  logo?: string;
   fiscalYearStart: string;
   currency: string;
   currencyConfig: ICurrencyConfig;
@@ -56,6 +77,22 @@ const SettingsSchema = new Schema<ISettings>({
     default: 'western'
   },
   companyName: { type: String, default: 'My Company' },
+  legalName: { type: String, trim: true },
+  address: {
+    line1: { type: String, trim: true },
+    line2: { type: String, trim: true },
+    city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    postalCode: { type: String, trim: true },
+    country: { type: String, trim: true }
+  },
+  phone: { type: String, trim: true },
+  email: { type: String, trim: true, lowercase: true },
+  website: { type: String, trim: true },
+  gstin: { type: String, trim: true, uppercase: true },
+  pan: { type: String, trim: true, uppercase: true },
+  cin: { type: String, trim: true, uppercase: true },
+  logo: { type: String },
   fiscalYearStart: { type: String, default: '01-01' },
   currency: { type: String, default: 'USD' },
   currencyConfig: {

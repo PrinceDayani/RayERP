@@ -1,5 +1,16 @@
 import { Request, Response } from 'express';
-import Leave from './Leave';
+import mongoose from 'mongoose';
+import Leave, { LEAVE_TYPES, LeaveType } from './Leave';
+import LeavePolicy from '../../organization/leavePolicy/LeavePolicy';
+import { calendarDays, countWorkingDays, resolveRulesForEmployee } from '../../organization/workSchedule/scheduleService';
+
+// Leave dates arrive as YYYY-MM-DD and are stored as UTC midnight of that day,
+// so the calendar day is the first ten characters of either form.
+const leaveDayKey = (value: unknown): string | null => {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  const d = value instanceof Date ? value : new Date(String(value));
+  return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+};
 
 export const getAllLeaves = async (req: Request, res: Response) => {
   try {
@@ -31,13 +42,36 @@ export const getAllLeaves = async (req: Request, res: Response) => {
 
 export const createLeave = async (req: Request, res: Response) => {
   try {
-    const leaveData = req.body;
-    const startDate = new Date(leaveData.startDate);
-    const endDate = new Date(leaveData.endDate);
-    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
+    const { employee, leaveType, startDate, endDate, reason, documents } = req.body;
+    if (!employee || !mongoose.Types.ObjectId.isValid(employee)) {
+      return res.status(400).json({ success: false, message: 'Valid employee is required' });
+    }
+    if (!LEAVE_TYPES.includes(leaveType)) {
+      return res.status(400).json({ success: false, message: 'Invalid leave type' });
+    }
+    const fromKey = leaveDayKey(startDate);
+    const toKey = leaveDayKey(endDate);
+    if (!fromKey || !toKey || toKey < fromKey) {
+      return res.status(400).json({ success: false, message: 'Valid start and end dates are required, with the end on or after the start' });
+    }
+
+    const policy = await LeavePolicy.getPolicy();
+    const totalDays = policy.excludeNonWorkingDays
+      ? await countWorkingDays(await resolveRulesForEmployee(employee), fromKey, toKey)
+      : calendarDays(fromKey, toKey);
+    if (totalDays === 0) {
+      return res.status(400).json({ success: false, message: 'The selected dates fall entirely on weekly offs or holidays' });
+    }
+
+    // Only the applicant's fields are taken from the body; status and approval
+    // fields are set by the approval flow, never by the applicant.
     const leave = new Leave({
-      ...leaveData,
+      employee,
+      leaveType,
+      startDate: new Date(fromKey),
+      endDate: new Date(toKey),
+      reason,
+      documents: Array.isArray(documents) ? documents : undefined,
       totalDays,
       appliedDate: new Date()
     });
@@ -118,30 +152,34 @@ export const cancelLeave = async (req: Request, res: Response) => {
 export const getLeaveBalance = async (req: Request, res: Response) => {
   try {
     const { employeeId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(employeeId)) {
+      return res.status(400).json({ success: false, message: 'Invalid employee id' });
+    }
     const currentYear = new Date().getFullYear();
-    
-    const leaves = await Leave.find({
-      employee: employeeId,
-      status: 'approved',
-      startDate: { $gte: new Date(`${currentYear}-01-01`) },
-      endDate: { $lte: new Date(`${currentYear}-12-31`) }
-    });
-    
-    const balance = {
-      sick: { used: 0, total: 12 },
-      vacation: { used: 0, total: 21 },
-      personal: { used: 0, total: 5 },
-      maternity: { used: 0, total: 90 },
-      paternity: { used: 0, total: 15 },
-      emergency: { used: 0, total: 3 }
+    const usedIn = async (year: number) => {
+      const leaves = await Leave.find({
+        employee: employeeId,
+        status: 'approved',
+        startDate: { $gte: new Date(`${year}-01-01`) },
+        endDate: { $lte: new Date(`${year}-12-31`) }
+      }).select('leaveType totalDays').lean();
+      const used: Partial<Record<LeaveType, number>> = {};
+      for (const l of leaves) used[l.leaveType] = (used[l.leaveType] || 0) + l.totalDays;
+      return used;
     };
-    
-    leaves.forEach(leave => {
-      if (balance[leave.leaveType as keyof typeof balance]) {
-        balance[leave.leaveType as keyof typeof balance].used += leave.totalDays;
-      }
-    });
-    
+
+    const policy = await LeavePolicy.getPolicy();
+    const [usedNow, usedLastYear] = await Promise.all([usedIn(currentYear), usedIn(currentYear - 1)]);
+
+    // Carry-forward is the previous year's unused quota, capped per type.
+    const balance: Partial<Record<LeaveType, { used: number; total: number; carriedForward: number }>> = {};
+    for (const t of policy.types) {
+      const carriedForward = t.carryForward
+        ? Math.min(t.maxCarryForward, Math.max(0, t.annualQuota - (usedLastYear[t.type] || 0)))
+        : 0;
+      balance[t.type] = { used: usedNow[t.type] || 0, total: t.annualQuota + carriedForward, carriedForward };
+    }
+
     res.json({ success: true, data: balance });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching leave balance' });

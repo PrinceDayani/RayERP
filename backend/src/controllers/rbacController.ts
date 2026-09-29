@@ -570,6 +570,8 @@ export const initializePermissions = async () => {
     { name: 'permissions.manage', description: 'Manage permissions', category: 'System Administration' },
     { name: 'settings.view', description: 'View system settings', category: 'System Administration' },
     { name: 'settings.edit', description: 'Edit system settings', category: 'System Administration' },
+    { name: 'organization.view', description: 'View organisation setup', category: 'Organization' },
+    { name: 'organization.manage', description: 'Manage organisation profile, timings, holidays, leave policy and locations', category: 'Organization' },
     { name: 'logs.view', description: 'View system logs', category: 'System Administration' },
     { name: 'logs.export', description: 'Export logs', category: 'System Administration' },
     { name: 'audit.view', description: 'View audit trail', category: 'System Administration' },

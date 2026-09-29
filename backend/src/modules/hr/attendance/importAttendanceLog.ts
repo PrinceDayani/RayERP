@@ -5,15 +5,16 @@
  * check-out. Records are entrySource 'card' and auto-approved, like /attendance/card-sync.
  *
  * The map file ties device enroll numbers to employees:
- *   { importTag, timezoneOffset: "+05:30", lateAfter: "10:15",
- *     devices: { "<EnNo>": "<employeeId>" | "NEW:<full name>" } }
+ *   { importTag, devices: { "<EnNo>": "<employeeId>" | "NEW:<full name>" } }
+ * Punch times are read in APP_TIMEZONE, and late / half-day follow each
+ * employee's timings from the Organization module, as live check-ins do.
  * "NEW:" entries create an inactive User + Employee, as importStatusWorkbooks does.
  * Enroll numbers missing from the map are skipped and reported.
  *
  * Run with:
- *   npx ts-node --transpile-only src/scripts/importAttendanceLog.ts --log <ALOG.txt> --map <map.json> --dry-run
- *   npx ts-node --transpile-only src/scripts/importAttendanceLog.ts --log <ALOG.txt> --map <map.json> --backup <backup.json>
- *   npx ts-node --transpile-only src/scripts/importAttendanceLog.ts --revert --backup <backup.json>
+ *   npx ts-node --transpile-only src/modules/hr/attendance/importAttendanceLog.ts --log <ALOG.txt> --map <map.json> --dry-run
+ *   npx ts-node --transpile-only src/modules/hr/attendance/importAttendanceLog.ts --log <ALOG.txt> --map <map.json> --backup <backup.json>
+ *   npx ts-node --transpile-only src/modules/hr/attendance/importAttendanceLog.ts --revert --backup <backup.json>
  *
  * Idempotent: a day that already has an attendance record for the employee is
  * left untouched, so re-running only adds new days. Reads MONGO_URI from env.
@@ -26,6 +27,8 @@ import Attendance from './Attendance';
 import Employee from '../employees/Employee';
 import User from '../../../models/User';
 import { Role } from '../../../models/Role';
+import { parseZonedDay, zonedTimeToUtc } from '../../../utils/timezoneHelper';
+import { arrivalStatus, isHalfDay, resolveRulesForEmployee, ScheduleRules } from '../../organization/workSchedule/scheduleService';
 
 dotenv.config();
 
@@ -43,13 +46,10 @@ if (!REVERT && (!LOG || !MAP)) throw new Error('Missing --log <ALOG.txt> or --ma
 if (!REVERT && !DRY_RUN && !BACKUP) throw new Error('A real run needs --backup <file> so it can be reverted');
 
 const STAFF_EMAIL_DOMAIN = 'staff.rayerp.local';
-const HALF_DAY_HOURS = 4;
 const BATCH = 500;
 
 interface DeviceMap {
   importTag: string;
-  timezoneOffset: string;
-  lateAfter: string;
   devices: Record<string, string>;
 }
 interface Backup {
@@ -62,7 +62,7 @@ interface Punch { enNo: string; name: string; at: Date; day: string }
 
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
 
-function readLog(file: string, tz: string): Punch[] {
+function readLog(file: string): Punch[] {
   const lines = fs.readFileSync(file, 'utf16le').replace(/^﻿/, '').split(/\r?\n/);
   const header = lines[0].split('\t');
   const col = (n: string) => {
@@ -75,9 +75,10 @@ function readLog(file: string, tz: string): Punch[] {
   for (const line of lines.slice(1)) {
     if (!line.trim()) continue;
     const f = line.split('\t');
-    const m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/.exec(f[cAt] || '');
+    const m = /^((\d{4})-(\d{2})-(\d{2})) (\d{2}):(\d{2}):(\d{2})$/.exec(f[cAt] || '');
     if (!m) throw new Error(`Unparseable DateTime in line: ${line}`);
-    punches.push({ enNo: f[cEn], name: f[cName], at: new Date(`${m[1]}T${m[2]}${tz}`), day: m[1] });
+    const at = new Date(zonedTimeToUtc(+m[2], +m[3], +m[4], +m[5], +m[6]).getTime() + +m[7] * 1000);
+    punches.push({ enNo: f[cEn], name: f[cName], at, day: m[1] });
   }
   return punches;
 }
@@ -130,7 +131,7 @@ async function resolveEmployees(map: DeviceMap, firstSeen: Map<string, string>, 
       firstName,
       lastName: rest.join(' ') || undefined,
       email,
-      hireDate: new Date(`${hireDate}T00:00:00${map.timezoneOffset}`),
+      hireDate: hireDate ? parseZonedDay(hireDate) ?? undefined : undefined,
       status: 'inactive',
       user: user._id,
     });
@@ -141,24 +142,23 @@ async function resolveEmployees(map: DeviceMap, firstSeen: Map<string, string>, 
   return resolved;
 }
 
-function buildDay(employee: mongoose.Types.ObjectId | null, enNo: string, day: string, punches: Punch[], map: DeviceMap) {
+function buildDay(employee: mongoose.Types.ObjectId | null, enNo: string, day: string, punches: Punch[], rules: ScheduleRules, importTag: string) {
   const sorted = punches.map(p => p.at).sort((a, b) => a.getTime() - b.getTime());
   const checkIn = sorted[0];
   const last = sorted[sorted.length - 1];
   const checkOut = last.getTime() > checkIn.getTime() ? last : undefined;
   const totalHours = checkOut ? (checkOut.getTime() - checkIn.getTime()) / 3_600_000 : 0;
-  const lateAt = new Date(`${day}T${map.lateAfter}:00${map.timezoneOffset}`);
-  let status: 'present' | 'late' | 'half-day' = checkIn > lateAt ? 'late' : 'present';
-  if (checkOut && totalHours < HALF_DAY_HOURS) status = 'half-day';
+  let status: 'present' | 'late' | 'half-day' = arrivalStatus(rules, checkIn);
+  if (checkOut && isHalfDay(rules, totalHours)) status = 'half-day';
   return {
     employee,
-    date: new Date(`${day}T00:00:00${map.timezoneOffset}`),
+    date: parseZonedDay(day)!,
     checkIn,
     checkOut,
     totalHours: Math.round(totalHours * 100) / 100,
     breakTime: 0,
     status,
-    notes: `Imported from device log (${map.importTag})`,
+    notes: `Imported from device log (${importTag})`,
     isManualEntry: false,
     approvalStatus: 'auto-approved',
     cardEntryTime: checkIn,
@@ -188,10 +188,7 @@ async function run() {
   if (!DRY_RUN && fs.existsSync(BACKUP!)) throw new Error(`Backup file ${BACKUP} already exists; choose a new path`);
 
   const map: DeviceMap = JSON.parse(fs.readFileSync(MAP!, 'utf8'));
-  if (!/^[+-]\d{2}:\d{2}$/.test(map.timezoneOffset)) throw new Error('timezoneOffset must look like +05:30');
-  if (!/^\d{2}:\d{2}$/.test(map.lateAfter)) throw new Error('lateAfter must look like 10:15');
-
-  const punches = readLog(LOG!, map.timezoneOffset);
+  const punches = readLog(LOG!);
   console.log(`Read ${punches.length} punches from ${LOG}`);
 
   const byDevice = new Map<string, Map<string, Punch[]>>();
@@ -224,9 +221,10 @@ async function run() {
     const existing = employee
       ? new Set((await Attendance.find({ employee }).select('date').lean()).map(a => a.date.getTime()))
       : new Set<number>();
+    const rules = await resolveRulesForEmployee(employee);
     const row = { add: 0, existing: 0, late: 0, half: 0, noOut: 0 };
     for (const [day, list] of days) {
-      const doc = buildDay(employee, enNo, day, list, map);
+      const doc = buildDay(employee, enNo, day, list, rules, map.importTag);
       if (existing.has(doc.date.getTime())) { row.existing++; continue; }
       row.add++;
       if (doc.status === 'late') row.late++;

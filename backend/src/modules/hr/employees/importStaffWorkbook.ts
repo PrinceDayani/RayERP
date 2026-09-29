@@ -7,9 +7,9 @@
  *   - reporting column  -> reportingAuthority (text) + manager (resolved Employee ref)
  *
  * Run with:
- *   npx ts-node --transpile-only src/scripts/importStaffWorkbook.ts --file "<path.xlsx>" --parse-only
- *   npx ts-node --transpile-only src/scripts/importStaffWorkbook.ts --file "<path.xlsx>" --dry-run
- *   npx ts-node --transpile-only src/scripts/importStaffWorkbook.ts --file "<path.xlsx>"
+ *   npx ts-node --transpile-only src/modules/hr/employees/importStaffWorkbook.ts --file "<path.xlsx>" --parse-only
+ *   npx ts-node --transpile-only src/modules/hr/employees/importStaffWorkbook.ts --file "<path.xlsx>" --dry-run
+ *   npx ts-node --transpile-only src/modules/hr/employees/importStaffWorkbook.ts --file "<path.xlsx>"
  *
  * --parse-only validates the workbook and the name matching without opening a
  * database connection; --dry-run adds the reads needed to report merges.

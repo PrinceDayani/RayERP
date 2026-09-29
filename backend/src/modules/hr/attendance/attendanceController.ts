@@ -4,19 +4,11 @@ import Attendance from './Attendance';
 import Employee from '../employees/Employee';
 import { logger } from '../../../utils/logger';
 import { addZonedDays, parseZonedDay, startOfZonedDay, zonedTimeToUtc } from '../../../utils/timezoneHelper';
+import { arrivalStatus, isHalfDay, resolveRulesForEmployee } from '../../organization/workSchedule/scheduleService';
 // Socket will be imported dynamically to avoid circular dependency
 
-// Office hours start at 10:00 (APP_TIMEZONE); arriving more than 15 minutes
-// after that is late. Keep in sync with lateAfter in the device-log import map.
-const WORK_START_HOUR = 10;
-const LATE_GRACE_MINUTES = 15;
-
-// Attendance days are stored as midnight in APP_TIMEZONE.
-const statusForArrival = (arrival: Date) => {
-  const workStart = new Date(startOfZonedDay(arrival).getTime() + WORK_START_HOUR * 3_600_000);
-  const lateMinutes = (arrival.getTime() - workStart.getTime()) / 60_000;
-  return lateMinutes > LATE_GRACE_MINUTES ? 'late' : 'present';
-};
+// Attendance days are stored as midnight in APP_TIMEZONE. Late and half-day
+// follow the employee's timings from the Organization module.
 
 // The single-day view lists every employee, so the default page covers a full office.
 const DEFAULT_PAGE_SIZE = 200;
@@ -154,7 +146,7 @@ export const checkIn = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Already checked in today' });
     }
 
-    const status = statusForArrival(checkInTime);
+    const status = arrivalStatus(await resolveRulesForEmployee(employee), checkInTime);
 
     const attendance = new Attendance({
       employee,
@@ -212,7 +204,7 @@ export const checkOut = async (req: Request, res: Response) => {
     attendance.checkOut = checkOutTime;
     attendance.totalHours = Math.max(0, totalHours - breakTimeHours);
     
-    if (attendance.totalHours < 4) {
+    if (isHalfDay(await resolveRulesForEmployee(attendance.employee), attendance.totalHours)) {
       attendance.status = 'half-day';
     } else if (attendance.status !== 'late') {
       attendance.status = 'present';
@@ -422,7 +414,7 @@ export const syncCardData = async (req: Request, res: Response) => {
       date: attendanceDate
     });
 
-    const status = statusForArrival(entryDate);
+    const status = arrivalStatus(await resolveRulesForEmployee(employeeId), entryDate);
 
     if (attendance) {
       // Update existing with card data

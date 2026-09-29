@@ -4,6 +4,7 @@ import ChartOfAccount from '../models/ChartOfAccount';
 import { PartyLedger } from '../models/PartyLedger';
 import mongoose from 'mongoose';
 import { logger } from '../utils/logger';
+import { invalidateProfileCache } from '../modules/organization/profile/profileService';
 
 // Per-user preferences moved to /api/settings/me (see userPreferenceController).
 // These handlers now serve only the organisation-wide singleton, which is why
@@ -62,6 +63,7 @@ export const updateSettings = async (req: Request, res: Response) => {
       Object.assign(settings, updates);
       await settings.save();
     }
+    invalidateProfileCache();
 
     logger.info('Organisation settings updated', {
       userId: (req as any).user?._id?.toString(),

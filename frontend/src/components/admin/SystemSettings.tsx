@@ -11,22 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { AlertCircleIcon, CheckCircleIcon, RefreshCwIcon } from "lucide-react";
-import adminAPI, { AdminGeneralSettings, AdminSecuritySettings, AdminNotificationSettings, AdminBackupSettings } from "@/lib/api/adminAPI";
+import Link from "next/link";
+import adminAPI, { AdminSecuritySettings, AdminNotificationSettings, AdminBackupSettings } from "@/lib/api/adminAPI";
 
 interface SystemSettingsProps {
   isLoading: boolean;
 }
 
 export function SystemSettings({ isLoading }: SystemSettingsProps) {
-  const [generalSettings, setGeneralSettings] = useState<AdminGeneralSettings>({
-    companyName: "",
-    supportEmail: "",
-    timezone: "UTC",
-    dateFormat: "MM/DD/YYYY",
-    currency: "INR",
-    language: "en",
-  });
-
   const [securitySettings, setSecuritySettings] = useState<AdminSecuritySettings>({
     requireMfa: false,
     passwordComplexity: "medium",
@@ -56,7 +48,6 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
       try {
         // Using adminAPI instead of direct fetch
         const data = await adminAPI.getSettings();
-        setGeneralSettings(data.general);
         setSecuritySettings(data.security);
         setNotificationSettings(data.notifications);
         setBackupSettings(data.backup);
@@ -74,27 +65,6 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
       fetchSettings();
     }
   }, [isLoading]);
-
-  const handleSaveGeneralSettings = async () => {
-    try {
-      // Using adminAPI instead of direct fetch
-      await adminAPI.updateGeneralSettings(generalSettings);
-      
-      toast({
-        title: "Settings saved",
-        description: "General settings have been updated successfully.",
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error("Failed to save general settings:", error);
-      // Show success toast anyway for demo
-      toast({
-        title: "Settings saved",
-        description: "General settings have been updated successfully.",
-        duration: 3000,
-      });
-    }
-  };
 
   const handleSaveSecuritySettings = async () => {
     try {
@@ -250,158 +220,19 @@ export function SystemSettings({ isLoading }: SystemSettingsProps) {
         </TabsList>
       </div>
       
-      {/* Rest of the component remains the same */}
-      {/* Enhanced General Settings Tab Content */}
+      {/* Company identity, timezone and currency are owned by the Organization module. */}
       <TabsContent value="general" className="animate-in fade-in-50 duration-500">
-        <Card className="shadow-xl border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5" />
-          <CardHeader className="relative bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20 border-b border-slate-200/50 dark:border-slate-700/50">
-            <CardTitle className="text-2xl font-semibold text-slate-900 dark:text-slate-100">General Settings</CardTitle>
-            <CardDescription className="text-base text-slate-600 dark:text-slate-400">
-              Configure basic application settings and preferences
+        <Card>
+          <CardHeader>
+            <CardTitle>Company details moved</CardTitle>
+            <CardDescription>
+              Company name, address, tax IDs, fiscal year, currency, working hours and holidays are managed in the Organization module.
             </CardDescription>
           </CardHeader>
-          <CardContent className="relative space-y-6 p-8">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
-                <Input
-                  id="companyName"
-                  value={generalSettings.companyName}
-                  onChange={(e) =>
-                    setGeneralSettings({
-                      ...generalSettings,
-                      companyName: e.target.value,
-                    })
-                  }
-                  placeholder="Your Company"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="supportEmail">Support Email</Label>
-                <Input
-                  id="supportEmail"
-                  type="email"
-                  value={generalSettings.supportEmail}
-                  onChange={(e) =>
-                    setGeneralSettings({
-                      ...generalSettings,
-                      supportEmail: e.target.value,
-                    })
-                  }
-                  placeholder="support@example.com"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Select
-                  value={generalSettings.timezone}
-                  onValueChange={(value) =>
-                    setGeneralSettings({
-                      ...generalSettings,
-                      timezone: value,
-                    })
-                  }
-                >
-                  <SelectTrigger id="timezone">
-                    <SelectValue placeholder="Select timezone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="UTC">UTC</SelectItem>
-                    <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
-                    <SelectItem value="America/Chicago">Central Time (CT)</SelectItem>
-                    <SelectItem value="America/Denver">Mountain Time (MT)</SelectItem>
-                    <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
-                    <SelectItem value="Asia/Kolkata">India Standard Time (IST)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="dateFormat">Date Format</Label>
-                <Select
-                  value={generalSettings.dateFormat}
-                  onValueChange={(value) =>
-                    setGeneralSettings({
-                      ...generalSettings,
-                      dateFormat: value,
-                    })
-                  }
-                >
-                  <SelectTrigger id="dateFormat">
-                    <SelectValue placeholder="Select date format" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                    <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                    <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="currency">Currency</Label>
-                <Select
-                  value={generalSettings.currency}
-                  onValueChange={(value) =>
-                    setGeneralSettings({
-                      ...generalSettings,
-                      currency: value,
-                    })
-                  }
-                >
-                  <SelectTrigger id="currency">
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INR">Indian Rupee (₹)</SelectItem>
-                    <SelectItem value="INR">US Dollar ($)</SelectItem>
-                    <SelectItem value="EUR">Euro (€)</SelectItem>
-                    <SelectItem value="GBP">British Pound (£)</SelectItem>
-                    <SelectItem value="JPY">Japanese Yen (¥)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
-                <Select
-                  value={generalSettings.language}
-                  onValueChange={(value) =>
-                    setGeneralSettings({
-                      ...generalSettings,
-                      language: value,
-                    })
-                  }
-                >
-                  <SelectTrigger id="language">
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Spanish</SelectItem>
-                    <SelectItem value="fr">French</SelectItem>
-                    <SelectItem value="de">German</SelectItem>
-                    <SelectItem value="hi">Hindi</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="flex justify-end pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-              <Button 
-                onClick={handleSaveGeneralSettings}
-                className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-8 py-3"
-              >
-                Save Changes
-              </Button>
-            </div>
+          <CardContent>
+            <Button asChild>
+              <Link href="/dashboard/organization/profile">Open Organization profile</Link>
+            </Button>
           </CardContent>
         </Card>
       </TabsContent>

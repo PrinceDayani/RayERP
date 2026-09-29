@@ -29,12 +29,12 @@ export interface Leave {
 }
 
 export interface LeaveBalance {
-  sick: { used: number; total: number };
-  vacation: { used: number; total: number };
-  personal: { used: number; total: number };
-  maternity: { used: number; total: number };
-  paternity: { used: number; total: number };
-  emergency: { used: number; total: number };
+  sick: { used: number; total: number; carriedForward?: number };
+  vacation: { used: number; total: number; carriedForward?: number };
+  personal: { used: number; total: number; carriedForward?: number };
+  maternity: { used: number; total: number; carriedForward?: number };
+  paternity: { used: number; total: number; carriedForward?: number };
+  emergency: { used: number; total: number; carriedForward?: number };
 }
 
 export const leaveAPI = {

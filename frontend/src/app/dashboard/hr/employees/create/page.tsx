@@ -13,6 +13,7 @@ import api from '@/lib/api/api';
 import { toast } from '@/components/ui/use-toast';
 import { departmentApi } from '@/lib/api/hr/departments';
 import { EMPLOYMENT_CATEGORIES } from '@/lib/api/hr/employeesAPI';
+import { LocationDatalist } from '@/components/organization/LocationDatalist';
 
 export default function CreateEmployeePage() {
   const router = useRouter();
@@ -320,10 +321,12 @@ export default function CreateEmployeePage() {
                 <Label htmlFor="workLocation">Work Location</Label>
                 <Input
                   id="workLocation"
+                  list="org-locations"
                   value={formData.workLocation}
                   onChange={(e) => handleInputChange('workLocation', e.target.value)}
                   placeholder="e.g. Ahmedabad Office"
                 />
+                <LocationDatalist id="org-locations" />
               </div>
               <div>
                 <Label htmlFor="projectAssignment">Project / Posting</Label>

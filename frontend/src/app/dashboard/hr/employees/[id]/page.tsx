@@ -93,7 +93,7 @@ export default function EmployeeDetailPage() {
     totalDays: 0, presentDays: 0, lateDays: 0, halfDays: 0, totalHours: 0, averageHours: 0
   });
   const [leaveBalance, setLeaveBalance] = useState<LeaveBalance>({
-    sick: { used: 0, total: 12 }, vacation: { used: 0, total: 21 }, personal: { used: 0, total: 5 }
+    sick: { used: 0, total: 0 }, vacation: { used: 0, total: 0 }, personal: { used: 0, total: 0 }
   });
   const [recentAttendance, setRecentAttendance] = useState([]);
   const [recentLeaves, setRecentLeaves] = useState([]);

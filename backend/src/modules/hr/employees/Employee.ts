@@ -110,6 +110,8 @@ export interface IEmployee extends Document {
   // they are booked against. Free text: the staff register names postings that
   // do not all correspond 1:1 to Project documents.
   workLocation?: string;
+  // Shift that overrides the department's and the organisation's timings.
+  workSchedule?: mongoose.Types.ObjectId;
   projectAssignment?: string;
   // Named reporting line from the staff register. `manager` holds the resolved
   // Employee ref where the name matched an existing record.
@@ -185,6 +187,7 @@ const employeeSchema = new Schema<IEmployee>({
   hireDate: { type: Date, required: true },
   status: { type: String, enum: ['active', 'inactive', 'terminated'], default: 'active' },
   workLocation: { type: String, trim: true },
+  workSchedule: { type: Schema.Types.ObjectId, ref: 'WorkSchedule' },
   projectAssignment: { type: String, trim: true },
   reportingAuthority: { type: String, trim: true },
   qualification: { type: String, trim: true },

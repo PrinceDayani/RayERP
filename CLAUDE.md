@@ -685,6 +685,24 @@ routes, permission middleware together) and `frontend/src/app/dashboard/hr/`,
 `components/hr/`, `lib/api/hr/`. Put new HR code there, not in the flat
 `models/` / `controllers/` / `routes/` folders.
 
+### Organization module
+
+```
+backend/src/modules/organization/
+  profile/                     company identity on the Settings singleton
+  workSchedule/                WorkSchedule (general timings + shifts),
+                               scheduleService (late / half-day / weekly off)
+  holidays/                    Holiday (date as YYYY-MM-DD string)
+  leavePolicy/                 LeavePolicy singleton (quotas, carry-forward)
+  locations/                   Location
+frontend/src/app/dashboard/organization/
+```
+
+Attendance status, the device importer and leave day counts read their rules
+from `scheduleService` — never hard-code office hours, quotas or weekly offs.
+Timing precedence: `Employee.workSchedule`, then a department's
+`Department.workSchedule`, then the general timings, then `BUILT_IN_RULES`.
+
 If a future model fits neither pattern cleanly, ask — don't guess.
 
 ### Milestones live on phases

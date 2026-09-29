@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { logger } from '../utils/logger';
+import { getCompanyName } from '../modules/organization/profile/profileService';
 
 interface EmailConfig {
   host: string;
@@ -39,11 +40,12 @@ class EmailService {
         });
       }
 
+      const company = await getCompanyName();
       const mailOptions = {
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: invoice.partyEmail,
-        subject: `Invoice ${invoice.invoiceNumber} from ${process.env.COMPANY_NAME || 'RayERP'}`,
-        html: this.getInvoiceEmailTemplate(invoice),
+        subject: `Invoice ${invoice.invoiceNumber} from ${company}`,
+        html: this.getInvoiceEmailTemplate(invoice, company),
         attachments
       };
 
@@ -57,26 +59,30 @@ class EmailService {
   }
 
   async sendAccountPendingApproval(to: string, applicantName: string, applicantEmail: string) {
+    const company = await getCompanyName();
     const result = await this.transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to,
-      subject: `New account awaiting approval - ${process.env.COMPANY_NAME || 'RayERP'}`,
+      subject: `New account awaiting approval - ${company}`,
       html: this.getNoticeTemplate(
+        company,
         'New account awaiting approval',
         `<p><strong>${applicantName}</strong> (${applicantEmail}) has registered and is waiting for approval.</p>
-         <p>Review the request in the Users section of ${process.env.COMPANY_NAME || 'RayERP'} to assign a role or reject the account.</p>`
+         <p>Review the request in the Users section of ${company} to assign a role or reject the account.</p>`
       )
     });
     return { success: true, messageId: result.messageId };
   }
 
   async sendAccountApproved(to: string, name: string, roleName: string) {
+    const company = await getCompanyName();
     const loginUrl = `${process.env.FRONTEND_URL || ''}/login`;
     const result = await this.transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to,
-      subject: `Your account has been approved - ${process.env.COMPANY_NAME || 'RayERP'}`,
+      subject: `Your account has been approved - ${company}`,
       html: this.getNoticeTemplate(
+        company,
         'Your account is ready',
         `<p>Hello ${name},</p>
          <p>Your account has been approved and assigned the <strong>${roleName}</strong> role. You can now sign in.</p>
@@ -87,11 +93,13 @@ class EmailService {
   }
 
   async sendAccountRejected(to: string, name: string, reason?: string) {
+    const company = await getCompanyName();
     const result = await this.transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to,
-      subject: `Update on your account request - ${process.env.COMPANY_NAME || 'RayERP'}`,
+      subject: `Update on your account request - ${company}`,
       html: this.getNoticeTemplate(
+        company,
         'Account request not approved',
         `<p>Hello ${name},</p>
          <p>Your account request was not approved.</p>
@@ -102,17 +110,17 @@ class EmailService {
     return { success: true, messageId: result.messageId };
   }
 
-  private getNoticeTemplate(heading: string, body: string): string {
+  private getNoticeTemplate(company: string, heading: string, body: string): string {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">${heading}</h2>
         ${body}
-        <p style="margin-top: 24px;">Regards,<br>${process.env.COMPANY_NAME || 'RayERP Team'}</p>
+        <p style="margin-top: 24px;">Regards,<br>${company}</p>
       </div>
     `;
   }
 
-  private getInvoiceEmailTemplate(invoice: any): string {
+  private getInvoiceEmailTemplate(invoice: any, company: string): string {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Invoice ${invoice.invoiceNumber}</h2>
@@ -125,7 +133,7 @@ class EmailService {
           <p><strong>Amount:</strong> ₹${invoice.totalAmount.toLocaleString()}</p>
         </div>
         <p>Thank you for your business!</p>
-        <p>Best regards,<br>${process.env.COMPANY_NAME || 'RayERP Team'}</p>
+        <p>Best regards,<br>${company}</p>
       </div>
     `;
   }

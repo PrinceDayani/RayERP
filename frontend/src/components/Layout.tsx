@@ -28,6 +28,11 @@ import {
   Building,
   Building2,
   CalendarCheck,
+  CalendarDays,
+  Clock,
+  Landmark,
+  MapPin,
+  PlaneTakeoff,
   Activity,
   MessageCircle,
   GitBranch,
@@ -103,7 +108,7 @@ export default function Layout({ children }: LayoutProps) {
   const hasBudgetAccess = isElevated || hasAnyPermission(['budgets.view', 'budgets.manage']);
   const hasReportAccess = isElevated || hasAnyPermission(['reports.view', 'reports.manage']);
   const hasTenderAccess = isElevated || hasAnyPermission(['tenders.view', 'tenders.create', 'tenders.manage']);
-  const canEditOrgSettings = isElevated || hasPermission('settings.edit');
+  const canViewOrganization = isElevated || hasAnyPermission(['organization.view', 'organization.manage']);
 
   const menuSections = useMemo(() => [
     {
@@ -158,14 +163,24 @@ export default function Layout({ children }: LayoutProps) {
       ]
     },
     {
+      title: "Organization",
+      items: [
+        { path: "/dashboard/organization", name: "Overview", icon: Building2, description: "Organization setup at a glance", access: canViewOrganization } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/organization/profile", name: "Company Profile", icon: Landmark, description: "Company identity, tax IDs and fiscal year", access: canViewOrganization } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/organization/working-hours", name: "Working Hours", icon: Clock, description: "Office timings, shifts and weekly offs", access: true } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/organization/holidays", name: "Holidays", icon: CalendarDays, description: "Holiday calendar", access: true } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/organization/leave-policy", name: "Leave Policy", icon: PlaneTakeoff, description: "Leave quotas and carry-forward", access: true } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/organization/locations", name: "Locations", icon: MapPin, description: "Offices, branches and sites", access: canViewOrganization } as MenuItem & { icon: any; description: string },
+      ]
+    },
+    {
       title: "System Administration",
       items: [
         { path: "/dashboard/settings", name: "Settings", icon: Settings, description: "System configuration" } as MenuItem & { icon: any; description: string },
-        { path: "/dashboard/settings?tab=organization", name: "Organization", icon: Building2, description: "Company-wide settings", access: canEditOrgSettings } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/admin", name: "Admin Panel", icon: Shield, description: "Advanced system controls", access: isAdmin || isSuperAdmin || isElevated } as MenuItem & { icon: any; description: string },
       ]
     }
-  ], [isAdmin, isSuperAdmin, isRoot, isElevated, isManager, hasFinanceAccess, hasEmployeeAccess, hasDepartmentAccess, hasProjectAccess, hasTaskAccess, hasResourceAccess, hasBudgetAccess, hasReportAccess, hasTenderAccess, canEditOrgSettings]);
+  ], [isAdmin, isSuperAdmin, isRoot, isElevated, isManager, hasFinanceAccess, hasEmployeeAccess, hasDepartmentAccess, hasProjectAccess, hasTaskAccess, hasResourceAccess, hasBudgetAccess, hasReportAccess, hasTenderAccess, canViewOrganization]);
 
   useEffect(() => {
     setIsClient(true);
@@ -207,6 +222,13 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   const isMenuExpanded = (path: string) => expandedMenus.includes(path);
+
+  // The most specific item containing the current page is the active one, so
+  // /dashboard/hr/employees/attendance lights Attendance and not Employees too.
+  const activePath = useMemo(() => menuSections
+    .flatMap(section => section.items.map(item => item.path))
+    .filter(path => pathname === path || (path !== '/dashboard' && pathname.startsWith(path + '/')))
+    .sort((a, b) => b.length - a.length)[0], [menuSections, pathname]);
 
   const isSubItemActive = (item: MenuItem) => {
     if (!item.subItems) return false;
@@ -296,7 +318,7 @@ export default function Layout({ children }: LayoutProps) {
                     {section.items.map((item: any) => {
                       if (item.access === false) return null;
 
-                      const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path + '/')) || isSubItemActive(item);
+                      const isActive = item.path === activePath || isSubItemActive(item);
                       const hasSubItems = item.subItems && item.subItems.length > 0;
                       const isExpanded = isMenuExpanded(item.path);
                       const Icon = item.icon;

@@ -22,17 +22,14 @@ import AppearanceSettings from '@/components/settings/AppearanceSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 import HierarchySettings from '@/components/settings/HierarchySettings';
 import CurrencySettings from '@/components/settings/CurrencySettings';
-import OrganizationSettings from '@/components/settings/OrganizationSettings';
 import ActiveSessions from '@/components/user/ActiveSessions';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api/api';
 import { withCsrf } from '@/lib/api/csrf';
 import toast from 'react-hot-toast';
-import { useSearchParams } from 'next/navigation';
 import {
   Bell,
-  Building2,
   Coins,
   Command,
   Globe,
@@ -59,8 +56,6 @@ interface TabDefinition {
   render: () => React.ReactNode;
   /** Rendered bare, without the surrounding titled card. */
   bare?: boolean;
-  /** Shown only to users who can edit organisation settings. */
-  orgOnly?: boolean;
 }
 
 const TABS: TabDefinition[] = [
@@ -121,29 +116,14 @@ const TABS: TabDefinition[] = [
     description: 'How amounts are displayed to you',
     keywords: ['money', 'inr', 'usd', 'format', 'lakhs', 'crores', 'million', 'number'],
     render: () => <CurrencySettings />
-  },
-  {
-    value: 'organization',
-    label: 'Organization',
-    icon: Building2,
-    description: 'Company name, fiscal year, base currency and project defaults for everyone',
-    keywords: ['org', 'organisation', 'company', 'fiscal', 'financial year', 'base currency', 'project defaults', 'file sharing'],
-    render: () => <OrganizationSettings />,
-    orgOnly: true
   }
 ];
 
 export default function SettingsPage() {
   const { hasPermission } = useAuth();
   const canManageOrgSettings = hasPermission('settings.edit');
-  const tabs = useMemo(() => TABS.filter(tab => !tab.orgOnly || canManageOrgSettings), [canManageOrgSettings]);
 
-  const requestedTab = useSearchParams().get('tab');
   const [activeTab, setActiveTab] = useState('profile');
-
-  useEffect(() => {
-    if (requestedTab && tabs.some(tab => tab.value === requestedTab)) setActiveTab(requestedTab);
-  }, [requestedTab, tabs]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
@@ -193,13 +173,13 @@ export default function SettingsPage() {
   const matches = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return [];
-    return tabs.filter(
+    return TABS.filter(
       tab =>
         tab.label.toLowerCase().includes(query) ||
         tab.description.toLowerCase().includes(query) ||
         tab.keywords.some(keyword => keyword.includes(query))
     );
-  }, [searchQuery, tabs]);
+  }, [searchQuery]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -215,15 +195,15 @@ export default function SettingsPage() {
         return;
       }
 
-      if ((event.metaKey || event.ctrlKey) && /^[1-9]$/.test(event.key) && Number(event.key) <= tabs.length) {
+      if ((event.metaKey || event.ctrlKey) && /^[1-7]$/.test(event.key)) {
         event.preventDefault();
-        setActiveTab(tabs[Number(event.key) - 1].value);
+        setActiveTab(TABS[Number(event.key) - 1].value);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSearch, tabs]);
+  }, [showSearch]);
 
   const openTab = (value: string) => {
     setActiveTab(value);
@@ -327,8 +307,8 @@ export default function SettingsPage() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-2xl border bg-white/80 p-1.5 shadow-lg backdrop-blur-xl dark:bg-slate-900/80 sm:grid-cols-4 lg:grid-cols-8">
-              {tabs.map(tab => (
+            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-2xl border bg-white/80 p-1.5 shadow-lg backdrop-blur-xl dark:bg-slate-900/80 sm:grid-cols-4 lg:grid-cols-7">
+              {TABS.map(tab => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
@@ -340,7 +320,7 @@ export default function SettingsPage() {
               ))}
             </TabsList>
 
-            {tabs.map(tab => (
+            {TABS.map(tab => (
               <TabsContent key={tab.value} value={tab.value} className="mt-8 space-y-6">
                 <ErrorBoundary>
                   {tab.bare ? (
@@ -375,7 +355,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <kbd className="rounded border bg-white px-2 py-1 font-mono text-xs shadow-sm dark:bg-slate-700">
-                  ⌘1–{tabs.length}
+                  ⌘1–7
                 </kbd>
                 <span>Switch tabs</span>
               </div>

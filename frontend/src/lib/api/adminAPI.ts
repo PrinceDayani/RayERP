@@ -168,15 +168,6 @@ const adminAPI = {
     }
   },
 
-  updateGeneralSettings: async (settings: AdminGeneralSettings): Promise<AdminGeneralSettings> => {
-    try {
-      return await apiClient.post('/admin/settings/general', settings);
-    } catch (error) {
-      console.error('Error updating general settings:', error);
-      throw error;
-    }
-  },
-
   updateSecuritySettings: async (settings: AdminSecuritySettings): Promise<AdminSecuritySettings> => {
     try {
       return await apiClient.post('/admin/settings/security', settings);

@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import { Response } from 'express';
+import { getCompanyName } from '../modules/organization/profile/profileService';
 
 interface ReportHeader {
     companyName: string;
@@ -192,7 +193,7 @@ export async function generateTrialBalancePDF(
     const pdf = new PDFReportGenerator();
 
     pdf.addHeader({
-        companyName: 'RayERP',
+        companyName: await getCompanyName(),
         reportTitle: 'Trial Balance',
         dateRange,
         generatedDate: new Date().toLocaleString('en-IN')

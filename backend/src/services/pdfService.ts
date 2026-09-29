@@ -1,8 +1,10 @@
 import PDFDocument from 'pdfkit';
 import { logger } from '../utils/logger';
+import { getCompanyName } from '../modules/organization/profile/profileService';
 
 class PDFService {
   async generateInvoicePDF(invoice: any): Promise<Buffer> {
+    const company = await getCompanyName();
     return new Promise((resolve, reject) => {
       try {
         const doc = new PDFDocument({ margin: 50 });
@@ -14,7 +16,7 @@ class PDFService {
 
         // Header
         doc.fontSize(20).text('INVOICE', 50, 50);
-        doc.fontSize(12).text(`${process.env.COMPANY_NAME || 'RayERP'}`, 50, 80);
+        doc.fontSize(12).text(company, 50, 80);
         doc.text(`Invoice #: ${invoice.invoiceNumber}`, 400, 50);
         doc.text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, 400, 70);
         doc.text(`Due: ${new Date(invoice.dueDate).toLocaleDateString()}`, 400, 90);

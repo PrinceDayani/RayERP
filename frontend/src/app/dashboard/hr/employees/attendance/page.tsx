@@ -24,6 +24,7 @@ import Link from 'next/link';
 import attendanceAPI, { TodayStats } from '@/lib/api/hr/attendanceAPI';
 import employeeAPI from '@/lib/api/hr/employeesAPI';
 import { getProjectsMinimal } from '@/lib/api/projectsAPI';
+import { organizationAPI } from '@/lib/api/organizationAPI';
 import AttendanceDashboard from '@/components/hr/employee/AttendanceDashboard';
 import { format } from 'date-fns';
 
@@ -60,12 +61,14 @@ const AttendanceManagement = () => {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedEmployee, setSelectedEmployee] = useState('all');
   const [isMarkAttendanceOpen, setIsMarkAttendanceOpen] = useState(false);
+  // Manual entries default to the organisation's general timings.
+  const [officeHours, setOfficeHours] = useState({ checkIn: '', checkOut: '' });
   const [attendanceForm, setAttendanceForm] = useState({
     employee: '',
     date: format(new Date(), 'yyyy-MM-dd'),
     status: 'present',
-    checkIn: '09:00',
-    checkOut: '17:00',
+    checkIn: '',
+    checkOut: '',
     notes: '',
     project: ''
   });
@@ -95,6 +98,18 @@ const AttendanceManagement = () => {
       fetchTodayStats();
     }
   }, [isAuthenticated, selectedDate, selectedEmployee]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    organizationAPI.listSchedules()
+      .then(({ general }) => {
+        const hours = { checkIn: general.startTime, checkOut: general.endTime };
+        setOfficeHours(hours);
+        setAttendanceForm(form => ({ ...form, checkIn: form.checkIn || hours.checkIn, checkOut: form.checkOut || hours.checkOut }));
+      })
+      // Without general timings the times start empty for the user to fill in.
+      .catch(() => undefined);
+  }, [isAuthenticated]);
 
   // Projects a day can be booked against, loaded once.
   useEffect(() => {
@@ -315,8 +330,8 @@ const AttendanceManagement = () => {
         employee: '',
         date: format(new Date(), 'yyyy-MM-dd'),
         status: 'present',
-        checkIn: '09:00',
-        checkOut: '17:00',
+        checkIn: officeHours.checkIn,
+        checkOut: officeHours.checkOut,
         notes: '',
         project: ''
       });

@@ -1,8 +1,11 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export const LEAVE_TYPES = ['sick', 'vacation', 'personal', 'maternity', 'paternity', 'emergency'] as const;
+export type LeaveType = typeof LEAVE_TYPES[number];
+
 export interface ILeave extends Document {
   employee: mongoose.Types.ObjectId;
-  leaveType: 'sick' | 'vacation' | 'personal' | 'maternity' | 'paternity' | 'emergency';
+  leaveType: LeaveType;
   startDate: Date;
   endDate: Date;
   totalDays: number;
@@ -24,7 +27,7 @@ const leaveSchema = new Schema<ILeave>({
   employee: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
   leaveType: { 
     type: String, 
-    enum: ['sick', 'vacation', 'personal', 'maternity', 'paternity', 'emergency'], 
+    enum: LEAVE_TYPES, 
     required: true 
   },
   startDate: { type: Date, required: true },

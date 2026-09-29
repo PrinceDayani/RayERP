@@ -189,6 +189,10 @@ export const PERMISSIONS = {
   MANAGE_PERMISSIONS: 'permissions.manage',
   VIEW_SETTINGS: 'settings.view',
   EDIT_SETTINGS: 'settings.edit',
+
+  // Organization
+  VIEW_ORGANIZATION: 'organization.view',
+  MANAGE_ORGANIZATION: 'organization.manage',
   VIEW_LOGS: 'logs.view',
   EXPORT_LOGS: 'logs.export',
   VIEW_AUDIT: 'audit.view',

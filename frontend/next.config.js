@@ -144,6 +144,13 @@ const nextConfig = {
         destination: '/dashboard/hr/employees',
         permanent: false,
       },
+      // Organisation settings moved out of the Settings page into their own module.
+      {
+        source: '/dashboard/settings',
+        has: [{ type: 'query', key: 'tab', value: 'organization' }],
+        destination: '/dashboard/organization/profile',
+        permanent: true,
+      },
     ];
   },
 
