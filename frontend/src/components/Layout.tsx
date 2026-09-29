@@ -26,6 +26,7 @@ import {
   UserCog,
   Boxes,
   Building,
+  Building2,
   Activity,
   MessageCircle,
   GitBranch,
@@ -101,6 +102,7 @@ export default function Layout({ children }: LayoutProps) {
   const hasBudgetAccess = isElevated || hasAnyPermission(['budgets.view', 'budgets.manage']);
   const hasReportAccess = isElevated || hasAnyPermission(['reports.view', 'reports.manage']);
   const hasTenderAccess = isElevated || hasAnyPermission(['tenders.view', 'tenders.create', 'tenders.manage']);
+  const canEditOrgSettings = isElevated || hasPermission('settings.edit');
 
   const menuSections = useMemo(() => [
     {
@@ -157,10 +159,11 @@ export default function Layout({ children }: LayoutProps) {
       title: "System Administration",
       items: [
         { path: "/dashboard/settings", name: "Settings", icon: Settings, description: "System configuration" } as MenuItem & { icon: any; description: string },
+        { path: "/dashboard/settings?tab=organization", name: "Organization", icon: Building2, description: "Company-wide settings", access: canEditOrgSettings } as MenuItem & { icon: any; description: string },
         { path: "/dashboard/admin", name: "Admin Panel", icon: Shield, description: "Advanced system controls", access: isAdmin || isSuperAdmin || isElevated } as MenuItem & { icon: any; description: string },
       ]
     }
-  ], [isAdmin, isSuperAdmin, isRoot, isElevated, isManager, hasFinanceAccess, hasEmployeeAccess, hasDepartmentAccess, hasProjectAccess, hasTaskAccess, hasResourceAccess, hasBudgetAccess, hasReportAccess]);
+  ], [isAdmin, isSuperAdmin, isRoot, isElevated, isManager, hasFinanceAccess, hasEmployeeAccess, hasDepartmentAccess, hasProjectAccess, hasTaskAccess, hasResourceAccess, hasBudgetAccess, hasReportAccess, hasTenderAccess, canEditOrgSettings]);
 
   useEffect(() => {
     setIsClient(true);
